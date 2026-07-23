@@ -32,5 +32,5 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: act-desktop-win-x64
-          path: artifacts/desktop/win-x64
+          path: artifacts/desktop/win-x64/*.exe
           if-no-files-found: error

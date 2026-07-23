@@ -130,3 +130,20 @@ Independent of the build phases — do whenever you decide to flip the repo publ
 - [ ] **Flip visibility** — repo Settings → change visibility → public.
 - [ ] **Enable the full CI matrix** — turn on Windows + Linux on every push/PR
   (free and uncapped once public).
+
+## Deferred — multi-OS release builds
+
+`release.yml` currently packages **Windows only** (`win-x64` portable `.exe`).
+Electron artifacts are per-OS — a Windows build does not run on Linux/macOS — so
+shipping cross-platform means a build per target:
+
+- [ ] **Linux** — `linux-x64` (`.tar.xz`, already configured in
+  `electron-builder.json`). Cheapest to add: another matrix leg on
+  `ubuntu-latest` running `package-desktop.ps1 -Rid linux-x64`.
+- [ ] **macOS** — `osx-arm64`/`osx-x64`. Most work: needs a `mac` target added,
+  must build on a `macos-latest` runner, and wants Apple signing + notarization
+  to run without Gatekeeper warnings.
+
+Note the CI-cost angle while private: macOS runners bill at 10× minutes, Windows
+at 2× — a reason to defer the Linux/macOS legs until actually needed or until
+go-public. (ACT's stated floor is "Windows + Linux at least.")
