@@ -49,8 +49,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  └─ Act.TestSupport/              # the MOCK adapter + fixtures/builders (shared)
 │
 ├─ scripts/
-│  ├─ build.ps1 / build.sh          # repeatable release build (roadmap step 2)
-│  └─ package-desktop.ps1/.sh       # Electron.NET desktop packaging
+│  ├─ build.ps1                     # repeatable build + test (CI hook); cross-platform pwsh
+│  └─ package-desktop.ps1           # Electron.NET desktop packaging
 │
 ├─ Act.slnx                         # XML solution format
 ├─ Directory.Build.props            # shared: <Nullable>enable</Nullable>, analyzers, warnings-as-errors on core

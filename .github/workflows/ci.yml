@@ -1,16 +1,33 @@
 name: ci
 
-# Temporarily disabled — manual-only until the real build + fast test suite
-# lands (roadmap step 2). Then set `on: [push, pull_request]`.
-#
-# While the repo is PRIVATE: run Linux-only on push/PR, Windows occasionally
-# (Windows drains the free tier at 2x). Switch on the full Windows + Linux
-# matrix at go-public. Include the Playwright browser-install step.
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  placeholder:
+  build-test:
+    # Linux-only while the repo is private (Windows drains the free tier at 2x).
+    # Add a windows-latest matrix leg at go-public.
     runs-on: ubuntu-latest
     steps:
-      - run: echo "CI not configured yet - see roadmap step 2."
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build and test
+        shell: pwsh
+        run: ./scripts/build.ps1

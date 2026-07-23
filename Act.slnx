@@ -2,4 +2,10 @@
   <Folder Name="/src/">
     <Project Path="src/Act.App/Act.App.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Act.Agents.Tests/Act.Agents.Tests.csproj" />
+    <Project Path="tests/Act.App.UiTests/Act.App.UiTests.csproj" />
+    <Project Path="tests/Act.Core.Tests/Act.Core.Tests.csproj" />
+    <Project Path="tests/Act.TestSupport/Act.TestSupport.csproj" />
+  </Folder>
 </Solution>

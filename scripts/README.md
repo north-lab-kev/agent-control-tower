@@ -1,6 +1,14 @@
 # scripts
 
-Repeatable build & packaging scripts (roadmap step 2). To be added:
+Repeatable build & packaging scripts (the CI build hook).
 
-- `build.ps1` / `build.sh` — repeatable release build (the CI build hook).
-- `package-desktop.ps1` / `package-desktop.sh` — Electron.NET desktop packaging.
+Cross-platform PowerShell (`pwsh`) scripts — they run on Windows and on Linux/CI
+(GitHub's Ubuntu runners ship with `pwsh`).
+
+- **`build.ps1`** — restore, build, and test the whole solution (`Act.slnx`).
+  Defaults to `Release`; override with `-Configuration Debug`. This is the
+  command CI runs (`pwsh scripts/build.ps1`).
+- **`package-desktop.ps1`** — publish the Electron desktop artifact for a runtime
+  (`-Rid win-x64`, default). Output lands in `artifacts/desktop/<rid>/`. Needs
+  Node.js; on Windows also needs symlink privilege (Developer Mode or an elevated
+  shell) — see [../CONTRIBUTING.md](../CONTRIBUTING.md#prerequisites).

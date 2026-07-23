@@ -1,15 +1,36 @@
 name: release
 
-# Temporarily disabled — manual-only until the release build lands
-# (roadmap step 2). Then trigger on version tags:
-#   on:
-#     push:
-#       tags: ['v*']
 on:
+  push:
+    tags: ['v*']
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  placeholder:
-    runs-on: ubuntu-latest
+  package:
+    # Windows targets must be built on Windows (electron-builder cross-platform rule).
+    runs-on: windows-latest
     steps:
-      - run: echo "Release not configured yet - see roadmap step 2."
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Package desktop (win-x64)
+        shell: pwsh
+        run: ./scripts/package-desktop.ps1 -Rid win-x64
+
+      # Uploaded as a workflow artifact for now; attaching to a GitHub Release
+      # comes once packaging is verified end-to-end.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: act-desktop-win-x64
+          path: artifacts/desktop/win-x64
+          if-no-files-found: error
