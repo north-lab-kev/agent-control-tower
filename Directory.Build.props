@@ -1,0 +1,17 @@
+<Project>
+
+  <!--
+    Placeholder — shared build settings (roadmap steps 1-2). To include:
+      - <Nullable>enable</Nullable>
+      - <ImplicitUsings>enable</ImplicitUsings>
+      - <TargetFramework>net10.0</TargetFramework> (where shared)
+      - .NET analyzers enabled
+      - warnings-as-errors on the core projects
+    Do not add real settings until the first project lands.
+  -->
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+</Project>

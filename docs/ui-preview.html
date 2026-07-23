@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACT — UI Preview v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d1217; --bg2:#121a21; --surface:#18222b; --surface2:#1e2a34;
+    --line:#26333f; --line2:#31424f;
+    --ink:#dbe4ec; --dim:#8091a0; --faint:#55636e;
+    --run:#35c7b4; --wait:#f0a93b; --err:#e5565b; --review:#5aa0e6;
+    --done:#5cae86; --stale:#b9a24d; --amber:#f2a93b;
+    --radius:7px;
+    --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+    --sans:'Space Grotesk',system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:radial-gradient(1200px 500px at 80% -10%, #14212b 0%, transparent 60%), var(--bg);
+    color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;padding:38px 22px 70px}
+  .sheet{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:46px}
+  .intro h1{font-size:15px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  .intro p{font-size:13px;color:var(--faint);margin-top:6px;max-width:680px;line-height:1.55}
+  .shot{display:flex;flex-direction:column;gap:10px}
+  .cap{display:flex;align-items:baseline;gap:12px;padding-left:4px}
+  .cap .n{font-family:var(--mono);font-size:12px;color:var(--amber);letter-spacing:.05em}
+  .cap .t{font-size:13px;color:var(--dim)}
+
+  .win{border:1px solid var(--line);border-radius:11px;overflow:hidden;background:var(--bg);
+    box-shadow:0 24px 60px -24px #000, inset 0 1px 0 #ffffff08}
+  .bar{display:flex;align-items:center;gap:13px;padding:10px 15px;
+    background:linear-gradient(#151e26,#111922);border-bottom:1px solid var(--line)}
+  .dots{display:flex;gap:7px}.dots i{width:11px;height:11px;border-radius:50%;display:block;opacity:.85}
+  .dots i:nth-child(1){background:#e5565b}.dots i:nth-child(2){background:#e6b15e}.dots i:nth-child(3){background:#5cae86}
+  .brand{display:flex;align-items:center;gap:9px;margin-left:2px}
+  .wordmark{font-weight:700;letter-spacing:.22em;font-size:14px}
+  .spacer{flex:1}
+  .needpill{font-family:var(--mono);font-size:11px;color:#1a130a;background:var(--wait);
+    padding:4px 10px;border-radius:20px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer}
+  .needpill .pdot{width:6px;height:6px;border-radius:50%;background:#1a130a;animation:blink 1.5s infinite}
+  .seg{display:flex;border:1px solid var(--line2);border-radius:6px;overflow:hidden}
+  .seg span{font-size:11px;padding:5px 10px;color:var(--dim)}
+  .seg span.on{background:var(--surface2);color:var(--ink)}
+  .chip{font-family:var(--mono);font-size:10px;color:var(--dim);border:1px solid var(--line2);
+    padding:4px 9px;border-radius:6px;display:inline-flex;align-items:center;gap:6px}
+  .chip .g{width:6px;height:6px;border-radius:50%;background:var(--run)}
+  .chip.paused .g{background:var(--faint)}
+
+  /* board */
+  .board{display:flex;padding:14px 10px;overflow-x:auto;
+    background:repeating-linear-gradient(90deg,transparent 0 39px,#ffffff04 39px 40px), var(--bg)}
+  .zone{display:flex;flex-direction:column}
+  .zonehdr{display:flex;align-items:center;gap:8px;padding:0 8px 9px;margin:0 6px}
+  .zonehdr .zt{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint)}
+  .zonehdr .zl{flex:1;height:1px;background:linear-gradient(90deg,var(--line2),transparent);min-width:20px}
+  .zone.machine{background:linear-gradient(#ffffff05,transparent 40%);border-radius:8px}
+  .zonebody{display:flex;gap:10px;padding:0 6px}
+  .zsplit{width:1px;align-self:stretch;margin:24px 9px 6px;background:repeating-linear-gradient(#2b3a46 0 5px,transparent 5px 11px)}
+  .col{display:flex;flex-direction:column}
+  .colhdr{display:flex;align-items:center;gap:7px;padding:5px 4px 10px}
+  .colhdr .name{font-size:12px;font-weight:600;color:var(--ink)}
+  .colhdr .cnt{font-family:var(--mono);font-size:10px;color:var(--faint);border:1px solid var(--line);border-radius:20px;padding:1px 6px}
+  .stack{display:flex;flex-direction:column;gap:8px;min-height:30px}
+
+  /* flight strip */
+  .strip{position:relative;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);overflow:hidden}
+  .strip::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--rail,var(--faint))}
+  .strip .idr{font-family:var(--mono);font-size:10px;color:var(--faint);display:flex;align-items:center;gap:6px;justify-content:space-between}
+  .strip .ttl{font-size:12.5px;font-weight:500;line-height:1.35;color:var(--ink)}
+  .badge{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+    padding:2px 6px 2px 5px;border-radius:5px;display:inline-flex;align-items:center;gap:5px;border:1px solid transparent}
+  .badge .d{width:6px;height:6px;border-radius:50%}
+  .b-run{color:var(--run);background:#35c7b418;border-color:#35c7b433}.b-run .d{background:var(--run);animation:pulse 1.8s infinite}
+  .b-wait{color:var(--wait);background:#f0a93b18;border-color:#f0a93b33}.b-wait .d{background:var(--wait)}
+  .b-err{color:var(--err);background:#e5565b18;border-color:#e5565b33}.b-err .d{background:var(--err)}
+  .b-review{color:var(--review);background:#5aa0e618;border-color:#5aa0e633}.b-review .d{background:var(--review)}
+  .b-done{color:var(--done);background:#5cae8618;border-color:#5cae8633}.b-done .d{background:var(--done)}
+  .b-stale{color:var(--stale);background:#b9a24d15;border-color:#b9a24d30}.b-stale .d{background:var(--stale)}
+  .schip{font-family:var(--mono);font-size:9px;color:var(--faint);border:1px dashed var(--line2);padding:2px 6px;border-radius:5px}
+  .lin{font-family:var(--mono);font-size:9px;color:var(--faint);display:inline-flex;gap:4px;align-items:center}
+
+  /* compact density: one line */
+  .board.compact .strip{padding:7px 10px 7px 14px}
+  .board.compact .idr{margin:0}
+  .board.compact .strip .ttl{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+  .compact .cline{display:flex;align-items:center;gap:8px}
+  .compact .cline .cid{font-family:var(--mono);font-size:10px;color:var(--faint);flex:0 0 auto}
+  .compact .cline .bd{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .compact .col{width:210px;flex:0 0 210px}
+
+  /* spacious density */
+  .board.spacious .strip{padding:11px 12px 11px 15px;display:flex;flex-direction:column;gap:8px}
+  .board.spacious .col{width:236px;flex:0 0 236px}
+  .path{font-family:var(--mono);font-size:10px;color:var(--dim);opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .metricline{display:flex;gap:10px;font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+  .metricline b{color:var(--dim);font-weight:500}
+  .ctxbar{height:3px;border-radius:2px;background:#ffffff10;overflow:hidden;margin-top:2px}
+  .ctxbar i{display:block;height:100%;background:var(--run)}
+  .row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+
+  /* rails */
+  .r-plan{--rail:#4a5966}.r-ready{--rail:#7d8a55}.r-run{--rail:var(--run)}
+  .r-wait{--rail:var(--wait)}.r-err{--rail:var(--err)}.r-review{--rail:var(--review)}.r-done{--rail:var(--done)}.r-stale{--rail:var(--stale)}
+
+  /* loud needs-you treatment */
+  .strip.attn{border-color:#f0a93b55;box-shadow:0 0 0 1px #f0a93b22, 0 0 18px -4px #f0a93b55;animation:attn 2s infinite}
+  .strip.attn.err{border-color:#e5565b66;box-shadow:0 0 0 1px #e5565b22,0 0 18px -4px #e5565b66}
+  .strip.attn::after{content:"!";position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--wait)}
+  .strip.attn.err::after{color:var(--err)}
+
+  /* drawer */
+  .dwrap{display:flex;background:var(--bg)}
+  .dboard{flex:1;padding:14px;filter:saturate(.6) brightness(.55);opacity:.5;pointer-events:none;
+    background:repeating-linear-gradient(90deg,transparent 0 39px,#ffffff04 39px 40px);display:flex;gap:10px;overflow:hidden}
+  .drawer{width:396px;flex:0 0 396px;border-left:1px solid var(--line2);
+    background:linear-gradient(#141d25,#111922);padding:18px 19px 22px;box-shadow:-30px 0 50px -30px #000}
+  .dhead{display:flex;align-items:center;justify-content:space-between}
+  .did{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .drawer h2{font-size:16px;font-weight:600;line-height:1.3;margin:11px 0 14px}
+  .k{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}
+  .promptbox{background:#0e161d;border:1px solid var(--line);border-radius:6px;padding:10px 11px;font-size:12px;line-height:1.55;color:#c4d0da;margin-top:5px}
+  .askbox{background:#0e161d;border:1px solid #f0a93b40;border-radius:6px;padding:11px 12px;margin-top:5px}
+  .askbox .q{font-size:12.5px;color:var(--ink);line-height:1.5}
+  .sect{border-top:1px solid var(--line);padding-top:13px;margin-top:14px}
+  .opts{display:flex;flex-direction:column;gap:7px;margin-top:9px}
+  .obtn{display:flex;align-items:center;gap:9px;border:1px solid var(--line2);border-radius:7px;padding:9px 11px;font-size:12.5px;color:var(--ink);background:#ffffff06}
+  .obtn.sel{border-color:var(--review);background:#5aa0e610}
+  .obtn .rk{width:16px;height:16px;border:1.5px solid var(--line2);border-radius:50%;flex:0 0 auto}
+  .obtn.sel .rk{border-color:var(--review);background:var(--review);box-shadow:inset 0 0 0 3px #141d25}
+  .mgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px 14px;margin-top:10px}
+  .mcell .mv{font-family:var(--mono);font-size:13px;color:var(--ink);margin-top:2px}
+  .mcell .mv small{color:var(--faint);font-size:10px}
+  .gauge{grid-column:1/3}
+  .gauge .track{height:6px;border-radius:3px;background:#ffffff10;overflow:hidden;margin-top:5px}
+  .gauge .track i{display:block;height:100%;background:linear-gradient(90deg,var(--run),var(--wait))}
+  .tl{display:flex;flex-direction:column;gap:0;margin-top:9px}
+  .tl .ev{display:flex;gap:9px;font-size:11px;position:relative;padding:0 0 11px 14px}
+  .tl .ev::before{content:"";position:absolute;left:3px;top:3px;width:7px;height:7px;border-radius:50%;background:var(--rail,var(--dim))}
+  .tl .ev::after{content:"";position:absolute;left:6px;top:10px;bottom:0;width:1px;background:var(--line)}
+  .tl .ev:last-child::after{display:none}
+  .tl .ev .tt{color:var(--ink)}.tl .ev .tm{color:var(--faint);font-family:var(--mono);font-size:9.5px;margin-left:auto}
+  .dact{display:flex;gap:8px;margin-top:18px}
+  .btn{font-size:12.5px;font-weight:500;padding:9px 13px;border-radius:6px;border:1px solid var(--line2);color:var(--ink);background:#ffffff08;flex:1;text-align:center}
+  .btn.pri{background:var(--review);border-color:var(--review);color:#08121c;font-weight:600}
+  .btn.ok{background:var(--run);border-color:var(--run);color:#062019;font-weight:600}
+  .btn.dn{background:var(--err);border-color:var(--err);color:#1a0708;font-weight:600}
+  .btn.gh{flex:0 0 auto;color:var(--dim)}
+  .btn.kill{flex:0 0 auto;color:var(--err);border-color:#e5565b40}
+
+  /* modal */
+  .mroot{position:relative;background:var(--bg);overflow:hidden}
+  .mboard{padding:14px;filter:brightness(.4) saturate(.6);display:flex;gap:10px;
+    background:repeating-linear-gradient(90deg,transparent 0 39px,#ffffff04 39px 40px);pointer-events:none}
+  .scrim{position:absolute;inset:0;background:#060a0ecc;backdrop-filter:blur(2px)}
+  .modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:560px;max-width:92%;
+    background:linear-gradient(#161f28,#121a22);border:1px solid var(--line2);border-radius:12px;
+    box-shadow:0 30px 70px -20px #000;overflow:hidden}
+  .mtop{display:flex;align-items:center;gap:9px;padding:15px 18px;border-bottom:1px solid var(--line)}
+  .mtop .tg{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);
+    border:1px solid #f2a93b40;background:#f2a93b12;padding:2px 7px;border-radius:5px}
+  .mtop h2{font-size:15px;font-weight:600}
+  .mbody{padding:16px 18px;display:flex;flex-direction:column;gap:14px;max-height:60vh}
+  .fld label{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);display:block;margin-bottom:5px}
+  .inp{width:100%;background:#0e161d;border:1px solid var(--line);border-radius:6px;padding:9px 11px;color:var(--ink);font-family:var(--sans);font-size:12.5px}
+  .inp.mono{font-family:var(--mono);font-size:11.5px}
+  textarea.inp{resize:none;line-height:1.5}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+  .pill{font-size:11px;padding:6px 9px;border:1px solid var(--line2);border-radius:6px;color:var(--dim);text-align:center}
+  .pill.on{background:var(--surface2);color:var(--ink);border-color:var(--line2)}
+  .pill.warn.on{background:#f0a93b18;color:var(--wait);border-color:#f0a93b55}
+  .toggle{display:flex;align-items:center;gap:10px}
+  .sw{width:34px;height:19px;border-radius:20px;background:var(--run);position:relative;flex:0 0 auto}
+  .sw::after{content:"";position:absolute;top:2px;right:2px;width:15px;height:15px;border-radius:50%;background:#08121c}
+  .sw.off{background:#33404b}.sw.off::after{left:2px;right:auto;background:var(--faint)}
+  .adv{font-family:var(--mono);font-size:10.5px;color:var(--dim);border-top:1px solid var(--line);padding-top:11px;display:flex;align-items:center;gap:7px}
+  .gitrow{display:flex;gap:8px;align-items:center;padding:10px 11px;background:#0e161d;border:1px solid var(--line);border-radius:7px}
+  .gitrow .ck{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--line2);flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:11px;color:#08121c}
+  .gitrow .ck.on{background:var(--done);border-color:var(--done)}
+  .mfoot{display:flex;gap:9px;padding:14px 18px;border-top:1px solid var(--line);background:#0e161d55}
+
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 #35c7b466}70%{box-shadow:0 0 0 5px #35c7b400}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+  @keyframes attn{0%,100%{box-shadow:0 0 0 1px #f0a93b22,0 0 18px -4px #f0a93b55}50%{box-shadow:0 0 0 1px #f0a93b44,0 0 22px -2px #f0a93b88}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="intro">
+    <h1>ACT · UI preview v2</h1>
+    <p>Reflecting the locked decisions: you live on the board, cards signal attention in place (louder rail + pulse), all interaction happens in one contextual right-side drawer, and density toggles between compact and spacious. Still rough — placeholder copy, untuned spacing.</p>
+  </div>
+
+  <!-- SHOT 1: BOARD COMPACT -->
+  <div class="shot">
+    <div class="cap"><span class="n">01</span><span class="t">Board — compact density (monitor-many)</span></div>
+    <div class="win">
+      <div class="bar">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="brand"><span class="wordmark">ACT</span></div>
+        <div class="spacer"></div>
+        <span class="chip"><span class="g"></span>auto-exec on</span>
+        <span class="chip">☕ awake</span>
+        <div class="seg"><span class="on">Compact</span><span>Spacious</span></div>
+        <div class="needpill"><span class="pdot"></span>3 NEED YOU ›</div>
+      </div>
+      <div class="board compact">
+        <div class="zone"><div class="zonehdr"><span class="zt">You</span><span class="zl"></span></div>
+          <div class="zonebody">
+            <div class="col"><div class="colhdr"><span class="name">Preparing</span><span class="cnt">2</span></div>
+              <div class="stack">
+                <div class="strip r-plan"><div class="cline"><span class="cid">#1051</span><span class="ttl">Spec rate-limit middleware</span></div></div>
+                <div class="strip r-plan"><div class="cline"><span class="cid">#1050</span><span class="ttl">Draft auth refactor prompt</span></div></div>
+              </div></div>
+            <div class="col"><div class="colhdr"><span class="name">Ready</span><span class="cnt">3</span></div>
+              <div class="stack">
+                <div class="strip r-ready"><div class="cline"><span class="cid">#1048</span><span class="ttl">Dark-mode toggle</span><span class="schip">now</span></div></div>
+                <div class="strip r-ready"><div class="cline"><span class="cid">#1047</span><span class="ttl">Migrate to LiteDB</span><span class="schip">next win</span></div></div>
+                <div class="strip r-ready"><div class="cline"><span class="cid">#1046</span><span class="ttl">Bump deps</span><span class="schip">⏱ 3am</span></div></div>
+              </div></div>
+          </div></div>
+        <div class="zsplit"></div>
+        <div class="zone machine"><div class="zonehdr"><span class="zt">Agent · locked</span><span class="zl"></span></div>
+          <div class="zonebody">
+            <div class="col"><div class="colhdr"><span class="name">Executing</span><span class="cnt">2</span></div>
+              <div class="stack">
+                <div class="strip r-run"><div class="cline"><span class="cid">#1042</span><span class="bd" style="background:var(--run)"></span><span class="ttl">Refactor session-binding</span></div></div>
+                <div class="strip r-stale"><div class="cline"><span class="cid">#1040</span><span class="bd" style="background:var(--stale)"></span><span class="ttl">Index transcripts</span></div></div>
+              </div></div>
+            <div class="col"><div class="colhdr"><span class="name">Needs feedback</span><span class="cnt">3</span></div>
+              <div class="stack">
+                <div class="strip r-wait attn"><div class="cline"><span class="cid">#1044</span><span class="bd" style="background:var(--wait)"></span><span class="ttl">Delete /v1 endpoints</span></div></div>
+                <div class="strip r-wait attn"><div class="cline"><span class="cid">#1043</span><span class="bd" style="background:var(--wait)"></span><span class="ttl">Caching layer?</span></div></div>
+                <div class="strip r-err attn err"><div class="cline"><span class="cid">#1038</span><span class="bd" style="background:var(--err)"></span><span class="ttl">Radzen grid</span></div></div>
+              </div></div>
+            <div class="col"><div class="colhdr"><span class="name">To review</span><span class="cnt">1</span></div>
+              <div class="stack">
+                <div class="strip r-review"><div class="cline"><span class="cid">#1039</span><span class="bd" style="background:var(--review)"></span><span class="ttl">Flight-strip board</span></div></div>
+              </div></div>
+          </div></div>
+        <div class="zsplit"></div>
+        <div class="zone"><div class="zonehdr"><span class="zt">You</span><span class="zl"></span></div>
+          <div class="zonebody">
+            <div class="col"><div class="colhdr"><span class="name">Completed</span><span class="cnt">2</span></div>
+              <div class="stack">
+                <div class="strip r-done"><div class="cline"><span class="cid">#1035</span><span class="bd" style="background:var(--done)"></span><span class="ttl">Release script</span></div></div>
+                <div class="strip r-done"><div class="cline"><span class="cid">#1031</span><span class="bd" style="background:var(--done)"></span><span class="ttl">App shell</span></div></div>
+              </div></div>
+          </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHOT 2: BOARD SPACIOUS (slice) -->
+  <div class="shot">
+    <div class="cap"><span class="n">02</span><span class="t">Board — spacious density (focus-few; shows metrics, path, lineage). Toggle top-right.</span></div>
+    <div class="win">
+      <div class="bar">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="brand"><span class="wordmark">ACT</span></div>
+        <div class="spacer"></div>
+        <div class="seg"><span>Compact</span><span class="on">Spacious</span></div>
+        <div class="needpill"><span class="pdot"></span>3 NEED YOU ›</div>
+      </div>
+      <div class="board spacious">
+        <div class="zonebody">
+          <div class="col"><div class="colhdr"><span class="name">Executing</span><span class="cnt">2</span></div>
+            <div class="stack">
+              <div class="strip r-run">
+                <div class="idr"><span>#1042 · claude · opus 4.8</span><span class="badge b-run"><span class="d"></span>running</span></div>
+                <div class="ttl">Refactor session-binding logic</div>
+                <div class="path">~/dev/act</div>
+                <div class="metricline"><span><b>142k</b>/200k ctx</span><span><b>18</b> turns</span><span><b>$0.74</b></span></div>
+                <div class="ctxbar"><i style="width:71%"></i></div>
+              </div>
+              <div class="strip r-stale">
+                <div class="idr"><span>#1040 · claude · sonnet 5</span><span class="badge b-stale"><span class="d"></span>stale 6m</span></div>
+                <div class="ttl">Index 12k JSONL transcripts</div>
+                <div class="path">~/dev/act</div>
+                <div class="metricline"><span><b>88k</b>/200k ctx</span><span><b>2</b> compactions</span></div>
+              </div>
+            </div></div>
+          <div class="col"><div class="colhdr"><span class="name">Needs feedback</span><span class="cnt">2</span></div>
+            <div class="stack">
+              <div class="strip r-wait attn">
+                <div class="idr"><span>#1044 · claude</span><span class="badge b-wait"><span class="d"></span>needs permission</span></div>
+                <div class="ttl">Delete legacy /v1 endpoints</div>
+                <div class="path">~/dev/api-gateway</div>
+              </div>
+              <div class="strip r-review">
+                <div class="idr"><span>#1039 · claude</span><span class="badge b-review"><span class="d"></span>idle · ready</span></div>
+                <div class="ttl">Implement flight-strip board</div>
+                <div class="row"><span class="lin">3 children ⤵</span><span class="schip">auto-complete</span></div>
+              </div>
+            </div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHOT 3: DRAWER — PERMISSION -->
+  <div class="shot">
+    <div class="cap"><span class="n">03</span><span class="t">Contextual drawer — permission request (approve/deny)</span></div>
+    <div class="win">
+      <div class="bar"><div class="dots"><i></i><i></i><i></i></div><div class="brand"><span class="wordmark">ACT</span></div></div>
+      <div class="dwrap">
+        <div class="dboard">
+          <div class="strip r-run" style="width:190px;height:fit-content;padding:10px"><div class="ttl">#1042 Refactor…</div></div>
+          <div class="strip r-wait" style="width:190px;height:fit-content;padding:10px"><div class="ttl">#1044 Delete /v1…</div></div>
+        </div>
+        <div class="drawer">
+          <div class="dhead"><span class="did">#1044 · claude · bypass off</span><span class="badge b-wait"><span class="d"></span>needs permission</span></div>
+          <h2>Delete legacy /v1 endpoints</h2>
+          <div class="k">Agent wants to run</div>
+          <div class="askbox"><div class="q"><span style="font-family:var(--mono);color:var(--wait)">Bash</span> — <span style="font-family:var(--mono);font-size:11.5px">rm -rf src/api/v1/ && git rm -r src/api/v1</span></div></div>
+          <div class="sect"><div class="k">Scope this approval</div>
+            <div class="opts">
+              <div class="obtn sel"><span class="rk"></span>Allow once</div>
+              <div class="obtn"><span class="rk"></span>Allow for this session</div>
+              <div class="obtn"><span class="rk"></span>Always allow Bash <span style="color:var(--faint);font-size:10px">(add to allow-list)</span></div>
+            </div>
+          </div>
+          <div class="dact">
+            <div class="btn dn">Deny</div>
+            <div class="btn ok">Approve →</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHOT 4: DRAWER — REVIEW -->
+  <div class="shot">
+    <div class="cap"><span class="n">04</span><span class="t">Contextual drawer — review (metrics, timeline, send-back / complete / kill)</span></div>
+    <div class="win">
+      <div class="bar"><div class="dots"><i></i><i></i><i></i></div><div class="brand"><span class="wordmark">ACT</span></div></div>
+      <div class="dwrap">
+        <div class="dboard">
+          <div class="strip r-review" style="width:190px;height:fit-content;padding:10px"><div class="ttl">#1039 Flight-strip…</div></div>
+          <div class="strip r-run" style="width:190px;height:fit-content;padding:10px"><div class="ttl">#1042 Refactor…</div></div>
+        </div>
+        <div class="drawer">
+          <div class="dhead"><span class="did">#1039 · claude · opus 4.8</span><span class="badge b-review"><span class="d"></span>idle · ready</span></div>
+          <h2>Implement flight-strip board</h2>
+          <div class="mgrid">
+            <div class="mcell"><div class="k">Tokens</div><div class="mv">1.2M <small>in</small> · 84k <small>out</small></div></div>
+            <div class="mcell"><div class="k">Cost</div><div class="mv">$3.18</div></div>
+            <div class="gauge"><div class="k">Context · 142k / 200k</div><div class="track"><i style="width:71%"></i></div></div>
+            <div class="mcell"><div class="k">Turns</div><div class="mv">24</div></div>
+            <div class="mcell"><div class="k">Compactions</div><div class="mv">1</div></div>
+          </div>
+          <div class="sect"><div class="k">Timeline</div>
+            <div class="tl">
+              <div class="ev r-ready"><span class="tt">Launched · Ready → Executing</span><span class="tm">18:02</span></div>
+              <div class="ev r-wait"><span class="tt">Needs permission → approved</span><span class="tm">18:14</span></div>
+              <div class="ev r-run"><span class="tt">Compacted context</span><span class="tm">19:40</span></div>
+              <div class="ev r-review"><span class="tt">Turn complete → To review</span><span class="tm">20:05</span></div>
+            </div>
+          </div>
+          <div class="sect"><div class="k">Feedback (send back)</div>
+            <div class="promptbox" style="color:var(--faint)">Type notes to send the agent back to work…</div>
+          </div>
+          <div class="dact">
+            <div class="btn kill">Kill</div>
+            <div class="btn">Send back</div>
+            <div class="btn pri">Complete →</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHOT 5: NEW TASK MODAL -->
+  <div class="shot">
+    <div class="cap"><span class="n">05</span><span class="t">New-task modal (Preparing) — control-dense, over the board</span></div>
+    <div class="win">
+      <div class="bar"><div class="dots"><i></i><i></i><i></i></div><div class="brand"><span class="wordmark">ACT</span></div></div>
+      <div class="mroot">
+        <div class="mboard">
+          <div class="strip r-plan" style="width:200px;height:fit-content;padding:10px"><div class="ttl">#1051 Spec…</div></div>
+          <div class="strip r-ready" style="width:200px;height:fit-content;padding:10px"><div class="ttl">#1048 Dark-mode…</div></div>
+        </div>
+        <div class="scrim"></div>
+        <div class="modal">
+          <div class="mtop"><span class="tg">New task</span><h2>Prepare a task</h2></div>
+          <div class="mbody">
+            <div class="fld"><label>Title</label><input class="inp" value="Add rate-limit middleware"></div>
+            <div class="fld"><label>Prompt</label><textarea class="inp" rows="2">Implement token-bucket rate limiting on the public API, with per-key limits and a bypass allow-list.</textarea></div>
+            <div class="fld"><label>Working directory</label><input class="inp mono" value="~/dev/api-gateway"></div>
+            <div class="two">
+              <div class="fld"><label>Agent</label><div class="seg" style="width:100%"><span class="on" style="flex:1;text-align:center">Claude Code</span><span style="flex:1;text-align:center">Codex</span></div></div>
+              <div class="fld"><label>Model</label><input class="inp" value="Opus 4.8"></div>
+            </div>
+            <div class="two">
+              <div class="fld"><label>Effort</label><div class="three"><span class="pill">low</span><span class="pill on">med</span><span class="pill">xhigh</span></div></div>
+              <div class="fld"><label>Permission mode</label><div class="three"><span class="pill on">default</span><span class="pill">plan</span><span class="pill warn">bypass</span></div></div>
+            </div>
+            <div class="fld"><label>Schedule</label><div class="three" style="grid-template-columns:repeat(5,1fr)"><span class="pill">manual</span><span class="pill on">now</span><span class="pill">next win</span><span class="pill">win+1</span><span class="pill">date…</span></div></div>
+            <div class="toggle"><span class="sw"></span><span style="font-size:12.5px">Auto-complete <span style="color:var(--faint);font-size:11px">— skip review on clean finish</span></span></div>
+            <div class="gitrow"><span class="ck on">✓</span><span style="font-size:12px">Auto-git</span><span class="pill on" style="padding:3px 8px">commit</span><span class="pill on" style="padding:3px 8px">push</span><span class="pill on" style="padding:3px 8px">PR</span><span class="pill" style="padding:3px 8px">draft</span></div>
+            <div class="adv">▸ Advanced — allowed / denied tools, env, extra flags</div>
+          </div>
+          <div class="mfoot"><div class="btn gh">Cancel</div><div class="spacer"></div><div class="btn" style="flex:0 0 auto">Save to Preparing</div><div class="btn pri" style="flex:0 0 auto">Add to Ready →</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

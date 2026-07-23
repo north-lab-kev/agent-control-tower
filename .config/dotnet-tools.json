@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "//": "Placeholder — local tools (roadmap step 2): dotnet-format, coverlet, playwright. Add via `dotnet tool install`.",
+  "tools": {}
+}

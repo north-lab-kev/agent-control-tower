@@ -427,3 +427,22 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# ---- ACT-specific ----
+
+# Electron.NET build output (bloat + secrets risk on go-public)
+obj/Host/
+bin/Host/
+electron-builder-output/
+
+# LiteDB runtime data files
+*.db
+*.db-log
+*.litedb
+
+# Extra secret patterns (never commit — history becomes public on go-public)
+*.key
+*.pem
+secrets.json
+appsettings.*.local.json
+

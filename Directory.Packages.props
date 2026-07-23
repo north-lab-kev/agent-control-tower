@@ -1,0 +1,8 @@
+<Project>
+
+  <ItemGroup>
+    <PackageVersion Include="ElectronNET.Core" Version="0.5.1" />
+    <PackageVersion Include="ElectronNET.Core.AspNet" Version="0.5.1" />
+  </ItemGroup>
+
+</Project>

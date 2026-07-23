@@ -1,0 +1,11 @@
+# Placeholder — CI: build + fast test suite (roadmap step 2).
+#
+# While the repo is PRIVATE: run Linux-only on push/PR, Windows occasionally
+# (Windows drains the free tier at 2x). Switch on the full Windows + Linux
+# matrix at go-public. Include the Playwright browser-install step.
+#
+# name: ci
+# on: [push, pull_request]
+# jobs:
+#   build-test:
+#     ...

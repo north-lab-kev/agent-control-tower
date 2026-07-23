@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Act.App",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/Act.App/Act.App.csproj", "--launch-profile", "http"],
+      "port": 5210
+    }
+  ]
+}
