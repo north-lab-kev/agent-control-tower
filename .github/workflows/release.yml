@@ -13,13 +13,13 @@ jobs:
     # Windows targets must be built on Windows (electron-builder cross-platform rule).
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -29,7 +29,7 @@ jobs:
 
       # Uploaded as a workflow artifact for now; attaching to a GitHub Release
       # comes once packaging is verified end-to-end.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: act-desktop-win-x64
           path: artifacts/desktop/win-x64
