@@ -7,7 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-var runElectron = HybridSupport.IsElectronActive
+var launchedByElectron = args.Any(a => a.StartsWith("/electronPort", StringComparison.OrdinalIgnoreCase));
+var runElectron = launchedByElectron
     || builder.Configuration.GetValue<bool>("Electron:Enabled");
 if (runElectron)
 {
