@@ -1,9 +1,15 @@
-# Placeholder — release: tag -> release build + desktop artifact (roadmap step 2).
-#
-# name: release
-# on:
-#   push:
-#     tags: ['v*']
-# jobs:
-#   release:
-#     ...
+name: release
+
+# Temporarily disabled — manual-only until the release build lands
+# (roadmap step 2). Then trigger on version tags:
+#   on:
+#     push:
+#       tags: ['v*']
+on:
+  workflow_dispatch:
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Release not configured yet - see roadmap step 2."
