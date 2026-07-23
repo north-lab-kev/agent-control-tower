@@ -34,6 +34,8 @@ app.Run();
 
 static async Task CreateWindowAsync()
 {
+    Electron.Menu.SetApplicationMenu(Array.Empty<MenuItem>());
+
     var window = await Electron.WindowManager.CreateWindowAsync(new BrowserWindowOptions
     {
         Show = false,

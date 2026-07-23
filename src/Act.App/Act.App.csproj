@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <PackageId>Act.App</PackageId>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(ElectronPackaging)' != 'true'">

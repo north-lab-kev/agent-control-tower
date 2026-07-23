@@ -32,11 +32,17 @@ adapters, infrastructure, and UI all point *inward* to its `Ports/` interfaces.
 
 ## Development
 
-```
-dotnet run   # (once the app shell exists) — browser dev loop
+**Prerequisites:** the **.NET 10 SDK** and **Node.js** (LTS). Node is required
+because the Electron desktop shell stages its runtime during the build — see
+[CONTRIBUTING.md](CONTRIBUTING.md#prerequisites) for one-line install commands
+per OS.
+
+```bash
+dotnet run --project src/Act.App --launch-profile http
 ```
 
-The Electron.NET desktop build is a packaging step over the same app.
+Serves the browser dev loop at `http://localhost:5210`. The Electron.NET desktop
+build is a packaging step over the same app (`scripts/package-desktop.ps1`).
 
 ## License
 
