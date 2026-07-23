@@ -2,6 +2,14 @@
 
 Instructions for Claude Code when working in this repository.
 
+## Version control (HARD RULE)
+
+- **Never `git add`/stage, `git commit`, or `git push` yourself unless I
+  specifically ask for it in that message.** Make the file changes and stop.
+  A prior request to commit/push does not carry over — each one requires its
+  own explicit ask. "Fix it" / "address this" / reporting a problem is **not**
+  permission to commit or push.
+
 ## Coding conventions
 
 - **Do not write code comments.** Only add a comment when either:
