@@ -14,6 +14,8 @@ dotnet publish $project `
     -c $Configuration `
     -r $Rid `
     -p:ElectronPackaging=true `
+    -p:PublishSingleFile=false `
+    -p:SelfContained=true `
     -p:PublishUrl=$output
 
 Write-Host ""
