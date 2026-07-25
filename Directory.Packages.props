@@ -3,6 +3,7 @@
   <ItemGroup>
     <PackageVersion Include="ElectronNET.Core" Version="0.5.1" />
     <PackageVersion Include="ElectronNET.Core.AspNet" Version="0.5.1" />
+    <PackageVersion Include="Radzen.Blazor" Version="11.1.7" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">

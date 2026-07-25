@@ -6,6 +6,15 @@ Instructions for Claude Code when working in this repository.
 
 - Always reply to me in **English**.
 
+## Running the app
+
+- **If I'm already running the app, do NOT start it yourself** (`dotnet run` /
+  `preview_start` / launching the Electron app). A second instance conflicts
+  (port / single-instance) and fails. Diagnose from the code, or ask me to
+  check something in the instance I already have open.
+- If you genuinely need to launch it yourself, **ask me to stop my instance
+  first**, then wait for me to confirm before starting yours.
+
 ## Version control (HARD RULE)
 
 - **Never `git add`/stage, `git commit`, or `git push` yourself unless I

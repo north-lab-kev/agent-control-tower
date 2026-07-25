@@ -1,11 +1,17 @@
+using Act.App;
 using ElectronNET.API;
 using ElectronNET.API.Entities;
+using Radzen;
 using AppRoot = Act.App.Components.App;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddRadzenComponents();
+
+builder.Services.AddTransient<ICacheBuster, CacheBuster>();
 
 var launchedByElectron = args.Any(a => a.StartsWith("/electronPort", StringComparison.OrdinalIgnoreCase));
 var runElectron = launchedByElectron

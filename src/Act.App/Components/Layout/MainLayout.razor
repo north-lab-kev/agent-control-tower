@@ -1,16 +1,18 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+<RadzenComponents @rendermode="InteractiveServer" />
 
-    <main>
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+<RadzenLayout>
+    <RadzenHeader>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-px-4 rz-py-3">
+            <RadzenText Text="ACT" TextStyle="TextStyle.H6" />
+            <RadzenText Text="Agent Control Tower" TextStyle="TextStyle.Caption" />
+        </RadzenStack>
+    </RadzenHeader>
+    <RadzenBody>
+        @Body
+    </RadzenBody>
+</RadzenLayout>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

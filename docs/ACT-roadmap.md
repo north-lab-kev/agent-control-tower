@@ -22,7 +22,7 @@ verifiable, and leaves something runnable.
 - [x] **1. Empty app shell** — Blazor Server on .NET 10, runs via `dotnet run`,
   blank page. *Verify:* app loads in browser. ✅ Loads at `http://localhost:5210`
   (title "ACT — Agent Control Tower"), clean build, no console errors.
-- [ ] **2. Release build script + CI** — repeatable release build; wire
+- [x] **2. Release build script + CI** — repeatable release build; wire
   Electron.NET so it also produces the desktop artifact; stand up the **test
   projects (xUnit) and GitHub Actions CI** now, so the fast suite runs from step
   one. **While the repo is private:** run **Linux-only CI on push/PR** and the
@@ -30,7 +30,9 @@ verifiable, and leaves something runnable.
   2,000-minute tier (Windows drains at 2×); switch on the full Windows + Linux
   matrix at go-public (then free and uncapped). *Verify:* one command yields a
   runnable desktop build; CI is green on an empty test. (Established now so
-  everything after ships and is tested.)
+  everything after ships and is tested.) ✅ `build.ps1` (restore/build/test) +
+  `package-desktop.ps1` (NSIS installer, self-contained); 4 xUnit projects green;
+  `ci.yml` green on Ubuntu; `release.yml` produced a runnable Windows installer.
 - [ ] **3. LiteDB + card model** — persist the full card model; seed fake cards.
   *Verify:* cards survive restart.
 
@@ -93,11 +95,13 @@ verifiable, and leaves something runnable.
   transitions timeline in the drawer. *Verify:* old Completed cards archive and
   stay searchable.
 - [ ] **16. UI polish** — final spacing, type, Radzen theming pass.
-  - **Settings surface** — consolidate the preferences that landed scattered
-    across features into one screen: density default, notification matrix,
-    keep-awake, `maxConcurrent`, weekly-reset time, auto-archive window,
-    auto-execution pause. (Each knob works from its own feature step; this just
-    gives them a home.)
+  - **User settings page** — consolidate the preferences that landed scattered
+    across features into one screen: **theme** (Radzen *Standard* / *Standard
+    Dark*; default **follows the OS** light/dark preference), density default,
+    notification matrix, keep-awake, `maxConcurrent`, weekly-reset time,
+    auto-archive window, auto-execution pause. (Each knob works from its own
+    feature step; this just gives them a home. The theme override replaces the
+    interim OS-only auto-switch wired at Radzen setup.)
 
 ## Milestones
 

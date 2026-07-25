@@ -15,6 +15,7 @@
   <ItemGroup>
     <PackageReference Include="ElectronNET.Core" />
     <PackageReference Include="ElectronNET.Core.AspNet" />
+    <PackageReference Include="Radzen.Blazor" />
   </ItemGroup>
 
   <ItemGroup>

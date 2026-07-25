@@ -912,6 +912,13 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
 - **Build split:** signature flight-strip look = custom Blazor markup + CSS;
   heavier widgets (dialog/modal, drawer, tables, inputs) = Radzen themed to the
   same palette via shared CSS variables. Mockups were hand-CSS only.
+- **Settings page:** a dedicated user-settings screen (built in roadmap step 16)
+  is the home for scattered preferences. **Theme** lives here — Radzen's
+  *Standard* and *Standard Dark* themes, with the **default following the OS**
+  light/dark preference (wired at Radzen setup via `prefers-color-scheme`; the
+  settings page later adds an explicit override). Also gathers density default,
+  the notification matrix, keep-awake, `maxConcurrent`, weekly-reset time, and
+  the auto-archive window / auto-execution pause.
 
 ---
 
