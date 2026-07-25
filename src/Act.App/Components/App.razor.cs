@@ -1,11 +1,13 @@
-using Microsoft.AspNetCore.Components;
-
 namespace Act.App.Components;
 
-public partial class App
+public partial class App(ICacheBuster cacheBuster)
 {
-    [Inject]
-    private ICacheBuster CacheBuster { get; set; } = default!;
+    private string? assetVersion;
+    private string? radzenAssetVersion;
 
-    private string AssetVersion => CacheBuster.Get(typeof(App).Assembly);
+    private string AssetVersion
+        => assetVersion ??= cacheBuster.Get(typeof(App).Assembly);
+
+    private string RadzenAssetVersion
+        => radzenAssetVersion ??= cacheBuster.Get(typeof(Radzen.Colors).Assembly);
 }
