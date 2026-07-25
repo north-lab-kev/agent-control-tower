@@ -1,3 +1,103 @@
+.shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--act-bg);
+}
+
+.bar {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 10px 15px;
+    background: linear-gradient(#151e26, #111922);
+    border-bottom: 1px solid var(--act-line);
+    flex: 0 0 auto;
+}
+
+.wordmark {
+    font-weight: 700;
+    letter-spacing: .22em;
+    font-size: 14px;
+    color: var(--act-ink);
+}
+
+.spacer {
+    flex: 1;
+}
+
+.chip {
+    font-family: var(--act-mono);
+    font-size: 10px;
+    color: var(--act-dim);
+    border: 1px solid var(--act-line2);
+    padding: 4px 9px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.chip .g {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--act-run);
+}
+
+.seg {
+    display: flex;
+    border: 1px solid var(--act-line2);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.seg button {
+    font-family: inherit;
+    font-size: 11px;
+    padding: 5px 10px;
+    color: var(--act-dim);
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+.seg button.on {
+    background: var(--act-surface2);
+    color: var(--act-ink);
+}
+
+.needpill {
+    font-family: var(--act-mono);
+    font-size: 11px;
+    color: #1a130a;
+    background: var(--act-wait);
+    padding: 4px 10px;
+    border: 0;
+    border-radius: 20px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.needpill .pdot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #1a130a;
+    animation: bar-blink 1.5s infinite;
+}
+
+main {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
 #blazor-error-ui {
     color-scheme: light only;
     background: lightyellow;
@@ -18,3 +118,14 @@
         right: 0.75rem;
         top: 0.5rem;
     }
+
+@keyframes bar-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .needpill .pdot {
+        animation: none;
+    }
+}

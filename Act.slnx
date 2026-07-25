@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Act.App/Act.App.csproj" />
+    <Project Path="src/Act.Core/Act.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Act.Agents.Tests/Act.Agents.Tests.csproj" />

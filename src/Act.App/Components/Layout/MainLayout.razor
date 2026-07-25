@@ -1,21 +1,45 @@
 @inherits LayoutComponentBase
+@using Act.Core.Model
 
-<RadzenComponents @rendermode="InteractiveServer" />
+<RadzenComponents />
 
-<RadzenLayout>
-    <RadzenHeader>
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" class="rz-px-4 rz-py-3">
-            <RadzenText Text="ACT" TextStyle="TextStyle.H6" />
-            <RadzenText Text="Agent Control Tower" TextStyle="TextStyle.Caption" />
-        </RadzenStack>
-    </RadzenHeader>
-    <RadzenBody>
-        @Body
-    </RadzenBody>
-</RadzenLayout>
+<div class="shell">
+    <div class="bar">
+        <span class="wordmark">ACT</span>
+
+        <span class="spacer"></span>
+
+        <span class="chip"><span class="g"></span>auto-exec on</span>
+        <span class="chip">☕ awake</span>
+
+        <div class="seg">
+            <button type="button" class="@(compact ? "on" : null)" @onclick="() => compact = true">Compact</button>
+            <button type="button" class="@(compact ? null : "on")" @onclick="() => compact = false">Spacious</button>
+        </div>
+
+        @if (AttentionCount > 0)
+        {
+            <button type="button" class="needpill">
+                <span class="pdot"></span>@AttentionCount NEED YOU ›
+            </button>
+        }
+    </div>
+
+    <main>
+        <CascadingValue Value="compact" Name="Compact">
+            @Body
+        </CascadingValue>
+    </main>
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    private bool compact = true;
+
+    private static int AttentionCount => SampleBoard.Cards.Count(c => c.NeedsAttention);
+}

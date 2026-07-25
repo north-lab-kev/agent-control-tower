@@ -1,5 +1,31 @@
+:root {
+    --act-bg: #0d1217;
+    --act-surface: #18222b;
+    --act-surface2: #1e2a34;
+    --act-line: #26333f;
+    --act-line2: #31424f;
+    --act-ink: #dbe4ec;
+    --act-dim: #8091a0;
+    --act-faint: #55636e;
+
+    --act-run: #35c7b4;
+    --act-wait: #f0a93b;
+    --act-err: #e5565b;
+    --act-review: #5aa0e6;
+    --act-done: #5cae86;
+    --act-stale: #b9a24d;
+    --act-amber: #f2a93b;
+    --act-plan: #4a5966;
+    --act-ready: #7d8a55;
+
+    --act-radius: 7px;
+    --act-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+
 body {
     background-image: none;
+    background-color: var(--act-bg);
+    color: var(--act-ink);
 }
 
 .blazor-error-boundary {

@@ -1,0 +1,35 @@
+@using Act.Core.Model
+
+<div class="board @(Compact ? "compact" : "spacious")">
+    @foreach (var column in AllColumns)
+    {
+        var cards = SampleBoard.Cards.Where(c => c.Column == column).ToList();
+
+        <div class="col">
+            <div class="colhdr">
+                <span class="name">@Label(column)</span>
+                <span class="cnt">@cards.Count</span>
+            </div>
+            <div class="stack">
+                @foreach (var card in cards)
+                {
+                    <FlightStrip Card="card" Compact="Compact" />
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly BoardColumn[] AllColumns = Enum.GetValues<BoardColumn>();
+
+    [CascadingParameter(Name = "Compact")]
+    private bool Compact { get; set; }
+
+    private static string Label(BoardColumn column) => column switch
+    {
+        BoardColumn.NeedsFeedback => "Needs feedback",
+        BoardColumn.ToReview => "To review",
+        _ => column.ToString(),
+    };
+}

@@ -1,0 +1,165 @@
+@using Act.Core.Model
+
+<div class="strip @RailClass @(Card.NeedsAttention ? "attn" : null) @(IsError ? "err" : null)">
+    @if (Compact)
+    {
+        <div class="cline">
+            <span class="cid">#@Card.Number</span>
+            @if (ShowDot)
+            {
+                <span class="bd"></span>
+            }
+            <span class="ttl">@Card.Title</span>
+            @if (ScheduleText is not null)
+            {
+                <span class="schip">@ScheduleText</span>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="idr">
+            <span>#@Card.Number@AgentSuffix</span>
+            @if (BadgeText is not null)
+            {
+                <span class="badge @BadgeClass"><span class="d"></span>@BadgeText</span>
+            }
+        </div>
+        <div class="ttl">@Card.Title</div>
+        <div class="path">@Card.WorkingDir</div>
+
+        @if (Card.Metrics is { } m)
+        {
+            <div class="metricline">
+                @if (m.ContextPercent is { } pct)
+                {
+                    <span><b>@Thousands(m.ContextUsed)</b>/@Thousands(m.ContextLimit) ctx</span>
+                }
+                @if (m.TurnCount > 0)
+                {
+                    <span><b>@m.TurnCount</b> turns</span>
+                }
+                @if (m.Compactions > 0)
+                {
+                    <span><b>@m.Compactions</b> compactions</span>
+                }
+                @if (m.Cost > 0)
+                {
+                    <span><b>@m.Cost.ToString("C2", Culture)</b></span>
+                }
+            </div>
+            @if (m.ContextPercent is { } bar)
+            {
+                <div class="ctxbar"><i style="width:@(bar)%"></i></div>
+            }
+        }
+
+        @if (ScheduleText is not null || Card.ChildCount > 0 || Card.AutoComplete)
+        {
+            <div class="row">
+                @if (Card.ChildCount > 0)
+                {
+                    <span class="lin">@Card.ChildCount children ⤵</span>
+                }
+                @if (Card.AutoComplete)
+                {
+                    <span class="schip">auto-complete</span>
+                }
+                @if (ScheduleText is not null)
+                {
+                    <span class="schip">@ScheduleText</span>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private static readonly System.Globalization.CultureInfo Culture =
+        System.Globalization.CultureInfo.GetCultureInfo("en-US");
+
+    [Parameter, EditorRequired]
+    public Card Card { get; set; } = default!;
+
+    [Parameter]
+    public bool Compact { get; set; }
+
+    private bool IsError => Card.Badge is Badge.Error or Badge.Killed;
+
+    private bool ShowDot => Card.Badge is not null || Card.Column is BoardColumn.Completed;
+
+    private string RailClass => Card.Badge switch
+    {
+        Badge.Running or Badge.Compacting => "r-run",
+        Badge.NeedsPermission or Badge.NeedsAnswer => "r-wait",
+        Badge.Error or Badge.Killed => "r-err",
+        Badge.Stale => "r-stale",
+        Badge.Idle => "r-review",
+        _ => Card.Column switch
+        {
+            BoardColumn.Ready => "r-ready",
+            BoardColumn.Completed => "r-done",
+            _ => "r-plan",
+        },
+    };
+
+    private string? BadgeClass => Card.Badge switch
+    {
+        Badge.Running or Badge.Compacting => "b-run",
+        Badge.NeedsPermission or Badge.NeedsAnswer => "b-wait",
+        Badge.Error or Badge.Killed => "b-err",
+        Badge.Stale => "b-stale",
+        Badge.Idle => "b-review",
+        _ => Card.Column is BoardColumn.Completed ? "b-done" : null,
+    };
+
+    private string? BadgeText => Card.Badge switch
+    {
+        Badge.Running => "running",
+        Badge.Compacting => "compacting",
+        Badge.NeedsPermission => "needs permission",
+        Badge.NeedsAnswer => "needs answer",
+        Badge.Error => "error",
+        Badge.Killed => "killed",
+        Badge.Stale => StaleText,
+        Badge.Idle => "idle · ready",
+        _ => Card.Column is BoardColumn.Completed ? "done" : null,
+    };
+
+    private string StaleText
+    {
+        get
+        {
+            var since = Card.Metrics?.LastActivityAt;
+            if (since is null)
+            {
+                return "stale";
+            }
+
+            var minutes = (int)(DateTimeOffset.UtcNow - since.Value).TotalMinutes;
+            return minutes < 60 ? $"stale {minutes}m" : $"stale {minutes / 60}h";
+        }
+    }
+
+    private string AgentSuffix
+    {
+        get
+        {
+            var agent = Card.AgentType is "claude-code" ? "claude" : Card.AgentType;
+            return Card.ObservedModel is null ? $" · {agent}" : $" · {agent} · {Card.ObservedModel}";
+        }
+    }
+
+    private string? ScheduleText => Card.Schedule switch
+    {
+        TaskSchedule.Manual => "manual",
+        TaskSchedule.Now => "now",
+        TaskSchedule.NextWindow => "next win",
+        TaskSchedule.WindowAfterNext => "win +2",
+        TaskSchedule.SpecificDateTime => $"⏱ {Card.ScheduledFor?.ToString("MMM d HH:mm", Culture)}",
+        _ => null,
+    };
+
+    private static string Thousands(int value)
+        => value >= 1000 ? $"{value / 1000}k" : value.ToString(Culture);
+}

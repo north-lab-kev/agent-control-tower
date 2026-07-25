@@ -22,4 +22,8 @@
     <Content Include="icon.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Act.Core\Act.Core.csproj" />
+  </ItemGroup>
+
 </Project>
