@@ -17,4 +17,8 @@
     <PackageReference Include="ElectronNET.Core.AspNet" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="icon.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

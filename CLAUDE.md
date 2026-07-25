@@ -2,6 +2,10 @@
 
 Instructions for Claude Code when working in this repository.
 
+## Communication
+
+- Always reply to me in **English**.
+
 ## Version control (HARD RULE)
 
 - **Never `git add`/stage, `git commit`, or `git push` yourself unless I

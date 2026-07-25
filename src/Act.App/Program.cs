@@ -41,6 +41,7 @@ static async Task CreateWindowAsync()
     var window = await Electron.WindowManager.CreateWindowAsync(new BrowserWindowOptions
     {
         Show = false,
+        Icon = Path.Combine(AppContext.BaseDirectory, "icon.ico"),
     });
 
     window.OnReadyToShow += () => window.Show();
