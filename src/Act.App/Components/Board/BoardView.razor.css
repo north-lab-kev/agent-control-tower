@@ -1,22 +1,27 @@
 .board {
+    box-sizing: border-box;
     padding: 14px 10px 40px;
     overflow-x: auto;
     min-height: 100%;
     background: repeating-linear-gradient(90deg, transparent 0 39px, var(--act-grid) 39px 40px), var(--act-bg);
 }
 
+::deep .cols {
+    width: 100%;
+}
+
 ::deep .col {
     padding: 0 6px;
+    flex: 1 1 0;
+    min-width: 0;
 }
 
 .board.compact ::deep .col {
-    width: 210px;
-    flex: 0 0 210px;
+    min-width: 210px;
 }
 
 .board.spacious ::deep .col {
-    width: 236px;
-    flex: 0 0 236px;
+    min-width: 236px;
 }
 
 ::deep .colname {

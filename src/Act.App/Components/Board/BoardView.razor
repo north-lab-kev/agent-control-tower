@@ -1,7 +1,7 @@
 @using Act.Core.Model
 
 <div class="board @DensityClass">
-    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="0">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="0" class="cols">
         @foreach (var column in AllColumns)
         {
             var cards = CardsIn(column);
