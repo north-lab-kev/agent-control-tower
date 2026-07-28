@@ -4,6 +4,7 @@
     <PackageVersion Include="ElectronNET.Core" Version="0.5.1" />
     <PackageVersion Include="ElectronNET.Core.AspNet" Version="0.5.1" />
     <PackageVersion Include="LiteDB" Version="5.0.21" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.ResxSourceGenerator" Version="5.0.0-1.25277.114" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
     <PackageVersion Include="Radzen.Blazor" Version="11.1.7" />
