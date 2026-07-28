@@ -816,6 +816,37 @@ independently of ACT.
   start a fresh session seeded with the stored `initialPrompt`** (and possibly
   `lastMessage`) rather than failing silently. Record which path was taken.
 
+### Where the data lives
+
+The store is a single LiteDB file at **`%LOCALAPPDATA%\ACT\act.db`** (on Linux,
+`~/.local/share/ACT/act.db`) — **outside the installation folder**, so data
+survives an upgrade or a reinstall. `ACT_DATA_DIR` overrides the directory (env
+var, appsettings key, or CLI arg); it's resolved once at startup and passed into
+infrastructure, which never reads the environment itself.
+
+### Single instance — one process owns the data file
+
+**ACT is a singleton: launching it again focuses the window you already have.**
+LiteDB opens the file with a single-writer lock, and two boards driving the same
+agent processes and hooks would fight anyway — so a second instance is never the
+right answer.
+
+- **Enforced in the Electron main process** (`singleInstance` in the generated
+  manifest, set from `<ElectronSingleInstance>` in `Act.App.csproj`): the second
+  launch requests the instance lock, loses, and **quits**. `app.quit()` is async,
+  so it does begin spawning its backend first — Electron tears that child down on
+  exit, so it never becomes a second writer. Verified: a second launch of the
+  packaged app leaves the first instance's process tree and ports untouched.
+- **The first instance reveals itself** on the `second-instance` event: restore
+  (if minimized) → show → focus. Wired in `Program.cs` via
+  `RequestSingleInstanceLockAsync`, which also covers the window being hidden
+  rather than merely minimized.
+- **Consequence for development:** a browser-mode `dotnet run` and the packaged
+  desktop app are separate processes with separate instance locks, so they cannot
+  run at the same time against the same store — the second one to touch the file
+  fails on the LiteDB lock. Point one of them at another store with
+  `ACT_DATA_DIR`.
+
 ---
 
 ## Git integration

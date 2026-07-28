@@ -58,4 +58,15 @@ static async Task CreateWindowAsync()
     });
 
     window.OnReadyToShow += () => window.Show();
+
+    await Electron.App.RequestSingleInstanceLockAsync(
+        (_, _) => RevealWindow(window),
+        CancellationToken.None);
+}
+
+static void RevealWindow(BrowserWindow window)
+{
+    window.Restore();
+    window.Show();
+    window.Focus();
 }
