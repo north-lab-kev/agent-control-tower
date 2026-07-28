@@ -54,11 +54,13 @@
                              Gap="0.45rem" Wrap="FlexWrap.Wrap">
                     @if (Card.ChildCount > 0)
                     {
-                        <RadzenText TextStyle="TextStyle.Caption" Text="@($"{Card.ChildCount} children ⤵")" class="lin" />
+                        <RadzenText TextStyle="TextStyle.Caption"
+                                    Text="@Text.Format(Strings.Card_Children, Card.ChildCount)" class="lin" />
                     }
                     @if (Card.AutoComplete)
                     {
-                        <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="auto-complete" class="schip" />
+                        <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base"
+                                     Text="@Strings.Card_AutoComplete" class="schip" />
                     }
                     @if (ScheduleText is not null)
                     {

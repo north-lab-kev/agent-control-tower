@@ -953,11 +953,24 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   JS and no flash of the wrong theme on first paint. Dark is the signature look;
   the light variant keeps the same semantic status colors at adjusted
   lightness.
-- **Settings page:** a dedicated user-settings screen (built in roadmap step 16)
-  is the home for scattered preferences: **theme** (follow-OS / light / dark
-  override), density default, the notification matrix, keep-awake,
+- **Settings dialog:** the home for scattered preferences, opened from the gear
+  in the top bar and grouped by type (**General**, **Appearance**, more to come).
+  Every setting applies immediately and persists to LiteDB — no OK/Cancel.
+  Shipped: **language**, **theme** (follow-OS / light / dark override), and
+  **display mode** (compact / spacious — settings-only; there is no top-bar
+  density toggle). Still to land: the notification matrix, keep-awake,
   `maxConcurrent`, weekly-reset time, and the auto-archive window /
   auto-execution pause.
+- **Localization:** the UI is translatable — **English and French**, defaulting to
+  the **OS language** (anything other than French falls back to English). Strings
+  live in `.resx` under `Act.App/Resources/`, reached through the SDK's
+  strongly-typed resource class (compile-checked keys, no extra package); adding a
+  language is a new `Strings.<culture>.resx`. Radzen's own strings come localized
+  with the package. The choice sets **both** cultures, so it drives formatting as
+  well as text — `fr-CA` renders `0,74 $` and `3 mars 09:00`, `en-CA` renders
+  `$0.74` and `Mar 3 09:00`. Changing the language **reloads the page** (the whole
+  render tree must re-run under the new culture); theme and density apply in
+  place.
 
 ---
 

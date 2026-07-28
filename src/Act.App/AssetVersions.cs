@@ -2,14 +2,14 @@ using System.Reflection;
 
 namespace Act.App;
 
-public interface ICacheBuster
+public interface IAssetVersions
 {
-    string Get(Assembly assembly);
+    string For(Assembly assembly);
 }
 
-internal sealed class CacheBuster(IWebHostEnvironment environment) : ICacheBuster
+internal sealed class AssetVersions(IWebHostEnvironment environment) : IAssetVersions
 {
-    public string Get(Assembly assembly)
+    public string For(Assembly assembly)
     {
         var value = environment.IsDevelopment()
             ? Guid.NewGuid().ToString()

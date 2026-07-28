@@ -1,4 +1,5 @@
 using Act.App.Components.Settings;
+using Act.App.Resources;
 using Act.App.Settings;
 using Act.Core.Model;
 using Radzen;
@@ -9,11 +10,7 @@ public partial class MainLayout(UserSettingsService settings, DialogService dial
 {
     private string ThemeAttribute => settings.Theme.ToString().ToLowerInvariant();
 
-    private BoardDensity Density
-    {
-        get => settings.Density;
-        set => settings.SetDensity(value);
-    }
+    private BoardDensity Density => settings.Density;
 
     private static int AttentionCount => SampleBoard.Cards.Count(c => c.NeedsAttention);
 
@@ -25,7 +22,7 @@ public partial class MainLayout(UserSettingsService settings, DialogService dial
 
     private async Task OpenSettingsAsync()
         => await dialogService.OpenAsync<SettingsDialog>(
-            "Settings",
+            Strings.Settings_Title,
             null,
             new DialogOptions { Width = "560px", CloseDialogOnOverlayClick = true });
 }

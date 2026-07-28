@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace Act.App.Components.Layout;
 
-public partial class ThemeStylesheets(UserSettingsService settings, ICacheBuster cacheBuster) : IDisposable
+public partial class ThemeStylesheets(UserSettingsService settings, IAssetVersions assetVersions) : IDisposable
 {
     private const string Enabled = "all";
 
@@ -35,5 +35,5 @@ public partial class ThemeStylesheets(UserSettingsService settings, ICacheBuster
     private void OnSettingsChanged() => _ = InvokeAsync(StateHasChanged);
 
     private string Href(string theme)
-        => Assets[$"_content/Radzen.Blazor/css/{theme}.css"] + cacheBuster.Get(typeof(Radzen.Colors).Assembly);
+        => Assets[$"_content/Radzen.Blazor/css/{theme}.css"] + assetVersions.For(typeof(Radzen.Colors).Assembly);
 }

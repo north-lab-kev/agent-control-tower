@@ -1,3 +1,4 @@
+using Act.App.Resources;
 using Act.Core.Model;
 using Microsoft.AspNetCore.Components;
 
@@ -17,8 +18,12 @@ public partial class BoardView
 
     private static string Label(BoardColumn column) => column switch
     {
-        BoardColumn.NeedsFeedback => "Needs feedback",
-        BoardColumn.ToReview => "To review",
+        BoardColumn.Preparing => Strings.Column_Preparing,
+        BoardColumn.Ready => Strings.Column_Ready,
+        BoardColumn.Executing => Strings.Column_Executing,
+        BoardColumn.NeedsFeedback => Strings.Column_NeedsFeedback,
+        BoardColumn.ToReview => Strings.Column_ToReview,
+        BoardColumn.Completed => Strings.Column_Completed,
         _ => column.ToString(),
     };
 }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Act.App.Resources;
 using Act.Core.Model;
 using Microsoft.AspNetCore.Components;
 
@@ -6,7 +7,7 @@ namespace Act.App.Components.Board;
 
 public partial class FlightStrip
 {
-    private static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("en-US");
+    private static CultureInfo Culture => CultureInfo.CurrentCulture;
 
     [Parameter, EditorRequired]
     public Card Card { get; set; } = default!;
@@ -53,15 +54,15 @@ public partial class FlightStrip
 
     private string? BadgeText => Card.Badge switch
     {
-        Badge.Running => "running",
-        Badge.Compacting => "compacting",
-        Badge.NeedsPermission => "needs permission",
-        Badge.NeedsAnswer => "needs answer",
-        Badge.Error => "error",
-        Badge.Killed => "killed",
+        Badge.Running => Strings.Badge_Running,
+        Badge.Compacting => Strings.Badge_Compacting,
+        Badge.NeedsPermission => Strings.Badge_NeedsPermission,
+        Badge.NeedsAnswer => Strings.Badge_NeedsAnswer,
+        Badge.Error => Strings.Badge_Error,
+        Badge.Killed => Strings.Badge_Killed,
         Badge.Stale => StaleText,
-        Badge.Idle => "idle · ready",
-        _ => Card.Column is BoardColumn.Completed ? "done" : null,
+        Badge.Idle => Strings.Badge_IdleReady,
+        _ => Card.Column is BoardColumn.Completed ? Strings.Badge_Done : null,
     };
 
     private string StaleText
@@ -70,12 +71,13 @@ public partial class FlightStrip
         {
             var since = Card.Metrics?.LastActivityAt;
             if (since is null)
-            {
-                return "stale";
-            }
+                return Strings.Badge_Stale;
 
             var minutes = (int)(DateTimeOffset.UtcNow - since.Value).TotalMinutes;
-            return minutes < 60 ? $"stale {minutes}m" : $"stale {minutes / 60}h";
+
+            return minutes < 60
+                ? Text.Format(Strings.Badge_StaleMinutes, minutes)
+                : Text.Format(Strings.Badge_StaleHours, minutes / 60);
         }
     }
 
@@ -90,35 +92,29 @@ public partial class FlightStrip
 
     private string? ScheduleText => Card.Schedule switch
     {
-        TaskSchedule.Manual => "manual",
-        TaskSchedule.Now => "now",
-        TaskSchedule.NextWindow => "next win",
-        TaskSchedule.WindowAfterNext => "win +2",
-        TaskSchedule.SpecificDateTime => $"⏱ {Card.ScheduledFor?.ToString("MMM d HH:mm", Culture)}",
+        TaskSchedule.Manual => Strings.Schedule_Manual,
+        TaskSchedule.Now => Strings.Schedule_Now,
+        TaskSchedule.NextWindow => Strings.Schedule_NextWindow,
+        TaskSchedule.WindowAfterNext => Strings.Schedule_WindowAfterNext,
+        TaskSchedule.SpecificDateTime => Text.Format(
+            Strings.Schedule_At,
+            Card.ScheduledFor?.ToString(Strings.Schedule_DateFormat, Culture)),
         _ => null,
     };
 
     private static IEnumerable<string> Metrics(CardMetrics m)
     {
         if (m.ContextPercent is not null)
-        {
-            yield return $"{Thousands(m.ContextUsed)}/{Thousands(m.ContextLimit)} ctx";
-        }
+            yield return Text.Format(Strings.Metrics_Context, Thousands(m.ContextUsed), Thousands(m.ContextLimit));
 
         if (m.TurnCount > 0)
-        {
-            yield return $"{m.TurnCount} turns";
-        }
+            yield return Text.Format(Strings.Metrics_Turns, m.TurnCount);
 
         if (m.Compactions > 0)
-        {
-            yield return $"{m.Compactions} compactions";
-        }
+            yield return Text.Format(Strings.Metrics_Compactions, m.Compactions);
 
         if (m.Cost > 0)
-        {
             yield return m.Cost.ToString("C2", Culture);
-        }
     }
 
     private static string Thousands(int value)

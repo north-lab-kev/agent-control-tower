@@ -1,19 +1,15 @@
 @page "/Error"
 
-<PageTitle>Error — ACT</PageTitle>
+<PageTitle>@Strings.Error_PageTitle</PageTitle>
 
 <div class="errpage">
-    <h1>Error</h1>
-    <h2>An error occurred while processing your request.</h2>
+    <h1>@Strings.Error_Heading</h1>
+    <h2>@Strings.Error_Subheading</h2>
 
     @if (ShowRequestId)
     {
-        <p><strong>Request ID:</strong> <code>@RequestId</code></p>
+        <p><strong>@Strings.Error_RequestId</strong> <code>@RequestId</code></p>
     }
 
-    <p>
-        Set <strong>ASPNETCORE_ENVIRONMENT</strong> to <strong>Development</strong> and restart
-        the app to see detailed error information. The Development environment should not be
-        enabled for deployed applications, as it can expose sensitive details from exceptions.
-    </p>
+    <p>@Strings.Error_DevelopmentHint</p>
 </div>

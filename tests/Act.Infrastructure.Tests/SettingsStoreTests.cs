@@ -15,6 +15,7 @@ public class SettingsStoreTests
 
         var settings = provider.GetRequiredService<ISettingsStore>().Load();
 
+        settings.Language.Should().Be(LanguagePreference.System);
         settings.Theme.Should().Be(ThemePreference.System);
         settings.Density.Should().Be(BoardDensity.Spacious);
     }
@@ -26,14 +27,19 @@ public class SettingsStoreTests
 
         using (var writing = Provider(temp.Path))
         {
-            writing.GetRequiredService<ISettingsStore>().Save(
-                new UserSettings { Theme = ThemePreference.Light, Density = BoardDensity.Compact });
+            writing.GetRequiredService<ISettingsStore>().Save(new UserSettings
+            {
+                Language = LanguagePreference.French,
+                Theme = ThemePreference.Light,
+                Density = BoardDensity.Compact,
+            });
         }
 
         using var reading = Provider(temp.Path);
 
         var settings = reading.GetRequiredService<ISettingsStore>().Load();
 
+        settings.Language.Should().Be(LanguagePreference.French);
         settings.Theme.Should().Be(ThemePreference.Light);
         settings.Density.Should().Be(BoardDensity.Compact);
     }

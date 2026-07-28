@@ -70,6 +70,15 @@ Instructions for Claude Code when working in this repository.
   the partial class.
 - **Always inject dependencies through the constructor** (primary constructor on
   the partial class), not with the `[Inject]` attribute.
+- **No braces around a single-statement `if`** — put the statement on the next
+  line, indented:
+
+  ```csharp
+  if (language == current.Language)
+      return;
+  ```
+
+  Braces stay when the body has two or more statements.
 - **Do not write code comments.** Only add a comment when either:
   1. I explicitly ask for it, or
   2. the code is not final — a placeholder, stub, or otherwise pending final

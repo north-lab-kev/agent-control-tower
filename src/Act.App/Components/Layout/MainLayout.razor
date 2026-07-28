@@ -10,25 +10,18 @@
 
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.6rem">
                 <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base"
-                             Text="auto-exec on" class="statchip live" />
+                             Text="@Strings.Shell_AutoExecOn" class="statchip live" />
                 <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base"
-                             Text="☕ awake" class="statchip" />
-
-                <RadzenSelectBar @bind-Value="Density" TValue="BoardDensity" Size="ButtonSize.ExtraSmall">
-                    <Items>
-                        <RadzenSelectBarItem Text="Compact" Value="BoardDensity.Compact" />
-                        <RadzenSelectBarItem Text="Spacious" Value="BoardDensity.Spacious" />
-                    </Items>
-                </RadzenSelectBar>
+                             Text="@Strings.Shell_Awake" class="statchip" />
 
                 <RadzenButton Icon="settings" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
                               Size="ButtonSize.Small" Click="OpenSettingsAsync" class="gear"
-                              title="Settings" aria-label="Settings" />
+                              title="@Strings.Settings_Title" aria-label="@Strings.Settings_Title" />
 
                 @if (AttentionCount > 0)
                 {
                     <RadzenBadge BadgeStyle="BadgeStyle.Warning" IsPill="true"
-                                 Text="@($"{AttentionCount} NEED YOU ›")" class="needpill" />
+                                 Text="@Text.Format(Strings.Shell_NeedYou, AttentionCount)" class="needpill" />
                 }
             </RadzenStack>
         </RadzenStack>
@@ -42,7 +35,7 @@
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
+    @Strings.Shell_UnhandledError
+    <a href="." class="reload">@Strings.Shell_Reload</a>
     <span class="dismiss">🗙</span>
 </div>

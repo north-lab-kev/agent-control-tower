@@ -1,13 +1,17 @@
+using System.Globalization;
+
 namespace Act.App.Components;
 
-public partial class App(ICacheBuster cacheBuster)
+public partial class App(IAssetVersions assetVersions)
 {
     private string? assetVersion;
     private string? radzenAssetVersion;
 
+    private static string Language => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+
     private string AssetVersion
-        => assetVersion ??= cacheBuster.Get(typeof(App).Assembly);
+        => assetVersion ??= assetVersions.For(typeof(App).Assembly);
 
     private string RadzenAssetVersion
-        => radzenAssetVersion ??= cacheBuster.Get(typeof(Radzen.Colors).Assembly);
+        => radzenAssetVersion ??= assetVersions.For(typeof(Radzen.Colors).Assembly);
 }

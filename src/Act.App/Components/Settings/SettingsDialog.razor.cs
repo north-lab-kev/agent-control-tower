@@ -1,27 +1,51 @@
+using Act.App.Resources;
 using Act.App.Settings;
 using Act.Core.Model;
+using Microsoft.AspNetCore.Components;
 using Radzen;
 
 namespace Act.App.Components.Settings;
 
-public partial class SettingsDialog(UserSettingsService settings, DialogService dialogService)
+public partial class SettingsDialog(
+    UserSettingsService settings,
+    DialogService dialogService,
+    NavigationManager navigation)
 {
-    private static readonly SettingChoice<ThemePreference>[] ThemeChoices =
+    private static SettingChoice<LanguagePreference>[] LanguageChoices =>
     [
-        new(ThemePreference.System, "Based on the system"),
-        new(ThemePreference.Dark, "Dark"),
-        new(ThemePreference.Light, "Light"),
+        new(LanguagePreference.System, Strings.Settings_Language_System),
+        new(LanguagePreference.English, "English"),
+        new(LanguagePreference.French, "Français"),
     ];
 
-    private static readonly SettingChoice<BoardDensity>[] DensityChoices =
+    private static SettingChoice<ThemePreference>[] ThemeChoices =>
     [
-        new(BoardDensity.Spacious, "Spacious"),
-        new(BoardDensity.Compact, "Compact"),
+        new(ThemePreference.System, Strings.Settings_Theme_System),
+        new(ThemePreference.Dark, Strings.Settings_Theme_Dark),
+        new(ThemePreference.Light, Strings.Settings_Theme_Light),
     ];
+
+    private static SettingChoice<BoardDensity>[] DensityChoices =>
+    [
+        new(BoardDensity.Spacious, Strings.Settings_Density_Spacious),
+        new(BoardDensity.Compact, Strings.Settings_Density_Compact),
+    ];
+
+    private LanguagePreference Language => settings.Language;
 
     private ThemePreference Theme => settings.Theme;
 
     private BoardDensity Density => settings.Density;
+
+    private void OnLanguageChanged(LanguagePreference language)
+    {
+        if (language == settings.Language)
+            return;
+
+        settings.SetLanguage(language);
+        dialogService.Close();
+        navigation.Refresh(forceReload: true);
+    }
 
     private void OnThemeChanged(ThemePreference theme) => settings.SetTheme(theme);
 

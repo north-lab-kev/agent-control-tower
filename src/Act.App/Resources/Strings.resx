@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Shell_AutoExecOn" xml:space="preserve">
+    <value>auto-exec on</value>
+  </data>
+  <data name="Shell_Awake" xml:space="preserve">
+    <value>☕ awake</value>
+  </data>
+  <data name="Shell_NeedYou" xml:space="preserve">
+    <value>{0} NEED YOU ›</value>
+  </data>
+  <data name="Shell_UnhandledError" xml:space="preserve">
+    <value>An unhandled error has occurred.</value>
+  </data>
+  <data name="Shell_Reload" xml:space="preserve">
+    <value>Reload</value>
+  </data>
+  <data name="Column_Preparing" xml:space="preserve">
+    <value>Preparing</value>
+  </data>
+  <data name="Column_Ready" xml:space="preserve">
+    <value>Ready</value>
+  </data>
+  <data name="Column_Executing" xml:space="preserve">
+    <value>Executing</value>
+  </data>
+  <data name="Column_NeedsFeedback" xml:space="preserve">
+    <value>Needs feedback</value>
+  </data>
+  <data name="Column_ToReview" xml:space="preserve">
+    <value>To review</value>
+  </data>
+  <data name="Column_Completed" xml:space="preserve">
+    <value>Completed</value>
+  </data>
+  <data name="Badge_Running" xml:space="preserve">
+    <value>running</value>
+  </data>
+  <data name="Badge_Compacting" xml:space="preserve">
+    <value>compacting</value>
+  </data>
+  <data name="Badge_NeedsPermission" xml:space="preserve">
+    <value>needs permission</value>
+  </data>
+  <data name="Badge_NeedsAnswer" xml:space="preserve">
+    <value>needs answer</value>
+  </data>
+  <data name="Badge_Error" xml:space="preserve">
+    <value>error</value>
+  </data>
+  <data name="Badge_Killed" xml:space="preserve">
+    <value>killed</value>
+  </data>
+  <data name="Badge_Stale" xml:space="preserve">
+    <value>stale</value>
+  </data>
+  <data name="Badge_StaleMinutes" xml:space="preserve">
+    <value>stale {0}m</value>
+  </data>
+  <data name="Badge_StaleHours" xml:space="preserve">
+    <value>stale {0}h</value>
+  </data>
+  <data name="Badge_IdleReady" xml:space="preserve">
+    <value>idle · ready</value>
+  </data>
+  <data name="Badge_Done" xml:space="preserve">
+    <value>done</value>
+  </data>
+  <data name="Schedule_Manual" xml:space="preserve">
+    <value>manual</value>
+  </data>
+  <data name="Schedule_Now" xml:space="preserve">
+    <value>now</value>
+  </data>
+  <data name="Schedule_NextWindow" xml:space="preserve">
+    <value>next win</value>
+  </data>
+  <data name="Schedule_WindowAfterNext" xml:space="preserve">
+    <value>win +2</value>
+  </data>
+  <data name="Schedule_At" xml:space="preserve">
+    <value>⏱ {0}</value>
+  </data>
+  <data name="Schedule_DateFormat" xml:space="preserve">
+    <value>MMM d HH:mm</value>
+  </data>
+  <data name="Metrics_Context" xml:space="preserve">
+    <value>{0}/{1} ctx</value>
+  </data>
+  <data name="Metrics_Turns" xml:space="preserve">
+    <value>{0} turns</value>
+  </data>
+  <data name="Metrics_Compactions" xml:space="preserve">
+    <value>{0} compactions</value>
+  </data>
+  <data name="Card_Children" xml:space="preserve">
+    <value>{0} children ⤵</value>
+  </data>
+  <data name="Card_AutoComplete" xml:space="preserve">
+    <value>auto-complete</value>
+  </data>
+  <data name="Settings_Title" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Settings_Group_General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="Settings_Group_Appearance" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="Settings_Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings_Language_Hint" xml:space="preserve">
+    <value>Follow the operating system, or pick a language.</value>
+  </data>
+  <data name="Settings_Language_System" xml:space="preserve">
+    <value>System default</value>
+  </data>
+  <data name="Settings_Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="Settings_Theme_Hint" xml:space="preserve">
+    <value>Follow the system, or force dark or light.</value>
+  </data>
+  <data name="Settings_Theme_System" xml:space="preserve">
+    <value>Based on the system</value>
+  </data>
+  <data name="Settings_Theme_Dark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Settings_Theme_Light" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Settings_Density" xml:space="preserve">
+    <value>Display mode</value>
+  </data>
+  <data name="Settings_Density_Hint" xml:space="preserve">
+    <value>How much detail each flight strip shows.</value>
+  </data>
+  <data name="Settings_Density_Spacious" xml:space="preserve">
+    <value>Spacious</value>
+  </data>
+  <data name="Settings_Density_Compact" xml:space="preserve">
+    <value>Compact</value>
+  </data>
+  <data name="Settings_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Error_PageTitle" xml:space="preserve">
+    <value>Error — ACT</value>
+  </data>
+  <data name="Error_Heading" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Error_Subheading" xml:space="preserve">
+    <value>An error occurred while processing your request.</value>
+  </data>
+  <data name="Error_RequestId" xml:space="preserve">
+    <value>Request ID:</value>
+  </data>
+  <data name="Error_DevelopmentHint" xml:space="preserve">
+    <value>Set ASPNETCORE_ENVIRONMENT to Development and restart the app to see detailed error information. The Development environment should not be enabled for deployed applications, as it can expose sensitive details from exceptions.</value>
+  </data>
+  <data name="NotFound_Heading" xml:space="preserve">
+    <value>Not found</value>
+  </data>
+  <data name="NotFound_Text" xml:space="preserve">
+    <value>Sorry, the content you are looking for does not exist.</value>
+  </data>
+</root>

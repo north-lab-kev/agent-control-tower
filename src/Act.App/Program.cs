@@ -14,10 +14,11 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddRadzenComponents();
 
-builder.Services.AddTransient<ICacheBuster, CacheBuster>();
+builder.Services.AddTransient<IAssetVersions, AssetVersions>();
 
 builder.Services.AddActInfrastructure(
     ActDataDirectory.Resolve(builder.Configuration[ActDataDirectory.OverrideKey]));
+builder.Services.AddSingleton<AppCulture>();
 builder.Services.AddSingleton<UserSettingsService>();
 
 var launchedByElectron = args.Any(a => a.StartsWith("/electronPort", StringComparison.OrdinalIgnoreCase));
@@ -30,6 +31,8 @@ if (runElectron)
 }
 
 var app = builder.Build();
+
+app.Services.GetRequiredService<UserSettingsService>().ApplyLanguage();
 
 if (!app.Environment.IsDevelopment())
 {
