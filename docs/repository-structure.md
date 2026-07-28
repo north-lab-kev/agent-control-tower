@@ -4,7 +4,7 @@ Standard modern-.NET layout (`src/` + `tests/` split, central build/package
 props, `global.json` SDK pin, `.github/`) mapped onto ACT's ports-and-adapters
 design. **The project boundaries are the architecture:** `Act.Core` depends on
 nothing infrastructural; adapters, infrastructure, and UI all point *inward* to
-its `Ports/` interfaces.
+its `Abstractions/` interfaces.
 
 ```
 agent-control-tower/                 # repo root (slug); brand "ACT" lives in README
@@ -29,7 +29,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ Events/                    #   normalized event types
 │  │  ├─ Rules/                     #   the rules engine (pure logic)
 │  │  ├─ Scheduling/                #   queue runner, schedule, backpressure
-│  │  └─ Ports/                     #   INTERFACES: IAgentAdapter, IIngestionSource,
+│  │  └─ Abstractions/              #   INTERFACES: IAgentAdapter, IIngestionSource,
 │  │                               #     ITaskStore, INotifier, IClock…
 │  ├─ Act.Agents.ClaudeCode/        # Claude Code adapter (launch, stream-json control, mappings)
 │  ├─ Act.Agents.Codex/             # Codex adapter
@@ -68,7 +68,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 ## Key decisions
 
 - **Dependency direction is the whole point.** `Act.Core` references nothing
-  below it; adapters, infrastructure, and UI depend on Core's `Ports/`
+  below it; adapters, infrastructure, and UI depend on Core's `Abstractions/`
   interfaces. This is what makes the rules engine unit-testable in isolation and
   lets the mock adapter stand in for a real CLI.
 - **The mock adapter lives in `Act.TestSupport`** (not buried in one test

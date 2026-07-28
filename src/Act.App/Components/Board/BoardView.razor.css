@@ -1,64 +1,32 @@
 .board {
-    display: flex;
-    gap: 0;
     padding: 14px 10px 40px;
     overflow-x: auto;
     min-height: 100%;
-    background: repeating-linear-gradient(90deg, transparent 0 39px, #ffffff04 39px 40px), var(--act-bg);
+    background: repeating-linear-gradient(90deg, transparent 0 39px, var(--act-grid) 39px 40px), var(--act-bg);
 }
 
-.col {
-    display: flex;
-    flex-direction: column;
+::deep .col {
     padding: 0 6px;
 }
 
-.board.compact .col {
+.board.compact ::deep .col {
     width: 210px;
     flex: 0 0 210px;
 }
 
-.board.spacious .col {
+.board.spacious ::deep .col {
     width: 236px;
     flex: 0 0 236px;
 }
 
-.colhdr {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 5px 4px 10px;
-}
-
-.colhdr .name {
-    font-size: 12px;
-    font-weight: 600;
+::deep .colname {
     color: var(--act-ink);
+    font-size: 12px;
 }
 
-.colhdr .cnt {
+::deep .colcount {
     font-family: var(--act-mono);
     font-size: 10px;
     color: var(--act-faint);
-    border: 1px solid var(--act-line);
-    border-radius: 20px;
-    padding: 1px 6px;
-}
-
-.stack {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-height: 30px;
-}
-
-.board.compact ::deep .strip {
-    padding: 7px 10px 7px 14px;
-}
-
-.board.spacious ::deep .strip {
-    padding: 11px 12px 11px 15px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    border-color: var(--act-line);
 }

@@ -1,35 +1,44 @@
 @inherits LayoutComponentBase
-@using Act.Core.Model
 
-<RadzenComponents />
+<div class="act-root" data-act-theme="@ThemeAttribute">
+    <RadzenComponents />
 
-<div class="shell">
-    <div class="bar">
-        <span class="wordmark">ACT</span>
+    <div class="shell">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.SpaceBetween" Gap="0.75rem" class="bar">
+            <RadzenText TextStyle="TextStyle.H6" Text="ACT" class="wordmark" />
 
-        <span class="spacer"></span>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.6rem">
+                <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base"
+                             Text="auto-exec on" class="statchip live" />
+                <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base"
+                             Text="☕ awake" class="statchip" />
 
-        <span class="chip"><span class="g"></span>auto-exec on</span>
-        <span class="chip">☕ awake</span>
+                <RadzenSelectBar @bind-Value="Density" TValue="BoardDensity" Size="ButtonSize.ExtraSmall">
+                    <Items>
+                        <RadzenSelectBarItem Text="Compact" Value="BoardDensity.Compact" />
+                        <RadzenSelectBarItem Text="Spacious" Value="BoardDensity.Spacious" />
+                    </Items>
+                </RadzenSelectBar>
 
-        <div class="seg">
-            <button type="button" class="@(compact ? "on" : null)" @onclick="() => compact = true">Compact</button>
-            <button type="button" class="@(compact ? null : "on")" @onclick="() => compact = false">Spacious</button>
-        </div>
+                <RadzenButton Icon="settings" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                              Size="ButtonSize.Small" Click="OpenSettingsAsync" class="gear"
+                              title="Settings" aria-label="Settings" />
 
-        @if (AttentionCount > 0)
-        {
-            <button type="button" class="needpill">
-                <span class="pdot"></span>@AttentionCount NEED YOU ›
-            </button>
-        }
+                @if (AttentionCount > 0)
+                {
+                    <RadzenBadge BadgeStyle="BadgeStyle.Warning" IsPill="true"
+                                 Text="@($"{AttentionCount} NEED YOU ›")" class="needpill" />
+                }
+            </RadzenStack>
+        </RadzenStack>
+
+        <main>
+            <CascadingValue Value="Density" Name="Density">
+                @Body
+            </CascadingValue>
+        </main>
     </div>
-
-    <main>
-        <CascadingValue Value="compact" Name="Compact">
-            @Body
-        </CascadingValue>
-    </main>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
@@ -37,9 +46,3 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
-
-@code {
-    private bool compact = true;
-
-    private static int AttentionCount => SampleBoard.Cards.Count(c => c.NeedsAttention);
-}

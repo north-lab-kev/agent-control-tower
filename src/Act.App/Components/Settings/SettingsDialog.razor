@@ -1,0 +1,34 @@
+<RadzenStack Gap="1.25rem" class="settings">
+    <RadzenFieldset Text="Appearance">
+        <RadzenStack Gap="1.1rem">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                         JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                <RadzenStack Gap="0.1rem">
+                    <RadzenText TextStyle="TextStyle.Body2" Text="Theme" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Follow the system, or force dark or light."
+                                class="hint" />
+                </RadzenStack>
+                <RadzenDropDown TValue="ThemePreference" Value="Theme" ValueChanged="OnThemeChanged"
+                                Data="ThemeChoices" TextProperty="Text" ValueProperty="Value"
+                                AllowClear="false" class="control" />
+            </RadzenStack>
+
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                         JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                <RadzenStack Gap="0.1rem">
+                    <RadzenText TextStyle="TextStyle.Body2" Text="Display mode" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="How much detail each flight strip shows."
+                                class="hint" />
+                </RadzenStack>
+                <RadzenDropDown TValue="BoardDensity" Value="Density" ValueChanged="OnDensityChanged"
+                                Data="DensityChoices" TextProperty="Text" ValueProperty="Value"
+                                AllowClear="false" class="control" />
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenFieldset>
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
+        <RadzenButton Text="Close" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat"
+                      Size="ButtonSize.Small" Click="Close" />
+    </RadzenStack>
+</RadzenStack>

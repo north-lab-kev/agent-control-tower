@@ -1,95 +1,67 @@
+.act-root {
+    min-height: 100vh;
+}
+
 .shell {
     display: flex;
     flex-direction: column;
     height: 100vh;
-    background: var(--act-bg);
 }
 
-.bar {
-    display: flex;
-    align-items: center;
-    gap: 13px;
+::deep .bar {
     padding: 10px 15px;
-    background: linear-gradient(#151e26, #111922);
+    background: linear-gradient(var(--act-bar-top), var(--act-bar-bottom));
     border-bottom: 1px solid var(--act-line);
     flex: 0 0 auto;
 }
 
-.wordmark {
-    font-weight: 700;
+::deep .wordmark {
     letter-spacing: .22em;
-    font-size: 14px;
-    color: var(--act-ink);
+    font-weight: 700;
 }
 
-.spacer {
-    flex: 1;
-}
-
-.chip {
+::deep .statchip {
     font-family: var(--act-mono);
     font-size: 10px;
     color: var(--act-dim);
-    border: 1px solid var(--act-line2);
-    padding: 4px 9px;
-    border-radius: 6px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
+    border-color: var(--act-line2);
 }
 
-.chip .g {
+::deep .statchip.live::before,
+::deep .needpill::before {
+    content: "";
+    display: inline-block;
     width: 6px;
     height: 6px;
     border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+::deep .statchip.live::before {
     background: var(--act-run);
 }
 
-.seg {
-    display: flex;
-    border: 1px solid var(--act-line2);
-    border-radius: 6px;
-    overflow: hidden;
-}
-
-.seg button {
-    font-family: inherit;
-    font-size: 11px;
-    padding: 5px 10px;
-    color: var(--act-dim);
-    background: none;
-    border: 0;
-    cursor: pointer;
-}
-
-.seg button.on {
-    background: var(--act-surface2);
-    color: var(--act-ink);
-}
-
-.needpill {
+::deep .needpill {
     font-family: var(--act-mono);
     font-size: 11px;
-    color: #1a130a;
-    background: var(--act-wait);
-    padding: 4px 10px;
-    border: 0;
-    border-radius: 20px;
     font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    white-space: nowrap;
+    background: var(--act-attn-fill);
+    color: var(--act-on-attn);
 }
 
-.needpill .pdot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #1a130a;
-    animation: bar-blink 1.5s infinite;
+::deep .needpill::before {
+    background: var(--act-on-attn);
+    animation: act-blink 1.5s infinite;
+}
+
+::deep .gear {
+    color: var(--act-dim);
+    padding: 0 0.35rem;
+}
+
+::deep .gear:hover {
+    color: var(--act-ink);
 }
 
 main {
@@ -98,34 +70,11 @@ main {
     overflow: auto;
 }
 
-#blazor-error-ui {
-    color-scheme: light only;
-    background: lightyellow;
-    bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
-    box-sizing: border-box;
-    display: none;
-    left: 0;
-    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
-    position: fixed;
-    width: 100%;
-    z-index: 1000;
-}
-
-    #blazor-error-ui .dismiss {
-        cursor: pointer;
-        position: absolute;
-        right: 0.75rem;
-        top: 0.5rem;
-    }
-
-@keyframes bar-blink {
+@keyframes act-blink {
     0%, 100% { opacity: 1; }
     50% { opacity: .3; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .needpill .pdot {
-        animation: none;
-    }
+    ::deep .needpill::before { animation: none; }
 }

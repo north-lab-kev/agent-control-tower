@@ -885,10 +885,12 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
 
 - **Aesthetic:** **air-traffic control room.** Cards are **flight-progress
   strips** — colored status-light rail on the left edge, callsign-style id +
-  working-dir path in mono, title in a technical sans. Dark control-room palette
-  (deep blue-slate bg; semantic status colors: teal=running, amber=needs
-  permission/answer, red=error, blue=idle/to-review, muted green=done, dim
-  yellow=stale). Brand mark = a small radar sweep.
+  working-dir path in mono, title in a technical sans. Control-room palette —
+  dark is the signature look (deep blue-slate bg), with a light variant for the
+  OS light setting (see Theme below); semantic status colors are the same in
+  both: teal=running, amber=needs permission/answer, red=error,
+  blue=idle/to-review, muted green=done, dim yellow=stale. Brand mark = a small
+  radar sweep.
 - **Board:** **six flat columns — no persistent zones.** The launch-boundary
   rule is shown **dynamically at drag time**: picking up a draggable card lights
   only its valid drop targets and **grays out invalid columns** (Ready →
@@ -912,13 +914,19 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
 - **Build split:** signature flight-strip look = custom Blazor markup + CSS;
   heavier widgets (dialog/modal, drawer, tables, inputs) = Radzen themed to the
   same palette via shared CSS variables. Mockups were hand-CSS only.
+- **Theme (dark / light):** both are supported and **follow the OS** by default.
+  Radzen's *Standard* and *Standard Dark* stylesheets are linked behind
+  `prefers-color-scheme`, and ACT's own control-room palette (the `--act-*`
+  tokens: board background, flight strips, rails, top bar) ships **light and dark
+  variants** switched the same way — so the whole surface flips together, with no
+  JS and no flash of the wrong theme on first paint. Dark is the signature look;
+  the light variant keeps the same semantic status colors at adjusted
+  lightness.
 - **Settings page:** a dedicated user-settings screen (built in roadmap step 16)
-  is the home for scattered preferences. **Theme** lives here — Radzen's
-  *Standard* and *Standard Dark* themes, with the **default following the OS**
-  light/dark preference (wired at Radzen setup via `prefers-color-scheme`; the
-  settings page later adds an explicit override). Also gathers density default,
-  the notification matrix, keep-awake, `maxConcurrent`, weekly-reset time, and
-  the auto-archive window / auto-execution pause.
+  is the home for scattered preferences: **theme** (follow-OS / light / dark
+  override), density default, the notification matrix, keep-awake,
+  `maxConcurrent`, weekly-reset time, and the auto-archive window /
+  auto-execution pause.
 
 ---
 

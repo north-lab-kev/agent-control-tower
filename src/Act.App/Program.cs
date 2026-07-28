@@ -1,4 +1,7 @@
 using Act.App;
+using Act.App.Settings;
+using Act.Infrastructure;
+using Act.Infrastructure.Storage;
 using ElectronNET.API;
 using ElectronNET.API.Entities;
 using Radzen;
@@ -12,6 +15,10 @@ builder.Services.AddRazorComponents()
 builder.Services.AddRadzenComponents();
 
 builder.Services.AddTransient<ICacheBuster, CacheBuster>();
+
+builder.Services.AddActInfrastructure(
+    ActDataDirectory.Resolve(builder.Configuration[ActDataDirectory.OverrideKey]));
+builder.Services.AddSingleton<UserSettingsService>();
 
 var launchedByElectron = args.Any(a => a.StartsWith("/electronPort", StringComparison.OrdinalIgnoreCase));
 var runElectron = launchedByElectron

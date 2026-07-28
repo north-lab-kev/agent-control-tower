@@ -7,8 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <ResourcePreloader />
-    <link rel="stylesheet" href="@(Assets["_content/Radzen.Blazor/css/standard.css"] + RadzenAssetVersion)" media="(prefers-color-scheme: light)" />
-    <link rel="stylesheet" href="@(Assets["_content/Radzen.Blazor/css/standard-dark.css"] + RadzenAssetVersion)" media="(prefers-color-scheme: dark)" />
+    <ThemeStylesheets @rendermode="InteractiveServer" />
     <link rel="stylesheet" href="@(Assets["app.css"] + AssetVersion)" />
     <link rel="stylesheet" href="@(Assets["Act.App.styles.css"] + AssetVersion)" />
     <ImportMap />

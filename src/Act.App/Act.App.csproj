@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Act.Core\Act.Core.csproj" />
+    <ProjectReference Include="..\Act.Infrastructure\Act.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
