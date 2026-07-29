@@ -15,6 +15,8 @@ public sealed class BoardState(ICardStore store)
     public IReadOnlyList<Card> In(BoardColumn column)
         => [.. cards.Where(card => card.Column == column)];
 
+    public Card? Card(Guid id) => cards.FirstOrDefault(card => card.Id == id);
+
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
         cards = await store.GetAllAsync(cancellationToken);

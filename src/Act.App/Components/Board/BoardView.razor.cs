@@ -7,7 +7,10 @@ using Radzen;
 
 namespace Act.App.Components.Board;
 
-public partial class BoardView(BoardState board, DialogService dialogService) : IDisposable
+public partial class BoardView(
+    BoardState board,
+    DialogService dialogService,
+    NavigationManager navigation) : IDisposable
 {
     private static readonly BoardColumn[] AllColumns = Enum.GetValues<BoardColumn>();
 
@@ -49,11 +52,26 @@ public partial class BoardView(BoardState board, DialogService dialogService) : 
         await board.MoveAsync(card, column);
     }
 
+    // Past the launch boundary a card *is* its session, so opening one goes to its terminal
+    // rather than to the form — the form's fields are not the user's to change any more.
     private async Task OpenAsync(Card card)
-        => await dialogService.OpenAsync<TaskDialog>(
+    {
+        if (card.Column is not (BoardColumn.Preparing or BoardColumn.Ready))
+        {
+            navigation.NavigateTo($"/card/{card.Id}/terminal");
+
+            return;
+        }
+
+        await dialogService.OpenAsync<TaskDialog>(
             Strings.TaskDialog_EditTitle,
             new Dictionary<string, object?> { [nameof(TaskDialog.Card)] = card },
             new DialogOptions { Width = "640px", CloseDialogOnOverlayClick = false, CssClass = "act-dialog act-dialog-form" });
+    }
+
+    // Ready → Executing is ACT's action, not a drag: the board hands off to the session view,
+    // which owns the terminal geometry the pty has to be sized with.
+    private void LaunchAsync(Card card) => navigation.NavigateTo($"/card/{card.Id}/terminal");
 
     private static string Label(BoardColumn column) => column switch
     {

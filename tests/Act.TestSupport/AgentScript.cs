@@ -2,9 +2,9 @@ using Act.Core.Events;
 
 namespace Act.TestSupport;
 
-// A whole session lifecycle as one readable line. A step either emits a normalized event or
-// blocks until the matching input arrives, so a permission or question round-trip can be
-// asserted without sleeping or racing.
+// A whole session lifecycle as one readable line. A step emits a normalized event, paints
+// terminal output, or blocks until the matching input arrives — so a round-trip through the
+// terminal can be asserted without sleeping or racing.
 public sealed class AgentScript
 {
     private readonly List<AgentScriptStep> steps = [];
@@ -32,14 +32,21 @@ public sealed class AgentScript
     public AgentScript RequestsPermission(string summary, string requestId = "permission-1")
         => Emit((session, at) => new PermissionRequested(session, at, requestId, summary));
 
-    public AgentScript AwaitsDecision() => Await(AgentInputKind.Permission);
-
     public AgentScript Asks(string question, string requestId = "question-1")
         => Emit((session, at) => new QuestionAsked(session, at, requestId, question));
 
-    public AgentScript AwaitsAnswer() => Await(AgentInputKind.Answer);
+    // What a blocked session does in reality: it paints its prompt and waits for a human to
+    // type into the terminal. Nothing ACT can answer, so the script waits on a keystroke.
+    public AgentScript Paints(string output)
+    {
+        steps.Add(new AgentScriptStep(null, null, output));
 
-    public AgentScript AwaitsMessage() => Await(AgentInputKind.Message);
+        return this;
+    }
+
+    public AgentScript AwaitsKeystroke() => Await(AgentInputKind.Write);
+
+    public AgentScript AwaitsSubmit() => Await(AgentInputKind.Submit);
 
     public AgentScript Enriches(EnrichmentSnapshot snapshot)
         => Emit((session, at) => new SessionEnriched(session, at, snapshot));

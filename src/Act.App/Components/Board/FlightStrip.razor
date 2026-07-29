@@ -35,6 +35,13 @@
             <RadzenText TextStyle="TextStyle.Body2" Text="@Card.Title" class="ttl" />
             <RadzenText TextStyle="TextStyle.Caption" Text="@Card.WorkingDir" class="path" />
 
+            @if (CanLaunch)
+            {
+                <RadzenButton Text="@Strings.Board_Launch" Icon="play_arrow" Size="ButtonSize.ExtraSmall"
+                              ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" class="launch"
+                              Click="@LaunchAsync" @onclick:stopPropagation="true" />
+            }
+
             @if (Card.Metrics is { } m)
             {
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="0.6rem" Wrap="FlexWrap.Wrap" class="metrics">

@@ -1,0 +1,133 @@
+.session {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.session.missing {
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1.25rem;
+}
+
+.bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0.6rem;
+    border-bottom: 1px solid var(--act-line);
+    background: linear-gradient(var(--act-bar-top), var(--act-bar-bottom));
+}
+
+.bar .id {
+    font-family: var(--act-mono);
+    font-size: 0.72rem;
+    color: var(--act-review);
+}
+
+.bar .title {
+    font-size: 0.82rem;
+    color: var(--act-ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Same tokens as the flight strip's badge, since it is the same signal — that CSS is scoped to
+   the strip, so the shape is restated rather than reached into. */
+.bar .badge {
+    margin-left: auto;
+    flex: none;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: var(--act-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--tint, var(--act-faint));
+    background: color-mix(in srgb, var(--tint, var(--act-faint)) var(--act-tint-fill), transparent);
+    border: 1px solid color-mix(in srgb, var(--tint, var(--act-faint)) var(--act-tint-edge), transparent);
+}
+
+.bar .b-run { --tint: var(--act-run); }
+.bar .b-wait { --tint: var(--act-wait); }
+.bar .b-err { --tint: var(--act-err); }
+.bar .b-review { --tint: var(--act-review); }
+.bar .b-stale { --tint: var(--act-stale); }
+
+.body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+/* The terminal owns the width it can get: an 80-column TUI is the floor, and the rail is
+   deliberately fixed so widening the window widens the terminal rather than the metrics. */
+.terminal {
+    flex: 1;
+    min-width: 0;
+    margin: 0.4rem;
+    padding: 0.35rem;
+    border: 1px solid var(--act-line);
+    border-radius: var(--act-radius);
+    background: var(--act-term-bg);
+    overflow: hidden;
+}
+
+.rail {
+    width: 15rem;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.6rem 0.6rem 0.6rem 0;
+    overflow-y: auto;
+}
+
+.idle {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.6rem;
+    border: 1px solid var(--act-line);
+    border-radius: var(--act-radius);
+    background: var(--act-surface);
+}
+
+.facts {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+    margin: 0;
+}
+
+.facts dt {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--act-faint);
+    margin-top: 0.4rem;
+}
+
+.facts dd {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--act-ink);
+}
+
+.facts dd.path {
+    font-family: var(--act-mono);
+    font-size: 0.68rem;
+    color: var(--act-dim);
+    overflow-wrap: anywhere;
+}
+
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: auto;
+}

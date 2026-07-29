@@ -21,6 +21,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Act.Agents.ClaudeCode\Act.Agents.ClaudeCode.csproj" />
+    <ProjectReference Include="..\..\src\Act.Agents.Codex\Act.Agents.Codex.csproj" />
     <ProjectReference Include="..\..\src\Act.Core\Act.Core.csproj" />
     <ProjectReference Include="..\Act.TestSupport\Act.TestSupport.csproj" />
   </ItemGroup>

@@ -59,7 +59,7 @@ public partial class TaskDialog(
     {
         get
         {
-            var models = agents.For(form.Agent).Models;
+            var models = agents.For(form.Agent).Models.Select(model => model.Slug).ToList();
 
             return form.Model is { } current && !models.Contains(current)
                 ? [.. models, current]
@@ -67,7 +67,19 @@ public partial class TaskDialog(
         }
     }
 
-    private IReadOnlyList<string> Efforts => agents.For(form.Agent).Efforts;
+    // Narrows with the chosen model, because the ladders genuinely differ per model on Codex.
+    // A stored effort survives the same way a stored model does.
+    private IReadOnlyList<string> Efforts
+    {
+        get
+        {
+            var efforts = agents.For(form.Agent).EffortsFor(form.Model);
+
+            return form.Effort is { } current && !efforts.Contains(current)
+                ? [.. efforts, current]
+                : efforts;
+        }
+    }
 
     private string PermissionHint => form.Permission switch
     {

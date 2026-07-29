@@ -1,0 +1,91 @@
+@page "/card/{CardId:guid}/terminal"
+@using Act.Core.Model
+
+<PageTitle>@(card is null ? "ACT" : $"#{card.Number} — {card.Title}")</PageTitle>
+
+@if (card is null)
+{
+    <div class="session missing">
+        <RadzenText TextStyle="TextStyle.Body1" Text="@Strings.Session_NotFound" />
+        <RadzenButton Text="@Strings.Session_BackToBoard" Icon="arrow_back" Size="ButtonSize.Small"
+                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" Click="BackToBoard" />
+    </div>
+}
+else
+{
+    <div class="session">
+        <header class="bar">
+            <RadzenButton Icon="arrow_back" Text="@Strings.Session_BackToBoard" Size="ButtonSize.Small"
+                          ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="BackToBoard" />
+            <span class="id">#@card.Number</span>
+            <span class="title">@card.Title</span>
+            @if (card.Badge is { } badge)
+            {
+                <span class="badge @BadgeClass(badge)">@BadgeText(badge)</span>
+            }
+        </header>
+
+        <div class="body">
+            <div class="terminal" id="@terminalId"></div>
+
+            <aside class="rail">
+                @if (!live)
+                {
+                    <div class="idle">
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Session_NoLiveSession" />
+                        @if (launchError is { } error)
+                        {
+                            <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter"
+                                         AllowClose="false">@error</RadzenAlert>
+                        }
+                        <RadzenButton Text="@Strings.Session_Launch" Icon="play_arrow" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Primary" Disabled="launching" Click="LaunchAsync" />
+                    </div>
+                }
+
+                <dl class="facts">
+                    <dt>@Strings.Session_Agent</dt>
+                    <dd>@card.AgentType.ToString().ToLowerInvariant()</dd>
+
+                    @if (card.LaunchConfig.Model is { } model)
+                    {
+                        <dt>@Strings.NewTask_Model</dt>
+                        <dd>@model @card.LaunchConfig.Effort</dd>
+                    }
+
+                    <dt>@Strings.Session_Directory</dt>
+                    <dd class="path">@card.WorkingDir</dd>
+
+                    <dt>@Strings.Session_SessionId</dt>
+                    <dd class="path">@(card.SessionId ?? Strings.Session_SessionPending)</dd>
+
+                    @if (card.Metrics is { } metrics)
+                    {
+                        @if (metrics.ContextLimit > 0)
+                        {
+                            <dt>@Strings.Session_Context</dt>
+                            <dd>@(metrics.ContextUsed / 1000)k / @(metrics.ContextLimit / 1000)k</dd>
+                        }
+
+                        <dt>@Strings.Session_Turns</dt>
+                        <dd>@metrics.TurnCount</dd>
+                    }
+                </dl>
+
+                <div class="actions">
+                    @if (HandoffUrl is { } url)
+                    {
+                        <RadzenButton Text="@Strings.Session_OpenInDesktop" Icon="open_in_new" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
+                                      Click="@(() => OpenDesktopAsync(url))" />
+                    }
+                    @if (live)
+                    {
+                        <RadzenButton Text="@Strings.Session_Kill" Icon="stop" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" Click="KillAsync" />
+                    }
+                </div>
+            </aside>
+        </div>
+    </div>
+}

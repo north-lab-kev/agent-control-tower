@@ -21,7 +21,22 @@ public abstract class AgentAdapterContract
         var capabilities = CreateAdapter().Capabilities;
 
         if (capabilities.DefaultModel is { } model)
-            capabilities.Models.Should().Contain(model);
+            capabilities.Model(model).Should().NotBeNull();
+    }
+
+    [Fact]
+    public void Every_model_it_offers_is_usably_described()
+    {
+        foreach (var model in CreateAdapter().Capabilities.Models)
+        {
+            model.Slug.Should().NotBeNullOrWhiteSpace();
+            model.DisplayName.Should().NotBeNullOrWhiteSpace();
+
+            // A default effort that is not on the model's own ladder would be substituted the
+            // moment anyone accepted it, which makes it a bug rather than a default.
+            if (model.DefaultEffort is { } effort)
+                model.Efforts.Should().Contain(effort);
+        }
     }
 
     [Fact]
@@ -35,28 +50,56 @@ public abstract class AgentAdapterContract
 
         foreach (var model in adapter.Capabilities.Models)
         {
-            var resolution = adapter.Resolve(ConfigFor(adapter, model: model));
+            var resolution = adapter.Resolve(ConfigFor(adapter, model: model.Slug));
 
-            resolution.CanLaunch.Should().BeTrue($"{model} is one of {adapter.Agent}'s own models");
-            resolution.Resolved.Model.Should().Be(model);
+            resolution.CanLaunch.Should().BeTrue($"{model.Slug} is one of {adapter.Agent}'s own models");
+            resolution.Resolved.Model.Should().Be(model.Slug);
             resolution.Adjustments.Should().NotContain(
                 adjustment => adjustment.Field == nameof(LaunchConfig.Model));
         }
     }
 
+    // Per model, not per agent: Codex gives each model a different ladder, so an effort that is
+    // valid on one of an agent's models can be invalid on another.
     [Fact]
-    public void Every_effort_it_offers_resolves_untouched()
+    public void Every_effort_a_model_offers_resolves_untouched_on_that_model()
     {
         var adapter = CreateAdapter();
 
-        foreach (var effort in adapter.Capabilities.Efforts)
+        foreach (var model in adapter.Capabilities.Models)
         {
-            var resolution = adapter.Resolve(ConfigFor(adapter, effort: effort));
+            foreach (var effort in model.Efforts)
+            {
+                var resolution = adapter.Resolve(ConfigFor(adapter, model: model.Slug, effort: effort));
 
-            resolution.CanLaunch.Should().BeTrue($"{effort} is one of {adapter.Agent}'s own efforts");
-            resolution.Resolved.Effort.Should().Be(effort);
-            resolution.Adjustments.Should().NotContain(
-                adjustment => adjustment.Field == nameof(LaunchConfig.Effort));
+                resolution.CanLaunch.Should().BeTrue($"{effort} is on {model.Slug}'s own ladder");
+                resolution.Resolved.Effort.Should().Be(effort);
+                resolution.Adjustments.Should().NotContain(
+                    adjustment => adjustment.Field == nameof(LaunchConfig.Effort));
+            }
+        }
+    }
+
+    // The reason the per-model shape exists at all: an effort one model accepts must not be
+    // waved through on a model whose ladder stops short of it.
+    [Fact]
+    public void An_effort_from_another_models_ladder_is_never_silently_dropped()
+    {
+        var adapter = CreateAdapter();
+        var ladders = adapter.Capabilities.Models;
+
+        foreach (var model in ladders)
+        {
+            var foreign = ladders
+                .SelectMany(other => other.Efforts)
+                .FirstOrDefault(effort => !model.Efforts.Contains(effort));
+
+            if (foreign is null)
+                continue;
+
+            var resolution = adapter.Resolve(ConfigFor(adapter, model: model.Slug, effort: foreign));
+
+            AssertSubstitutedOrRejected(resolution, nameof(LaunchConfig.Effort), foreign);
         }
     }
 
@@ -88,9 +131,9 @@ public abstract class AgentAdapterContract
 
         var resolution = adapter.Resolve(ConfigFor(adapter, effort: "no-such-effort"));
 
-        // An empty effort list is how an adapter says it does not model effort at all, in which
+        // An empty effort list is how a model says it does not model effort at all, in which
         // case handing the value through untouched is the honest outcome.
-        if (adapter.Capabilities.Efforts.Count == 0)
+        if (adapter.Capabilities.EffortsFor(adapter.Capabilities.DefaultModel).Count == 0)
         {
             resolution.Resolved.Effort.Should().Be("no-such-effort");
 
@@ -114,6 +157,29 @@ public abstract class AgentAdapterContract
             else
                 resolution.Rejections.Should().NotBeEmpty($"{adapter.Agent} cannot honour {mode}");
         }
+    }
+
+    // The desktop handoff is optional per agent, so the contract holds it to the only rule
+    // that must be true either way: an adapter that declares it produces a usable url for
+    // the session, and one that does not never produces a url at all.
+    [Fact]
+    public void The_desktop_handoff_matches_what_the_adapter_declares()
+    {
+        var adapter = CreateAdapter();
+        const string sessionId = "6f0d5d5c-0000-4a2c-9f4d-2f0a3f7c1e11";
+
+        var url = adapter.DesktopHandoffUrl(sessionId, "C:/repo");
+
+        if (!adapter.Capabilities.DesktopHandoff)
+        {
+            url.Should().BeNull($"{adapter.Agent} declares it has no desktop app");
+
+            return;
+        }
+
+        url.Should().NotBeNullOrWhiteSpace();
+        url.Should().Contain(sessionId, "the handoff has to name the session it opens");
+        Uri.IsWellFormedUriString(url, UriKind.Absolute).Should().BeTrue();
     }
 
     [Fact]

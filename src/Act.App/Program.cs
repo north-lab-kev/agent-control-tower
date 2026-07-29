@@ -1,5 +1,8 @@
+using Act.Agents.ClaudeCode;
+using Act.Agents.Codex;
 using Act.App;
 using Act.App.Cards;
+using Act.App.Sessions;
 using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Infrastructure;
@@ -20,10 +23,14 @@ builder.Services.AddSingleton<IAssetVersions, AssetVersions>();
 
 builder.Services.AddActInfrastructure(
     ActDataDirectory.Resolve(builder.Configuration[ActDataDirectory.OverrideKey]));
-builder.Services.AddSingleton<IAgentCapabilityCatalog, PlaceholderAgentCapabilityCatalog>();
+builder.Services.AddSingleton<IAgentAdapter, ClaudeCodeAdapter>();
+builder.Services.AddSingleton<IAgentAdapter, CodexAdapter>();
+builder.Services.AddSingleton<IAgentCapabilityCatalog, AgentCapabilityCatalog>();
 builder.Services.AddSingleton<AppCulture>();
 builder.Services.AddSingleton<UserSettingsService>();
 builder.Services.AddSingleton<BoardState>();
+builder.Services.AddSingleton<SessionRegistry>();
+builder.Services.AddSingleton<SessionLauncher>();
 
 #if DEBUG
 var seedSampleCards = builder.Configuration.GetValue("Act:SeedSampleCards", true);

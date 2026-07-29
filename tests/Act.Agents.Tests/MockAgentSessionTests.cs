@@ -16,14 +16,15 @@ public class MockAgentSessionTests
     private const string SessionId = "6f0d5d5c-0000-4a2c-9f4d-2f0a3f7c1e11";
 
     [Fact]
-    public async Task A_turn_that_needed_a_decision_reports_every_step_in_order()
+    public async Task A_turn_blocked_on_a_permission_prompt_reports_every_step_in_order()
     {
         var adapter = new MockAgentAdapter
         {
             Script = AgentScript.Start()
                 .Activity("Read")
                 .RequestsPermission("push the current branch")
-                .AwaitsDecision()
+                .Paints("Do you want to proceed?\r\n\u276f 1. Yes\r\n")
+                .AwaitsKeystroke()
                 .Activity("Bash")
                 .EndsTurn(TurnOutcome.ReadyForReview)
                 .SessionEnds(),
@@ -37,8 +38,10 @@ public class MockAgentSessionTests
         {
             seen.Add(received);
 
-            if (received is PermissionRequested request)
-                await session.RespondToPermissionAsync(request.RequestId, PermissionDecision.Allow());
+            // The user answers in the terminal, which is the only channel there is. ACT
+            // observes the prompt; it never responds to one.
+            if (received is PermissionRequested)
+                await session.Terminal.WriteAsync("1\r");
         }
 
         seen.Select(received => received.GetType()).Should().Equal(
@@ -55,7 +58,7 @@ public class MockAgentSessionTests
         seen.Select(received => received.At).Should().BeInAscendingOrder();
 
         session.Received.Should().ContainSingle()
-            .Which.Decision!.Allowed.Should().BeTrue();
+            .Which.Should().BeEquivalentTo(new AgentInput(AgentInputKind.Write, "1\r"));
     }
 
     [Fact]
@@ -75,32 +78,70 @@ public class MockAgentSessionTests
     }
 
     [Fact]
-    public async Task Answering_a_question_lets_the_turn_continue()
+    public async Task Terminal_output_accumulates_into_a_backlog_a_reattaching_view_can_replay()
     {
         var adapter = new MockAgentAdapter
         {
             Script = AgentScript.Start()
-                .Asks("which branch should I push?")
-                .AwaitsAnswer()
+                .Paints("Claude Code v2\r\n")
+                .Paints("\u276f ")
                 .EndsTurn(TurnOutcome.ReadyForReview),
         };
 
         await using var session = await LaunchAsync(adapter);
 
-        var seen = new List<AgentEvent>();
+        await Drain(session);
 
-        await foreach (var received in session.Events)
+        session.Terminal.Backlog.Should().Be("Claude Code v2\r\n\u276f ");
+    }
+
+    [Fact]
+    public async Task Live_terminal_output_reaches_an_attached_view()
+    {
+        var adapter = new MockAgentAdapter
         {
-            seen.Add(received);
+            Script = AgentScript.Start()
+                .AwaitsSubmit()
+                .Paints("working\u2026")
+                .EndsTurn(TurnOutcome.ReadyForReview),
+        };
 
-            if (received is QuestionAsked question)
-                await session.AnswerAsync(question.RequestId, "main");
-        }
+        await using var session = await LaunchAsync(adapter);
 
-        seen.OfType<TurnEnded>().Should().ContainSingle()
-            .Which.Outcome.Should().Be(TurnOutcome.ReadyForReview);
-        session.Received.Should().ContainSingle()
-            .Which.Text.Should().Be("main");
+        var painted = new List<string>();
+
+        session.Terminal.Output += chunk =>
+        {
+            painted.Add(chunk);
+
+            return Task.CompletedTask;
+        };
+
+        await session.Terminal.SubmitAsync("do the thing");
+        await Drain(session);
+
+        painted.Should().Equal("working\u2026");
+    }
+
+    [Fact]
+    public async Task ACT_types_only_what_it_submits_itself()
+    {
+        var adapter = new MockAgentAdapter
+        {
+            Script = AgentScript.Start().AwaitsSubmit().EndsTurn(TurnOutcome.ReadyForReview),
+        };
+
+        await using var session = await LaunchAsync(adapter);
+
+        session.Terminal.Resize(100, 40);
+        await session.Terminal.SubmitAsync("do the thing");
+        await Drain(session);
+
+        session.Received.Should().BeEquivalentTo(
+        [
+            new AgentInput(AgentInputKind.Resize, Size: new TerminalSize(100, 40)),
+            new AgentInput(AgentInputKind.Submit, "do the thing"),
+        ]);
     }
 
     [Fact]
@@ -108,7 +149,7 @@ public class MockAgentSessionTests
     {
         var adapter = new MockAgentAdapter
         {
-            Script = AgentScript.Start().Activity().AwaitsMessage().EndsTurn(TurnOutcome.ReadyForReview),
+            Script = AgentScript.Start().Activity().AwaitsSubmit().EndsTurn(TurnOutcome.ReadyForReview),
         };
 
         await using var session = await LaunchAsync(adapter);
@@ -132,7 +173,7 @@ public class MockAgentSessionTests
     {
         var adapter = new MockAgentAdapter
         {
-            Script = AgentScript.Start().AwaitsMessage().EndsTurn(TurnOutcome.ReadyForReview),
+            Script = AgentScript.Start().AwaitsSubmit().EndsTurn(TurnOutcome.ReadyForReview),
         };
 
         var session = await LaunchAsync(adapter);
@@ -149,15 +190,18 @@ public class MockAgentSessionTests
     }
 
     [Fact]
-    public async Task A_launch_carries_the_pre_minted_session_id_and_the_preamble()
+    public async Task A_launch_carries_the_pre_minted_session_id_the_preamble_and_a_terminal_size()
     {
         var adapter = new MockAgentAdapter();
 
         await using var session = await LaunchAsync(adapter);
 
         session.SessionId.Should().Be(SessionId);
-        adapter.Launches.Should().ContainSingle().Which.Preamble.Should().Contain(
-            ActContract.RelativeStatusDirectory);
+
+        var launch = adapter.Launches.Should().ContainSingle().Subject;
+
+        launch.Preamble.Should().Contain(ActContract.RelativeStatusDirectory);
+        launch.Size.Should().Be(TerminalSize.Default);
     }
 
     [Fact]
@@ -172,7 +216,8 @@ public class MockAgentSessionTests
             AgentPreamble.Compose(TaskId),
             "do the thing",
             "actually target main",
-            new LaunchConfig()));
+            new LaunchConfig(),
+            TerminalSize.Default));
 
         session.SessionId.Should().Be(SessionId);
         adapter.Resumes.Should().ContainSingle().Which.Message.Should().Be("actually target main");
@@ -200,7 +245,15 @@ public class MockAgentSessionTests
         "C:/repo",
         AgentPreamble.Compose(TaskId),
         "do the thing",
-        config ?? new LaunchConfig());
+        config ?? new LaunchConfig(),
+        TerminalSize.Default);
+
+    private static async Task Drain(IAgentSession session)
+    {
+        await foreach (var _ in session.Events)
+        {
+        }
+    }
 
     private static async Task<TEvent> LastAsync<TEvent>(IAgentSession session)
         where TEvent : AgentEvent

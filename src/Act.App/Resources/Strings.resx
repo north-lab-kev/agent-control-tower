@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -359,5 +359,47 @@
   </data>
   <data name="NotFound_Text" xml:space="preserve">
     <value>Sorry, the content you are looking for does not exist.</value>
+  </data>
+  <data name="Session_BackToBoard" xml:space="preserve">
+    <value>Board</value>
+  </data>
+  <data name="Session_NotFound" xml:space="preserve">
+    <value>That card no longer exists.</value>
+  </data>
+  <data name="Session_NoLiveSession" xml:space="preserve">
+    <value>No session is running for this card.</value>
+  </data>
+  <data name="Session_Launch" xml:space="preserve">
+    <value>Launch session</value>
+  </data>
+  <data name="Session_Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="Session_Directory" xml:space="preserve">
+    <value>Directory</value>
+  </data>
+  <data name="Session_SessionId" xml:space="preserve">
+    <value>Session</value>
+  </data>
+  <data name="Session_SessionPending" xml:space="preserve">
+    <value>reported at session start</value>
+  </data>
+  <data name="Session_Context" xml:space="preserve">
+    <value>Context</value>
+  </data>
+  <data name="Session_Turns" xml:space="preserve">
+    <value>Turns</value>
+  </data>
+  <data name="Session_OpenInDesktop" xml:space="preserve">
+    <value>Open in desktop app</value>
+  </data>
+  <data name="Session_Kill" xml:space="preserve">
+    <value>Kill session</value>
+  </data>
+  <data name="Session_Open" xml:space="preserve">
+    <value>Open terminal</value>
+  </data>
+  <data name="Board_Launch" xml:space="preserve">
+    <value>Launch</value>
   </data>
 </root>

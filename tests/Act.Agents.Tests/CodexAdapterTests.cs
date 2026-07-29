@@ -1,0 +1,171 @@
+using Act.Agents.Codex;
+using Act.Core.Abstractions;
+using Act.Core.Agents;
+using Act.Core.Model;
+using Act.TestSupport;
+using AwesomeAssertions;
+
+namespace Act.Agents.Tests;
+
+public class CodexAdapterContractTests : AgentAdapterContract
+{
+    protected override IAgentAdapter CreateAdapter()
+        => new CodexAdapter(new StubPtyHost(), new TestClock());
+}
+
+// The Codex-specific facts, pinned so a CLI upgrade that moves them fails here rather than at
+// launch. Every assertion below is a documented flag of `codex-cli 0.146.0-alpha.3.1`.
+public class CodexAdapterTests
+{
+    private static readonly Guid TaskId = Guid.Parse("6f0d5d5c-16b8-4a2c-9f4d-2f0a3f7c1e11");
+
+    [Fact]
+    public async Task A_launch_has_no_session_id_because_Codex_mints_its_own()
+    {
+        var pty = new StubPtyHost();
+
+        await using var session = await LaunchAsync(pty);
+
+        session.SessionId.Should().BeNull();
+        session.TaskId.Should().Be(TaskId);
+        pty.Last.Arguments.Should().NotContain("--session-id");
+    }
+
+    // The correlation handle that stands in until `SessionStart` reports the real id — and it
+    // rides the environment rather than the command line so Codex's hook-trust hash is stable.
+    [Fact]
+    public async Task A_launch_carries_the_task_id_on_the_environment()
+    {
+        var pty = new StubPtyHost();
+
+        await using var session = await LaunchAsync(pty);
+
+        pty.Last.Environment.Should().ContainKey(AgentEnvironment.ActTaskId)
+            .WhoseValue.Should().Be(TaskId.ToString("d"));
+    }
+
+    [Fact]
+    public async Task The_opening_prompt_is_positional_and_carries_the_preamble()
+    {
+        var pty = new StubPtyHost();
+
+        await using var session = await LaunchAsync(pty);
+
+        pty.Last.Arguments[^1].Should().Contain("do the thing");
+        pty.Last.Arguments[^1].Should().Contain(Act.Core.Agents.ActContract.RelativeStatusDirectory);
+    }
+
+    [Fact]
+    public async Task Effort_goes_through_the_config_override_not_a_flag()
+    {
+        var pty = new StubPtyHost();
+
+        await using var session = await LaunchAsync(
+            pty,
+            new LaunchConfig { Model = "gpt-5.5", Effort = "xhigh" });
+
+        pty.Last.Arguments.Should().NotContain("--effort");
+        pty.Last.Arguments.Should().ContainInOrder("-c", "model_reasoning_effort=\"xhigh\"");
+    }
+
+    [Theory]
+    [InlineData(PermissionMode.Plan, "never", "read-only")]
+    [InlineData(PermissionMode.Default, "untrusted", "workspace-write")]
+    [InlineData(PermissionMode.AcceptEdits, "on-request", "workspace-write")]
+    [InlineData(PermissionMode.DontAsk, "never", "workspace-write")]
+    public async Task Permission_modes_map_onto_approval_and_sandbox(
+        PermissionMode mode,
+        string approval,
+        string sandbox)
+    {
+        var pty = new StubPtyHost();
+
+        await using var session = await LaunchAsync(pty, new LaunchConfig { PermissionMode = mode });
+
+        pty.Last.Arguments.Should().ContainInOrder("--ask-for-approval", approval);
+        pty.Last.Arguments.Should().ContainInOrder("--sandbox", sandbox);
+    }
+
+    [Fact]
+    public async Task Bypass_uses_the_single_dangerous_flag_and_no_sandbox_pair()
+    {
+        var pty = new StubPtyHost();
+
+        await using var session = await LaunchAsync(
+            pty,
+            new LaunchConfig { PermissionMode = PermissionMode.Bypass });
+
+        pty.Last.Arguments.Should().Contain("--dangerously-bypass-approvals-and-sandbox");
+        pty.Last.Arguments.Should().NotContain("--ask-for-approval");
+    }
+
+    // Codex has no classifier tier, so `auto` genuinely lands on `acceptEdits`'s flags. The
+    // never-silently-drop rule says say so rather than let the user believe otherwise.
+    [Fact]
+    public void Auto_is_recorded_as_an_adjustment_because_Codex_has_no_classifier()
+    {
+        var adapter = new CodexAdapter(new StubPtyHost(), new TestClock());
+
+        var resolution = adapter.Resolve(new LaunchConfig { PermissionMode = PermissionMode.Auto });
+
+        resolution.CanLaunch.Should().BeTrue();
+        resolution.Adjustments.Should().ContainSingle(
+            adjustment => adjustment.Field == nameof(LaunchConfig.PermissionMode));
+    }
+
+    [Fact]
+    public void Codex_offers_no_desktop_handoff()
+    {
+        var adapter = new CodexAdapter(new StubPtyHost(), new TestClock());
+
+        adapter.Capabilities.DesktopHandoff.Should().BeFalse();
+        adapter.DesktopHandoffUrl("any-session", "C:/repo").Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Resuming_passes_the_session_id_to_the_resume_subcommand()
+    {
+        var pty = new StubPtyHost();
+        var adapter = new CodexAdapter(pty, new TestClock());
+
+        await using var session = await adapter.ResumeAsync(new AgentResumeRequest(
+            TaskId,
+            "019ea722-d3f0-7563-b3cd-8ac7fb3f9a69",
+            "C:/repo",
+            AgentPreamble.Compose(TaskId),
+            "do the thing",
+            null,
+            new LaunchConfig(),
+            TerminalSize.Default));
+
+        pty.Last.Arguments.Should().StartWith(["resume", "019ea722-d3f0-7563-b3cd-8ac7fb3f9a69"]);
+        session.SessionId.Should().Be("019ea722-d3f0-7563-b3cd-8ac7fb3f9a69");
+    }
+
+    // Per-model ladders are the reason capabilities changed shape; `ultra` exists only on terra.
+    [Fact]
+    public void An_effort_above_a_models_ladder_is_substituted_not_passed_through()
+    {
+        var adapter = new CodexAdapter(new StubPtyHost(), new TestClock());
+
+        var resolution = adapter.Resolve(new LaunchConfig { Model = "gpt-5.5", Effort = "ultra" });
+
+        resolution.CanLaunch.Should().BeTrue();
+        resolution.Resolved.Effort.Should().NotBe("ultra");
+        resolution.Adjustments.Should().Contain(
+            adjustment => adjustment.Field == nameof(LaunchConfig.Effort));
+
+        adapter.Resolve(new LaunchConfig { Model = "gpt-5.6-terra", Effort = "ultra" })
+            .Resolved.Effort.Should().Be("ultra");
+    }
+
+    private static Task<IAgentSession> LaunchAsync(StubPtyHost pty, LaunchConfig? config = null)
+        => new CodexAdapter(pty, new TestClock()).LaunchAsync(new AgentLaunchRequest(
+            TaskId,
+            "ignored-by-codex",
+            "C:/repo",
+            AgentPreamble.Compose(TaskId),
+            "do the thing",
+            config ?? new LaunchConfig(),
+            TerminalSize.Default));
+}

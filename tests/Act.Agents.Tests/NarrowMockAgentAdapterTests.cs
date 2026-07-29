@@ -13,8 +13,7 @@ public class NarrowMockAgentAdapterTests : AgentAdapterContract
     protected override IAgentAdapter CreateAdapter() => new MockAgentAdapter(
         AgentType.Codex,
         new AgentCapabilities(
-            ["narrow-model"],
+            [new AgentModel("narrow-model", "Narrow", [])],
             "narrow-model",
-            [],
             new HashSet<PermissionMode> { PermissionMode.Default, PermissionMode.Bypass }));
 }

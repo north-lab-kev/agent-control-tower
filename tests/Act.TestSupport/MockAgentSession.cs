@@ -5,7 +5,7 @@ using Act.Core.Events;
 
 namespace Act.TestSupport;
 
-// Stands in for a live agent turn: a scripted event stream out, a recorded input channel in.
+// Stands in for a live agent session: a scripted event stream out, a recorded terminal in.
 // The pump only completes the stream when the script runs to its end, so kill and disposal
 // stay distinguishable from a session that finished on its own.
 public sealed class MockAgentSession : IAgentSession
@@ -18,46 +18,41 @@ public sealed class MockAgentSession : IAgentSession
 
     private readonly CancellationTokenSource pumpCancellation = new();
 
+    private readonly MockAgentTerminal terminal;
+
     private readonly IClock clock;
 
     private readonly Task pump;
 
     private bool stopped;
 
-    internal MockAgentSession(string sessionId, AgentScript script, IClock clock)
+    internal MockAgentSession(Guid taskId, string? sessionId, AgentScript script, IClock clock)
     {
+        TaskId = taskId;
         SessionId = sessionId;
         this.clock = clock;
+        terminal = new MockAgentTerminal(Record);
         pump = Task.Run(() => RunAsync(script, pumpCancellation.Token));
     }
 
-    public string SessionId { get; }
+    public Guid TaskId { get; }
+
+    public string? SessionId { get; private set; }
+
+    public void BindSessionId(string sessionId) => SessionId ??= sessionId;
+
+    public IAgentTerminal Terminal => terminal;
 
     public IReadOnlyCollection<AgentInput> Received => received;
 
     public IAsyncEnumerable<AgentEvent> Events => events.Reader.ReadAllAsync();
 
-    public Task RespondToPermissionAsync(
-        string requestId,
-        PermissionDecision decision,
-        CancellationToken cancellationToken = default)
-        => Record(new AgentInput(AgentInputKind.Permission, requestId, Decision: decision));
-
-    public Task AnswerAsync(string requestId, string answer, CancellationToken cancellationToken = default)
-        => Record(new AgentInput(AgentInputKind.Answer, requestId, answer));
-
-    public Task SendAsync(string message, CancellationToken cancellationToken = default)
-        => Record(new AgentInput(AgentInputKind.Message, Text: message));
-
-    public Task InterruptAsync(CancellationToken cancellationToken = default)
-        => Record(new AgentInput(AgentInputKind.Interrupt));
-
     public async Task KillAsync(CancellationToken cancellationToken = default)
     {
-        await Record(new AgentInput(AgentInputKind.Kill));
+        Record(new AgentInput(AgentInputKind.Kill));
         await StopPumpAsync();
 
-        events.Writer.TryWrite(new SessionKilled(SessionId, clock.Now));
+        events.Writer.TryWrite(new SessionKilled(SessionId ?? string.Empty, clock.Now));
         events.Writer.TryComplete();
     }
 
@@ -76,8 +71,10 @@ public sealed class MockAgentSession : IAgentSession
             {
                 if (step.Awaits is { } kind)
                     await WaitForAsync(kind, cancellationToken);
+                else if (step.TerminalOutput is { } chunk)
+                    await terminal.EmitAsync(chunk);
                 else
-                    await events.Writer.WriteAsync(step.Event!(SessionId, clock.Now), cancellationToken);
+                    await events.Writer.WriteAsync(step.Event!(SessionId ?? string.Empty, clock.Now), cancellationToken);
             }
 
             events.Writer.TryComplete();
@@ -97,12 +94,10 @@ public sealed class MockAgentSession : IAgentSession
         }
     }
 
-    private Task Record(AgentInput input)
+    private void Record(AgentInput input)
     {
         received.Enqueue(input);
         inputs.Writer.TryWrite(input);
-
-        return Task.CompletedTask;
     }
 
     private async Task StopPumpAsync()

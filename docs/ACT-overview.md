@@ -32,7 +32,8 @@ Linux** at least), and **very easy to build** (no installer planned yet —
 | UI components | **Radzen.Blazor** (free NuGet package) | 145+ native C# components (DataGrid, etc.), MIT-licensed, free for commercial use, supports .NET 10 + Blazor Server. Only the free component library — *not* the paid Radzen Blazor Studio. Requires `InteractiveServer` render mode (already in use). |
 | Desktop shell | **Electron.NET** (wrapping the same app) | For a native desktop window that feels more finished than a browser tab. .NET 10 is an explicit target; Linux supported (glibc 2.31+). |
 | Data store | **LiteDB** | Embedded, single-file, C#-native document database (Mongo-like API). Zero install/no server — keeps the no-installer promise. |
-| Ingestion | **Pluggable multi-source** — HTTP/command hooks, `FileSystemWatcher`, process signals, + the stream-json control channel | Adapters compose a mix per agent; all normalize into one event stream. See Ingestion & session identity. |
+| Terminal | **Porta.Pty** (ConPTY / Unix pty) + **xterm.js** | ACT hosts the agent's real interactive TUI. Raw bytes both ways over the Blazor circuit, batched ~30 ms with a capped buffer — fine on localhost. See Liveness & the embedded terminal. |
+| Ingestion | **Pluggable multi-source** — HTTP/command hooks, `FileSystemWatcher`, process signals | Adapters compose a mix per agent; all normalize into one event stream. Purely **observational** — see Ingestion & session identity. |
 | Dev loop | `dotnet run` (browser) → Electron.NET build for the desktop artifact | Same app both ways. |
 
 ### Guiding architectural principle
@@ -131,9 +132,16 @@ Standards to build against — not optional polish. Specifics named for the
 ### Dependency licensing
 
 - All shipped dependencies are **permissive** (MIT / Apache 2.0 / BSD) — .NET,
-  Blazor, Radzen.Blazor, Electron.NET, LiteDB, Serilog, etc. — so they combine
-  freely into a work distributed under ACT's chosen source-available license.
-  **No GPL/AGPL dependencies** (would conflict with a non-open license).
+  Blazor, Radzen.Blazor, Electron.NET, LiteDB, Serilog, Porta.Pty, xterm.js, etc. —
+  so they combine freely into a work distributed under ACT's chosen source-available
+  license. **No GPL/AGPL dependencies** (would conflict with a non-open license).
+  `Porta.Pty` and xterm.js are both **MIT** and are recorded in the NOTICES file.
+- **Vendored files carry an extra duty.** xterm.js ships as committed `dist` files
+  rather than a package reference — deliberately, so the app needs neither Node nor a
+  CDN at runtime — which means nothing resolves or records its version for us. A
+  `VENDOR.md` beside the files pins the version and SHA-256 of each, and carries the
+  script that re-verifies them against the published package. Do the same for anything
+  else vendored: an un-versioned blob in `wwwroot` is a supply-chain hole.
 - Obligation: ship a **third-party NOTICES file** preserving the dependencies'
   copyright/license notices (attribution is the main permissive-license duty).
 - Keep test-only tooling free: **avoid FluentAssertions v8+** (commercial); use
@@ -153,7 +161,7 @@ Clean-code principles, stated as pragmatic guidance (not scripture — a few
   dependency-inversion at the **port boundaries** (they're what make the
   adapters swappable and the tests deterministic).
 - **Comment the *why*, not the *what*** — and explicitly flag the deliberately
-  odd, load-bearing bits (the underdocumented stream-json control protocol,
+  odd, load-bearing bits (the PTY's incremental UTF-8 decode and batched flush,
   atomic temp→rename file writes, the launch-boundary rule) so a future reader
   doesn't "tidy away" a quirk that matters.
 - **Consistent style, enforced by tooling** — `dotnet format` + analyzers do the
@@ -223,26 +231,30 @@ the agent CLI (e.g. `claude`) in the task's working directory with that
 is actively being worked (`running`). Auto-exits: to Needs feedback (blocked)
 or To review (`Stop`, clean).
 
-> **Liveness model** (see Liveness & input channel). Managed mode: ACT
-> keeps the agent process **alive during a turn** (interacting over the
-> stream-json control protocol) and **tears it down between engagements**,
-> resuming via `--resume`. So "working" = a live turn; "idle" (To review) = no
-> process, state on disk; "send input" = a control-response/message over the
-> live stream, or a fresh `--resume` after teardown.
+> **Liveness model** (see Liveness & the embedded terminal). ACT spawns the
+> agent's **interactive TUI under a pseudo-terminal it owns** and keeps that
+> process **alive for as long as the card is active** — through Executing, Needs
+> feedback and To review alike — tearing it down only on kill or completion. So
+> "working" = the TUI is mid-turn; "idle" (To review) = the same live TUI parked
+> at its prompt; "send input" = **the user typing into that terminal**, which ACT
+> hosts full-screen for the card.
 
 **4. Needs feedback** *(machine-controlled)*
-The session is blocked and needs the user; the badge says why:
-`PermissionRequest` → **needs permission**; a question → **needs answer**;
-crash / non-zero exit → **error**. Failures route here (not To review). Exits:
-for permission/question, the user provides input/approval → back to Executing
-(badge returns to `running`); for **error**, the user can **Retry** (see Error
-handling & retry) → back to Executing.
+The session is blocked and needs the user; the badge says why: a permission
+prompt → **needs permission**; a question → **needs answer**; crash / non-zero
+exit → **error**. Failures route here (not To review). The card is a *report*
+that the TUI is waiting — **ACT never answers on the user's behalf** (see Hooks
+are observability, not control). Exits: for permission/question, the user opens
+the card's terminal and answers there, and ACT sees the session move again → back
+to Executing (badge returns to `running`); for **error**, the user can **Retry**
+(see Error handling & retry) → back to Executing.
 
 **5. To review** *(machine-controlled → hands back to human)*
 The agent finished its turn cleanly (`Stop`, no question, no error); badge goes
 `idle`. Work is produced and nothing is blocking; it is the user's turn to
-inspect it. Exits: **Completed** (approve/finish) or **Executing** (send-back —
-user feedback re-enters the same session).
+inspect it. The TUI is still alive, parked at its prompt. Exits: **Completed**
+(approve/finish) or **Executing** (send-back — user feedback re-enters the same
+session by being typed into that same terminal).
 
 **6. Completed** *(terminal-ish, human-controlled)*
 The user marks the task done from To review. Not strictly terminal: it has one
@@ -326,9 +338,16 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
   `parentId` lineage, and the `.act/` filename prefixes (follow-ups + status).
   Never shown to the user.
 - `number` — friendly sequential **`#1039`**, display only.
-- `sessionId` — the **agent's** session id (the value ACT pre-mints and passes
-  via `--session-id`). **Single value; null until launch.** This is the join key
-  for inbound hooks and JSONL transcripts.
+- `sessionId` — the **agent's** session id. **Single value; null until launch** —
+  and, for some agents, for a little longer. This is the join key for inbound hooks
+  and JSONL transcripts. Two acquisition modes, because the agents genuinely differ:
+  - **Pre-minted** (Claude Code) — ACT generates the UUID and passes `--session-id`,
+    so the binding exists before the process does.
+  - **Reported** (Codex) — the CLI has no `--session-id`; it mints its own and
+    tells ACT in the `SessionStart` hook payload. `sessionId` stays null for the
+    first moments of the session, and correlation until then is by **ACT's own task
+    id**, carried on the launched process's environment. Resume still takes the id
+    (`codex resume <uuid>`), so only acquisition differs, not use.
   - *Deferred:* a task could span multiple session ids (Codex fork, resume /
     restart). A `sessions[]` history is intentionally **not** modeled now; adding
     it later is non-breaking. Whether it's ever needed comes down to Codex
@@ -421,9 +440,12 @@ values, and defines behavior for unsupported values (map to nearest equivalent
 - `agentBinary` — path to the executable (global default per `agentType`).
 - `model` — per-task; **agent-specific** values (e.g. current Claude Code:
   Sonnet 5 / Opus 4.8 / Fable 5).
-- `effort` — per-task reasoning effort; **agent + model-specific** (current
-  models use adaptive effort like `xhigh`; some ignore it / can't disable
-  thinking — so it may be a no-op).
+- `effort` — per-task reasoning effort; **agent + model-specific**. Not a flat list
+  per agent: Codex's catalog gives each model its own ladder (`gpt-5.6-terra` reaches
+  `ultra`, `gpt-5.6-luna` stops at `max`, `gpt-5.5` at `xhigh`), so capabilities are
+  modelled as **models each carrying their own efforts and default**, and the
+  new-task modal narrows the effort list when the model changes. Some models ignore
+  effort entirely, so it may still be a no-op.
 - `permissionMode` — **first-class normalized field**, fixed set ACT understands:
   `default | plan | acceptEdits | auto | dontAsk | bypass`. Adapter-mapped
   (Claude Code: `--permission-mode …`; ACT's `bypass` maps to that CLI's
@@ -439,6 +461,23 @@ values, and defines behavior for unsupported values (map to nearest equivalent
   | `auto` | **classify** — a model classifier approves or denies, no prompt |
   | `dontAsk` | **deny** unless pre-approved by a rule — never prompts |
   | `bypass` | allow everything (needs `--allow-dangerously-skip-permissions`) |
+
+  **Codex maps the same set onto two axes** — `-a/--ask-for-approval` crossed with
+  `-s/--sandbox` — which is why `permissionMode` is normalized in ACT rather than
+  passed through:
+
+  | ACT mode | Codex flags |
+  |---|---|
+  | `default` | `-a untrusted -s workspace-write` |
+  | `plan` | `-a never -s read-only` (no mutations possible) |
+  | `acceptEdits` | `-a on-request -s workspace-write` |
+  | `auto` | `-a on-request -s workspace-write` *(the model decides when to ask — Codex's closest analogue to a classifier)* |
+  | `dontAsk` | `-a never -s workspace-write` (failures returned to the model, never prompts) |
+  | `bypass` | `--dangerously-bypass-approvals-and-sandbox` |
+
+  `auto` and `acceptEdits` land on the same flags, so the Codex adapter records an
+  **adjustment** for `auto` rather than pretending it honoured a distinct mode —
+  the never-silently-drop rule applied to a genuine overlap.
 
   - **This is a state-machine knob, not just config.** It governs how often a card
     enters Needs feedback: `default` ⇒ often; `acceptEdits` ⇒ less; `auto`,
@@ -465,12 +504,13 @@ own permissions.
 
 ### Pluggable, multi-source ingestion
 
-Ingestion is **transport-agnostic**. ACT defines source types; each **agent
-adapter composes whatever mix of sources fits its agent** — including several at
-once for a single agent. All sources normalize into **one event stream** that
-the rules engine consumes. The rules engine never learns *how* an event arrived,
-only its normalized type — so adding a transport is adding a source, with no
-downstream change.
+Ingestion is **transport-agnostic** and, since the PTY decision, **entirely
+observational** — every source reports, none of them commands. ACT defines source
+types; each **agent adapter composes whatever mix of sources fits its agent** —
+including several at once for a single agent. All sources normalize into **one
+event stream** that the rules engine consumes. The rules engine never learns *how*
+an event arrived, only its normalized type — so adding a transport is adding a
+source, with no downstream change.
 
 Flow: `sources (per adapter) → normalize → event bus → rules engine + store`.
 
@@ -484,25 +524,37 @@ Flow: `sources (per adapter) → normalize → event bus → rules engine + stor
 3. **File source** — `FileSystemWatcher` on known paths: `.act/status/`
    (completion signal), `.act/followups/` (spawns), and the JSONL transcript
    (enrichment). Atomic-write + consume-on-ingest conventions apply.
-4. **Process source** — ACT's own process supervision (always ACT-internal, not
-   agent-provided): non-zero exit → `error`; watchdog timeout → `stale`.
+4. **Process source** — ACT's own process supervision of the PTY (always
+   ACT-internal, not agent-provided): non-zero exit → `error`; watchdog timeout →
+   `stale`.
 
 **Example compositions** (adapter's choice, freely mixable):
 - *Claude Code:* HTTP hooks (lifecycle) + file source (status / follow-ups /
   JSONL enrichment) + process source.
 - *Codex:* command-hook forwarder + file source + process source.
 
-### Relationship to the stream-json control channel
+Note what is **not** a source: the terminal itself. ACT pipes the PTY's bytes to
+xterm.js and never reads them for meaning (see *ACT never parses terminal output*).
 
-In managed mode (see Liveness & input channel) the live **control stream** is
-itself a source — and the authoritative one for anything needing a synchronous
-reply: **permission requests, questions / AskUserQuestion, and hook callbacks**
-arrive as control-requests on the stream, not via the `Notification` hook. The
-HTTP-hook / command-forwarder / file / process sources cover fire-and-forget
-lifecycle events and enrichment. The exact split of which lifecycle events come
-via the stream vs. hooks is an adapter/build detail (tied to the underdocumented
-protocol caveat) — the rule of thumb: **stream for anything ACT must respond to,
-hooks/files for anything fire-and-forget.**
+### Hooks are observability, not control
+
+**ACT observes prompts; it never answers them.** When the agent asks for
+permission or asks a question, that arrives as a fire-and-forget hook
+(`Notification`, and `PreToolUse` for the tool about to run). ACT normalizes it,
+moves the card to Needs feedback with the right badge, and shows a **read-only**
+summary of what is being asked. Answering happens where the prompt actually lives:
+in the TUI, in the card's terminal, typed by the user.
+
+This is what makes the "hooks must never slow the agent" rule strictly true rather
+than aspirational — ACT has no decision to make, so it can accept-and-return
+immediately in every case. It also means no ACT bug can approve something on the
+user's behalf.
+
+- **Caveat (build-time).** Exactly what Claude Code's `Notification` hook fires for
+  on the pinned version is unverified, and it is the load-bearing signal for the
+  `needs permission` badge. If it proves too coarse, the fallback is `PreToolUse`
+  plus the absence of a matching `PostToolUse` within a short window — a heuristic,
+  and one to write down as such rather than hide.
 
 ### Session identity / correlation
 
@@ -513,7 +565,9 @@ correlation is deterministic:
 - `session_id` → look up the card by the `sessionId` ACT **pre-minted** at
   launch. Exact.
 - **Unknown `session_id`** (a session ACT didn't launch) → **ignore** (ACT is
-  orchestrator-only).
+  orchestrator-only). The one exception is the **first** hook of a reported-id
+  agent: ACT matches it by the task id on the process environment and *learns* the
+  session id from it, then correlates by `session_id` forever after.
 - `transcript_path` → the exact JSONL to tail for enrichment (no path
   reconstruction).
 
@@ -536,10 +590,11 @@ confirm at build.)*
 ### Registered events → normalized events
 
 - `SessionStart` → capture `transcript_path`, confirm binding
-- `PreToolUse` / `PostToolUse` → activity (`running`)
-- **permission requested / question** → via the **control stream** in managed
-  mode (see above); `Notification` (Claude Code) / `PermissionRequest` (Codex)
-  hooks are the fallback signal
+- `UserPromptSubmit` / `PreToolUse` / `PostToolUse` → activity (`running`).
+  `UserPromptSubmit` is also the **recovery** signal: it is how ACT learns the user
+  answered a prompt in the terminal, since no answer passes through ACT.
+- **permission requested / question** → `Notification` (Claude Code) /
+  `PermissionRequest` (Codex), read-only
 - `PreCompact` → compacting
 - `Stop` → turn ended → read status file → route (to review / needs answer)
 - `SessionEnd` → session ended (persistence)
@@ -552,6 +607,11 @@ confirm at build.)*
   persists too.
 - **Resume/fork** — a known `--session-id` / `--resume` keeps the binding; a
   Codex fork producing a *new* id is the deferred `sessions[]` case.
+- **ACT restart kills live terminals.** The PTY is a child of ACT's process, so
+  restarting ACT ends every session it was hosting. The binding survives (it is in
+  LiteDB), so the cards come back and each can be resumed with `--resume` into a
+  fresh terminal — but the on-screen scrollback does not. Worth surfacing on the
+  card rather than silently showing an empty terminal.
 
 ---
 
@@ -560,21 +620,25 @@ confirm at build.)*
 Drives all transitions in the machine-controlled region. Operates on
 **normalized events** — each adapter maps its agent's raw hooks (Claude Code
 `Stop` / `Notification` / `PreToolUse` / …; Codex's set) into ACT's shared
-vocabulary, and the table is written against that. Two transitions are **not**
+vocabulary, and the table is written against that. One transition is **not**
 event-driven: **Ready → Executing** is ACT-initiated (it spawns the process — an
-action, not a rule), and **To review**'s exits are human (Complete / Send back).
+action, not a rule). **To review → Completed** is the human's explicit call in the
+UI. Everything else, including recovery from Needs feedback and send-back out of
+To review, reaches ACT as an *observation* — because the user acts in the terminal,
+not in ACT, so ACT learns about it the same way it learns about anything else.
 
 | Current | Normalized event | → Column | Badge |
 |---|---|---|---|
 | Executing | activity (tool use / turn progress) | Executing | `running` |
 | Executing | compacting (`PreCompact`) | Executing | `compacting` → `running` |
-| Executing | permission requested | Needs feedback | `needs permission` |
+| Executing | permission requested *(observed)* | Needs feedback | `needs permission` |
 | Executing | turn ended + status `needs_input` | Needs feedback | `needs answer` |
 | Executing | turn ended + status `ready_for_review` | To review | `idle` |
 | Executing | turn ended, no/invalid status file | To review | `idle` *(fallback)* |
 | Executing | process exited non-zero / crash | Needs feedback | `error` |
 | Executing | no-activity timeout | *(stays)* Executing | `stale` |
-| Needs feedback | user input supplied | Executing | `running` |
+| Needs feedback | activity observed *(the user answered in the terminal)* | Executing | `running` |
+| To review | activity observed *(the user sent it back in the terminal)* | Executing | `running` |
 
 ### Completion signal — the status-file convention
 
@@ -602,15 +666,18 @@ guesswork, reusing the same agent→ACT file mechanism as follow-ups:
 
 - **`error` / `stale` come from process signals, not hooks.** ACT owns the
   spawned process: non-zero exit → `error` (→ Needs feedback); watchdog with no
-  activity → `stale`. (`stale` applies only *during* a live turn, since no
-  process runs between engagements.)
+  activity → `stale`. Since the TUI now stays alive between turns, `stale` is
+  scoped to cards **in Executing** — a To-review card sitting idle at its prompt is
+  the normal resting state, not a hang.
 - **`stale` does not auto-escalate.** Warning badge only; card stays in
   Executing; escalation is the user's call via the kill/abandon hatch.
 - **`permissionMode` changes frequency, not the table.** `default` ⇒ "permission
   requested" fires often; `acceptEdits` ⇒ less; `auto` / `dontAsk` / `bypass` ⇒
   it effectively never fires (cards sail to `Stop`), since none of those prompt.
   A `dontAsk` denial is not a normalized event — the agent absorbs it and keeps
-  going, so it surfaces only in the transcript, never as a badge.
+  going, so it surfaces only in the transcript, never as a badge. Under the PTY
+  model this knob matters *more*: every prompt it produces is one the human must
+  walk over to a terminal and answer.
 
 ### Error handling & retry
 
@@ -629,9 +696,11 @@ Executing. Error kinds and what retry means:
   warrant investigation first.
 - **Inline git failure** (auto-complete) — retriable the same way.
 
-So the drawer's action set is state-specific: permission → approve/deny;
-question → answer; **error → Retry (± edit launch config)**; review →
-send-back / complete / kill. Kill/abandon is available on any active card.
+So the drawer's action set is state-specific — and, since ACT no longer answers
+anything, mostly a way *into* the terminal: permission / question → **Open
+terminal** (with a read-only statement of what is being asked); **error → Retry
+(± edit launch config)**; review → send-back / complete / kill. Open terminal,
+Open in Desktop and Kill are available on any active card.
 
 ### Auto-complete (fire-and-forget)
 
@@ -686,68 +755,112 @@ As built:
 
 ---
 
-## Liveness & input channel
+## Liveness & the embedded terminal
 
-**Single mode: managed.** ACT spawns and drives the agent session itself. No
-desktop-handoff mode, no GUI automation (both rejected — see below).
+**Single mode: managed under a PTY.** ACT spawns the agent's **real interactive
+TUI** in a pseudo-terminal it owns (ConPTY on Windows, a Unix pty elsewhere) and
+hosts that terminal inside ACT, full-screen per card. ACT is the control tower
+around the session, not a replacement front-end for it.
 
-### Live during a turn, resume between
+The division of labour this buys is the whole point:
 
-While a task is actively engaged (Executing, or Needs feedback awaiting the
-user's answer) ACT keeps the agent process **alive** and interacts with it over
-a structured channel. When idle / queued / To review / Completed, **no process
-runs** — state lives in the on-disk transcript, and work resumes via
-`--resume`. Keeps unattended/scheduling/crash-resilience while allowing mid-turn
-interaction.
+| | |
+|---|---|
+| **ACT** owns | which sessions exist, where they sit on the board, what needs you, metrics, lineage, scheduling |
+| **The TUI** owns | the conversation — every prompt, permission dialog, plan approval and answer |
 
-### Transport: stream-json control protocol over stdin/stdout
+### Alive while the card is active
 
-ACT spawns `claude -p --input-format stream-json --output-format stream-json`,
-holds the pipes open, and speaks the newline-delimited JSON **control
-protocol**: prompt / user messages in; agent events + **control-requests**
-(permission, questions / AskUserQuestion, hook callbacks) out; **control-
-responses** (approve / deny, answers) in. This is the same transport the Agent
-SDK uses under the hood, so it's **.NET-native** — no Node/Python SDK sidecar,
-no MCP permission server, no PTY.
+The process is spawned at launch and stays **alive across turns** — through
+Executing, Needs feedback and To review alike — until the user kills it or the
+card completes. This is the natural shape for an interactive terminal: scrollback
+survives, and the user can keep typing without ACT re-spawning anything underneath
+them.
 
-- **Rejected alternative — literal PTY:** driving the interactive TUI via a
-  pseudo-terminal with injected keystrokes + ANSI screen-scraping is fragile,
-  version-brittle, and cross-platform-painful (esp. Windows). The stream-json
-  channel gives the same "live process, answer over stdin" behavior, structured
-  and robust.
-- **Caveat:** the CLI stream-json control protocol is **underdocumented** (open
-  Anthropic issue) though SDK-proven — pin the Claude Code version and verify
-  the protocol at build. Codex has no confirmed equivalent; its adapter
-  implements the input channel its own way (its explicit `PermissionRequest`
-  event, etc.). The channel is an **adapter responsibility**, per the ingestion
-  abstraction.
+*(This reverses an earlier "live during a turn, torn down between engagements"
+model, which existed to serve a headless transport that no longer applies. The
+cost is real and accepted: N active cards means N live agent processes.)*
 
-### The input channel = this stream
+### Transport: a pseudo-terminal, raw both ways
 
-Send-back (To review → Executing), permission grants, and question answers all
-flow as control-responses / user-messages over the live stream. After teardown,
-reopen / send-back re-spawns via `--resume <sessionId>` (a fresh stream-json
-process).
+`Porta.Pty` spawns the CLI under a pty; bytes stream to **xterm.js** in the
+browser over the Blazor circuit, and keystrokes stream back. Output is decoded
+incrementally (a UTF-8 sequence can straddle two reads), batched on a ~30 ms
+timer, and capped — a full-screen TUI redraws far more often than a circuit wants
+to be poked. Each session keeps a **bounded scrollback** so leaving the card's
+terminal and coming back replays the screen instead of showing an empty one.
 
-### Kill / abandon hatch (resolved)
+### ACT never parses terminal output
 
-ACT owns the process, so **kill = terminate it** (the stream also supports
-interruptions) → route the card to Needs feedback with an `error` / `killed`
-badge. Not a manual column move — a *session action* that triggers an auto
-transition, so the launch-boundary rule holds.
+**Rule, not a preference.** ACT pipes the terminal's bytes and never reads them
+for meaning. The prototype's `PtyStateProbe` existed to measure the alternative,
+and the measurement is the reason: its regexes had to be rewritten once *within a
+single CLI version bump* (the input line moved from `│ >` to `❯`), against a
+screen that redraws constantly. Any state ACT inferred that way would be
+version-brittle and silently wrong. **Hooks are the state channel; the terminal is
+a pipe.**
 
-### Rejected: handoff & desktop automation
+### The input channel is the human at the keyboard
 
-- **Handoff (desktop deep-link) mode** — `claude://code/new?q=…` **prefills but
-  never auto-sends** (deliberate safety), so it's attended-only and can't do
-  unattended/overnight; also loses metrics (desktop store is opaque/binary) and
-  reliable session reopen. Rejected in favor of one managed model.
-- **Desktop GUI automation** (synthetic Enter / Playwright) — rejected:
+ACT types exactly two things into a session: the **initial prompt** at launch, and
+a **send-back message** if the user chooses to seed one from the UI. Both go in as
+bracketed paste followed by the agent's submit key — an adapter detail, since the
+submit key is agent-shaped. Everything else — answering a permission prompt,
+answering a question, approving a plan, `/`-commands — the user types themselves,
+in the terminal ACT is showing them.
+
+Consequently ACT has **no approve/deny surface at all**. See *Hooks are
+observability, not control*.
+
+### Kill / abandon hatch
+
+ACT owns the process, so **kill = terminate the PTY** → route the card to Needs
+feedback with a `killed` badge. Not a manual column move — a *session action* that
+triggers an auto transition, so the launch-boundary rule holds.
+
+### Handoff to the Claude desktop app — a per-card action
+
+`claude://resume?session=<uuid>` **works**: read out of the desktop app's own
+`app.asar` (v1.24012.9.0) and confirmed by the prototype, it validates a canonical
+UUID and calls `importCliSession`, which reads the CLI transcript from disk. So a
+card ACT launched can be opened in the desktop app whenever the user prefers that
+surface.
+
+- Offered as an **"Open in Desktop" action on a card**, never as a launch mode.
+  ACT always launches under the PTY, so it always owns the session id, the hooks
+  and the metrics; the desktop app is an additional window onto the same
+  transcript, not an alternative to being observed.
+- Note the parameter is `session`, not `sessionId`, and the route reads no `cwd` —
+  it locates the transcript itself. Named failure modes: `transcript_missing`,
+  `auth_expired`, `network`.
+- `claude://code/<id>` is a real route but feature-gated and keyed by a *bridge*
+  id, not a CLI session id — not usable here.
+- The knowledge is **adapter-local** (`IAgentAdapter.DesktopHandoffUrl`), so agents
+  with no desktop app simply return null and the action does not appear.
+
+### Rejected alternatives
+
+- **stream-json control protocol** (`claude -p --input-format stream-json`) — ACT
+  holding the pipes and answering control-requests itself. This was the previous
+  design and is now rejected for the reason that outranks its elegance: it
+  **replaces the interactive session the user actually wants** with a headless
+  one, forcing ACT to re-implement every prompt surface the TUI already renders
+  well — permission dialogs, AskUserQuestion, plan approval, `/`-commands — and to
+  keep re-implementing them as the CLI evolves. It is also underdocumented (open
+  Anthropic issue), so each of those re-implementations would be pinned to an
+  unversioned protocol. Kept on the table as a **possible future unattended mode**,
+  where there is no human to hand a terminal to and re-implementing prompts is
+  moot; see Future enhancements.
+- **Desktop-only handoff as the launch mode** — `claude://code/new?q=…` prefills
+  but **never auto-sends** (deliberate safety), registers none of ACT's hooks, and
+  writes to an opaque store. A card launched that way would have no badges, no
+  metrics and no completion signal. Hence handoff is an *action on an observed
+  session*, not a way to start one.
+- **Desktop GUI automation** (synthetic Enter / Playwright) — unchanged rejection:
   Electron's single-instance lock strips `--remote-debugging-port` (breaks
-  Playwright/CDP attach); synthetic keystrokes need OS Accessibility permission
-  and fight focus/timing races, and would have to auto-click every
-  permission/question dialog too. It only "helps" the unattended case — which
-  managed mode already does cleanly.
+  Playwright/CDP attach); synthetic keystrokes need OS Accessibility permission and
+  fight focus/timing races. It only "helps" the unattended case, which a
+  non-prompting `permissionMode` handles cleanly.
 
 ---
 
@@ -818,10 +931,16 @@ release it otherwise.
 - **"Next window" needs the 5-hour reset time.** It's rolling (~5h after the
   session's first message) — compute from tracked activity or read `/usage`.
 - **Weekly reset** = a fixed per-account day/time, configured once.
-- **Unattended overnight runs need a non-prompting `permissionMode`** (`auto`,
-  `dontAsk` or `bypass`), or tasks stall in Needs feedback waiting for permission
-  all night. `acceptEdits` only covers edits, so it still stalls on the first
-  `Bash` call it wants approval for.
+- **Unattended overnight runs require a non-prompting `permissionMode`** (`auto`,
+  `dontAsk` or `bypass`). This is now a hard requirement rather than a strong
+  suggestion: since ACT never answers a prompt, a prompting mode leaves the task
+  parked at a TUI prompt that nobody is awake to answer, all night, holding a
+  concurrency slot. `acceptEdits` only covers edits, so it still stalls on the
+  first `Bash` call it wants approval for. Worth warning about in the new-task
+  modal when `schedule` is unattended and `permissionMode` prompts.
+- **`maxConcurrent` now caps live terminals too.** Every card past the launch
+  boundary holds a live agent process, so the cap is a real resource ceiling, not
+  just a politeness setting.
 - Verify at build: `/usage` scriptability, and clean mid-task resume after a
   rate-limit interruption.
 
@@ -857,10 +976,10 @@ Resumability does **not** depend on ACT keeping anything alive. Send-back
 <sessionId>` against the agent's **on-disk transcript**, which persists
 independently of ACT.
 
-- Per the liveness model, ACT keeps the process alive only **during an
-  active turn** and tears it down on entering To review / Completed / idle; it
-  re-spawns via `--resume` when work continues. So between engagements there is
-  no process to manage.
+- Per the liveness model, ACT keeps the terminal alive for the whole active life
+  of a card and tears it down on kill or completion. Reopening a **Completed** card,
+  or any card whose terminal died with ACT, re-spawns via `--resume` into a fresh
+  terminal.
 - **Caveat:** the transcript is outside ACT's control, subject to the agent's
   retention or user deletion — so a very old Completed task may no longer be
   resumable.
@@ -940,9 +1059,10 @@ unattended mode is half-blind.
 
 ### Behavior rules
 
-- **Actionable.** Where the OS supports it, notifications carry buttons that
-  deep-link into that card's drawer — approve/deny on a permission ping,
-  "review" on a To-review ping.
+- **Actionable.** Where the OS supports it, notifications carry a button that
+  deep-links **into that card's terminal view** — the place the user has to be to
+  answer anyway. ACT carries no approve/deny buttons, in the notification or
+  anywhere else.
 - **Respect focus.** Suppress the popup when ACT is focused and on the board
   (the in-app pulse covers it); notify mainly when ACT is backgrounded — the
   overnight case.
@@ -997,18 +1117,30 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
 - **Attention:** needs-you cards get a **loud in-place treatment** (glowing rail
   + pulse + `!` corner); no separate inbox. Top-bar **"N need you ›"** pill
   summarizes *and* jumps to the next attention card.
-- **Interaction:** one **contextual right-side drawer** over a dimmed board,
-  action set by state — permission → **Approve / Deny** (kept **simple**: brief
-  statement of the request, no command dump or scope radios); question → answer;
-  error → **Retry** (± edit launch config); review → Kill / Send back / Complete.
-  Kill on any active card.
+- **Interaction — two surfaces, one rule.** The **drawer** is where you *read* a
+  card; the **session view** is where you *talk* to it.
+  - **Contextual right-side drawer** over a dimmed board, action set by state.
+    Since ACT answers nothing, a blocked card shows a brief **read-only** statement
+    of what is being asked (no command dump, no scope radios) plus a prominent
+    **"Answer in terminal ›"**. Remaining actions: Open terminal, Open in Desktop,
+    Kill, **Retry** (± edit launch config, on `error`), Send back, Complete. Open
+    terminal / Open in Desktop / Kill on any active card.
+  - **Session view — a full-screen route per card.** The xterm terminal takes the
+    window, with a right rail carrying identity (`#1042`, cwd, agent/model) and the
+    live metrics (context %, cost, turns), the same action set, and back-to-board in
+    the top bar. This is the answer to every "needs you" state: the top-bar
+    **"N need you ›"** pill and the OS notification both land here.
+  - The terminal replays its scrollback on entry, so leaving the view and returning
+    is free.
 - **New task:** a **modal** with the control set (title, prompt, dir, agent,
   model, effort, permission mode, schedule, auto-complete, auto-git; tools / env
   / flags behind **Advanced**) and a **single Save** → lands in Preparing; the
   user drags it onward.
 - **Build split:** signature flight-strip look = custom Blazor markup + CSS;
   heavier widgets (dialog/modal, drawer, tables, inputs) = Radzen themed to the
-  same palette via shared CSS variables. Mockups were hand-CSS only.
+  same palette via shared CSS variables. Mockups were hand-CSS only. The terminal
+  is xterm.js, themed from the same `--act-*` tokens so it reads as part of the
+  control room rather than an embedded console.
 - **Theme (dark / light):** both are supported and **follow the OS** by default.
   Radzen's *Standard* and *Standard Dark* stylesheets are linked behind
   `prefers-color-scheme`, and ACT's own control-room palette (the `--act-*`
@@ -1045,13 +1177,34 @@ define. The build sequence lives in **`ACT-roadmap.md`** (16 steps across 6
 phases). Only pixel-level UI polish and per-step build-time verifications remain,
 tracked there.
 
+**Revised 2026-07-29 — the PTY reversal.** The liveness model, the input channel
+and the desktop-handoff decision were all reversed on the evidence of the launch
+prototype (branch `prototype`, commit `bb7633d`), which built all three routes side
+by side. ACT now hosts the agent's **real interactive TUI** under a pseudo-terminal
+instead of driving a headless stream-json session; hooks became a **read-only**
+observability channel; and `claude://resume?session=` was confirmed and promoted
+from rejected to a per-card action. Sections touched: *Liveness & the embedded
+terminal* (rewritten), *Ingestion & session identity*, *Rules engine*, *UI
+direction*, *Scheduling*, *Persistence*, *Native OS notifications*. Roadmap steps
+7–10 were reshaped to match.
+
 ---
 
 ## Known constraints to carry forward ⚠️
 
-- CLI-launched sessions are **not** visible in the official Claude desktop app
-  (separate session stores, post-April-2026 redesign); ACT is the visibility
-  surface. Prefer explicit `--session-id` / `--resume <id>` over `--continue`.
+- CLI-launched sessions do not appear in the Claude desktop app's own session list
+  (separate stores, post-April-2026 redesign) — but `claude://resume?session=<uuid>`
+  **imports one on demand**, which is the bridge ACT uses. ACT is still the
+  visibility surface. Prefer explicit `--session-id` / `--resume <id>` over
+  `--continue`.
+- **A live card is a live process.** ACT holds one agent process per active card
+  for the card's whole active life, and they all die when ACT does. Bindings survive
+  in LiteDB; terminal scrollback does not.
+- **The TUI is the API.** Hosting the real interface means ACT inherits its
+  quirks — resize behaviour, bracketed paste, ANSI rendering — and inherits changes
+  to it on every CLI release. Pin the Claude Code version and re-verify on bumps.
+  The mitigation is that ACT reads *none* of it: the blast radius of a TUI change is
+  the terminal looking different, never ACT misreading a state.
 - Electron.NET no-CLI path is pre-release; Node.js 22.x needed on the build
   machine; Linux builds from Windows need WSL2.
 
@@ -1059,6 +1212,13 @@ tracked there.
 
 ## Future enhancements 🚀
 
+- **Headless unattended mode** — the rejected stream-json control protocol, brought
+  back for the one case where its objection does not apply: a scheduled overnight
+  task has no human to hand a terminal to, so there is no interactive session to
+  preserve and no prompt surface worth re-implementing (a non-prompting
+  `permissionMode` means it should never prompt anyway). Would run as a second
+  session kind behind the same `IAgentAdapter` seam, with no `IAgentTerminal`.
+  Only worth building if PTY-hosted overnight runs prove wasteful in practice.
 - **Embedded git** — instead of spawning an agent task (or an in-session turn)
   for git, ACT runs the git / host-CLI operations **itself** to save tokens (a
   commit is deterministic work not worth spending LLM tokens on). An optimization
@@ -1067,9 +1227,11 @@ tracked there.
   (e.g. "bugfix on repo X with these tools/model/permission mode") so creating a
   common task is one click instead of filling every field.
 - **Remote access** — check in on the board from a phone while away (the overnight
-  use case begs for it): at minimum a read-only view, ideally approve/deny a
-  permission or answer a question remotely. Security-sensitive — needs auth and a
-  safe transport.
+  use case begs for it): at minimum a read-only view of which cards need you.
+  Answering remotely means shipping the *terminal* to the phone (xterm.js already
+  runs in a browser, so the pieces exist) rather than building the approve/deny
+  surface ACT deliberately does not have. Security-sensitive — needs auth and a
+  safe transport, and a remote terminal is a remote shell, so the bar is high.
 - **Recurring / cron tasks** — schedule a task to run on a repeating cadence (e.g.
   "every morning, run the dependency-update task"). Small leap from the existing
   scheduler, which already understands time.

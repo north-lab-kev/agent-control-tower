@@ -4,4 +4,5 @@ namespace Act.TestSupport;
 
 internal sealed record AgentScriptStep(
     Func<string, DateTimeOffset, AgentEvent>? Event,
-    AgentInputKind? Awaits);
+    AgentInputKind? Awaits,
+    string? TerminalOutput = null);

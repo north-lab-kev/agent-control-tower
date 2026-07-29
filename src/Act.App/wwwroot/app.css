@@ -20,6 +20,7 @@
 
     --act-bar-top: #151e26;
     --act-bar-bottom: #111922;
+    --act-term-bg: #0b1219;
     --act-lane: #ffffff05;
     --act-lane-line: #ffffff0a;
     --act-track: #ffffff10;
@@ -58,6 +59,7 @@
 
     --act-bar-top: #ffffff;
     --act-bar-bottom: #eef2f6;
+    --act-term-bg: #f7fafc;
     --act-lane: #0f172a06;
     --act-lane-line: #0f172a12;
     --act-track: #0f172a14;
@@ -92,6 +94,7 @@
 
         --act-bar-top: #ffffff;
         --act-bar-bottom: #eef2f6;
+        --act-term-bg: #f7fafc;
         --act-lane: #0f172a06;
         --act-lane-line: #0f172a12;
         --act-track: #0f172a14;

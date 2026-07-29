@@ -1,4 +1,5 @@
 using Act.Core.Abstractions;
+using Act.Core.Agents;
 using Act.Core.Events;
 using Act.Core.Model;
 
@@ -29,45 +30,22 @@ public sealed class MockAgentAdapter(
     public List<AgentResumeRequest> Resumes { get; } = [];
 
     public static AgentCapabilities DefaultCapabilities() => new(
-        [FastModel, DeepModel],
+        [
+            new AgentModel(FastModel, "Mock Fast", ["low", "high"], "low"),
+
+            // A second ladder on purpose: it is what keeps the per-model effort rule honest,
+            // since a flat list would pass every test a single-ladder agent could write.
+            new AgentModel(DeepModel, "Mock Deep", ["low", "high", "max"], "high"),
+        ],
         FastModel,
-        ["low", "high"],
-        new HashSet<PermissionMode>(Enum.GetValues<PermissionMode>()));
+        new HashSet<PermissionMode>(Enum.GetValues<PermissionMode>()),
+        DesktopHandoff: true);
+
+    public string? DesktopHandoffUrl(string sessionId, string workingDir)
+        => Capabilities.DesktopHandoff ? $"mock://resume?session={sessionId}" : null;
 
     public LaunchConfigResolution Resolve(LaunchConfig config)
-    {
-        var resolved = config.Copy();
-        var adjustments = new List<LaunchConfigAdjustment>();
-        var rejections = new List<string>();
-
-        if (resolved.Model is null)
-            resolved.Model = Capabilities.DefaultModel;
-        else if (!Capabilities.Models.Contains(resolved.Model))
-            rejections.Add($"Model '{resolved.Model}' is not available for {Agent}.");
-
-        // Effort is advisory wherever it exists, so an unknown value is worth substituting
-        // rather than refusing to launch over. An agent with no effort list does not model
-        // effort at all and hands the value straight through.
-        if (Capabilities.Efforts.Count > 0
-            && resolved.Effort is { } effort
-            && !Capabilities.Efforts.Contains(effort))
-        {
-            var substitute = Capabilities.Efforts[^1];
-
-            adjustments.Add(new LaunchConfigAdjustment(
-                nameof(LaunchConfig.Effort),
-                effort,
-                substitute,
-                $"'{effort}' is not one of {Agent}'s reasoning efforts."));
-
-            resolved.Effort = substitute;
-        }
-
-        if (!Capabilities.PermissionModes.Contains(resolved.PermissionMode))
-            rejections.Add($"Permission mode '{resolved.PermissionMode}' is not supported by {Agent}.");
-
-        return new LaunchConfigResolution(resolved, adjustments, rejections);
-    }
+        => LaunchConfigResolver.Resolve(Agent, Capabilities, config);
 
     public Task<IAgentSession> LaunchAsync(
         AgentLaunchRequest request,
@@ -76,7 +54,8 @@ public sealed class MockAgentAdapter(
         Refuse(request.Config);
         Launches.Add(request);
 
-        return Task.FromResult<IAgentSession>(new MockAgentSession(request.SessionId, Script, clock));
+        return Task.FromResult<IAgentSession>(
+            new MockAgentSession(request.TaskId, request.SessionId, Script, clock));
     }
 
     public Task<IAgentSession> ResumeAsync(
@@ -86,7 +65,8 @@ public sealed class MockAgentAdapter(
         Refuse(request.Config);
         Resumes.Add(request);
 
-        return Task.FromResult<IAgentSession>(new MockAgentSession(request.SessionId, Script, clock));
+        return Task.FromResult<IAgentSession>(
+            new MockAgentSession(request.TaskId, request.SessionId, Script, clock));
     }
 
     private void Refuse(LaunchConfig config)

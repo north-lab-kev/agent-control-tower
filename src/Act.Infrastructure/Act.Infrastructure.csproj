@@ -10,6 +10,7 @@
   <ItemGroup>
     <PackageReference Include="LiteDB" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Porta.Pty" />
   </ItemGroup>
 
   <ItemGroup>

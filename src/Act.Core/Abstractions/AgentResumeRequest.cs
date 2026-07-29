@@ -2,8 +2,9 @@ using Act.Core.Model;
 
 namespace Act.Core.Abstractions;
 
-// Send-back, answering a question and retrying an error all resume the same session id.
-// `Message` is null for a bare retry, which continues where the session failed.
+// Reopening a completed card, retrying an error, and re-attaching after ACT restarted all
+// resume the same session id into a fresh terminal. `Message` is null for a bare resume,
+// which drops the user at the prompt; when set, ACT submits it as the first thing typed.
 // `InitialPrompt` travels along for the fresh-seed fallback when the transcript is gone.
 public sealed record AgentResumeRequest(
     Guid TaskId,
@@ -12,4 +13,5 @@ public sealed record AgentResumeRequest(
     string Preamble,
     string InitialPrompt,
     string? Message,
-    LaunchConfig Config);
+    LaunchConfig Config,
+    TerminalSize Size);

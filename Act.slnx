@@ -1,5 +1,7 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Act.Agents.ClaudeCode/Act.Agents.ClaudeCode.csproj" />
+    <Project Path="src/Act.Agents.Codex/Act.Agents.Codex.csproj" />
     <Project Path="src/Act.App/Act.App.csproj" />
     <Project Path="src/Act.Core/Act.Core.csproj" />
     <Project Path="src/Act.Infrastructure/Act.Infrastructure.csproj" />

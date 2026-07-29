@@ -21,6 +21,9 @@ public partial class FlightStrip
     public EventCallback<Card> OnOpen { get; set; }
 
     [Parameter]
+    public EventCallback<Card> OnLaunch { get; set; }
+
+    [Parameter]
     public EventCallback<Card> OnDragStart { get; set; }
 
     [Parameter]
@@ -71,6 +74,12 @@ public partial class FlightStrip
             _ => "r-plan",
         },
     };
+
+    // Spacious only: the compact strip has no room for it without pushing the badge out, and the
+    // badge is the signal the density exists to preserve.
+    private bool CanLaunch => Card.Column is BoardColumn.Ready && !IsCompact;
+
+    private Task LaunchAsync() => OnLaunch.InvokeAsync(Card);
 
     private string? BadgeClass => Card.Badge switch
     {

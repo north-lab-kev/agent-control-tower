@@ -1,7 +1,9 @@
 namespace Act.Core.Events;
 
-// `Summary` is what the drawer shows: a brief statement of what the agent wants to do.
-// Deliberately not a command dump — the UI direction keeps the approve/deny surface simple.
+// An observation, not a request: ACT reports that the TUI is waiting and the user answers
+// it there. `Summary` is the brief read-only statement the card and drawer show —
+// deliberately not a command dump. `RequestId` exists to de-duplicate repeats of the same
+// prompt and to correlate the hook payload, never to answer with.
 public sealed record PermissionRequested(
     string SessionId,
     DateTimeOffset At,

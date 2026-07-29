@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -359,5 +359,47 @@
   </data>
   <data name="NotFound_Text" xml:space="preserve">
     <value>Désolé, le contenu que vous cherchez n’existe pas.</value>
+  </data>
+  <data name="Session_BackToBoard" xml:space="preserve">
+    <value>Tableau</value>
+  </data>
+  <data name="Session_NotFound" xml:space="preserve">
+    <value>Cette carte n'existe plus.</value>
+  </data>
+  <data name="Session_NoLiveSession" xml:space="preserve">
+    <value>Aucune session n'est en cours pour cette carte.</value>
+  </data>
+  <data name="Session_Launch" xml:space="preserve">
+    <value>Démarrer la session</value>
+  </data>
+  <data name="Session_Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="Session_Directory" xml:space="preserve">
+    <value>Répertoire</value>
+  </data>
+  <data name="Session_SessionId" xml:space="preserve">
+    <value>Session</value>
+  </data>
+  <data name="Session_SessionPending" xml:space="preserve">
+    <value>communiqué au démarrage</value>
+  </data>
+  <data name="Session_Context" xml:space="preserve">
+    <value>Contexte</value>
+  </data>
+  <data name="Session_Turns" xml:space="preserve">
+    <value>Tours</value>
+  </data>
+  <data name="Session_OpenInDesktop" xml:space="preserve">
+    <value>Ouvrir dans l'application</value>
+  </data>
+  <data name="Session_Kill" xml:space="preserve">
+    <value>Terminer la session</value>
+  </data>
+  <data name="Session_Open" xml:space="preserve">
+    <value>Ouvrir le terminal</value>
+  </data>
+  <data name="Board_Launch" xml:space="preserve">
+    <value>Démarrer</value>
   </data>
 </root>

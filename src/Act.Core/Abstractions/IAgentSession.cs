@@ -2,25 +2,26 @@ using Act.Core.Events;
 
 namespace Act.Core.Abstractions;
 
-// A live agent turn. Disposal is the teardown between engagements: ACT keeps a session
-// alive while a turn is running and lets work continue later through the adapter's resume,
-// so a disposed session must complete its event stream rather than merely stop yielding.
+// One live agent session: its terminal, and the observations ACT makes about it. There is
+// deliberately no way to answer a permission request or a question from here — ACT hosts
+// the agent's real TUI and the user answers there, so the only input ACT itself supplies is
+// what `IAgentTerminal.SubmitAsync` carries. Disposal ends the session, and the process
+// stays alive for as long as the card is active rather than only for a turn, so a disposed
+// session must complete its event stream rather than merely stop yielding.
 public interface IAgentSession : IAsyncDisposable
 {
-    string SessionId { get; }
+    // ACT's own id, always known, and the only correlation handle that exists from the first
+    // instant of a session — which matters because `SessionId` sometimes does not.
+    Guid TaskId { get; }
+
+    // Null until the agent's id is known. Claude Code takes a pre-minted `--session-id`, so it
+    // is set before the process starts; Codex mints its own and reports it in `SessionStart`,
+    // so it arrives a moment later. Nothing may assume it is populated at launch.
+    string? SessionId { get; }
+
+    IAgentTerminal Terminal { get; }
 
     IAsyncEnumerable<AgentEvent> Events { get; }
-
-    Task RespondToPermissionAsync(
-        string requestId,
-        PermissionDecision decision,
-        CancellationToken cancellationToken = default);
-
-    Task AnswerAsync(string requestId, string answer, CancellationToken cancellationToken = default);
-
-    Task SendAsync(string message, CancellationToken cancellationToken = default);
-
-    Task InterruptAsync(CancellationToken cancellationToken = default);
 
     Task KillAsync(CancellationToken cancellationToken = default);
 }
