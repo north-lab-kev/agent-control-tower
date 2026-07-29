@@ -26,11 +26,13 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 ├─ src/
 │  ├─ Act.Core/                     # DOMAIN + APPLICATION — no infra/UI/agent deps
 │  │  ├─ Model/                     #   Card, Column, Badge, Transition, Lineage…
-│  │  ├─ Events/                    #   normalized event types
+│  │  ├─ Events/                    #   normalized event types (the adapter vocabulary)
+│  │  ├─ Agents/                    #   ActContract (.act/ paths) + AgentPreamble (injected text)
 │  │  ├─ Rules/                     #   the rules engine + manual-move validity (pure logic)
 │  │  ├─ Scheduling/                #   queue runner, schedule, backpressure
-│  │  └─ Abstractions/              #   INTERFACES: IAgentAdapter, IIngestionSource,
-│  │                               #     ITaskStore, INotifier, IClock…
+│  │  └─ Abstractions/              #   INTERFACES: IAgentAdapter, IAgentSession,
+│  │                               #     IIngestionSource, IAgentCapabilityCatalog,
+│  │                               #     ICardStore, INotifier, IClock…
 │  ├─ Act.Agents.ClaudeCode/        # Claude Code adapter (launch, stream-json control, mappings)
 │  ├─ Act.Agents.Codex/             # Codex adapter
 │  ├─ Act.Infrastructure/           # LiteDB store, localhost hook host, FileSystemWatcher,
@@ -38,7 +40,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  └─ Storage/                   #   act.db open + BsonMapper, schema version, card/settings stores
 │  ├─ Act.App/                      # Blazor Server UI + Electron desktop host (ElectronNET.Core)
 │  │  ├─ Components/                #   board, flight strips, drawer, new-task modal
-│  │  ├─ Cards/                     #   BoardState (card list + Changed event), task form model
+│  │  ├─ Cards/                     #   BoardState (card list + Changed event), task form model,
+│  │  │                            #     placeholder capability catalog (until step 7)
 │  │  ├─ Seeding/                   #   sample cards (dev-only demo data; drops out at step 5)
 │  │  ├─ Settings/                  #   user-settings service + culture
 │  │  ├─ Resources/                 #   .resx strings (en / fr)
@@ -79,7 +82,18 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   lets the mock adapter stand in for a real CLI.
 - **The mock adapter lives in `Act.TestSupport`** (not buried in one test
   project) so both the core tests and the Playwright UI tests can drive
-  deterministic sessions through it.
+  deterministic sessions through it. It ships with `AgentScript` (a lifecycle as one
+  fluent line) and `TestClock`, and is constructed for a chosen `AgentType` so the
+  same script can be replayed as either agent.
+- **The agent↔ACT contract is Core's, not an adapter's.** `Act.Core/Agents/`
+  owns the `.act/` paths (`ActContract`) and the injected preamble text
+  (`AgentPreamble`) because the convention is agent-agnostic; an adapter only
+  decides *how* to deliver the preamble. One place to tune the wording, one place
+  every later step resolves those paths from.
+- **The contract suite covers only the process-free surface.** `AgentAdapterContract`
+  in `Act.Agents.Tests` asserts identity, capabilities and launch-config resolution —
+  never a live session — because ACT deliberately runs no real CLI in automated
+  tests. Live behavior is verified by hand per roadmap step.
 - **`INotifier` is a port.** Native OS notifications come from Electron, which
   under Option B lives in `Act.App` — so the native implementation lives there
   too (gated on Electron being active), with a no-op/web fallback for the plain

@@ -1,13 +1,18 @@
 using Act.App.Cards;
 using Act.App.Resources;
 using Act.App.Settings;
+using Act.Core.Abstractions;
 using Act.Core.Model;
 using Microsoft.AspNetCore.Components;
 using Radzen;
 
 namespace Act.App.Components.Board;
 
-public partial class TaskDialog(BoardState board, DialogService dialogService)
+public partial class TaskDialog(
+    BoardState board,
+    IAgentCapabilityCatalog agents,
+    IClock clock,
+    DialogService dialogService)
 {
     private NewTaskForm form = new();
 
@@ -48,13 +53,13 @@ public partial class TaskDialog(BoardState board, DialogService dialogService)
         new(GitAction.PullRequest, Strings.GitAction_PullRequest),
     ];
 
-    // Keeps a stored model visible even when it is not in the placeholder list — otherwise
-    // editing a card would show an empty dropdown for a value it is still carrying.
+    // Keeps a stored model visible even when the agent no longer offers it — otherwise editing
+    // a card would show an empty dropdown for a value it is still carrying.
     private IReadOnlyList<string> Models
     {
         get
         {
-            var models = AgentOptions.ModelsFor(form.Agent);
+            var models = agents.For(form.Agent).Models;
 
             return form.Model is { } current && !models.Contains(current)
                 ? [.. models, current]
@@ -62,7 +67,7 @@ public partial class TaskDialog(BoardState board, DialogService dialogService)
         }
     }
 
-    private static IReadOnlyList<string> Efforts => AgentOptions.Efforts;
+    private IReadOnlyList<string> Efforts => agents.For(form.Agent).Efforts;
 
     private string PermissionHint => form.Permission switch
     {
@@ -124,7 +129,7 @@ public partial class TaskDialog(BoardState board, DialogService dialogService)
             }
             else
             {
-                await board.CreateAsync(form.ToCard(DateTimeOffset.Now));
+                await board.CreateAsync(form.ToCard(clock.Now));
             }
         }
         finally

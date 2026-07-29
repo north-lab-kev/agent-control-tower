@@ -63,8 +63,9 @@ verifiable, and leaves something runnable.
     auto-git; tools / flags / env behind *Advanced*), required-field validation,
     single Save → card lands in Preparing with a freshly minted number. A
     `BoardState` service owns the card list and raises `Changed`, so the board
-    updates live. `model` / `effort` come from a **placeholder list** until the
-    adapters own them (steps 6-7).
+    updates live. `model` / `effort` now come through `IAgentCapabilityCatalog`
+    (step 6), whose implementation stays a **flagged placeholder** until the real
+    adapters supply the values at step 7.
   - [x] **Editing** — clicking (or keyboard-activating) any card reopens the same
     dialog prefilled, and Save updates that card in place. `NewTaskForm.ApplyTo`
     writes only the fields the form owns, so id, number, session, column, badge,
@@ -83,13 +84,30 @@ verifiable, and leaves something runnable.
 
 ## Phase 3 — Agent abstraction + both adapters
 
-- [ ] **6. Agent adapter interface** — define the seam only (no behavior):
+- [x] **6. Agent adapter interface** — define the seam only (no behavior):
   launch, ingestion sources, input channel, the **injected preamble** (teaches
   the agent the `.act/` status + follow-up file conventions — the agent↔ACT
   contract that steps 8–9 and 12 depend on), and normalized mappings
   (`model` / `effort` / `permissionMode`, permission/question events,
   unsupported-value behavior). Ship a **mock adapter** for tests. *Verify:* mock
-  adapter drives a fake session through the states.
+  adapter drives a fake session through the states. ✅ `Act.Core/Events/` holds the
+  normalized vocabulary every source funnels into. `Abstractions/` holds
+  `IAgentAdapter` (identity, `AgentCapabilities`, `Resolve`, launch/resume),
+  `IAgentSession` (event stream out; approve/deny, answer, send, interrupt, kill in —
+  where **disposal is the between-turns teardown**), `IIngestionSource`,
+  `IAgentCapabilityCatalog` and `IClock`. `LaunchConfigResolution` makes the
+  never-silently-drop rule mechanical: an unsupported value is **substituted with a
+  recorded adjustment or rejected with a message**, and there is no third outcome.
+  `Act.Core/Agents/` owns the `.act/` paths and the preamble text (documented in the
+  spec's *Agent ↔ ACT contract*). `Act.TestSupport` ships `MockAgentAdapter` +
+  `AgentScript` + `TestClock`; `AgentAdapterContract` in `Act.Agents.Tests` is the
+  suite every adapter must pass, run twice — once Claude-shaped, once as a narrow
+  Codex-shaped agent with no reasoning effort and two permission modes. Per the
+  testing standard the suite covers only the **process-free** surface; a scripted
+  session proves the lifecycle (started → activity → permission → decision → turn
+  ended → session ended, plus kill and disposal). **No column or badge moves yet** —
+  the rules engine that reads these events is step 9, which is where the full
+  walk-the-states assertion lands.
 - [ ] **7. Launch — Claude Code + Codex** — Ready → Executing spawns the agent
   via each adapter with a pre-minted `--session-id` and the **injected preamble**
   (so the agent knows the `.act/` conventions from turn one); bind session →

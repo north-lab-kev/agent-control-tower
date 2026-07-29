@@ -9,6 +9,7 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddActInfrastructure(this IServiceCollection services, string dataDirectory)
     {
+        services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<ILiteDatabase>(_ => ActDatabase.Open(dataDirectory));
         services.AddSingleton<ISettingsStore, LiteDbSettingsStore>();
         services.AddSingleton<ICardStore, LiteDbCardStore>();

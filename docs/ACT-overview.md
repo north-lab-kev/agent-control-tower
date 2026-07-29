@@ -656,7 +656,33 @@ dropped by opt-in; launch boundary unchanged).
 
 The two `.act/` conventions — **follow-ups** (`.act/followups/`) and **status**
 (`.act/status/`) — together form the agent→ACT contract, both taught by the
-injected preamble. Worth documenting as one thing when built.
+injected preamble. **Built at step 6**, and deliberately owned by the **core**, not
+by an adapter: the convention is ACT's, so `Act.Core/Agents/ActContract` owns the
+paths and `Act.Core/Agents/AgentPreamble` composes the text from those same
+constants. An adapter only chooses *how* the preamble reaches its agent (prepended
+to the prompt, a system-prompt flag, a settings file).
+
+As built:
+
+| | Status | Follow-ups |
+|---|---|---|
+| Path | `.act/status/<taskId>-<turn>.json` | `.act/followups/<taskId>-<nnn>.json` |
+| Written | before the agent ends **every** turn | optional, before the turn ends |
+| Body | `{ "state": "ready_for_review" \| "needs_input", "question"? }` | `{ "title", "prompt", "cwd"?, "dependsOn"? }` |
+| Missing | assumed `ready_for_review` (never trap a finished task) | nothing spawned |
+
+- **ACT owns the prefix, the agent owns the suffix** (`<turn>` / `<nnn>`), so one
+  `.act/` directory shared by several tasks in a repo can never mix their files up.
+  `ActContract.FilePrefix` / `FilePattern` / `BelongsToTask` are the only places that
+  knowledge lives.
+- **`dependsOn` in a follow-up file lists sibling *sequence numbers*** (`["001"]`) —
+  the agent cannot know the task ids ACT is about to mint, so ordering is expressed
+  in the only handles it has, and step 12 resolves them to ids on ingest.
+- **Atomic writes** (temp name → rename in the same directory) are stated to the
+  agent explicitly, so a watcher never fires on a half-written file.
+- **`autoGit` rides the same preamble.** When configured, the git actions are spelled
+  out as the last work before the `ready_for_review` file, and a failed git step is
+  routed back to the user as `needs_input` naming the step — never completed.
 
 ---
 

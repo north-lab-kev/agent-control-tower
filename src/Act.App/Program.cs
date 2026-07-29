@@ -1,6 +1,7 @@
 using Act.App;
 using Act.App.Cards;
 using Act.App.Settings;
+using Act.Core.Abstractions;
 using Act.Infrastructure;
 using Act.Infrastructure.Storage;
 using ElectronNET.API;
@@ -19,6 +20,7 @@ builder.Services.AddSingleton<IAssetVersions, AssetVersions>();
 
 builder.Services.AddActInfrastructure(
     ActDataDirectory.Resolve(builder.Configuration[ActDataDirectory.OverrideKey]));
+builder.Services.AddSingleton<IAgentCapabilityCatalog, PlaceholderAgentCapabilityCatalog>();
 builder.Services.AddSingleton<AppCulture>();
 builder.Services.AddSingleton<UserSettingsService>();
 builder.Services.AddSingleton<BoardState>();

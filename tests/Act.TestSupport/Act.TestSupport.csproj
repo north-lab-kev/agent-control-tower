@@ -7,4 +7,8 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Act.Core\Act.Core.csproj" />
+  </ItemGroup>
+
 </Project>
