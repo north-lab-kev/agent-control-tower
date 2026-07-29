@@ -1,0 +1,250 @@
+@page "/card/new"
+@page "/card/{CardId:guid}/edit"
+@using Act.App.Cards
+@using Act.Core.Model
+
+<PageTitle>@PageHeading</PageTitle>
+
+@if (missing)
+{
+    <div class="taskview empty">
+        <RadzenText TextStyle="TextStyle.Body1" Text="@Strings.Card_NotFound" />
+        <RadzenButton Text="@Strings.Nav_BackToBoard" Icon="arrow_back" Size="ButtonSize.Small"
+                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" Click="BackToBoard" />
+    </div>
+}
+else
+{
+    <div class="taskview">
+        <header class="bar">
+            <RadzenButton Icon="arrow_back" Text="@Strings.Nav_BackToBoard" Size="ButtonSize.Small"
+                          ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="BackToBoard" />
+            @if (card is { } existing)
+            {
+                <span class="id">#@existing.Number</span>
+            }
+            <span class="title">@PageHeading</span>
+            @* A card that does not exist yet has no terminal to switch to. *@
+            @if (card is { } saved)
+            {
+                <CardSurfaceSwitch CardId="saved.Id" Current="CardSurface.Task" />
+            }
+        </header>
+
+        <RadzenTemplateForm TItem="NewTaskForm" Data="form" Submit="OnSubmitAsync" class="newtask">
+            <div class="body">
+            <RadzenStack Gap="1.1rem" class="sheet">
+
+                <RadzenFieldset Text="@Strings.NewTask_Group_Task">
+                    <RadzenStack Gap="0.9rem">
+                        <RadzenStack Gap="0.3rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Title" />
+                            <RadzenTextBox Name="Title" @bind-Value="form.Title" MaxLength="200" class="wide" />
+                            <RadzenRequiredValidator Component="Title" Text="@Strings.NewTask_Required" />
+                        </RadzenStack>
+
+                        <RadzenStack Gap="0.3rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Prompt" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Prompt_Hint" class="hint" />
+                            <RadzenTextArea Name="Prompt" @bind-Value="form.Prompt" Rows="8" class="wide" />
+                            <RadzenRequiredValidator Component="Prompt" Text="@Strings.NewTask_Required" />
+                        </RadzenStack>
+
+                        <RadzenStack Gap="0.3rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_WorkingDir" />
+
+                            @* Type or pick — neither alone is enough: pasting a known path is
+                               faster than browsing to it, and browsing is the only way to be sure
+                               of one you half-remember. *@
+                            <div class="dirrow">
+                                <RadzenTextBox Name="WorkingDir" @bind-Value="form.WorkingDir"
+                                               Placeholder="@Strings.NewTask_WorkingDir_Placeholder"
+                                               class="wide" />
+                                <RadzenButton Icon="folder_open" Text="@Strings.NewTask_Browse"
+                                              Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                              Variant="Variant.Outlined" ButtonType="ButtonType.Button"
+                                              Click="@(() => picking = !picking)" />
+                            </div>
+                            <RadzenRequiredValidator Component="WorkingDir" Text="@Strings.NewTask_Required" />
+                            <RadzenCustomValidator Component="WorkingDir" Validator="@(() => WorkingDirValid)"
+                                                   Text="@WorkingDirError" />
+
+                            @if (picking)
+                            {
+                                <FolderPicker StartAt="@form.WorkingDir" OnPick="OnFolderPicked"
+                                              OnCancel="@(() => picking = false)" />
+                            }
+
+                            @* Found here rather than at launch: a directory that does not exist is
+                               the single most common reason a launch fails, and the form is where
+                               the user can still do something about it. *@
+                            @if (WorkingDirMissing)
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                             Gap="0.6rem" class="dirwarn">
+                                    <RadzenIcon Icon="folder_off" />
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="@WorkingDirMissingText" />
+                                    <RadzenButton Text="@Strings.NewTask_CreateDir" Icon="create_new_folder"
+                                                  Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
+                                                  Variant="Variant.Outlined" ButtonType="ButtonType.Button"
+                                                  Click="CreateWorkingDir" />
+                                </RadzenStack>
+                            }
+                        </RadzenStack>
+                    </RadzenStack>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="@Strings.NewTask_Group_Agent">
+                    <RadzenStack Gap="1rem">
+                        <div class="row">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Agent" />
+                            <RadzenDropDown TValue="AgentType" Value="form.Agent" ValueChanged="OnAgentChanged"
+                                            Data="AgentChoices" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="false" class="control" />
+                        </div>
+
+                        <div class="row">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Model" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Model_Hint" class="hint" />
+                            </RadzenStack>
+                            <RadzenDropDown TValue="string" @bind-Value="form.Model" Data="Models"
+                                            AllowClear="true" Placeholder="@Strings.NewTask_AgentDefault"
+                                            class="control" />
+                        </div>
+
+                        <div class="row">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Effort" />
+                            <RadzenDropDown TValue="string" @bind-Value="form.Effort" Data="Efforts"
+                                            AllowClear="true" Placeholder="@Strings.NewTask_AgentDefault"
+                                            class="control" />
+                        </div>
+
+                        <div class="row">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Permission" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@PermissionHint" class="hint" />
+                            </RadzenStack>
+                            <RadzenDropDown TValue="PermissionMode" @bind-Value="form.Permission"
+                                            Data="PermissionChoices" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="false" class="control" />
+                        </div>
+                    </RadzenStack>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="@Strings.NewTask_Group_Automation">
+                    <RadzenStack Gap="1rem">
+                        <div class="row">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Schedule" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Schedule_Hint" class="hint" />
+                            </RadzenStack>
+                            <RadzenDropDown TValue="TaskSchedule" Value="form.Schedule" ValueChanged="OnScheduleChanged"
+                                            Data="ScheduleChoices" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="false" class="control" />
+                        </div>
+
+                        @if (form.WantsDateTime)
+                        {
+                            <div class="row">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_ScheduledFor" />
+                                <RadzenDatePicker Name="ScheduledFor" @bind-Value="form.ScheduledFor"
+                                                  ShowTime="true" DateFormat="@Strings.NewTask_DateFormat"
+                                                  class="control" />
+                            </div>
+                            <RadzenRequiredValidator Component="ScheduledFor" Text="@Strings.NewTask_Required" />
+                        }
+
+                        <div class="row">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AutoComplete" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_AutoComplete_Hint" class="hint" />
+                            </RadzenStack>
+                            <RadzenSwitch Value="form.AutoComplete" ValueChanged="OnAutoCompleteChanged" />
+                        </div>
+
+                        @if (form.AutoComplete)
+                        {
+                            <div class="row">
+                                <RadzenStack Gap="0.1rem">
+                                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AutoGit" />
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_AutoGit_Hint" class="hint" />
+                                </RadzenStack>
+                                <RadzenDropDown TValue="GitAction?" @bind-Value="form.SelectedGitAction"
+                                                Data="GitChoices" TextProperty="Text" ValueProperty="Value"
+                                                AllowClear="true" Placeholder="@Strings.NewTask_NoGitAction"
+                                                class="control" />
+                            </div>
+
+                            @if (form.SelectedGitAction is GitAction.PullRequest)
+                            {
+                                <div class="row">
+                                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Draft" />
+                                    <RadzenSwitch @bind-Value="form.Draft" />
+                                </div>
+                            }
+                        }
+                    </RadzenStack>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="@Strings.NewTask_Group_Advanced" AllowCollapse="true" Collapsed="true">
+                    <RadzenStack Gap="0.9rem">
+                        <RadzenStack Gap="0.3rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AllowedTools" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Tools_Hint" class="hint" />
+                            <RadzenTextArea @bind-Value="form.AllowedTools" Rows="2" class="wide" />
+                        </RadzenStack>
+
+                        <RadzenStack Gap="0.3rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_DisallowedTools" />
+                            <RadzenTextArea @bind-Value="form.DisallowedTools" Rows="2" class="wide" />
+                        </RadzenStack>
+
+                        <RadzenStack Gap="0.3rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_ExtraFlags" />
+                            <RadzenTextArea @bind-Value="form.ExtraFlags" Rows="2" class="wide" />
+                        </RadzenStack>
+
+                        <RadzenStack Gap="0.3rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Env" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Env_Hint" class="hint" />
+                            <RadzenTextArea @bind-Value="form.Env" Rows="3" class="wide" />
+                        </RadzenStack>
+                    </RadzenStack>
+                </RadzenFieldset>
+
+            </RadzenStack>
+            </div>
+
+            <div class="footer">
+                <div class="sheet foot">
+                    <div class="destructive">
+                        @* Archiving is reversible, so a childless card needs no confirmation — the
+                           archive page is the undo. A card with follow-ups opens a dialog, because
+                           their fate is a real choice about tasks other than this one. *@
+                        @if (card is not null)
+                        {
+                            <RadzenButton Icon="delete_outline" ButtonStyle="ButtonStyle.Danger"
+                                          Variant="Variant.Text" Size="ButtonSize.Small"
+                                          ButtonType="ButtonType.Button" Disabled="deleting"
+                                          Click="StartDeleteAsync"
+                                          title="@Strings.Task_Delete" aria-label="@Strings.Task_Delete" />
+                        }
+                    </div>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End"
+                                 Gap="0.5rem">
+                        @* Icon-only, like delete — but both keep a title and an aria-label, because
+                           an unlabelled button is only unambiguous to the person who wrote it. *@
+                        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                                      Size="ButtonSize.Small" ButtonType="ButtonType.Button" Click="BackToBoard"
+                                      title="@Strings.NewTask_Cancel" aria-label="@Strings.NewTask_Cancel" />
+                        <RadzenButton Icon="save" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat"
+                                      Size="ButtonSize.Small" ButtonType="ButtonType.Submit" Disabled="saving"
+                                      title="@Strings.NewTask_Save" aria-label="@Strings.NewTask_Save" />
+                    </RadzenStack>
+                </div>
+            </div>
+        </RadzenTemplateForm>
+    </div>
+}

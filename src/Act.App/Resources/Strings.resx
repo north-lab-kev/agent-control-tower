@@ -36,12 +36,6 @@
   <data name="Shell_NewTask" xml:space="preserve">
     <value>New task</value>
   </data>
-  <data name="NewTask_DialogTitle" xml:space="preserve">
-    <value>New task</value>
-  </data>
-  <data name="TaskDialog_EditTitle" xml:space="preserve">
-    <value>Edit task</value>
-  </data>
   <data name="NewTask_Group_Task" xml:space="preserve">
     <value>Task</value>
   </data>
@@ -336,9 +330,6 @@
   <data name="Settings_Density_Compact" xml:space="preserve">
     <value>Compact</value>
   </data>
-  <data name="Settings_Close" xml:space="preserve">
-    <value>Close</value>
-  </data>
   <data name="Error_PageTitle" xml:space="preserve">
     <value>Error — ACT</value>
   </data>
@@ -360,17 +351,11 @@
   <data name="NotFound_Text" xml:space="preserve">
     <value>Sorry, the content you are looking for does not exist.</value>
   </data>
-  <data name="Session_BackToBoard" xml:space="preserve">
-    <value>Board</value>
-  </data>
-  <data name="Session_NotFound" xml:space="preserve">
-    <value>That card no longer exists.</value>
-  </data>
   <data name="Session_NoLiveSession" xml:space="preserve">
     <value>No session is running for this card.</value>
   </data>
   <data name="Session_Launch" xml:space="preserve">
-    <value>Launch session</value>
+    <value>Launch now</value>
   </data>
   <data name="Session_Agent" xml:space="preserve">
     <value>Agent</value>
@@ -400,6 +385,114 @@
     <value>Open terminal</value>
   </data>
   <data name="Board_Launch" xml:space="preserve">
-    <value>Launch</value>
+    <value>Launch now</value>
+  </data>
+  <data name="Nav_BackToBoard" xml:space="preserve">
+    <value>Board</value>
+  </data>
+  <data name="Card_NotFound" xml:space="preserve">
+    <value>That card no longer exists.</value>
+  </data>
+  <data name="TaskView_NewTitle" xml:space="preserve">
+    <value>New task</value>
+  </data>
+  <data name="Card_Surface_Task" xml:space="preserve">
+    <value>Task</value>
+  </data>
+  <data name="Card_Surface_Terminal" xml:space="preserve">
+    <value>Terminal</value>
+  </data>
+  <data name="Session_NotLaunchable" xml:space="preserve">
+    <value>Move the card to Ready to launch it.</value>
+  </data>
+  <data name="Session_LaunchFailed" xml:space="preserve">
+    <value>Launch failed</value>
+  </data>
+  <data name="NewTask_CreateDir" xml:space="preserve">
+    <value>Create it</value>
+  </data>
+  <data name="NewTask_DirMissing" xml:space="preserve">
+    <value>This directory does not exist yet.</value>
+  </data>
+  <data name="NewTask_CreateDirFailed" xml:space="preserve">
+    <value>Could not create the directory</value>
+  </data>
+  <data name="NewTask_DirMissingResolved" xml:space="preserve">
+    <value>This directory does not exist yet ({0}).</value>
+  </data>
+  <data name="NewTask_Browse" xml:space="preserve">
+    <value>Browse</value>
+  </data>
+  <data name="NewTask_DirNotAbsolute" xml:space="preserve">
+    <value>Enter an absolute path, or start with ~ for your home folder.</value>
+  </data>
+  <data name="NewTask_DirMalformed" xml:space="preserve">
+    <value>That is not a valid folder path.</value>
+  </data>
+  <data name="Picker_Home" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="Picker_Roots" xml:space="preserve">
+    <value>Drives</value>
+  </data>
+  <data name="Picker_Up" xml:space="preserve">
+    <value>Up one level</value>
+  </data>
+  <data name="Picker_Use" xml:space="preserve">
+    <value>Use this folder</value>
+  </data>
+  <data name="Picker_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Picker_Empty" xml:space="preserve">
+    <value>No sub-folders here.</value>
+  </data>
+  <data name="Picker_Missing" xml:space="preserve">
+    <value>This folder no longer exists.</value>
+  </data>
+  <data name="Picker_Unreadable" xml:space="preserve">
+    <value>This folder cannot be read.</value>
+  </data>
+  <data name="Picker_Malformed" xml:space="preserve">
+    <value>That is not a valid folder path.</value>
+  </data>
+  <data name="Task_Delete" xml:space="preserve">
+    <value>Delete task</value>
+  </data>
+  <data name="Task_DeleteFailed" xml:space="preserve">
+    <value>Could not delete the task</value>
+  </data>
+  <data name="Archive_Title" xml:space="preserve">
+    <value>Archive</value>
+  </data>
+  <data name="Archive_Empty" xml:space="preserve">
+    <value>Nothing archived.</value>
+  </data>
+  <data name="Archive_Restore" xml:space="preserve">
+    <value>Restore to the board</value>
+  </data>
+  <data name="Archive_Clear" xml:space="preserve">
+    <value>Clear archive</value>
+  </data>
+  <data name="Archive_ClearConfirm" xml:space="preserve">
+    <value>Permanently delete all {0} archived task(s)? This cannot be undone.</value>
+  </data>
+  <data name="Archive_ClearYes" xml:space="preserve">
+    <value>Delete permanently</value>
+  </data>
+  <data name="Task_DeleteFollowUps" xml:space="preserve">
+    <value>This task has {0} follow-up task(s). Archive them too?</value>
+  </data>
+  <data name="Task_DeleteWithFollowUps" xml:space="preserve">
+    <value>Archive with follow-ups</value>
+  </data>
+  <data name="Task_DeleteKeepFollowUps" xml:space="preserve">
+    <value>Keep follow-ups</value>
+  </data>
+  <data name="Task_DeleteRestoreHint" xml:space="preserve">
+    <value>Archived tasks can be restored from the archive.</value>
+  </data>
+  <data name="NewTask_WorkingDir_Placeholder" xml:space="preserve">
+    <value>Type a path, or browse</value>
   </data>
 </root>

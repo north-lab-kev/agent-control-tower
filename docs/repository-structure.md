@@ -39,16 +39,22 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  ├─ Act.Infrastructure/           # LiteDB store, localhost hook host, FileSystemWatcher,
 │  │  │                            #   process supervision, Serilog wiring
 │  │  ├─ Storage/                   #   act.db open + BsonMapper, schema version, card/settings stores
+│  │  ├─ FileSystem/                #   IWorkingDirectories: ~ expansion, path validation, browsing
 │  │  ├─ Terminal/                  #   IPtyHost over Porta.Pty: spawn, incremental UTF-8 decode,
 │  │  │                            #     batched flush, capped scrollback, resize, kill
 │  │  └─ Hooks/                     #   hook endpoint + per-session token; route mapped from
 │  │                               #     Program.cs via an extension (no ASP.NET in Core)
 │  ├─ Act.App/                      # Blazor Server UI + Electron desktop host (ElectronNET.Core)
-│  │  ├─ Components/                #   board, flight strips, drawer, new-task modal
-│  │  │  └─ Session/                #     full-screen terminal view per card (xterm + side rail)
-│  │  ├─ Cards/                     #   BoardState (card list + Changed event), task form model,
-│  │  │                            #     placeholder capability catalog (until step 7)
-│  │  ├─ Seeding/                   #   sample cards (dev-only demo data; drops out at step 5)
+│  │  ├─ Components/
+│  │  │  ├─ Pages/                  #     EVERY @page component and nothing else:
+│  │  │  │                          #       BoardView "/", TaskView, SessionView,
+│  │  │  │                          #       ArchiveView, SettingsView, Error, NotFound
+│  │  │  ├─ Board/                  #     non-routable board parts (FlightStrip)
+│  │  │  ├─ Shared/                 #     CardSurfaceSwitch (Task|Terminal toggle) + FolderPicker
+│  │  │  └─ Layout/                 #     MainLayout, top bar, theme stylesheets
+│  │  ├─ Cards/                     #   BoardState — owns every card incl. archived ones, and
+│  │  │                            #     decides what may see which; task form model; capability
+│  │  │                            #     catalog built from the registered adapters
 │  │  ├─ Settings/                  #   user-settings service + culture
 │  │  ├─ Resources/                 #   .resx strings (en / fr)
 │  │  ├─ wwwroot/                   #   CSS (flight-strip look), assets
@@ -99,6 +105,27 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   (`AgentPreamble`) because the convention is agent-agnostic; an adapter only
   decides *how* to deliver the preamble. One place to tune the wording, one place
   every later step resolves those paths from.
+- **`Components/Pages/` holds every routable component, and nothing else.** The rule is
+  simply *a component with `@page` lives in `Pages/`* — so the folder listing is the
+  route list, and there is one place to look. Non-routable components stay with their
+  feature (`Board/FlightStrip`). The routes:
+
+  | Route | Page |
+  |---|---|
+  | `/` | `BoardView` |
+  | `/card/new` · `/card/{id}/edit` | `TaskView` |
+  | `/card/{id}/terminal` | `SessionView` |
+  | `/archive` | `ArchiveView` |
+  | `/settings` | `SettingsView` |
+  | `/Error` · `/not-found` | `Error` · `NotFound` |
+
+  `grep -rn "^@page" src/Act.App` regenerates that table; keep it in step with the code.
+- **Pages are destinations; dialogs are forks.** The new-task modal, the edit modal and the
+  settings dialog all became routes, because each was somewhere you *go*. What stayed modal
+  is the opposite kind of thing: a prompt that interrupts an action already under way and
+  would be meaningless as a URL — archiving a card with follow-ups, and emptying the
+  archive. Step 11's completion/git prompt is the same shape. `RadzenComponents`
+  and the `-webkit-app-region: no-drag` rule are kept for it.
 - **The pseudo-terminal is a Core port, not adapter code.** Spawning a process under
   a pty and pumping its bytes is agent-agnostic plumbing; only the *command line* is
   agent-shaped. So `IPtyHost` lives in `Act.Core/Abstractions` and its `Porta.Pty`
@@ -123,13 +150,13 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   of silently mangled. Collection names live in one place (`ActCollections`), and
   the friendly card `number` comes from a counter document that seeds itself
   above any card already stored.
-- **Sample data is app-level and never ships.** `Act.App/Seeding/` writes the demo
-  cards through `ICardStore` only when the store is empty, so persistence stays
-  observable in dev. The gate is **compile-time**: the csproj drops `Seeding\**`
-  from `<Compile>` for any non-`Debug` configuration and the two call sites in
-  `Program.cs` sit behind `#if DEBUG`, so the types are absent from the Release
-  assembly rather than merely unreachable. `Act:SeedSampleCards` turns it off
-  within a Debug build.
+- **No sample data.** `Act.App/Seeding/` existed so the board had something to render
+  before tasks could be created, along with a compile-time gate to keep it out of Release.
+  Creating a real task is now a page and a Save, so the demo cards, the `#if DEBUG` call
+  sites, the csproj `<Compile Remove>` and the `Act:SeedSampleCards` switch are all gone.
+  **Deleting the seeder does not delete already-seeded rows** — an existing `act.db` keeps
+  whatever it was given; clear it by deleting the file (or the cards) if you want an empty
+  board.
 - **Node artifacts must be git-ignored** — Electron.NET pulls in `node_modules`
   and a build-output folder; easy to accidentally commit (bloat + secrets risk
   on go-public).

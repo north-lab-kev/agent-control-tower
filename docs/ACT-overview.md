@@ -436,8 +436,31 @@ adapter maps it** to that agent's real CLI flags / settings, defines valid
 values, and defines behavior for unsupported values (map to nearest equivalent
 *or* reject at launch with a clear message — never silently drop).
 
-- `workingDir` — the task's cwd.
-- `agentBinary` — path to the executable (global default per `agentType`).
+- `workingDir` — the task's cwd. **Stored as the user typed it and resolved at launch:** a
+  leading `~` is expanded (nothing below a shell does it, so `~/dev/act` would otherwise
+  reach `CreateProcess` verbatim and fail), separators are normalized, and the directory
+  is checked to exist *before* spawning — a pty reports a missing one as "The directory
+  name is invalid" tacked onto the entire command line, which buries the only fact that
+  matters. The card keeps showing the short form. The **task form** runs the same check
+  as you type and offers to create the directory, so the commonest launch failure is
+  caught where it can still be fixed rather than at launch. Resolution is the
+  `IWorkingDirectories` port, since the launch, the form and step 8's `.act/` watchers
+  all need the same answer. Its placeholder names the two ways in ("Type a path, or
+  browse") rather than showing a sample path — a greyed `C:\dev\act` reads as a value
+  the field already holds, and the format it was teaching is better taught by the
+  validation message on the rare occasion it is wrong. The field is **type-or-pick**: a
+  **Browse** panel walks the
+  machine's own directories — rooted at the drives on Windows, `/` elsewhere, so one
+  picker serves both. It browses server-side deliberately: a browser will not hand back an
+  absolute path (the File System Access API withholds it by design) and a native dialog
+  exists only under the Electron shell, so neither works in both of ACT's run modes.
+  Validation distinguishes **malformed** (blocks the save — including a *relative* path,
+  which would otherwise resolve against wherever ACT happens to be running) from merely
+  **missing** (a warning plus *Create it*, and the task still saves, because a directory
+  you are about to make is a reasonable thing to plan against).
+- `agentBinary` — path to the executable (global default per `agentType`). Resolved
+  against `PATH` at launch, since a pty spawns with an explicit image path and does not
+  search for one.
 - `model` — per-task; **agent-specific** values (e.g. current Claude Code:
   Sonnet 5 / Opus 4.8 / Fable 5).
 - `effort` — per-task reasoning effort; **agent + model-specific**. Not a flat list
@@ -960,11 +983,33 @@ history.
 - **Auto-archive** Completed cards after a **configurable window (default 90
   days)**: they leave the board but stay in LiteDB — fully searchable, with
   `transitions[]`, `metrics`, lineage, and `initialPrompt` intact (audit +
-  analytics value, cheap to keep).
-- **Purge = manual only.** No auto-delete. A manual delete exists on any card,
-  with two guards: deleting a card with children must not orphan lineage (block
-  or cascade-confirm), and deleting an **active** (past-launch) card requires
-  killing its session first (cross-refs the kill/abandon hatch).
+  analytics value, cheap to keep). **Not the same axis as `deletedAt`** — that marks
+  what the *user* removed and expects to find in the archive; auto-archive is a
+  retention policy on cards nobody deleted, and step 15 gives it its own marker rather
+  than reusing this one. Sharing a field would make "restore" mean two different things.
+- **Delete is always soft.** The task page's footer carries an icon-only delete, left-
+  aligned and deliberately far from Save, available in **any** column. It sets
+  `deletedAt` and the card leaves the board — nothing is destroyed, so it asks nothing:
+  **the archive is the undo**. The only irreversible act in the app is emptying that
+  archive, and it lives there rather than on the card.
+  - **Archive page** (`/archive`, from the top bar): everything deleted, newest first,
+    each restorable with one click, plus **Clear archive** — the single permanent delete,
+    behind an inline confirm. Restore puts a card back in the column it left.
+  - **Kill before archiving.** A card with a live session tears the process down first.
+    Archiving while its agent kept working would leave a process editing a directory with
+    nothing on the board pointing at it — precisely the state ACT exists to prevent. The
+    session does not come back on restore; the card does, and can be launched again.
+  - **Follow-ups are a question, not a guard.** A card with live children opens a **dialog**
+    asking whether to archive them too or keep them, and it **names the follow-ups** rather
+    than counting them — nobody can weigh "2 tasks". It is the one thing the user must
+    decide, and separate from "are you sure", which soft delete makes unnecessary.
+    **Lineage is left intact either
+    way**, so an archived parent still knows its children and a restore finds them
+    attached. Purging is where the both-sides rule finally applies: a purged card is
+    unlinked from any surviving parent's `children[]` before the row goes.
+  - **Restore is per card, never a subtree.** Children were archived by their own
+    decision and come back the same way, so restoring a parent never silently resurrects
+    work the user meant to be rid of.
 - **Artifact housekeeping:** on completion/archival ACT cleans up **its own**
   `.act/status/` and `.act/followups/consumed/` files for that task. It **never**
   touches the agent's transcripts (not ACT's to delete, and needed for resume).
@@ -1094,6 +1139,10 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   both: teal=running, amber=needs permission/answer, red=error,
   blue=idle/to-review, muted green=done, dim yellow=stale. Brand mark = a small
   radar sweep.
+- **Launch is "Launch now".** Named for what it will mean rather than what it does
+  today: once the scheduler lands (step 14) a card can be waiting on a `schedule`, and
+  this button is the **override** that starts it regardless. Naming it plain "Launch"
+  now would have to change then, and the two would read as different actions.
 - **Board:** **six flat columns — no persistent zones.** The launch-boundary
   rule is shown **dynamically at drag time**: picking up a draggable card lights
   only its valid drop targets and **grays out invalid columns** (Ready →
@@ -1132,10 +1181,43 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     **"N need you ›"** pill and the OS notification both land here.
   - The terminal replays its scrollback on entry, so leaving the view and returning
     is free.
-- **New task:** a **modal** with the control set (title, prompt, dir, agent,
-  model, effort, permission mode, schedule, auto-complete, auto-git; tools / env
-  / flags behind **Advanced**) and a **single Save** → lands in Preparing; the
-  user drags it onward.
+  - **Transient failures are notifications, not page furniture.** A failed launch is a
+    path or a command line — it does not fit a 15rem rail, and it is news rather than a
+    property of the card. It goes to the notification host; what the *card* carries is
+    the `error` badge and the transition note, which persist. Anything that must survive
+    a dismissal belongs on the card, not in a toast.
+- **New task / edit task:** a **page**, not a modal — `/card/new` and
+  `/card/{id}/edit`, matching the session view. Same control set (title, prompt, dir,
+  agent, model, effort, permission mode, schedule, auto-complete, auto-git; tools /
+  env / flags behind **Advanced**) and a **single Save** → lands in Preparing; the
+  user drags it onward. The fields sit in a centred column so a wide window does not
+  stretch them.
+  - **Why a page:** a card is then always somewhere you can land, link to, and come
+    back from, and its two faces — the form before launch, the terminal after — are
+    the same kind of thing rather than one modal and one route. Clicking a card opens
+    whichever face applies: the form in Preparing / Ready, the terminal past the
+    launch boundary. **Every surface is a page** — the board, the task form, the
+    terminal, the archive and settings.
+  - **The title strip never dims.** The OS draws the window buttons *above* all web content, so
+    a mask over the whole window dims everything except them and leaves them stranded in a bright
+    block. Nothing in CSS can reach them, so the mask stops below the strip instead and the strip
+    stays lit as a unit — the seam cannot form because no boundary runs through it. Its controls
+    go inert while a dialog is up (navigating away would strand the dialog); the native buttons
+    stay live, because closing the window must always work.
+  - **Dialogs are for forks, not for places.** A page is somewhere you go and can link to;
+    a dialog interrupts an action already under way and has no meaning on its own. So the
+    only modals are the two destructive prompts — archiving a card with follow-ups, and
+    emptying the archive — plus the completion/git prompt at step 11. Anything that is a
+    *destination* is a route. Corollary learned the hard way: a decision that changes tasks
+    other than the one on screen does not belong in a footer strip, however tidy.
+  - **The two faces toggle, always.** Both card pages carry a `Task | Terminal` switch,
+    so state decides only where a *click* lands, never what you are allowed to look at
+    afterwards — you can read the prompt of a running task, or the terminal of one that
+    has not launched. Consequence worth stating: reaching a terminal is not permission to
+    start one. The launch action appears only for a card in **Ready** (the launch) or
+    **Executing** (a re-attach after ACT restarted, where the binding survived but the
+    process did not); anywhere else the page says to move the card to Ready. Otherwise
+    the toggle would quietly become a way to skip Ready and break the control arc.
 - **Build split:** signature flight-strip look = custom Blazor markup + CSS;
   heavier widgets (dialog/modal, drawer, tables, inputs) = Radzen themed to the
   same palette via shared CSS variables. Mockups were hand-CSS only. The terminal
@@ -1149,9 +1231,13 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   JS and no flash of the wrong theme on first paint. Dark is the signature look;
   the light variant keeps the same semantic status colors at adjusted
   lightness.
-- **Settings dialog:** the home for scattered preferences, opened from the gear
-  in the top bar and grouped by type (**General**, **Appearance**, more to come).
-  Every setting applies immediately and persists to LiteDB — no OK/Cancel.
+- **Settings page** (`/settings`): the home for scattered preferences, opened from the
+  gear in the top bar and grouped by type (**General**, **Appearance**, more to come).
+  Every setting applies immediately and persists to LiteDB — no OK/Cancel, and no Close
+  either: the only action is the back arrow. A page rather than a dialog for the same
+  reason as the task form — see *Interaction*. It also fixes a wart the dialog had: a
+  language change forces a reload, which used to dismiss the dialog as a side effect and
+  dump you on the board; now you stay on settings.
   Shipped: **language**, **theme** (follow-OS / light / dark override), and
   **display mode** (compact / spacious — settings-only; there is no top-bar
   density toggle). Still to land: the notification matrix, keep-awake,

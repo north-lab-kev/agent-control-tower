@@ -42,10 +42,12 @@ verifiable, and leaves something runnable.
   (identity, state, launch config, lineage, transitions, metrics); `ICardStore`
   port + `LiteDbCardStore`; a schema-version document with a migration hook; the
   friendly `number` sequence starts at **#1000** from a counter document. Sample
-  cards seed **once into an empty store**, and are **`Debug`-only — `Seeding/` is
-  excluded from the Release compile**, so no demo data ships. Board and the
+  cards seeded **once into an empty store**, and were **`Debug`-only — `Seeding/` was
+  excluded from the Release compile**, so no demo data ever shipped. Board and the
   top-bar attention count read from the store; a restart returns the same board
-  (no re-seed, no duplicates).
+  (no re-seed, no duplicates). **Seeding was removed once tasks became easy to
+  create** (step 7's task page); an existing `act.db` keeps whatever it was already
+  given.
 
 ## Phase 2 — Board (read-only, agent-agnostic)
 
@@ -153,7 +155,11 @@ verifiable, and leaves something runnable.
     resolved off `PATH`, conhost geometry matching xterm's 140×43), the card moved to
     Executing and persisted its session id, and re-entering the route replayed the
     TUI out of `Terminal.Backlog` into the xterm buffer.
-    - **Not verified: on-screen painting.** xterm repaints through
+    - **A pseudo-console outlives the process attached to it.** `IPtyConnection` is
+    `IDisposable`, and killing the agent without disposing it leaks one `conhost.exe`
+    per session ACT ever launches. Found by watching the process tree after a kill;
+    `PtyProcess.DisposeAsync` now disposes the connection last.
+  - **Not verified: on-screen painting.** xterm repaints through
       `requestAnimationFrame`, which never fires in the headless preview pane, so the
       buffer fills but the rows stay blank there. Needs one look in a real window.
 - [ ] **8. Ingestion — observability only** — normalized event stream fed per

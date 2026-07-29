@@ -5,8 +5,9 @@ using Act.Core.Abstractions;
 using Act.Core.Model;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using Radzen;
 
-namespace Act.App.Components.Session;
+namespace Act.App.Components.Pages;
 
 // The full-screen terminal for one card. It attaches to a session the registry already holds
 // rather than owning one, so navigating away and back re-attaches to the same live process and
@@ -17,6 +18,7 @@ public partial class SessionView(
     SessionLauncher launcher,
     IEnumerable<IAgentAdapter> adapters,
     NavigationManager navigation,
+    NotificationService notifications,
     IJSRuntime js) : IAsyncDisposable
 {
     private readonly string terminalId = $"act-term-{Guid.NewGuid():N}";
@@ -33,7 +35,6 @@ public partial class SessionView(
 
     private bool launching;
 
-    private string? launchError;
 
     [Parameter]
     public Guid CardId { get; set; }
@@ -41,6 +42,8 @@ public partial class SessionView(
     private string TerminalId => terminalId;
 
     private TerminalSize Geometry { get; set; } = TerminalSize.Default;
+
+    private bool CanLaunch => card is { } existing && launcher.CanLaunch(existing);
 
     // Null until the session id is known, which for Codex is a little after launch — and null
     // forever for an agent with no desktop app, so the action simply does not appear.
@@ -57,11 +60,19 @@ public partial class SessionView(
         }
     }
 
+    // Synchronous first, load only on a miss — see the same note on TaskView: it keeps the page
+    // title correct on the first render instead of a frame late.
     protected override async Task OnInitializedAsync()
     {
-        await board.LoadAsync();
-
         card = board.Card(CardId);
+
+        if (card is null)
+        {
+            await board.LoadAsync();
+
+            card = board.Card(CardId);
+        }
+
         registry.Changed += OnRegistryChanged;
     }
 
@@ -146,19 +157,31 @@ public partial class SessionView(
         _ = WriteToTerminalAsync(attached.Terminal.Backlog);
     }
 
+    // A failed launch reports through the notification host rather than into the side rail: the
+    // rail is 15rem wide and a launch failure is usually a path or a command line, which it cannot
+    // show without overflowing. It is also transient news, not part of the card's description.
     private async Task LaunchAsync()
     {
         if (card is null || launching)
             return;
 
         launching = true;
-        launchError = null;
 
         try
         {
             var result = await launcher.LaunchAsync(card, Geometry);
 
-            launchError = result.Message;
+            if (result.Message is { } message)
+            {
+                notifications.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = Strings.Session_LaunchFailed,
+                    Detail = message,
+                    Duration = 20000,
+                });
+            }
+
             card = board.Card(CardId);
 
             BindSession();

@@ -16,8 +16,14 @@ public sealed class SessionLauncher(
     private readonly IReadOnlyDictionary<AgentType, IAgentAdapter> byAgent =
         adapters.ToDictionary(adapter => adapter.Agent);
 
+    // Ready is the launch; Executing is a re-attach (a card keeps its binding when ACT restarts
+    // but not its process); Needs feedback is the retry the spec promises for an `error`, and
+    // without it a failed launch would be a dead end — the failure itself moves the card there.
+    // Preparing, To review and Completed are refused: the terminal is reachable from any card now
+    // that the two faces toggle, and reaching it must not become a way to skip Ready.
     public bool CanLaunch(Card card)
-        => card.Column == BoardColumn.Ready && byAgent.ContainsKey(card.AgentType);
+        => card.Column is BoardColumn.Ready or BoardColumn.Executing or BoardColumn.NeedsFeedback
+            && byAgent.ContainsKey(card.AgentType);
 
     public LaunchConfigResolution? Preview(Card card)
         => byAgent.TryGetValue(card.AgentType, out var adapter)
@@ -31,6 +37,9 @@ public sealed class SessionLauncher(
     {
         if (registry.IsLive(card.Id))
             return LaunchResult.Ok();
+
+        if (!CanLaunch(card))
+            return LaunchResult.Refused($"A card in {card.Column} cannot be launched.");
 
         if (!byAgent.TryGetValue(card.AgentType, out var adapter))
             return LaunchResult.Refused($"No adapter is registered for {card.AgentType}.");

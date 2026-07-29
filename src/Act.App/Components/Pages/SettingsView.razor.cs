@@ -2,14 +2,12 @@ using Act.App.Resources;
 using Act.App.Settings;
 using Act.Core.Model;
 using Microsoft.AspNetCore.Components;
-using Radzen;
 
-namespace Act.App.Components.Settings;
+namespace Act.App.Components.Pages;
 
-public partial class SettingsDialog(
-    UserSettingsService settings,
-    DialogService dialogService,
-    NavigationManager navigation)
+// Every setting applies and persists the moment it changes, so there is no Save and no Cancel —
+// the only action is leaving, which is what the back arrow is for.
+public partial class SettingsView(UserSettingsService settings, NavigationManager navigation)
 {
     private static SettingChoice<LanguagePreference>[] LanguageChoices =>
     [
@@ -37,13 +35,15 @@ public partial class SettingsDialog(
 
     private BoardDensity Density => settings.Density;
 
+    // A language change has to re-run the whole render tree under the new culture, so it reloads.
+    // As a page that now lands the user back on settings rather than on the board, which is where
+    // they were — the reload is no longer also a dismissal.
     private void OnLanguageChanged(LanguagePreference language)
     {
         if (language == settings.Language)
             return;
 
         settings.SetLanguage(language);
-        dialogService.Close();
         navigation.Refresh(forceReload: true);
     }
 
@@ -51,5 +51,5 @@ public partial class SettingsDialog(
 
     private void OnDensityChanged(BoardDensity density) => settings.SetDensity(density);
 
-    private void Close() => dialogService.Close();
+    private void BackToBoard() => navigation.NavigateTo("/");
 }

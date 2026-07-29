@@ -36,12 +36,6 @@
   <data name="Shell_NewTask" xml:space="preserve">
     <value>Nouvelle tâche</value>
   </data>
-  <data name="NewTask_DialogTitle" xml:space="preserve">
-    <value>Nouvelle tâche</value>
-  </data>
-  <data name="TaskDialog_EditTitle" xml:space="preserve">
-    <value>Modifier la tâche</value>
-  </data>
   <data name="NewTask_Group_Task" xml:space="preserve">
     <value>Tâche</value>
   </data>
@@ -336,9 +330,6 @@
   <data name="Settings_Density_Compact" xml:space="preserve">
     <value>Compact</value>
   </data>
-  <data name="Settings_Close" xml:space="preserve">
-    <value>Fermer</value>
-  </data>
   <data name="Error_PageTitle" xml:space="preserve">
     <value>Erreur — ACT</value>
   </data>
@@ -360,17 +351,11 @@
   <data name="NotFound_Text" xml:space="preserve">
     <value>Désolé, le contenu que vous cherchez n’existe pas.</value>
   </data>
-  <data name="Session_BackToBoard" xml:space="preserve">
-    <value>Tableau</value>
-  </data>
-  <data name="Session_NotFound" xml:space="preserve">
-    <value>Cette carte n'existe plus.</value>
-  </data>
   <data name="Session_NoLiveSession" xml:space="preserve">
     <value>Aucune session n'est en cours pour cette carte.</value>
   </data>
   <data name="Session_Launch" xml:space="preserve">
-    <value>Démarrer la session</value>
+    <value>Démarrer maintenant</value>
   </data>
   <data name="Session_Agent" xml:space="preserve">
     <value>Agent</value>
@@ -400,6 +385,114 @@
     <value>Ouvrir le terminal</value>
   </data>
   <data name="Board_Launch" xml:space="preserve">
-    <value>Démarrer</value>
+    <value>Démarrer maintenant</value>
+  </data>
+  <data name="Nav_BackToBoard" xml:space="preserve">
+    <value>Tableau</value>
+  </data>
+  <data name="Card_NotFound" xml:space="preserve">
+    <value>Cette carte n'existe plus.</value>
+  </data>
+  <data name="TaskView_NewTitle" xml:space="preserve">
+    <value>Nouvelle tâche</value>
+  </data>
+  <data name="Card_Surface_Task" xml:space="preserve">
+    <value>Tâche</value>
+  </data>
+  <data name="Card_Surface_Terminal" xml:space="preserve">
+    <value>Terminal</value>
+  </data>
+  <data name="Session_NotLaunchable" xml:space="preserve">
+    <value>Déplacez la carte vers Prêt pour la démarrer.</value>
+  </data>
+  <data name="Session_LaunchFailed" xml:space="preserve">
+    <value>Échec du démarrage</value>
+  </data>
+  <data name="NewTask_CreateDir" xml:space="preserve">
+    <value>Créer</value>
+  </data>
+  <data name="NewTask_DirMissing" xml:space="preserve">
+    <value>Ce répertoire n'existe pas encore.</value>
+  </data>
+  <data name="NewTask_CreateDirFailed" xml:space="preserve">
+    <value>Impossible de créer le répertoire</value>
+  </data>
+  <data name="NewTask_DirMissingResolved" xml:space="preserve">
+    <value>Ce répertoire n'existe pas encore ({0}).</value>
+  </data>
+  <data name="NewTask_Browse" xml:space="preserve">
+    <value>Parcourir</value>
+  </data>
+  <data name="NewTask_DirNotAbsolute" xml:space="preserve">
+    <value>Entrez un chemin absolu, ou commencez par ~ pour votre dossier personnel.</value>
+  </data>
+  <data name="NewTask_DirMalformed" xml:space="preserve">
+    <value>Ce chemin de dossier n'est pas valide.</value>
+  </data>
+  <data name="Picker_Home" xml:space="preserve">
+    <value>Personnel</value>
+  </data>
+  <data name="Picker_Roots" xml:space="preserve">
+    <value>Disques</value>
+  </data>
+  <data name="Picker_Up" xml:space="preserve">
+    <value>Remonter d'un niveau</value>
+  </data>
+  <data name="Picker_Use" xml:space="preserve">
+    <value>Utiliser ce dossier</value>
+  </data>
+  <data name="Picker_Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Picker_Empty" xml:space="preserve">
+    <value>Aucun sous-dossier ici.</value>
+  </data>
+  <data name="Picker_Missing" xml:space="preserve">
+    <value>Ce dossier n'existe plus.</value>
+  </data>
+  <data name="Picker_Unreadable" xml:space="preserve">
+    <value>Ce dossier ne peut pas être lu.</value>
+  </data>
+  <data name="Picker_Malformed" xml:space="preserve">
+    <value>Ce chemin de dossier n'est pas valide.</value>
+  </data>
+  <data name="Task_Delete" xml:space="preserve">
+    <value>Supprimer la tâche</value>
+  </data>
+  <data name="Task_DeleteFailed" xml:space="preserve">
+    <value>Impossible de supprimer la tâche</value>
+  </data>
+  <data name="Archive_Title" xml:space="preserve">
+    <value>Archives</value>
+  </data>
+  <data name="Archive_Empty" xml:space="preserve">
+    <value>Aucune archive.</value>
+  </data>
+  <data name="Archive_Restore" xml:space="preserve">
+    <value>Restaurer au tableau</value>
+  </data>
+  <data name="Archive_Clear" xml:space="preserve">
+    <value>Vider les archives</value>
+  </data>
+  <data name="Archive_ClearConfirm" xml:space="preserve">
+    <value>Supprimer définitivement les {0} tâche(s) archivée(s) ? Cette action est irréversible.</value>
+  </data>
+  <data name="Archive_ClearYes" xml:space="preserve">
+    <value>Supprimer définitivement</value>
+  </data>
+  <data name="Task_DeleteFollowUps" xml:space="preserve">
+    <value>Cette tâche a {0} tâche(s) de suivi. Les archiver aussi ?</value>
+  </data>
+  <data name="Task_DeleteWithFollowUps" xml:space="preserve">
+    <value>Archiver avec les suivis</value>
+  </data>
+  <data name="Task_DeleteKeepFollowUps" xml:space="preserve">
+    <value>Conserver les suivis</value>
+  </data>
+  <data name="Task_DeleteRestoreHint" xml:space="preserve">
+    <value>Les tâches archivées peuvent être restaurées depuis les archives.</value>
+  </data>
+  <data name="NewTask_WorkingDir_Placeholder" xml:space="preserve">
+    <value>Saisissez un chemin, ou parcourez</value>
   </data>
 </root>

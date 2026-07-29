@@ -32,12 +32,6 @@ builder.Services.AddSingleton<BoardState>();
 builder.Services.AddSingleton<SessionRegistry>();
 builder.Services.AddSingleton<SessionLauncher>();
 
-#if DEBUG
-var seedSampleCards = builder.Configuration.GetValue("Act:SeedSampleCards", true);
-if (seedSampleCards)
-    builder.Services.AddSingleton<Act.App.Seeding.SampleCardSeeder>();
-#endif
-
 var launchedByElectron = args.Any(a => a.StartsWith("/electronPort", StringComparison.OrdinalIgnoreCase));
 var runElectron = launchedByElectron
     || builder.Configuration.GetValue<bool>("Electron:Enabled");
@@ -50,11 +44,6 @@ if (runElectron)
 var app = builder.Build();
 
 app.Services.GetRequiredService<UserSettingsService>().ApplyLanguage();
-
-#if DEBUG
-if (seedSampleCards)
-    await app.Services.GetRequiredService<Act.App.Seeding.SampleCardSeeder>().SeedIfEmptyAsync();
-#endif
 
 await app.Services.GetRequiredService<BoardState>().LoadAsync();
 

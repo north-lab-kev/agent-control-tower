@@ -1,0 +1,70 @@
+using System.Globalization;
+using Act.App.Cards;
+using Act.App.Resources;
+using Act.Core.Model;
+using Microsoft.AspNetCore.Components;
+using Radzen;
+
+namespace Act.App.Components.Pages;
+
+// Everything the user deleted, and the only two things you can do with it: put one back, or empty
+// the whole thing. Deliberately not a second board — an archived card is not work in progress, so
+// it gets a list rather than a column.
+public partial class ArchiveView(
+    BoardState board,
+    DialogService dialogService,
+    NavigationManager navigation) : IDisposable
+{
+    private bool purging;
+
+    protected override void OnInitialized() => board.Changed += OnChanged;
+
+    public void Dispose() => board.Changed -= OnChanged;
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private Task RestoreAsync(Card card) => board.RestoreAsync(card);
+
+    private async Task PurgeAsync()
+    {
+        if (purging)
+            return;
+
+        var confirmed = await dialogService.Confirm(
+            Text.Format(Strings.Archive_ClearConfirm, board.Archived.Count),
+            Strings.Archive_Clear,
+            new ConfirmOptions
+            {
+                OkButtonText = Strings.Archive_ClearYes,
+                CancelButtonText = Strings.NewTask_Cancel,
+                CssClass = "act-dialog",
+            });
+
+        if (confirmed is not true)
+            return;
+
+        purging = true;
+
+        try
+        {
+            await board.PurgeArchivedAsync();
+        }
+        finally
+        {
+            purging = false;
+        }
+    }
+
+    private void BackToBoard() => navigation.NavigateTo("/");
+
+    // Where it came from and when it went — enough to recognise a card you deleted without opening
+    // it, which is the whole job of this list.
+    private static string Meta(Card card)
+    {
+        var deleted = card.DeletedAt?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+
+        return string.Join(
+            " · ",
+            new[] { card.Column.ToString(), card.WorkingDir, deleted }.Where(part => !string.IsNullOrWhiteSpace(part)));
+    }
+}

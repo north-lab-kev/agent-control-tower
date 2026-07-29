@@ -1,4 +1,7 @@
+@page "/"
 @using Act.Core.Model
+
+<PageTitle>@($"ACT — {Strings.Shell_FullName}")</PageTitle>
 
 <div class="board @DensityClass @(dragging is null ? null : "dragging")">
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Stretch" Gap="0.6rem" class="cols">

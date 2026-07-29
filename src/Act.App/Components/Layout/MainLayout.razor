@@ -20,11 +20,15 @@
                              Text="@Strings.Shell_Awake" class="statchip" />
 
                 <RadzenButton Icon="add" Text="@Strings.Shell_NewTask" ButtonStyle="ButtonStyle.Base"
-                              Variant="Variant.Outlined" Size="ButtonSize.Small" Click="OpenNewTaskAsync"
+                              Variant="Variant.Outlined" Size="ButtonSize.Small" Click="OpenNewTask"
                               class="newtaskbtn" aria-label="@Strings.Shell_NewTask" />
 
+                <RadzenButton Icon="inventory_2" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                              Size="ButtonSize.Small" Click="OpenArchive" class="gear"
+                              title="@Strings.Archive_Title" aria-label="@Strings.Archive_Title" />
+
                 <RadzenButton Icon="settings" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
-                              Size="ButtonSize.Small" Click="OpenSettingsAsync" class="gear"
+                              Size="ButtonSize.Small" Click="OpenSettings" class="gear"
                               title="@Strings.Settings_Title" aria-label="@Strings.Settings_Title" />
 
                 @if (AttentionCount > 0)

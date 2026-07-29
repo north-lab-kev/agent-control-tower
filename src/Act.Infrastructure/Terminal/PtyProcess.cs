@@ -110,6 +110,11 @@ internal sealed class PtyProcess(IPtyConnection connection) : IPtyProcess
             }
         }
 
+        // Killing the agent is not enough. The pseudo-console is a separate object owning its own
+        // `conhost.exe`, and it outlives the process that was attached to it — so skipping this
+        // leaks one conhost per session ACT ever launches.
+        connection.Dispose();
+
         stopping.Dispose();
     }
 

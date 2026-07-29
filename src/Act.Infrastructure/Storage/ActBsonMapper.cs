@@ -24,7 +24,8 @@ internal static class ActBsonMapper
             bson => TimeSpan.ParseExact(bson.AsString, TimeSpanFormat, CultureInfo.InvariantCulture));
 
         mapper.Entity<Card>()
-            .Ignore(card => card.NeedsAttention);
+            .Ignore(card => card.NeedsAttention)
+            .Ignore(card => card.IsDeleted);
 
         mapper.Entity<CardMetrics>()
             .Ignore(metrics => metrics.TokensTotal)

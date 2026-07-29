@@ -46,6 +46,14 @@ public sealed class Card
 
     public DateTimeOffset? CompletedAt { get; set; }
 
+    // Soft delete. A deleted card leaves the board but stays in the store, restorable from the
+    // archive until it is explicitly purged — so nothing a user removes is lost to a misclick.
+    // Distinct from the *auto*-archive of old Completed cards (step 15), which is a retention
+    // policy on cards nobody deleted; that will need its own marker rather than reusing this one.
+    public DateTimeOffset? DeletedAt { get; set; }
+
+    public bool IsDeleted => DeletedAt is not null;
+
     public IList<Transition> Transitions { get; set; } = [];
 
     public string? LastMessage { get; set; }

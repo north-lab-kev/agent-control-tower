@@ -1,0 +1,55 @@
+@page "/settings"
+@using Act.Core.Model
+
+<PageTitle>@Strings.Settings_Title</PageTitle>
+
+<div class="settingsview">
+    <header class="bar">
+        <RadzenButton Icon="arrow_back" Text="@Strings.Nav_BackToBoard" Size="ButtonSize.Small"
+                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="BackToBoard" />
+        <span class="title">@Strings.Settings_Title</span>
+    </header>
+
+    <div class="body">
+        <RadzenStack Gap="1.25rem" class="sheet">
+            <RadzenFieldset Text="@Strings.Settings_Group_General">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                             JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                    <RadzenStack Gap="0.1rem">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Language" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Language_Hint" class="hint" />
+                    </RadzenStack>
+                    <RadzenDropDown TValue="LanguagePreference" Value="Language" ValueChanged="OnLanguageChanged"
+                                    Data="LanguageChoices" TextProperty="Text" ValueProperty="Value"
+                                    AllowClear="false" class="control" />
+                </RadzenStack>
+            </RadzenFieldset>
+
+            <RadzenFieldset Text="@Strings.Settings_Group_Appearance">
+                <RadzenStack Gap="1.1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Theme" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Theme_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenDropDown TValue="ThemePreference" Value="Theme" ValueChanged="OnThemeChanged"
+                                        Data="ThemeChoices" TextProperty="Text" ValueProperty="Value"
+                                        AllowClear="false" class="control" />
+                    </RadzenStack>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Density" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Density_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenDropDown TValue="BoardDensity" Value="Density" ValueChanged="OnDensityChanged"
+                                        Data="DensityChoices" TextProperty="Text" ValueProperty="Value"
+                                        AllowClear="false" class="control" />
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenFieldset>
+        </RadzenStack>
+    </div>
+</div>

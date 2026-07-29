@@ -1,19 +1,17 @@
 using Act.App.Cards;
-using Act.App.Components.Board;
-using Act.App.Components.Settings;
 using Act.App.Resources;
 using Act.App.Settings;
 using Act.Core.Model;
+using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
-using Radzen;
 
 namespace Act.App.Components.Layout;
 
 public partial class MainLayout(
     UserSettingsService settings,
-    DialogService dialogService,
     BoardState board,
     IAssetVersions assetVersions,
+    NavigationManager navigation,
     IJSRuntime js) : IDisposable
 {
     private string? markPath;
@@ -58,20 +56,9 @@ public partial class MainLayout(
             ThemeMedia.Dark(appliedTheme));
     });
 
-    private async Task OpenNewTaskAsync()
-        => await dialogService.OpenAsync<TaskDialog>(
-            Strings.NewTask_DialogTitle,
-            null,
-            new DialogOptions
-            {
-                Width = "640px",
-                CloseDialogOnOverlayClick = false,
-                CssClass = "act-dialog act-dialog-form",
-            });
+    private void OpenNewTask() => navigation.NavigateTo("/card/new");
 
-    private async Task OpenSettingsAsync()
-        => await dialogService.OpenAsync<SettingsDialog>(
-            Strings.Settings_Title,
-            null,
-            new DialogOptions { Width = "560px", CloseDialogOnOverlayClick = true, CssClass = "act-dialog" });
+    private void OpenArchive() => navigation.NavigateTo("/archive");
+
+    private void OpenSettings() => navigation.NavigateTo("/settings");
 }

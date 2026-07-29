@@ -60,6 +60,7 @@ public class CardStoreTests
             CreatedAt = created,
             LaunchedAt = created.AddMinutes(3),
             CompletedAt = created.AddMinutes(40),
+            DeletedAt = created.AddMinutes(55),
             Transitions =
             [
                 new Transition { At = created, Column = BoardColumn.Ready, Note = "queued" },

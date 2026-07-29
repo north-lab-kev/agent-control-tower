@@ -6,8 +6,8 @@
 @if (card is null)
 {
     <div class="session missing">
-        <RadzenText TextStyle="TextStyle.Body1" Text="@Strings.Session_NotFound" />
-        <RadzenButton Text="@Strings.Session_BackToBoard" Icon="arrow_back" Size="ButtonSize.Small"
+        <RadzenText TextStyle="TextStyle.Body1" Text="@Strings.Card_NotFound" />
+        <RadzenButton Text="@Strings.Nav_BackToBoard" Icon="arrow_back" Size="ButtonSize.Small"
                       ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" Click="BackToBoard" />
     </div>
 }
@@ -15,10 +15,11 @@ else
 {
     <div class="session">
         <header class="bar">
-            <RadzenButton Icon="arrow_back" Text="@Strings.Session_BackToBoard" Size="ButtonSize.Small"
+            <RadzenButton Icon="arrow_back" Text="@Strings.Nav_BackToBoard" Size="ButtonSize.Small"
                           ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="BackToBoard" />
             <span class="id">#@card.Number</span>
             <span class="title">@card.Title</span>
+            <CardSurfaceSwitch CardId="card.Id" Current="CardSurface.Terminal" />
             @if (card.Badge is { } badge)
             {
                 <span class="badge @BadgeClass(badge)">@BadgeText(badge)</span>
@@ -33,13 +34,16 @@ else
                 {
                     <div class="idle">
                         <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Session_NoLiveSession" />
-                        @if (launchError is { } error)
+                        @if (CanLaunch)
                         {
-                            <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" Shade="Shade.Lighter"
-                                         AllowClose="false">@error</RadzenAlert>
+                            <RadzenButton Text="@Strings.Session_Launch" Icon="play_arrow" Size="ButtonSize.Small"
+                                          ButtonStyle="ButtonStyle.Primary" Disabled="launching" Click="LaunchAsync" />
                         }
-                        <RadzenButton Text="@Strings.Session_Launch" Icon="play_arrow" Size="ButtonSize.Small"
-                                      ButtonStyle="ButtonStyle.Primary" Disabled="launching" Click="LaunchAsync" />
+                        else
+                        {
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Session_NotLaunchable"
+                                        class="hint" />
+                        }
                     </div>
                 }
 

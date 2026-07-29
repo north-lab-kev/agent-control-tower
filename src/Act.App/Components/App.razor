@@ -12,7 +12,9 @@
     <link rel="stylesheet" href="@(Assets["Act.App.styles.css"] + AssetVersion)" />
     <ImportMap />
     <link rel="icon" type="image/png" href="favicon.png@(AssetVersion)" />
-    <HeadOutlet />
+    @* Interactive on purpose: a statically-rendered outlet is written once by the server and never
+       hears from the circuit again, so every <PageTitle> after the first navigation is ignored. *@
+    <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
 <body>

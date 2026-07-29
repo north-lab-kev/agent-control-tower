@@ -1,0 +1,31 @@
+@using Act.Core.Model
+
+<div class="askfollowups">
+    <RadzenText TextStyle="TextStyle.Body2" Text="@Question" />
+
+    @* Names them rather than counting them: "archive 2 follow-ups" is a number, and nobody can
+       weigh a number. Seeing which tasks go is what makes this a decision. *@
+    <ul class="kids">
+        @foreach (var child in FollowUps)
+        {
+            <li>
+                <span class="id">#@child.Number</span>
+                <span class="ttl">@child.Title</span>
+            </li>
+        }
+    </ul>
+
+    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Task_DeleteRestoreHint" class="hint" />
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem"
+                 class="actions">
+        <RadzenButton Text="@Strings.NewTask_Cancel" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                      Size="ButtonSize.Small" Click="@(() => Close(FollowUpChoice.Cancel))" />
+        <RadzenButton Text="@Strings.Task_DeleteKeepFollowUps" ButtonStyle="ButtonStyle.Base"
+                      Variant="Variant.Outlined" Size="ButtonSize.Small"
+                      Click="@(() => Close(FollowUpChoice.KeepFollowUps))" />
+        <RadzenButton Text="@Strings.Task_DeleteWithFollowUps" ButtonStyle="ButtonStyle.Danger"
+                      Variant="Variant.Flat" Size="ButtonSize.Small"
+                      Click="@(() => Close(FollowUpChoice.WithFollowUps))" />
+    </RadzenStack>
+</div>
