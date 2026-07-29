@@ -63,13 +63,26 @@ app.Run();
 
 static async Task CreateWindowAsync()
 {
+    const int titleBarHeight = 49;
+
     Electron.Menu.SetApplicationMenu(Array.Empty<MenuItem>());
 
-    var window = await Electron.WindowManager.CreateWindowAsync(new BrowserWindowOptions
+    var options = new BrowserWindowOptions
     {
         Show = false,
         Icon = Path.Combine(AppContext.BaseDirectory, "icon.ico"),
-    });
+        TitleBarStyle = TitleBarStyle.hidden,
+    };
+
+    if (OperatingSystem.IsWindows() || OperatingSystem.IsLinux())
+        options.TitleBarOverlay = new TitleBarOverlay
+        {
+            Color = "#151e26",
+            SymbolColor = "#8091a0",
+            Height = titleBarHeight,
+        };
+
+    var window = await Electron.WindowManager.CreateWindowAsync(options);
 
     window.OnReadyToShow += () => window.Show();
 

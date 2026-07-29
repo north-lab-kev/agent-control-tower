@@ -12,6 +12,9 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+  <data name="Shell_FullName" xml:space="preserve">
+    <value>Agent Control Tower</value>
+  </data>
   <data name="Shell_AutoExecOn" xml:space="preserve">
     <value>exéc. auto activée</value>
   </data>
