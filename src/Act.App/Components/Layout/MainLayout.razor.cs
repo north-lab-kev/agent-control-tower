@@ -7,10 +7,18 @@ using Radzen;
 
 namespace Act.App.Components.Layout;
 
-public partial class MainLayout(UserSettingsService settings, DialogService dialogService, ICardStore cards)
-    : IDisposable
+public partial class MainLayout(
+    UserSettingsService settings,
+    DialogService dialogService,
+    ICardStore cards,
+    IAssetVersions assetVersions) : IDisposable
 {
+    private string? markPath;
+
     private string ThemeAttribute => settings.Theme.ToString().ToLowerInvariant();
+
+    private string MarkPath
+        => markPath ??= $"favicon.png{assetVersions.For(typeof(MainLayout).Assembly)}";
 
     private BoardDensity Density => settings.Density;
 

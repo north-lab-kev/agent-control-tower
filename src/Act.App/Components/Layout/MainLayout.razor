@@ -6,7 +6,11 @@
     <div class="shell">
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
                      JustifyContent="JustifyContent.SpaceBetween" Gap="0.75rem" class="bar">
-            <RadzenText TextStyle="TextStyle.H6" Text="ACT" class="wordmark" />
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                         Gap="0.55rem" class="brand">
+                <RadzenImage Path="@MarkPath" AlternateText="" class="mark" />
+                <RadzenText TextStyle="TextStyle.H6" Text="ACT" class="wordmark" />
+            </RadzenStack>
 
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.6rem">
                 <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base"

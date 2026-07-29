@@ -15,6 +15,17 @@
     flex: 0 0 auto;
 }
 
+::deep .brand {
+    flex: 0 0 auto;
+}
+
+::deep .mark {
+    display: block;
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+}
+
 ::deep .wordmark {
     letter-spacing: .22em;
     font-weight: 700;
