@@ -39,7 +39,7 @@
             {
                 <RadzenButton Text="@Strings.Board_Launch" Icon="play_arrow" Size="ButtonSize.ExtraSmall"
                               ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" class="launch"
-                              Click="@LaunchAsync" @onclick:stopPropagation="true" />
+                              Disabled="IsLaunching" Click="@LaunchAsync" @onclick:stopPropagation="true" />
             }
 
             @if (Card.Metrics is { } m)

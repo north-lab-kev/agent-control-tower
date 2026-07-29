@@ -29,7 +29,7 @@
                         {
                             <FlightStrip Card="card" Density="Density" OnOpen="OpenAsync" OnLaunch="LaunchAsync"
                                          OnDragStart="OnDragStartAsync" OnDragEnd="OnDragEndAsync"
-                                         IsDragging="dragging?.Id == card.Id" />
+                                         IsDragging="dragging?.Id == card.Id" IsLaunching="IsLaunching(card)" />
                         }
                     }
                 </RadzenStack>

@@ -155,6 +155,11 @@ public partial class SessionView(
         // Replay before subscribing takes effect for new chunks, so the screen looks the way it
         // did when the view was last open rather than blank until the agent next paints.
         _ = WriteToTerminalAsync(attached.Terminal.Backlog);
+
+        // A session launched from the board has never seen this view, so its pty is still at the
+        // default geometry; the replayed backlog was drawn for that size. Sizing it to the xterm
+        // makes the CLI repaint at the size it is actually being shown at.
+        attached.Terminal.Resize(Geometry.Cols, Geometry.Rows);
     }
 
     // A failed launch reports through the notification host rather than into the side rail: the

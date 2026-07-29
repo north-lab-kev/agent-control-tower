@@ -462,6 +462,15 @@
   <data name="Task_DeleteFailed" xml:space="preserve">
     <value>Could not delete the task</value>
   </data>
+  <data name="Task_Duplicate" xml:space="preserve">
+    <value>Duplicate task</value>
+  </data>
+  <data name="Archive_Duplicate" xml:space="preserve">
+    <value>Duplicate as a new task</value>
+  </data>
+  <data name="Task_DuplicateTitle" xml:space="preserve">
+    <value>Copy of {0}</value>
+  </data>
   <data name="Archive_Title" xml:space="preserve">
     <value>Archive</value>
   </data>

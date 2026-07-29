@@ -110,7 +110,7 @@ public sealed class ClaudeCodeAdapter(IPtyHost pty, IClock clock) : IAgentAdapte
         var session = new PtyAgentSession(taskId, sessionId, process, Submit, clock);
 
         if (!string.IsNullOrWhiteSpace(opening))
-            await session.Terminal.SubmitAsync(opening, cancellationToken);
+            session.Open(opening);
 
         return session;
     }

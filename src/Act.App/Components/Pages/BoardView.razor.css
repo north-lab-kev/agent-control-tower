@@ -32,11 +32,11 @@
 }
 
 .board.compact ::deep .col {
-    min-width: 210px;
+    min-width: 158px;
 }
 
 .board.spacious ::deep .col {
-    min-width: 236px;
+    min-width: 177px;
 }
 
 ::deep .colname {

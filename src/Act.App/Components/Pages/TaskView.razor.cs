@@ -37,6 +37,8 @@ public partial class TaskView(
 
     private bool deleting;
 
+    private bool duplicating;
+
     [Parameter]
     public Guid? CardId { get; set; }
 
@@ -180,6 +182,27 @@ public partial class TaskView(
         // Null when dismissed with the X or the overlay, which means the same as Cancel.
         if (choice is FollowUpChoice.WithFollowUps or FollowUpChoice.KeepFollowUps)
             await DeleteAsync(includeChildren: choice is FollowUpChoice.WithFollowUps);
+    }
+
+    // The saved card is what gets copied, not the form — so unsaved edits stay behind, and the copy
+    // opens on its own route where they are plainly visible rather than silently carried over.
+    private async Task DuplicateAsync()
+    {
+        if (card is not { } existing || duplicating)
+            return;
+
+        duplicating = true;
+
+        try
+        {
+            var copy = await board.DuplicateAsync(existing);
+
+            navigation.NavigateTo($"/card/{copy.Id}/edit");
+        }
+        finally
+        {
+            duplicating = false;
+        }
     }
 
     // Kills first, on purpose: archiving the card while its process ran would leave an agent

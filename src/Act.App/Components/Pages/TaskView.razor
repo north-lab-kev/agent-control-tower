@@ -229,6 +229,11 @@ else
                                           ButtonType="ButtonType.Button" Disabled="deleting"
                                           Click="StartDeleteAsync"
                                           title="@Strings.Task_Delete" aria-label="@Strings.Task_Delete" />
+                            <RadzenButton Icon="content_copy" ButtonStyle="ButtonStyle.Base"
+                                          Variant="Variant.Text" Size="ButtonSize.Small"
+                                          ButtonType="ButtonType.Button" Disabled="duplicating"
+                                          Click="DuplicateAsync"
+                                          title="@Strings.Task_Duplicate" aria-label="@Strings.Task_Duplicate" />
                         }
                     </div>
 

@@ -41,6 +41,12 @@
                                       ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
                                       Click="@(() => RestoreAsync(card))"
                                       title="@Strings.Archive_Restore" aria-label="@Strings.Archive_Restore" />
+                        @* Restoring puts the old run back; duplicating starts the same task over,
+                           which is the other reason to come looking for an archived card. *@
+                        <RadzenButton Icon="content_copy" Size="ButtonSize.ExtraSmall"
+                                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
+                                      Disabled="duplicating" Click="@(() => DuplicateAsync(card))"
+                                      title="@Strings.Archive_Duplicate" aria-label="@Strings.Archive_Duplicate" />
                     </div>
                 }
             }

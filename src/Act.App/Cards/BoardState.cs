@@ -1,3 +1,4 @@
+using Act.App.Resources;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
@@ -47,6 +48,17 @@ public sealed class BoardState(ICardStore store, IClock clock)
     {
         await store.UpdateAsync(card, cancellationToken);
         await LoadAsync(cancellationToken);
+    }
+
+    // The copy is a new card in every sense the store cares about — its own id and number — so it
+    // goes through the same create path, and the caller gets it back to open it.
+    public async Task<Card> DuplicateAsync(Card card, CancellationToken cancellationToken = default)
+    {
+        var copy = CardDuplicate.Of(card, Text.Format(Strings.Task_DuplicateTitle, card.Title), clock.Now);
+
+        await CreateAsync(copy, cancellationToken);
+
+        return copy;
     }
 
     // Soft: the row stays, marked with a timestamp, and the archive can put it back. Lineage is

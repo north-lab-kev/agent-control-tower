@@ -1010,6 +1010,17 @@ history.
   - **Restore is per card, never a subtree.** Children were archived by their own
     decision and come back the same way, so restoring a parent never silently resurrects
     work the user meant to be rid of.
+- **Duplicate copies the intent, never the run.** Next to the task page's delete, and on
+  every archive row beside Restore, a **duplicate** makes a new card carrying only what to
+  run, where and how — title, prompt, working directory, agent, launch config, schedule and
+  auto-complete. The copy is titled **"Copy of &lt;title&gt;"** (localised), so two cards that
+  differ only by number never look identical on the board. It lands in **Preparing** with a
+  fresh id and number, and with no session
+  id, badge, metrics, observed model, last message or transition history: a copy is a task
+  that has not started, not a fork of a session. **Lineage is dropped** — the follow-ups a
+  card spawned belong to the run that spawned them, so a copy has neither children nor a
+  parent. Duplicating an archived card leaves it archived; the copy is live, which is the
+  point — it is how a finished or abandoned task gets run again without disturbing its record.
 - **Artifact housekeeping:** on completion/archival ACT cleans up **its own**
   `.act/status/` and `.act/followups/consumed/` files for that task. It **never**
   touches the agent's transcripts (not ACT's to delete, and needed for resume).

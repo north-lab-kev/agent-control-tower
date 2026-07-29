@@ -32,6 +32,9 @@ public partial class FlightStrip
     [Parameter]
     public bool IsDragging { get; set; }
 
+    [Parameter]
+    public bool IsLaunching { get; set; }
+
     private bool Draggable => ManualMove.CanDrag(Card.Column);
 
     private bool IsCompact => Density is BoardDensity.Compact;

@@ -17,6 +17,8 @@ public partial class ArchiveView(
 {
     private bool purging;
 
+    private bool duplicating;
+
     protected override void OnInitialized() => board.Changed += OnChanged;
 
     public void Dispose() => board.Changed -= OnChanged;
@@ -24,6 +26,27 @@ public partial class ArchiveView(
     private void OnChanged() => _ = InvokeAsync(StateHasChanged);
 
     private Task RestoreAsync(Card card) => board.RestoreAsync(card);
+
+    // The archived card stays archived: the copy is a live task in Preparing, and opening it is
+    // what makes that obvious — the archive itself would look unchanged.
+    private async Task DuplicateAsync(Card card)
+    {
+        if (duplicating)
+            return;
+
+        duplicating = true;
+
+        try
+        {
+            var copy = await board.DuplicateAsync(card);
+
+            navigation.NavigateTo($"/card/{copy.Id}/edit");
+        }
+        finally
+        {
+            duplicating = false;
+        }
+    }
 
     private async Task PurgeAsync()
     {

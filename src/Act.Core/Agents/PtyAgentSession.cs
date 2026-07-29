@@ -61,6 +61,24 @@ public sealed class PtyAgentSession : IAgentSession
 
     public void Publish(AgentEvent agentEvent) => events.Writer.TryWrite(agentEvent);
 
+    // Deliberately not awaited by the caller: the opening prompt cannot be typed until the CLI's
+    // TUI is up, and holding the launch open for however long that takes would leave the board
+    // waiting on a paint. A failure here shows as an agent sitting at an empty prompt, which the
+    // terminal makes plain — there is nothing better ACT could report from inside a keystroke.
+    public void Open(string text) => _ = OpenAsync(text);
+
+    private async Task OpenAsync(string text)
+    {
+        try
+        {
+            await terminal.SubmitAsync(text);
+        }
+        catch (Exception error) when (error is IOException or ObjectDisposedException
+            or OperationCanceledException)
+        {
+        }
+    }
+
     public async Task KillAsync(CancellationToken cancellationToken = default)
     {
         if (killed)

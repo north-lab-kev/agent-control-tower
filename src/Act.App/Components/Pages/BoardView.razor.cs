@@ -1,5 +1,7 @@
 using Act.App.Cards;
 using Act.App.Resources;
+using Act.App.Sessions;
+using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
 using Microsoft.AspNetCore.Components;
@@ -7,9 +9,15 @@ using Radzen;
 
 namespace Act.App.Components.Pages;
 
-public partial class BoardView(BoardState board, NavigationManager navigation) : IDisposable
+public partial class BoardView(
+    BoardState board,
+    SessionLauncher launcher,
+    NotificationService notifications,
+    NavigationManager navigation) : IDisposable
 {
     private static readonly BoardColumn[] AllColumns = Enum.GetValues<BoardColumn>();
+
+    private readonly HashSet<Guid> launching = [];
 
     private Card? dragging;
 
@@ -56,9 +64,36 @@ public partial class BoardView(BoardState board, NavigationManager navigation) :
             ? $"/card/{card.Id}/edit"
             : $"/card/{card.Id}/terminal");
 
-    // Ready → Executing is ACT's action, not a drag: the board hands off to the session view,
-    // which owns the terminal geometry the pty has to be sized with.
-    private void LaunchAsync(Card card) => navigation.NavigateTo($"/card/{card.Id}/terminal");
+    private bool IsLaunching(Card card) => launching.Contains(card.Id);
+
+    // Ready → Executing happens right here: the session belongs to the registry, not to a view,
+    // so the agent is started headless at a default geometry and the strip simply moves. Opening
+    // the terminal later re-attaches to that process and sizes it to the real xterm.
+    private async Task LaunchAsync(Card card)
+    {
+        if (!launching.Add(card.Id))
+            return;
+
+        try
+        {
+            var result = await launcher.LaunchAsync(card, TerminalSize.Default);
+
+            if (result.Message is { } message)
+            {
+                notifications.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = Strings.Session_LaunchFailed,
+                    Detail = message,
+                    Duration = 20000,
+                });
+            }
+        }
+        finally
+        {
+            launching.Remove(card.Id);
+        }
+    }
 
     private static string Label(BoardColumn column) => column switch
     {

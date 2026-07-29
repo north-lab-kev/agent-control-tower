@@ -462,6 +462,15 @@
   <data name="Task_DeleteFailed" xml:space="preserve">
     <value>Impossible de supprimer la tâche</value>
   </data>
+  <data name="Task_Duplicate" xml:space="preserve">
+    <value>Dupliquer la tâche</value>
+  </data>
+  <data name="Archive_Duplicate" xml:space="preserve">
+    <value>Dupliquer en nouvelle tâche</value>
+  </data>
+  <data name="Task_DuplicateTitle" xml:space="preserve">
+    <value>Copie de {0}</value>
+  </data>
   <data name="Archive_Title" xml:space="preserve">
     <value>Archives</value>
   </data>
