@@ -11,6 +11,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<ILiteDatabase>(_ => ActDatabase.Open(dataDirectory));
         services.AddSingleton<ISettingsStore, LiteDbSettingsStore>();
+        services.AddSingleton<ICardStore, LiteDbCardStore>();
 
         return services;
     }

@@ -34,9 +34,13 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  ├─ Act.Agents.ClaudeCode/        # Claude Code adapter (launch, stream-json control, mappings)
 │  ├─ Act.Agents.Codex/             # Codex adapter
 │  ├─ Act.Infrastructure/           # LiteDB store, localhost hook host, FileSystemWatcher,
-│  │                               #   process supervision, Serilog wiring
+│  │  │                            #   process supervision, Serilog wiring
+│  │  └─ Storage/                   #   act.db open + BsonMapper, schema version, card/settings stores
 │  ├─ Act.App/                      # Blazor Server UI + Electron desktop host (ElectronNET.Core)
 │  │  ├─ Components/                #   board, flight strips, drawer, new-task modal
+│  │  ├─ Seeding/                   #   sample cards (dev-only demo data; drops out at step 5)
+│  │  ├─ Settings/                  #   user-settings service + culture
+│  │  ├─ Resources/                 #   .resx strings (en / fr)
 │  │  ├─ wwwroot/                   #   CSS (flight-strip look), assets
 │  │  ├─ Properties/                #   launchSettings + electron-builder.json (packaging)
 │  │  └─ Program.cs                 #   startup / DI; Electron wired only when enabled
@@ -44,6 +48,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │
 ├─ tests/
 │  ├─ Act.Core.Tests/               # xUnit — rules engine & scheduler (hard, pure)
+│  ├─ Act.Infrastructure.Tests/     # store round-trip, restart survival, schema versioning
 │  ├─ Act.Agents.Tests/             # contract tests: one suite every adapter must pass
 │  ├─ Act.App.UiTests/              # Playwright (browser-mode Blazor, mock-adapter driven)
 │  └─ Act.TestSupport/              # the MOCK adapter + fixtures/builders (shared)
@@ -79,6 +84,20 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   too (gated on Electron being active), with a no-op/web fallback for the plain
   `dotnet run` browser mode. *(Originally slated for `Act.Desktop`; moved when
   Electron wiring was consolidated into `Act.App`.)*
+- **The store owns its own conventions.** `Storage/` keeps one entry point
+  (`ActDatabase.Open`) that configures the `BsonMapper` and applies the schema —
+  a **version document plus an ordered migration list**, so `CurrentVersion` is
+  derived from that list and a store written by a newer build is rejected instead
+  of silently mangled. Collection names live in one place (`ActCollections`), and
+  the friendly card `number` comes from a counter document that seeds itself
+  above any card already stored.
+- **Sample data is app-level and never ships.** `Act.App/Seeding/` writes the demo
+  cards through `ICardStore` only when the store is empty, so persistence stays
+  observable in dev. The gate is **compile-time**: the csproj drops `Seeding\**`
+  from `<Compile>` for any non-`Debug` configuration and the two call sites in
+  `Program.cs` sit behind `#if DEBUG`, so the types are absent from the Release
+  assembly rather than merely unreachable. `Act:SeedSampleCards` turns it off
+  within a Debug build.
 - **Node artifacts must be git-ignored** — Electron.NET pulls in `node_modules`
   and a build-output folder; easy to accidentally commit (bloat + secrets risk
   on go-public).

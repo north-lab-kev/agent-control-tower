@@ -24,6 +24,10 @@
     <Content Include="icon.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(Configuration)' != 'Debug'">
+    <Compile Remove="Seeding\**" />
+  </ItemGroup>
+
   <ItemGroup>
     <AdditionalFiles Include="Resources\Strings.resx" GenerateSource="true" />
   </ItemGroup>

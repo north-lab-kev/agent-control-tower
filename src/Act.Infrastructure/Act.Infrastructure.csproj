@@ -16,4 +16,8 @@
     <ProjectReference Include="..\Act.Core\Act.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Act.Infrastructure.Tests" />
+  </ItemGroup>
+
 </Project>

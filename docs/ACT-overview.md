@@ -424,14 +424,32 @@ values, and defines behavior for unsupported values (map to nearest equivalent
   models use adaptive effort like `xhigh`; some ignore it / can't disable
   thinking — so it may be a no-op).
 - `permissionMode` — **first-class normalized field**, fixed set ACT understands:
-  `default | acceptEdits | plan | bypass`. Adapter-mapped (Claude Code:
-  `--permission-mode …`).
-  - **This is a state-machine knob, not just config.** It governs the Needs
-    feedback state: `bypass` ⇒ few/no `PermissionRequest`s (runs autonomously to
-    `Stop`, rarely enters Needs feedback for permission); `default` ⇒ enters it
-    often. `plan` (read-only, no mutations) is the natural fit for a **planning
-    task** that emits follow-ups without touching anything — pairs directly with
-    the spawn/plan-decomposition pattern.
+  `default | plan | acceptEdits | auto | dontAsk | bypass`. Adapter-mapped
+  (Claude Code: `--permission-mode …`; ACT's `bypass` maps to that CLI's
+  `bypassPermissions`). Verified against the installed CLI, whose own choices are
+  `acceptEdits | auto | bypassPermissions | default | dontAsk | plan`, resolving
+  to these decisions:
+
+  | Mode | Decision when a tool needs permission |
+  |---|---|
+  | `default` | **ask** the user |
+  | `plan` | no tool execution at all (read-only) |
+  | `acceptEdits` | ask, except edits, which are auto-allowed |
+  | `auto` | **classify** — a model classifier approves or denies, no prompt |
+  | `dontAsk` | **deny** unless pre-approved by a rule — never prompts |
+  | `bypass` | allow everything (needs `--allow-dangerously-skip-permissions`) |
+
+  - **This is a state-machine knob, not just config.** It governs how often a card
+    enters Needs feedback: `default` ⇒ often; `acceptEdits` ⇒ less; `auto`,
+    `dontAsk` and `bypass` ⇒ effectively never for permission, because none of
+    them prompt. Note the difference that matters for unattended runs: `bypass`
+    silently allows, while `dontAsk` silently **denies** — a `dontAsk` task never
+    stalls overnight but may finish having been blocked from work it needed, so it
+    trades a stalled card for a possibly incomplete one. `auto` sits between
+    them, delegating the call to a classifier.
+  - `plan` (read-only, no mutations) is the natural fit for a **planning task**
+    that emits follow-ups without touching anything — pairs directly with the
+    spawn/plan-decomposition pattern.
 - `allowedTools` / `disallowedTools` — optional tool allow/deny.
 - `extraFlags` / `env` — escape hatch for anything not modeled.
 
@@ -587,8 +605,11 @@ guesswork, reusing the same agent→ACT file mechanism as follow-ups:
   process runs between engagements.)
 - **`stale` does not auto-escalate.** Warning badge only; card stays in
   Executing; escalation is the user's call via the kill/abandon hatch.
-- **`permissionMode` changes frequency, not the table.** `bypass` ⇒ "permission
-  requested" rarely fires (cards sail to `Stop`); `default` ⇒ fires often.
+- **`permissionMode` changes frequency, not the table.** `default` ⇒ "permission
+  requested" fires often; `acceptEdits` ⇒ less; `auto` / `dontAsk` / `bypass` ⇒
+  it effectively never fires (cards sail to `Stop`), since none of those prompt.
+  A `dontAsk` denial is not a normalized event — the agent absorbs it and keeps
+  going, so it surfaces only in the transcript, never as a badge.
 
 ### Error handling & retry
 
@@ -768,8 +789,10 @@ release it otherwise.
 - **"Next window" needs the 5-hour reset time.** It's rolling (~5h after the
   session's first message) — compute from tracked activity or read `/usage`.
 - **Weekly reset** = a fixed per-account day/time, configured once.
-- **Unattended overnight runs need the right `permissionMode`** (`acceptEdits` /
-  `bypass`), or tasks stall in Needs feedback waiting for permission all night.
+- **Unattended overnight runs need a non-prompting `permissionMode`** (`auto`,
+  `dontAsk` or `bypass`), or tasks stall in Needs feedback waiting for permission
+  all night. `acceptEdits` only covers edits, so it still stalls on the first
+  `Bash` call it wants approval for.
 - Verify at build: `/usage` scriptability, and clean mid-task resume after a
   rate-limit interruption.
 

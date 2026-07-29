@@ -33,8 +33,15 @@ verifiable, and leaves something runnable.
   everything after ships and is tested.) ✅ `build.ps1` (restore/build/test) +
   `package-desktop.ps1` (NSIS installer, self-contained); 4 xUnit projects green;
   `ci.yml` green on Ubuntu; `release.yml` produced a runnable Windows installer.
-- [ ] **3. LiteDB + card model** — persist the full card model; seed fake cards.
-  *Verify:* cards survive restart.
+- [x] **3. LiteDB + card model** — persist the full card model; seed fake cards.
+  *Verify:* cards survive restart. ✅ `Card` carries the full spec field set
+  (identity, state, launch config, lineage, transitions, metrics); `ICardStore`
+  port + `LiteDbCardStore`; a schema-version document with a migration hook; the
+  friendly `number` sequence starts at **#1000** from a counter document. Sample
+  cards seed **once into an empty store**, and are **`Debug`-only — `Seeding/` is
+  excluded from the Release compile**, so no demo data ships. Board and the
+  top-bar attention count read from the store; a restart returns the same board
+  (no re-seed, no duplicates).
 
 ## Phase 2 — Board (read-only, agent-agnostic)
 

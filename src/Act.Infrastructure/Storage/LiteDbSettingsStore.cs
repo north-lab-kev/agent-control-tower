@@ -6,8 +6,6 @@ namespace Act.Infrastructure.Storage;
 
 internal sealed class LiteDbSettingsStore(ILiteDatabase database) : ISettingsStore
 {
-    private const string CollectionName = "settings";
-
     private const int DocumentId = 1;
 
     public UserSettings Load()
@@ -17,7 +15,7 @@ internal sealed class LiteDbSettingsStore(ILiteDatabase database) : ISettingsSto
         => Collection().Upsert(new SettingsDocument { Id = DocumentId, Settings = settings });
 
     private ILiteCollection<SettingsDocument> Collection()
-        => database.GetCollection<SettingsDocument>(CollectionName);
+        => database.GetCollection<SettingsDocument>(ActCollections.Settings);
 
     private sealed class SettingsDocument
     {

@@ -81,14 +81,16 @@ public partial class FlightStrip
         }
     }
 
-    private string AgentSuffix
+    private string AgentName => Card.AgentType switch
     {
-        get
-        {
-            var agent = Card.AgentType is "claude-code" ? "claude" : Card.AgentType;
-            return Card.ObservedModel is null ? $" · {agent}" : $" · {agent} · {Card.ObservedModel}";
-        }
-    }
+        AgentType.ClaudeCode => Strings.Agent_ClaudeCode,
+        AgentType.Codex => Strings.Agent_Codex,
+        _ => Card.AgentType.ToString(),
+    };
+
+    private string AgentSuffix => Card.ObservedModel is null
+        ? $" · {AgentName}"
+        : $" · {AgentName} · {Card.ObservedModel}";
 
     private string? ScheduleText => Card.Schedule switch
     {

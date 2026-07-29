@@ -1,20 +1,27 @@
 using Act.App.Components.Settings;
 using Act.App.Resources;
 using Act.App.Settings;
+using Act.Core.Abstractions;
 using Act.Core.Model;
 using Radzen;
 
 namespace Act.App.Components.Layout;
 
-public partial class MainLayout(UserSettingsService settings, DialogService dialogService) : IDisposable
+public partial class MainLayout(UserSettingsService settings, DialogService dialogService, ICardStore cards)
+    : IDisposable
 {
     private string ThemeAttribute => settings.Theme.ToString().ToLowerInvariant();
 
     private BoardDensity Density => settings.Density;
 
-    private static int AttentionCount => SampleBoard.Cards.Count(c => c.NeedsAttention);
+    private int AttentionCount { get; set; }
 
-    protected override void OnInitialized() => settings.Changed += OnSettingsChanged;
+    protected override async Task OnInitializedAsync()
+    {
+        settings.Changed += OnSettingsChanged;
+
+        AttentionCount = (await cards.GetAllAsync()).Count(card => card.NeedsAttention);
+    }
 
     public void Dispose() => settings.Changed -= OnSettingsChanged;
 

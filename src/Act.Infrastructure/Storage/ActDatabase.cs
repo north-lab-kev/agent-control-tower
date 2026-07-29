@@ -10,6 +10,18 @@ internal static class ActDatabase
     {
         var directory = Directory.CreateDirectory(Path.GetFullPath(dataDirectory));
 
-        return new LiteDatabase(Path.Combine(directory.FullName, FileName));
+        var database = new LiteDatabase(Path.Combine(directory.FullName, FileName), ActBsonMapper.Create());
+
+        try
+        {
+            ActSchema.Apply(database);
+        }
+        catch
+        {
+            database.Dispose();
+            throw;
+        }
+
+        return database;
     }
 }

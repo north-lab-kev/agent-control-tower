@@ -111,6 +111,12 @@
   <data name="Card_AutoComplete" xml:space="preserve">
     <value>clôture auto</value>
   </data>
+  <data name="Agent_ClaudeCode" xml:space="preserve">
+    <value>claude</value>
+  </data>
+  <data name="Agent_Codex" xml:space="preserve">
+    <value>codex</value>
+  </data>
   <data name="Settings_Title" xml:space="preserve">
     <value>Paramètres</value>
   </data>

@@ -1,20 +1,26 @@
 using Act.App.Resources;
+using Act.Core.Abstractions;
 using Act.Core.Model;
 using Microsoft.AspNetCore.Components;
 
 namespace Act.App.Components.Board;
 
-public partial class BoardView
+public partial class BoardView(ICardStore cards)
 {
     private static readonly BoardColumn[] AllColumns = Enum.GetValues<BoardColumn>();
+
+    private IReadOnlyList<Card> board = [];
 
     [CascadingParameter(Name = "Density")]
     private BoardDensity Density { get; set; }
 
     private string DensityClass => Density is BoardDensity.Compact ? "compact" : "spacious";
 
-    private static IReadOnlyList<Card> CardsIn(BoardColumn column)
-        => [.. SampleBoard.Cards.Where(c => c.Column == column)];
+    protected override async Task OnInitializedAsync()
+        => board = await cards.GetAllAsync();
+
+    private IReadOnlyList<Card> CardsIn(BoardColumn column)
+        => [.. board.Where(card => card.Column == column)];
 
     private static string Label(BoardColumn column) => column switch
     {

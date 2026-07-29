@@ -48,14 +48,14 @@
                 }
             }
 
-            @if (ScheduleText is not null || Card.ChildCount > 0 || Card.AutoComplete)
+            @if (ScheduleText is not null || Card.Children.Count > 0 || Card.AutoComplete)
             {
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
                              Gap="0.45rem" Wrap="FlexWrap.Wrap">
-                    @if (Card.ChildCount > 0)
+                    @if (Card.Children.Count > 0)
                     {
                         <RadzenText TextStyle="TextStyle.Caption"
-                                    Text="@Text.Format(Strings.Card_Children, Card.ChildCount)" class="lin" />
+                                    Text="@Text.Format(Strings.Card_Children, Card.Children.Count)" class="lin" />
                     }
                     @if (Card.AutoComplete)
                     {
