@@ -108,6 +108,38 @@ body {
     background-image: none;
 }
 
+/* Keep a tall dialog clear of the window edges; Radzen's own max-height is 100%. */
+.rz-dialog.act-dialog {
+    max-height: 90%;
+}
+
+/* Form dialogs scroll their own body so the action buttons stay pinned below it,
+   outside the scrollbar. Radzen scrolls the whole content area by default. */
+.rz-dialog.act-dialog-form .rz-dialog-content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* The <form> is rendered by RadzenTemplateForm, so it carries no scoped-CSS attribute
+   and the dialog's own stylesheet cannot reach it — it has to be sized from here. */
+.rz-dialog.act-dialog-form .rz-dialog-content > form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* The custom title bar marks the top strip `-webkit-app-region: drag`. Chromium builds
+   drag regions from the union of dragging elements minus no-drag ones, ignoring stacking,
+   so anything overlapping that strip — a dialog titlebar and its close button — would have
+   its clicks swallowed by the OS window drag. Punch the hole for the whole overlay. */
+.rz-dialog-wrapper,
+.rz-dialog-mask {
+    -webkit-app-region: no-drag;
+}
+
 #blazor-error-ui {
     color-scheme: light only;
     background: lightyellow;

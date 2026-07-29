@@ -22,6 +22,15 @@
     border-radius: var(--act-radius);
 }
 
+::deep .col.drop-ok {
+    border-color: color-mix(in srgb, var(--act-run) 55%, transparent);
+    background: color-mix(in srgb, var(--act-run) 7%, transparent);
+}
+
+::deep .col.drop-no {
+    opacity: .4;
+}
+
 .board.compact ::deep .col {
     min-width: 210px;
 }

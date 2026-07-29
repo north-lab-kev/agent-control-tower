@@ -53,9 +53,33 @@ verifiable, and leaves something runnable.
   and survives a restart. Compact shows the **badge**, not a dot, per the spec —
   the title ellipsizes to give the badge its width, verified down to the 210px
   minimum column with no overflow and no clash with the `!` attention corner.
-- [ ] **5. Task creation + manual moves** — new-task modal → card in Preparing;
+- [x] **5. Task creation + manual moves** — new-task modal → card in Preparing;
   drag Preparing ↔ Ready with drag-time graying of invalid columns. *Verify:*
-  can hand-manage cards through the human-controlled columns.
+  can hand-manage cards through the human-controlled columns. ✅ Cards can be
+  created, reopened for editing, and dragged between the two human columns, with
+  every change persisted.
+  - [x] **Creation** — new-task modal with the full control set (title, prompt,
+    dir, agent, model, effort, permission mode, schedule, auto-complete,
+    auto-git; tools / flags / env behind *Advanced*), required-field validation,
+    single Save → card lands in Preparing with a freshly minted number. A
+    `BoardState` service owns the card list and raises `Changed`, so the board
+    updates live. `model` / `effort` come from a **placeholder list** until the
+    adapters own them (steps 6-7).
+  - [x] **Editing** — clicking (or keyboard-activating) any card reopens the same
+    dialog prefilled, and Save updates that card in place. `NewTaskForm.ApplyTo`
+    writes only the fields the form owns, so id, number, session, column, badge,
+    lineage, transitions and metrics survive an edit. **Not yet gated by column**
+    — every field is editable in every column, which conflicts with the
+    immutable-`initialPrompt` rule for launched cards; gating comes with the
+    drawer (step 10), which also replaces card-click as the way in.
+  - [x] **Manual moves** — HTML5 drag and drop between **Preparing ↔ Ready**.
+    `Act.Core/Rules/ManualMove` owns the validity rules (unit-tested across all 36
+    column pairs); only human-controlled cards carry `draggable`, machine cards
+    do not lift at all. On pick-up the valid target lights and every invalid
+    column grays to 40%; the source column stays neutral. A drop appends a
+    `Transition` and persists via `ICardStore.UpdateAsync`.
+    `Ready → Executing` (launch, step 7) and `Completed → To review`
+    (reopen, step 11) are deliberately **not** manual moves yet.
 
 ## Phase 3 — Agent abstraction + both adapters
 

@@ -1,0 +1,162 @@
+@using Act.App.Cards
+@using Act.Core.Model
+
+<RadzenTemplateForm TItem="NewTaskForm" Data="form" Submit="OnSubmitAsync" class="newtask">
+    <div class="body">
+    <RadzenStack Gap="1.1rem">
+
+        <RadzenFieldset Text="@Strings.NewTask_Group_Task">
+            <RadzenStack Gap="0.9rem">
+                <RadzenStack Gap="0.3rem">
+                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Title" />
+                    <RadzenTextBox Name="Title" @bind-Value="form.Title" MaxLength="200" class="wide" />
+                    <RadzenRequiredValidator Component="Title" Text="@Strings.NewTask_Required" />
+                </RadzenStack>
+
+                <RadzenStack Gap="0.3rem">
+                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Prompt" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Prompt_Hint" class="hint" />
+                    <RadzenTextArea Name="Prompt" @bind-Value="form.Prompt" Rows="5" class="wide" />
+                    <RadzenRequiredValidator Component="Prompt" Text="@Strings.NewTask_Required" />
+                </RadzenStack>
+
+                <RadzenStack Gap="0.3rem">
+                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_WorkingDir" />
+                    <RadzenTextBox Name="WorkingDir" @bind-Value="form.WorkingDir"
+                                   Placeholder="~/dev/act" class="wide" />
+                    <RadzenRequiredValidator Component="WorkingDir" Text="@Strings.NewTask_Required" />
+                </RadzenStack>
+            </RadzenStack>
+        </RadzenFieldset>
+
+        <RadzenFieldset Text="@Strings.NewTask_Group_Agent">
+            <RadzenStack Gap="1rem">
+                <div class="row">
+                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Agent" />
+                    <RadzenDropDown TValue="AgentType" Value="form.Agent" ValueChanged="OnAgentChanged"
+                                    Data="AgentChoices" TextProperty="Text" ValueProperty="Value"
+                                    AllowClear="false" class="control" />
+                </div>
+
+                <div class="row">
+                    <RadzenStack Gap="0.1rem">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Model" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Model_Hint" class="hint" />
+                    </RadzenStack>
+                    <RadzenDropDown TValue="string" @bind-Value="form.Model" Data="Models"
+                                    AllowClear="true" Placeholder="@Strings.NewTask_AgentDefault"
+                                    class="control" />
+                </div>
+
+                <div class="row">
+                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Effort" />
+                    <RadzenDropDown TValue="string" @bind-Value="form.Effort" Data="Efforts"
+                                    AllowClear="true" Placeholder="@Strings.NewTask_AgentDefault"
+                                    class="control" />
+                </div>
+
+                <div class="row">
+                    <RadzenStack Gap="0.1rem">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Permission" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@PermissionHint" class="hint" />
+                    </RadzenStack>
+                    <RadzenDropDown TValue="PermissionMode" @bind-Value="form.Permission"
+                                    Data="PermissionChoices" TextProperty="Text" ValueProperty="Value"
+                                    AllowClear="false" class="control" />
+                </div>
+            </RadzenStack>
+        </RadzenFieldset>
+
+        <RadzenFieldset Text="@Strings.NewTask_Group_Automation">
+            <RadzenStack Gap="1rem">
+                <div class="row">
+                    <RadzenStack Gap="0.1rem">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Schedule" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Schedule_Hint" class="hint" />
+                    </RadzenStack>
+                    <RadzenDropDown TValue="TaskSchedule" Value="form.Schedule" ValueChanged="OnScheduleChanged"
+                                    Data="ScheduleChoices" TextProperty="Text" ValueProperty="Value"
+                                    AllowClear="false" class="control" />
+                </div>
+
+                @if (form.WantsDateTime)
+                {
+                    <div class="row">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_ScheduledFor" />
+                        <RadzenDatePicker Name="ScheduledFor" @bind-Value="form.ScheduledFor"
+                                          ShowTime="true" DateFormat="@Strings.NewTask_DateFormat"
+                                          class="control" />
+                    </div>
+                    <RadzenRequiredValidator Component="ScheduledFor" Text="@Strings.NewTask_Required" />
+                }
+
+                <div class="row">
+                    <RadzenStack Gap="0.1rem">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AutoComplete" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_AutoComplete_Hint" class="hint" />
+                    </RadzenStack>
+                    <RadzenSwitch Value="form.AutoComplete" ValueChanged="OnAutoCompleteChanged" />
+                </div>
+
+                @if (form.AutoComplete)
+                {
+                    <div class="row">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AutoGit" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_AutoGit_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenDropDown TValue="GitAction?" @bind-Value="form.SelectedGitAction"
+                                        Data="GitChoices" TextProperty="Text" ValueProperty="Value"
+                                        AllowClear="true" Placeholder="@Strings.NewTask_NoGitAction"
+                                        class="control" />
+                    </div>
+
+                    @if (form.SelectedGitAction is GitAction.PullRequest)
+                    {
+                        <div class="row">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Draft" />
+                            <RadzenSwitch @bind-Value="form.Draft" />
+                        </div>
+                    }
+                }
+            </RadzenStack>
+        </RadzenFieldset>
+
+        <RadzenFieldset Text="@Strings.NewTask_Group_Advanced" AllowCollapse="true" Collapsed="true">
+            <RadzenStack Gap="0.9rem">
+                <RadzenStack Gap="0.3rem">
+                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AllowedTools" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Tools_Hint" class="hint" />
+                    <RadzenTextArea @bind-Value="form.AllowedTools" Rows="2" class="wide" />
+                </RadzenStack>
+
+                <RadzenStack Gap="0.3rem">
+                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_DisallowedTools" />
+                    <RadzenTextArea @bind-Value="form.DisallowedTools" Rows="2" class="wide" />
+                </RadzenStack>
+
+                <RadzenStack Gap="0.3rem">
+                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_ExtraFlags" />
+                    <RadzenTextArea @bind-Value="form.ExtraFlags" Rows="2" class="wide" />
+                </RadzenStack>
+
+                <RadzenStack Gap="0.3rem">
+                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Env" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Env_Hint" class="hint" />
+                    <RadzenTextArea @bind-Value="form.Env" Rows="3" class="wide" />
+                </RadzenStack>
+            </RadzenStack>
+        </RadzenFieldset>
+
+    </RadzenStack>
+    </div>
+
+    <div class="footer">
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+            <RadzenButton Text="@Strings.NewTask_Cancel" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                          Size="ButtonSize.Small" ButtonType="ButtonType.Button" Click="Cancel" />
+            <RadzenButton Text="@Strings.NewTask_Save" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat"
+                          Size="ButtonSize.Small" ButtonType="ButtonType.Submit" Disabled="saving" />
+        </RadzenStack>
+    </div>
+</RadzenTemplateForm>

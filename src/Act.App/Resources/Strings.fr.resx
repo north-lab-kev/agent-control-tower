@@ -33,6 +33,174 @@
   <data name="Board_ColumnEmpty" xml:space="preserve">
     <value>aucune carte</value>
   </data>
+  <data name="Shell_NewTask" xml:space="preserve">
+    <value>Nouvelle tâche</value>
+  </data>
+  <data name="NewTask_DialogTitle" xml:space="preserve">
+    <value>Nouvelle tâche</value>
+  </data>
+  <data name="TaskDialog_EditTitle" xml:space="preserve">
+    <value>Modifier la tâche</value>
+  </data>
+  <data name="NewTask_Group_Task" xml:space="preserve">
+    <value>Tâche</value>
+  </data>
+  <data name="NewTask_Group_Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="NewTask_Group_Automation" xml:space="preserve">
+    <value>Automatisation</value>
+  </data>
+  <data name="NewTask_Group_Advanced" xml:space="preserve">
+    <value>Avancé</value>
+  </data>
+  <data name="NewTask_Title" xml:space="preserve">
+    <value>Titre</value>
+  </data>
+  <data name="NewTask_Prompt" xml:space="preserve">
+    <value>Instruction</value>
+  </data>
+  <data name="NewTask_Prompt_Hint" xml:space="preserve">
+    <value>L'instruction initiale. Conservée telle quelle pendant toute la vie de la tâche.</value>
+  </data>
+  <data name="NewTask_WorkingDir" xml:space="preserve">
+    <value>Répertoire de travail</value>
+  </data>
+  <data name="NewTask_Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="NewTask_Model" xml:space="preserve">
+    <value>Modèle</value>
+  </data>
+  <data name="NewTask_Model_Hint" xml:space="preserve">
+    <value>Propre à l'agent. Laisser vide pour utiliser son défaut.</value>
+  </data>
+  <data name="NewTask_Effort" xml:space="preserve">
+    <value>Effort de raisonnement</value>
+  </data>
+  <data name="NewTask_AgentDefault" xml:space="preserve">
+    <value>défaut de l'agent</value>
+  </data>
+  <data name="NewTask_Permission" xml:space="preserve">
+    <value>Mode de permission</value>
+  </data>
+  <data name="NewTask_Schedule" xml:space="preserve">
+    <value>Planification</value>
+  </data>
+  <data name="NewTask_Schedule_Hint" xml:space="preserve">
+    <value>Quand la tâche pourra démarrer, une fois déplacée dans « Prêt ».</value>
+  </data>
+  <data name="NewTask_ScheduledFor" xml:space="preserve">
+    <value>Date et heure</value>
+  </data>
+  <data name="NewTask_DateFormat" xml:space="preserve">
+    <value>yyyy-MM-dd HH:mm</value>
+  </data>
+  <data name="NewTask_AutoComplete" xml:space="preserve">
+    <value>Clôture automatique</value>
+  </data>
+  <data name="NewTask_AutoComplete_Hint" xml:space="preserve">
+    <value>Termine seule, sans révision, après une exécution propre.</value>
+  </data>
+  <data name="NewTask_AutoGit" xml:space="preserve">
+    <value>Git à la clôture</value>
+  </data>
+  <data name="NewTask_AutoGit_Hint" xml:space="preserve">
+    <value>Exécuté dans la session, avant la clôture de la tâche.</value>
+  </data>
+  <data name="NewTask_NoGitAction" xml:space="preserve">
+    <value>aucune</value>
+  </data>
+  <data name="NewTask_Draft" xml:space="preserve">
+    <value>Pull request brouillon</value>
+  </data>
+  <data name="NewTask_AllowedTools" xml:space="preserve">
+    <value>Outils autorisés</value>
+  </data>
+  <data name="NewTask_DisallowedTools" xml:space="preserve">
+    <value>Outils interdits</value>
+  </data>
+  <data name="NewTask_Tools_Hint" xml:space="preserve">
+    <value>Un par ligne, ou séparés par des virgules. Exemple : Bash(git *)</value>
+  </data>
+  <data name="NewTask_ExtraFlags" xml:space="preserve">
+    <value>Options CLI supplémentaires</value>
+  </data>
+  <data name="NewTask_Env" xml:space="preserve">
+    <value>Variables d'environnement</value>
+  </data>
+  <data name="NewTask_Env_Hint" xml:space="preserve">
+    <value>Une paire CLÉ=valeur par ligne.</value>
+  </data>
+  <data name="NewTask_Required" xml:space="preserve">
+    <value>Obligatoire</value>
+  </data>
+  <data name="NewTask_Save" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="NewTask_Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Permission_Default" xml:space="preserve">
+    <value>défaut</value>
+  </data>
+  <data name="Permission_Default_Hint" xml:space="preserve">
+    <value>Demande avant chaque action sensible.</value>
+  </data>
+  <data name="Permission_Plan" xml:space="preserve">
+    <value>plan</value>
+  </data>
+  <data name="Permission_Plan_Hint" xml:space="preserve">
+    <value>Lecture seule — aucune exécution d'outil.</value>
+  </data>
+  <data name="Permission_AcceptEdits" xml:space="preserve">
+    <value>accepter les modifications</value>
+  </data>
+  <data name="Permission_AcceptEdits_Hint" xml:space="preserve">
+    <value>Modifications acceptées d'office; les autres outils demandent.</value>
+  </data>
+  <data name="Permission_Auto" xml:space="preserve">
+    <value>auto</value>
+  </data>
+  <data name="Permission_Auto_Hint" xml:space="preserve">
+    <value>Un classificateur approuve ou refuse. Ne demande jamais.</value>
+  </data>
+  <data name="Permission_DontAsk" xml:space="preserve">
+    <value>ne pas demander</value>
+  </data>
+  <data name="Permission_DontAsk_Hint" xml:space="preserve">
+    <value>Refuse tout ce qui n'est pas pré-approuvé. Ne demande jamais.</value>
+  </data>
+  <data name="Permission_Bypass" xml:space="preserve">
+    <value>contourner</value>
+  </data>
+  <data name="Permission_Bypass_Hint" xml:space="preserve">
+    <value>Autorise tout. Ne demande jamais.</value>
+  </data>
+  <data name="ScheduleOption_Manual" xml:space="preserve">
+    <value>manuel</value>
+  </data>
+  <data name="ScheduleOption_Now" xml:space="preserve">
+    <value>maintenant</value>
+  </data>
+  <data name="ScheduleOption_NextWindow" xml:space="preserve">
+    <value>prochaine fenêtre de 5 h</value>
+  </data>
+  <data name="ScheduleOption_WindowAfterNext" xml:space="preserve">
+    <value>fenêtre suivante</value>
+  </data>
+  <data name="ScheduleOption_DateTime" xml:space="preserve">
+    <value>date et heure précises</value>
+  </data>
+  <data name="GitAction_Commit" xml:space="preserve">
+    <value>commit</value>
+  </data>
+  <data name="GitAction_Push" xml:space="preserve">
+    <value>commit + push</value>
+  </data>
+  <data name="GitAction_PullRequest" xml:space="preserve">
+    <value>commit + push + PR</value>
+  </data>
   <data name="Column_Preparing" xml:space="preserve">
     <value>Préparation</value>
   </data>

@@ -1,7 +1,9 @@
 using System.Globalization;
 using Act.App.Resources;
 using Act.Core.Model;
+using Act.Core.Rules;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace Act.App.Components.Board;
 
@@ -15,13 +17,43 @@ public partial class FlightStrip
     [Parameter]
     public BoardDensity Density { get; set; }
 
+    [Parameter]
+    public EventCallback<Card> OnOpen { get; set; }
+
+    [Parameter]
+    public EventCallback<Card> OnDragStart { get; set; }
+
+    [Parameter]
+    public EventCallback OnDragEnd { get; set; }
+
+    [Parameter]
+    public bool IsDragging { get; set; }
+
+    private bool Draggable => ManualMove.CanDrag(Card.Column);
+
     private bool IsCompact => Density is BoardDensity.Compact;
+
+    private Task OpenAsync() => OnOpen.InvokeAsync(Card);
+
+    private Task OnDragStartAsync() => Draggable ? OnDragStart.InvokeAsync(Card) : Task.CompletedTask;
+
+    private Task OnDragEndAsync() => OnDragEnd.InvokeAsync();
+
+    private Task OnKeyDownAsync(KeyboardEventArgs args)
+        => args.Key is "Enter" or " " ? OnOpen.InvokeAsync(Card) : Task.CompletedTask;
 
     private string? AttentionClass => Card.NeedsAttention
         ? Card.Badge is Badge.Error or Badge.Killed ? "attn err" : "attn"
         : null;
 
-    private string StripClass => $"strip {RailClass} {AttentionClass}".TrimEnd();
+    private string StripClass => string.Join(' ', new[]
+    {
+        "strip",
+        RailClass,
+        AttentionClass,
+        Draggable ? "liftable" : null,
+        IsDragging ? "lifted" : null,
+    }.Where(part => !string.IsNullOrEmpty(part)));
 
     private string FullBadgeClass => $"badge {BadgeClass}".TrimEnd();
 
@@ -90,7 +122,7 @@ public partial class FlightStrip
         ? $" · {AgentName}"
         : $" · {AgentName} · {Card.ObservedModel}";
 
-    private string? ScheduleText => Card.Schedule switch
+    private string? ScheduleText => Card.Column is not BoardColumn.Ready ? null : Card.Schedule switch
     {
         TaskSchedule.Manual => Strings.Schedule_Manual,
         TaskSchedule.Now => Strings.Schedule_Now,

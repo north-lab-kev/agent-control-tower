@@ -1,12 +1,14 @@
 @using Act.Core.Model
 
-<div class="board @DensityClass">
+<div class="board @DensityClass @(dragging is null ? null : "dragging")">
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Stretch" Gap="0.6rem" class="cols">
         @foreach (var column in AllColumns)
         {
             var cards = CardsIn(column);
 
-            <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" class="col">
+            <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" class="@ColumnClass(column)"
+                         @ondragover:preventDefault="true" @ondragenter:preventDefault="true"
+                         @ondrop="() => DropAsync(column)">
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.45rem">
                     <RadzenText TextStyle="TextStyle.Subtitle2" Text="@Label(column)" class="colname" />
                     <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" IsPill="true"
@@ -22,7 +24,9 @@
                     {
                         foreach (var card in cards)
                         {
-                            <FlightStrip Card="card" Density="Density" />
+                            <FlightStrip Card="card" Density="Density" OnOpen="OpenAsync"
+                                         OnDragStart="OnDragStartAsync" OnDragEnd="OnDragEndAsync"
+                                         IsDragging="dragging?.Id == card.Id" />
                         }
                     }
                 </RadzenStack>

@@ -33,6 +33,174 @@
   <data name="Board_ColumnEmpty" xml:space="preserve">
     <value>no cards</value>
   </data>
+  <data name="Shell_NewTask" xml:space="preserve">
+    <value>New task</value>
+  </data>
+  <data name="NewTask_DialogTitle" xml:space="preserve">
+    <value>New task</value>
+  </data>
+  <data name="TaskDialog_EditTitle" xml:space="preserve">
+    <value>Edit task</value>
+  </data>
+  <data name="NewTask_Group_Task" xml:space="preserve">
+    <value>Task</value>
+  </data>
+  <data name="NewTask_Group_Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="NewTask_Group_Automation" xml:space="preserve">
+    <value>Automation</value>
+  </data>
+  <data name="NewTask_Group_Advanced" xml:space="preserve">
+    <value>Advanced</value>
+  </data>
+  <data name="NewTask_Title" xml:space="preserve">
+    <value>Title</value>
+  </data>
+  <data name="NewTask_Prompt" xml:space="preserve">
+    <value>Prompt</value>
+  </data>
+  <data name="NewTask_Prompt_Hint" xml:space="preserve">
+    <value>The opening instruction. Kept verbatim for the life of the task.</value>
+  </data>
+  <data name="NewTask_WorkingDir" xml:space="preserve">
+    <value>Working directory</value>
+  </data>
+  <data name="NewTask_Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="NewTask_Model" xml:space="preserve">
+    <value>Model</value>
+  </data>
+  <data name="NewTask_Model_Hint" xml:space="preserve">
+    <value>Agent-specific. Leave empty to use the agent's own default.</value>
+  </data>
+  <data name="NewTask_Effort" xml:space="preserve">
+    <value>Reasoning effort</value>
+  </data>
+  <data name="NewTask_AgentDefault" xml:space="preserve">
+    <value>agent default</value>
+  </data>
+  <data name="NewTask_Permission" xml:space="preserve">
+    <value>Permission mode</value>
+  </data>
+  <data name="NewTask_Schedule" xml:space="preserve">
+    <value>Schedule</value>
+  </data>
+  <data name="NewTask_Schedule_Hint" xml:space="preserve">
+    <value>When the task may launch, once you move it to Ready.</value>
+  </data>
+  <data name="NewTask_ScheduledFor" xml:space="preserve">
+    <value>Date &amp; time</value>
+  </data>
+  <data name="NewTask_DateFormat" xml:space="preserve">
+    <value>yyyy-MM-dd HH:mm</value>
+  </data>
+  <data name="NewTask_AutoComplete" xml:space="preserve">
+    <value>Auto-complete</value>
+  </data>
+  <data name="NewTask_AutoComplete_Hint" xml:space="preserve">
+    <value>Skip review and finish on its own after a clean run.</value>
+  </data>
+  <data name="NewTask_AutoGit" xml:space="preserve">
+    <value>Git on completion</value>
+  </data>
+  <data name="NewTask_AutoGit_Hint" xml:space="preserve">
+    <value>Runs in-session, before the task completes.</value>
+  </data>
+  <data name="NewTask_NoGitAction" xml:space="preserve">
+    <value>none</value>
+  </data>
+  <data name="NewTask_Draft" xml:space="preserve">
+    <value>Draft pull request</value>
+  </data>
+  <data name="NewTask_AllowedTools" xml:space="preserve">
+    <value>Allowed tools</value>
+  </data>
+  <data name="NewTask_DisallowedTools" xml:space="preserve">
+    <value>Disallowed tools</value>
+  </data>
+  <data name="NewTask_Tools_Hint" xml:space="preserve">
+    <value>One per line, or comma-separated. Example: Bash(git *)</value>
+  </data>
+  <data name="NewTask_ExtraFlags" xml:space="preserve">
+    <value>Extra CLI flags</value>
+  </data>
+  <data name="NewTask_Env" xml:space="preserve">
+    <value>Environment variables</value>
+  </data>
+  <data name="NewTask_Env_Hint" xml:space="preserve">
+    <value>One KEY=value per line.</value>
+  </data>
+  <data name="NewTask_Required" xml:space="preserve">
+    <value>Required</value>
+  </data>
+  <data name="NewTask_Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="NewTask_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Permission_Default" xml:space="preserve">
+    <value>default</value>
+  </data>
+  <data name="Permission_Default_Hint" xml:space="preserve">
+    <value>Asks you before each sensitive action.</value>
+  </data>
+  <data name="Permission_Plan" xml:space="preserve">
+    <value>plan</value>
+  </data>
+  <data name="Permission_Plan_Hint" xml:space="preserve">
+    <value>Read-only — no tool execution at all.</value>
+  </data>
+  <data name="Permission_AcceptEdits" xml:space="preserve">
+    <value>accept edits</value>
+  </data>
+  <data name="Permission_AcceptEdits_Hint" xml:space="preserve">
+    <value>Edits are auto-accepted; other tools still ask.</value>
+  </data>
+  <data name="Permission_Auto" xml:space="preserve">
+    <value>auto</value>
+  </data>
+  <data name="Permission_Auto_Hint" xml:space="preserve">
+    <value>A model classifier approves or denies. Never asks.</value>
+  </data>
+  <data name="Permission_DontAsk" xml:space="preserve">
+    <value>don't ask</value>
+  </data>
+  <data name="Permission_DontAsk_Hint" xml:space="preserve">
+    <value>Denies anything not pre-approved. Never asks.</value>
+  </data>
+  <data name="Permission_Bypass" xml:space="preserve">
+    <value>bypass</value>
+  </data>
+  <data name="Permission_Bypass_Hint" xml:space="preserve">
+    <value>Allows everything. Never asks.</value>
+  </data>
+  <data name="ScheduleOption_Manual" xml:space="preserve">
+    <value>manual</value>
+  </data>
+  <data name="ScheduleOption_Now" xml:space="preserve">
+    <value>now</value>
+  </data>
+  <data name="ScheduleOption_NextWindow" xml:space="preserve">
+    <value>next 5-hour window</value>
+  </data>
+  <data name="ScheduleOption_WindowAfterNext" xml:space="preserve">
+    <value>window after next</value>
+  </data>
+  <data name="ScheduleOption_DateTime" xml:space="preserve">
+    <value>specific date &amp; time</value>
+  </data>
+  <data name="GitAction_Commit" xml:space="preserve">
+    <value>commit</value>
+  </data>
+  <data name="GitAction_Push" xml:space="preserve">
+    <value>commit + push</value>
+  </data>
+  <data name="GitAction_PullRequest" xml:space="preserve">
+    <value>commit + push + PR</value>
+  </data>
   <data name="Column_Preparing" xml:space="preserve">
     <value>Preparing</value>
   </data>

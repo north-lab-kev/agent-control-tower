@@ -27,7 +27,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  ├─ Act.Core/                     # DOMAIN + APPLICATION — no infra/UI/agent deps
 │  │  ├─ Model/                     #   Card, Column, Badge, Transition, Lineage…
 │  │  ├─ Events/                    #   normalized event types
-│  │  ├─ Rules/                     #   the rules engine (pure logic)
+│  │  ├─ Rules/                     #   the rules engine + manual-move validity (pure logic)
 │  │  ├─ Scheduling/                #   queue runner, schedule, backpressure
 │  │  └─ Abstractions/              #   INTERFACES: IAgentAdapter, IIngestionSource,
 │  │                               #     ITaskStore, INotifier, IClock…
@@ -38,6 +38,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  └─ Storage/                   #   act.db open + BsonMapper, schema version, card/settings stores
 │  ├─ Act.App/                      # Blazor Server UI + Electron desktop host (ElectronNET.Core)
 │  │  ├─ Components/                #   board, flight strips, drawer, new-task modal
+│  │  ├─ Cards/                     #   BoardState (card list + Changed event), task form model
 │  │  ├─ Seeding/                   #   sample cards (dev-only demo data; drops out at step 5)
 │  │  ├─ Settings/                  #   user-settings service + culture
 │  │  ├─ Resources/                 #   .resx strings (en / fr)

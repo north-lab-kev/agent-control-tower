@@ -1,4 +1,5 @@
 using Act.App;
+using Act.App.Cards;
 using Act.App.Settings;
 using Act.Infrastructure;
 using Act.Infrastructure.Storage;
@@ -14,12 +15,13 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddRadzenComponents();
 
-builder.Services.AddTransient<IAssetVersions, AssetVersions>();
+builder.Services.AddSingleton<IAssetVersions, AssetVersions>();
 
 builder.Services.AddActInfrastructure(
     ActDataDirectory.Resolve(builder.Configuration[ActDataDirectory.OverrideKey]));
 builder.Services.AddSingleton<AppCulture>();
 builder.Services.AddSingleton<UserSettingsService>();
+builder.Services.AddSingleton<BoardState>();
 
 #if DEBUG
 var seedSampleCards = builder.Configuration.GetValue("Act:SeedSampleCards", true);
@@ -44,6 +46,8 @@ app.Services.GetRequiredService<UserSettingsService>().ApplyLanguage();
 if (seedSampleCards)
     await app.Services.GetRequiredService<Act.App.Seeding.SampleCardSeeder>().SeedIfEmptyAsync();
 #endif
+
+await app.Services.GetRequiredService<BoardState>().LoadAsync();
 
 if (!app.Environment.IsDevelopment())
 {

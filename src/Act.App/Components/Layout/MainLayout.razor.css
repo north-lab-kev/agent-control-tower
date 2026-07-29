@@ -93,6 +93,13 @@
     animation: act-blink 1.5s infinite;
 }
 
+::deep .newtaskbtn {
+    font-size: 11px;
+    color: var(--act-ink);
+    border-color: var(--act-line2);
+    -webkit-app-region: no-drag;
+}
+
 ::deep .gear {
     color: var(--act-dim);
     padding: 0 0.35rem;

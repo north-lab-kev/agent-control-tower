@@ -355,7 +355,8 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
 - `workingDir` — the task's cwd.
 - `launchConfig` — per-task launch parameters (see Launch config below).
 - `schedule` — *when* the task may auto-launch: `manual | now | next-window |
-  window-after-next | datetime`. Set at Preparing → Ready, editable in Ready
+  window-after-next | datetime`. Set at **creation** (new-task modal, default
+  `manual`) and editable in Ready; only *displayed* as a badge in the Ready column
   (see Scheduling & queue policy).
 - `autoComplete` — bool, set at creation. On a **clean** finish
   (`ready_for_review`), skip To review and auto-advance to Completed (see
@@ -732,7 +733,9 @@ sets **per-task intent** for *when* a task may start.
 
 ### Per-task `schedule`
 
-Set at the Preparing → Ready transition; editable while in Ready:
+Chosen in the new-task modal (default **Manual**) and editable while in Ready, so
+moving a card to Ready needs no extra prompt. Shown as a badge only once the card
+is in Ready — it is launch intent, and nothing launches from Preparing:
 
 - **Manual** — never auto-launched; user starts it by hand.
 - **Now** — as soon as possible (subject to cap + backpressure below).

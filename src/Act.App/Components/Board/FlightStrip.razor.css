@@ -2,6 +2,23 @@
     position: relative;
     overflow: hidden;
     border-radius: var(--act-radius);
+    cursor: pointer;
+}
+
+.strip:focus-visible {
+    outline: 2px solid var(--act-review);
+    outline-offset: 1px;
+}
+
+/* Every card opens on click, so `pointer` is the resting affordance. Dragging is the
+   secondary gesture: the cursor only turns into a grab once the press begins. */
+.strip.liftable:active {
+    cursor: grabbing;
+}
+
+.strip.lifted {
+    opacity: .45;
+    cursor: grabbing;
 }
 
 .strip::before {

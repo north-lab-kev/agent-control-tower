@@ -1,6 +1,9 @@
 @using Act.Core.Model
 
-<div class="@StripClass">
+<div class="@StripClass" role="button" tabindex="0" title="@Card.Title"
+     draggable="@(Draggable ? "true" : "false")"
+     @ondragstart="OnDragStartAsync" @ondragend="OnDragEndAsync"
+     @onclick="OpenAsync" @onkeydown="OnKeyDownAsync">
 <RadzenCard Variant="Variant.Outlined" class="stripcard">
     @if (IsCompact)
     {

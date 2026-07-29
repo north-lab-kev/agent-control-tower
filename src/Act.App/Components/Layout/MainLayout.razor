@@ -19,6 +19,10 @@
                 <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base"
                              Text="@Strings.Shell_Awake" class="statchip" />
 
+                <RadzenButton Icon="add" Text="@Strings.Shell_NewTask" ButtonStyle="ButtonStyle.Base"
+                              Variant="Variant.Outlined" Size="ButtonSize.Small" Click="OpenNewTaskAsync"
+                              class="newtaskbtn" aria-label="@Strings.Shell_NewTask" />
+
                 <RadzenButton Icon="settings" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
                               Size="ButtonSize.Small" Click="OpenSettingsAsync" class="gear"
                               title="@Strings.Settings_Title" aria-label="@Strings.Settings_Title" />
