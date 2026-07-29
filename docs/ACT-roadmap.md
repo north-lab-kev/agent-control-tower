@@ -45,9 +45,14 @@ verifiable, and leaves something runnable.
 
 ## Phase 2 — Board (read-only, agent-agnostic)
 
-- [ ] **4. Static board** — six flat columns, flight strips, compact/spacious
+- [x] **4. Static board** — six flat columns, flight strips, compact/spacious
   toggle, rendering seeded cards. Pure UI, no behavior. *Verify:* board reflects
-  store; density toggle works.
+  store; density toggle works. ✅ Six columns with live counts, flight strips
+  covering all eight rail states, both densities rendering from the LiteDB store
+  via `ICardStore`. Density is chosen in the settings dialog (no top-bar toggle)
+  and survives a restart. Compact shows the **badge**, not a dot, per the spec —
+  the title ellipsizes to give the badge its width, verified down to the 210px
+  minimum column with no overflow and no clash with the `!` attention corner.
 - [ ] **5. Task creation + manual moves** — new-task modal → card in Preparing;
   drag Preparing ↔ Ready with drag-time graying of invalid columns. *Verify:*
   can hand-manage cards through the human-controlled columns.

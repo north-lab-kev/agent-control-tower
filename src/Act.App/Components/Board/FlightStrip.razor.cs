@@ -17,8 +17,6 @@ public partial class FlightStrip
 
     private bool IsCompact => Density is BoardDensity.Compact;
 
-    private bool ShowDot => Card.Badge is not null || Card.Column is BoardColumn.Completed;
-
     private string? AttentionClass => Card.NeedsAttention
         ? Card.Badge is Badge.Error or Badge.Killed ? "attn err" : "attn"
         : null;

@@ -1,7 +1,7 @@
 @using Act.Core.Model
 
 <div class="board @DensityClass">
-    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="0" class="cols">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Stretch" Gap="0.6rem" class="cols">
         @foreach (var column in AllColumns)
         {
             var cards = CardsIn(column);
@@ -14,9 +14,16 @@
                 </RadzenStack>
 
                 <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem">
-                    @foreach (var card in cards)
+                    @if (cards.Count == 0)
                     {
-                        <FlightStrip Card="card" Density="Density" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Board_ColumnEmpty" class="empty" />
+                    }
+                    else
+                    {
+                        foreach (var card in cards)
+                        {
+                            <FlightStrip Card="card" Density="Density" />
+                        }
                     }
                 </RadzenStack>
             </RadzenStack>

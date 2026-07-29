@@ -950,9 +950,21 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   only its valid drop targets and **grays out invalid columns** (Ready →
   Preparing + Executing; Completed → To review). Machine cards (Executing / Needs
   feedback / To review) don't lift (can't be hand-moved).
+- **Column lanes:** each column is a **bay** — a faint full-height track
+  (`--act-lane` fill, `--act-lane-line` hairline, rounded) that separates the
+  columns and, crucially, keeps an **empty** column legible instead of collapsing
+  to a floating header. An empty bay shows one muted mono line (`no cards`).
+  Deliberately **not** a dashed drop-zone: nothing is ever hand-droppable in the
+  four machine columns, so a drop affordance there would teach the wrong rule.
+  The board background is a flat `--act-bg` — an earlier fixed-pitch vertical
+  grid was dropped because its 40px pitch never aligned with the flexible column
+  widths, so it read as noise rather than structure.
 - **Density toggle:** **compact** (id + title + **badge** + schedule chip — badges
   shown, not just a dot) vs **spacious** (fuller strip with metrics, path,
-  lineage). Top-bar toggle, persisted.
+  lineage). Chosen in the **settings dialog** (*Appearance → display mode*) and
+  persisted; there is **no top-bar toggle** — see Settings dialog below. In
+  compact the title ellipsizes so the badge keeps its full width: the badge is
+  the signal, the title yields.
 - **Attention:** needs-you cards get a **loud in-place treatment** (glowing rail
   + pulse + `!` corner); no separate inbox. Top-bar **"N need you ›"** pill
   summarizes *and* jumps to the next attention card.

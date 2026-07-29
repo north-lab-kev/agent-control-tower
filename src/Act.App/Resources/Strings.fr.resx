@@ -30,6 +30,9 @@
   <data name="Shell_Reload" xml:space="preserve">
     <value>Recharger</value>
   </data>
+  <data name="Board_ColumnEmpty" xml:space="preserve">
+    <value>aucune carte</value>
+  </data>
   <data name="Column_Preparing" xml:space="preserve">
     <value>Préparation</value>
   </data>

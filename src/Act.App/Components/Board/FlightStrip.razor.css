@@ -90,14 +90,6 @@
 ::deep .b-done { --tint: var(--act-done); }
 ::deep .b-stale { --tint: var(--act-stale); }
 
-::deep .bd {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--rail, var(--act-faint));
-    flex: 0 0 auto;
-}
-
 ::deep .ctxbar {
     height: 3px;
     background: var(--act-track);

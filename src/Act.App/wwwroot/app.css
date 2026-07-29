@@ -20,7 +20,8 @@
 
     --act-bar-top: #151e26;
     --act-bar-bottom: #111922;
-    --act-grid: #ffffff04;
+    --act-lane: #ffffff05;
+    --act-lane-line: #ffffff0a;
     --act-track: #ffffff10;
     --act-attn-fill: #f0a93b;
     --act-on-attn: #1a130a;
@@ -57,7 +58,8 @@
 
     --act-bar-top: #ffffff;
     --act-bar-bottom: #eef2f6;
-    --act-grid: #0f172a08;
+    --act-lane: #0f172a06;
+    --act-lane-line: #0f172a12;
     --act-track: #0f172a14;
     --act-attn-fill: #f6b93f;
     --act-on-attn: #2b1d05;
@@ -90,7 +92,8 @@
 
         --act-bar-top: #ffffff;
         --act-bar-bottom: #eef2f6;
-        --act-grid: #0f172a08;
+        --act-lane: #0f172a06;
+        --act-lane-line: #0f172a12;
         --act-track: #0f172a14;
         --act-attn-fill: #f6b93f;
         --act-on-attn: #2b1d05;
