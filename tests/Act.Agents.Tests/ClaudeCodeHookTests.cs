@@ -175,14 +175,28 @@ public class ClaudeCodeHookNormalizerTests
             .Which.Summary.Should().Contain("permission");
     }
 
-    // The same event also carries plain nudges. Reporting those as a blocked card would strand it
-    // in Needs feedback with nothing for the user to answer.
+    // Measured live on 2026-07-30: `Notification` also fires an idle nudge with exactly this
+    // message about a minute after a turn ends. It must produce nothing. Treating it as a
+    // permission request badges an idle card `needs permission` with nothing to approve and drags
+    // it out of To review; treating it as activity is worse, because an idle nudge means the
+    // opposite of activity and would send a reviewed card back to Executing on its own.
     [Fact]
-    public void An_unrelated_notification_is_only_activity()
+    public void The_idle_nudge_is_not_a_permission_prompt_and_produces_nothing()
+        => Normalize("""
+            {
+              "hook_event_name": "Notification",
+              "session_id": "abc",
+              "message": "Claude is waiting for your input"
+            }
+            """)
+            .Events.Should().BeEmpty();
+
+    [Fact]
+    public void An_unrecognised_notification_produces_nothing_rather_than_a_guess()
         => Normalize("""
             { "hook_event_name": "Notification", "session_id": "abc", "message": "still working" }
             """)
-            .Events.Should().ContainSingle().Which.Should().BeOfType<ActivityObserved>();
+            .Events.Should().BeEmpty();
 
     [Fact]
     public void An_unknown_event_normalizes_to_nothing_rather_than_failing()

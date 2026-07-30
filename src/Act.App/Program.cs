@@ -36,6 +36,7 @@ builder.Services.AddSingleton<UserSettingsService>();
 builder.Services.AddSingleton<BoardState>();
 builder.Services.AddSingleton<SessionRegistry>();
 builder.Services.AddSingleton<SessionLauncher>();
+builder.Services.AddSingleton<SessionEventPump>();
 
 var launchedByElectron = args.Any(a => a.StartsWith("/electronPort", StringComparison.OrdinalIgnoreCase));
 var runElectron = launchedByElectron
@@ -64,19 +65,29 @@ settings.ApplyKeepAwake();
 
 await app.Services.GetRequiredService<BoardState>().LoadAsync();
 
+// Started before anything can launch an agent, and explicitly rather than on first resolve: a pump
+// that attaches late has already missed the events it exists to read.
+app.Services.GetRequiredService<SessionEventPump>().Start();
+
 // Before everything: the two ports mean different things, and the guard is what says so — hooks
-// answer only on the loopback hook port, the UI only on the app's. It also has to run ahead of
-// HTTPS redirection, which would otherwise bounce an agent's plain-http hook post.
+// answer only on the loopback hook port, the UI only on the app's.
 app.UseActHookPortGuard();
 
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
 
+// Deliberately no HTTPS redirection and no HSTS. ACT is a desktop app whose web host is an
+// implementation detail: the UI is a local window under Electron, there is no certificate to serve
+// and nothing reaches it from off the machine. Both were template defaults, and both were worse
+// than inert here — redirection logged "failed to determine the https port" on every start under
+// the http profile, and under the https one it would have found a port and bounced every
+// plain-http request to it, **including the agents' hook posts on the loopback port**. A hook
+// client does not follow a 307, so ingestion would have died quietly on that profile. HSTS only
+// ever applied to the packaged build, where a policy pinned to localhost is a liability to every
+// other local app on the machine rather than a protection for this one.
 app.UseAntiforgery();
 
 app.MapActHooks();

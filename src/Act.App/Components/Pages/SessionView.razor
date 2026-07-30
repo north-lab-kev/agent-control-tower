@@ -19,12 +19,13 @@ else
                           ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="BackToBoard" />
             <span class="id">#@card.Number</span>
             <span class="title">@card.Title</span>
-            <CardSurfaceSwitch CardId="card.Id" Current="CardSurface.Terminal" />
             @if (card.Badge is { } badge)
             {
-                <span class="badge @BadgeClass(badge)">@BadgeText(badge)</span>
+                <span class="badge @CardVisuals.BadgeClass(badge)">@CardVisuals.BadgeText(badge)</span>
             }
         </header>
+
+        <CardTabs CardId="card.Id" />
 
         <div class="body">
             <div class="terminal" id="@terminalId"></div>

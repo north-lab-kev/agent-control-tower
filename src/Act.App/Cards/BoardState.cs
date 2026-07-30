@@ -113,7 +113,12 @@ public sealed class BoardState(ICardStore store, IClock clock)
                 $"Card {card.Number} cannot be moved by hand from {card.Column} to {target}.");
 
         card.Column = target;
-        card.Transitions.Add(new Transition { At = clock.Now, Column = target });
+        card.Transitions.Add(new Transition
+        {
+            At = clock.Now,
+            Column = target,
+            Reason = TransitionReason.MovedByHand,
+        });
 
         await UpdateAsync(card, cancellationToken);
     }

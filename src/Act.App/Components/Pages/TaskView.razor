@@ -24,12 +24,13 @@ else
                 <span class="id">#@existing.Number</span>
             }
             <span class="title">@PageHeading</span>
-            @* A card that does not exist yet has no terminal to switch to. *@
-            @if (card is { } saved)
-            {
-                <CardSurfaceSwitch CardId="saved.Id" Current="CardSurface.Task" />
-            }
         </header>
+
+        @* A card that does not exist yet has no other face to switch to. *@
+        @if (card is { } saved)
+        {
+            <CardTabs CardId="saved.Id" />
+        }
 
         <RadzenTemplateForm TItem="NewTaskForm" Data="form" Submit="OnSubmitAsync" class="newtask">
             <div class="body">

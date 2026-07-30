@@ -3,6 +3,7 @@ using Act.App.Resources;
 using Act.App.Sessions;
 using Act.Core.Abstractions;
 using Act.Core.Model;
+using ElectronNET.API;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using Radzen;
@@ -205,7 +206,25 @@ public partial class SessionView(
         live = false;
     }
 
-    private Task OpenDesktopAsync(string url) => js.InvokeVoidAsync("open", url, "_blank").AsTask();
+    // A `claude://` url is for the OS to route, not for a browser to load — and under Electron
+    // `window.open` takes that literally: the scheme launches the desktop app, and the
+    // `BrowserWindow` it opened to get there stays behind, blank and titled "Electron". The shell
+    // API hands the url to the OS with no window in between.
+    //
+    // Browser mode keeps `window.open` because there is no shell to ask. Whether the browser tidies
+    // up the tab it opens is the browser's business and varies; the desktop shell is where ACT
+    // actually runs, and it is the one that was leaving a window behind.
+    private async Task OpenDesktopAsync(string url)
+    {
+        if (HybridSupport.IsElectronActive)
+        {
+            await Electron.Shell.OpenExternalAsync(url);
+
+            return;
+        }
+
+        await js.InvokeVoidAsync("open", url, "_blank");
+    }
 
     private void BackToBoard() => navigation.NavigateTo("/");
 
@@ -231,29 +250,6 @@ public partial class SessionView(
         BindSession();
         StateHasChanged();
     });
-
-    private static string? BadgeClass(Badge badge) => badge switch
-    {
-        Badge.Running or Badge.Compacting => "b-run",
-        Badge.NeedsPermission or Badge.NeedsAnswer => "b-wait",
-        Badge.Error or Badge.Killed => "b-err",
-        Badge.Stale => "b-stale",
-        Badge.Idle => "b-review",
-        _ => null,
-    };
-
-    private static string? BadgeText(Badge badge) => badge switch
-    {
-        Badge.Running => Strings.Badge_Running,
-        Badge.Compacting => Strings.Badge_Compacting,
-        Badge.NeedsPermission => Strings.Badge_NeedsPermission,
-        Badge.NeedsAnswer => Strings.Badge_NeedsAnswer,
-        Badge.Error => Strings.Badge_Error,
-        Badge.Killed => Strings.Badge_Killed,
-        Badge.Stale => Strings.Badge_Stale,
-        Badge.Idle => Strings.Badge_IdleReady,
-        _ => null,
-    };
 
     private sealed record TerminalGeometry(int Cols, int Rows);
 }

@@ -543,4 +543,58 @@
   <data name="NewTask_WorkingDir_Placeholder" xml:space="preserve">
     <value>Type a path, or browse</value>
   </data>
+  <data name="Transition_Launched" xml:space="preserve">
+    <value>Launched</value>
+  </data>
+  <data name="Transition_LaunchedWithAdjustments" xml:space="preserve">
+    <value>Launched with adjustments: {0}</value>
+  </data>
+  <data name="Transition_LaunchFailed" xml:space="preserve">
+    <value>Launch failed: {0}</value>
+  </data>
+  <data name="Transition_MovedByHand" xml:space="preserve">
+    <value>Moved by hand</value>
+  </data>
+  <data name="Transition_PermissionRequested" xml:space="preserve">
+    <value>Permission requested in the terminal</value>
+  </data>
+  <data name="Transition_QuestionAsked" xml:space="preserve">
+    <value>Question asked in the terminal</value>
+  </data>
+  <data name="Transition_TurnReadyForReview" xml:space="preserve">
+    <value>Turn ended, ready for review</value>
+  </data>
+  <data name="Transition_TurnNeedsInput" xml:space="preserve">
+    <value>Turn ended needing input</value>
+  </data>
+  <data name="Transition_TurnWithoutStatusFile" xml:space="preserve">
+    <value>Turn ended with no status file</value>
+  </data>
+  <data name="Transition_AgentExited" xml:space="preserve">
+    <value>Agent exited with code {0}</value>
+  </data>
+  <data name="Transition_SessionKilled" xml:space="preserve">
+    <value>Session killed</value>
+  </data>
+  <data name="Transition_NoActivity" xml:space="preserve">
+    <value>No activity for {0}</value>
+  </data>
+  <data name="Transition_ActivityObserved" xml:space="preserve">
+    <value>Activity observed in the terminal</value>
+  </data>
+  <data name="Transition_CompactingStarted" xml:space="preserve">
+    <value>Compacting the context</value>
+  </data>
+  <data name="Transition_CompactingFinished" xml:space="preserve">
+    <value>Compacting finished</value>
+  </data>
+  <data name="Card_Surface_Timeline" xml:space="preserve">
+    <value>Timeline</value>
+  </data>
+  <data name="Timeline_Empty" xml:space="preserve">
+    <value>Nothing has happened to this task yet.</value>
+  </data>
+  <data name="Timeline_EnteredColumn" xml:space="preserve">
+    <value>Entered {0}</value>
+  </data>
 </root>

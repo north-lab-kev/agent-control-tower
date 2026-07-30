@@ -543,4 +543,58 @@
   <data name="NewTask_WorkingDir_Placeholder" xml:space="preserve">
     <value>Saisissez un chemin, ou parcourez</value>
   </data>
+  <data name="Transition_Launched" xml:space="preserve">
+    <value>Démarré</value>
+  </data>
+  <data name="Transition_LaunchedWithAdjustments" xml:space="preserve">
+    <value>Démarré avec des ajustements : {0}</value>
+  </data>
+  <data name="Transition_LaunchFailed" xml:space="preserve">
+    <value>Échec du démarrage : {0}</value>
+  </data>
+  <data name="Transition_MovedByHand" xml:space="preserve">
+    <value>Déplacé manuellement</value>
+  </data>
+  <data name="Transition_PermissionRequested" xml:space="preserve">
+    <value>Permission demandée dans le terminal</value>
+  </data>
+  <data name="Transition_QuestionAsked" xml:space="preserve">
+    <value>Question posée dans le terminal</value>
+  </data>
+  <data name="Transition_TurnReadyForReview" xml:space="preserve">
+    <value>Tour terminé, prêt pour révision</value>
+  </data>
+  <data name="Transition_TurnNeedsInput" xml:space="preserve">
+    <value>Tour terminé, une réponse est attendue</value>
+  </data>
+  <data name="Transition_TurnWithoutStatusFile" xml:space="preserve">
+    <value>Tour terminé sans fichier de statut</value>
+  </data>
+  <data name="Transition_AgentExited" xml:space="preserve">
+    <value>L&apos;agent s&apos;est arrêté avec le code {0}</value>
+  </data>
+  <data name="Transition_SessionKilled" xml:space="preserve">
+    <value>Session arrêtée</value>
+  </data>
+  <data name="Transition_NoActivity" xml:space="preserve">
+    <value>Aucune activité depuis {0}</value>
+  </data>
+  <data name="Transition_ActivityObserved" xml:space="preserve">
+    <value>Activité observée dans le terminal</value>
+  </data>
+  <data name="Transition_CompactingStarted" xml:space="preserve">
+    <value>Compactage du contexte</value>
+  </data>
+  <data name="Transition_CompactingFinished" xml:space="preserve">
+    <value>Compactage terminé</value>
+  </data>
+  <data name="Card_Surface_Timeline" xml:space="preserve">
+    <value>Historique</value>
+  </data>
+  <data name="Timeline_Empty" xml:space="preserve">
+    <value>Rien ne s&apos;est encore produit pour cette tâche.</value>
+  </data>
+  <data name="Timeline_EnteredColumn" xml:space="preserve">
+    <value>Entrée dans {0}</value>
+  </data>
 </root>

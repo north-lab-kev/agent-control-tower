@@ -167,9 +167,28 @@ verifiable, and leaves something runnable.
     window, the TUI paints, the rail sits where it belongs, and the layout does not
     overflow. Verifying it there is what exposed the launch bug below, which the
     headless pane had been hiding.
-    - **The opening prompt was never reaching the agent.** It was typed — first output
-      counted as "painted", 300ms of quiet counted as "ready", then bracketed paste +
-      submit key. A CLI that has painted its banner is *not* yet listening: the paste
+    - ⚠️ **And then it still was not reaching the agent — the argument was being truncated.**
+      Found 2026-07-30 from the terminal view: the session showed part of the preamble, cut at
+      `{ "state:`, and the agent greeted the user instead of working. The transcript confirmed it
+      received **677 characters and no task prompt at all**, every launch since the positional
+      prompt landed. `Porta.Pty` wraps each argument in quotes and escapes the content by
+      doubling quotes (`"` → `""`), which Claude Code's parser does not read back as a literal
+      quote — it ends the argument there. Since the preamble always contains
+      `{ "state": "ready_for_review" }`, every launch was cut at that point.
+      **Fixed** by taking the job over: `PtyOptions.VerbatimCommandLine` stops the transport
+      escaping, and `Act.Infrastructure/Terminal/WindowsArgument` quotes each argument by the
+      rules `CommandLineToArgvW` documents. Measured against the real CLI: 226 characters in,
+      226 out, where the transport's own escaping gave 28; then end to end through ACT, an
+      1825-character opening prompt arrived intact with a quote-bearing task prompt verbatim.
+      Unit-tested against a local implementation of the split rules, including paths that end in
+      a backslash.
+      - **What let it hide for two steps:** every verification asked whether events arrived and
+        whether the card moved, and both were true — a session that only greets the user still
+        emits `Stop` and still lands in To review. Checking the *transcript* for the task text is
+        the assertion that would have caught it, and is what the fix is verified with.
+    - **The opening prompt was never reaching the agent (the first cause).** It was typed —
+      first output counted as "painted", 300ms of quiet counted as "ready", then bracketed paste
+      + submit key. A CLI that has painted its banner is *not* yet listening: the paste
       went nowhere, the composer sat empty at its placeholder, and the board happily
       showed `running`. The write path itself was fine (typing into the same session by
       hand landed immediately), so the flaw was the readiness guess — and no better
@@ -237,11 +256,19 @@ verifiable, and leaves something runnable.
       events and `Stop` all were. Not load-bearing for Claude Code — ACT pre-mints the
       session id, so that payload was only wanted for `transcript_path` and `cwd`, which the
       file source can supply — but do not rely on it without re-checking.
-    - **What does Claude's `Notification` hook actually fire for** on the pinned CLI? It
-      is the only permission signal now that ACT does not read the screen, and it stays
-      unobserved: the verification run never hit a permission prompt. ACT reports a
-      permission request when the message names one and plain activity otherwise, so a wrong
-      guess costs an unmoved badge rather than a stranded card.
+    - ✅ **`Notification` fires an idle nudge, measured 2026-07-30** — message exactly
+      *"Claude is waiting for your input"*, about a minute after a turn ends, on
+      `claude-code v2.1.220`. Caught by leaving a finished card untouched and watching the
+      endpoint log. **It broke the first classifier:** treating "waiting for your input" as a
+      permission prompt badged an idle card `needs permission`, with nothing to approve, and
+      dragged it out of To review. An unrecognised notification now produces **no event** —
+      calling it activity would have been worse still, since an idle nudge means the opposite
+      of activity and would send a reviewed card back to Executing by itself.
+    - ✅ **A real permission prompt reports as `Claude needs your permission`** — observed
+      2026-07-30, once the prompt-truncation fix let an agent actually start work and hit a write
+      gate. The classifier keys on "permission" / "approve", so it routed correctly: the card
+      moved to Needs feedback with `needs permission`, from a prompt ACT never touched. Both
+      halves of the `Notification` question are now measured rather than assumed.
     - ✅ **Codex hooks — tested, and they do not fire at all** on `0.146.0-alpha.3.1`; see
       *Codex hook findings*. This answers the two Codex questions that were here (env
       expansion, `--profile` layering) by making them moot for now, and **changes this
@@ -256,6 +283,20 @@ verifiable, and leaves something runnable.
   as the recovery out of Needs feedback and the send-back out of To review — since
   the user acts in the terminal, ACT only ever learns about it.
   *Verify:* a task walks the machine-region states correctly.
+  - [x] **The engine itself, brought forward with step 8's pump.** `Act.Core/Rules/RulesEngine`
+    is the spec's transition table as pure logic, `MetricsProjection` is the numbers half, and
+    `Act.App/Sessions/SessionEventPump` is the only stateful part — one drain loop per session,
+    persisting immediately on a move and on a debounced tick for metrics alone (a move is
+    user-visible; `BoardState.UpdateAsync` re-reads every card, so tool events at several per
+    second must not each re-render the board). 35 tests in `Act.Core.Tests`, including that no
+    event can produce Ready, Preparing or Completed — the launch boundary and the completion
+    call are not the machine's to make — and that cards outside the machine region are never
+    moved by any event.
+    Verified live: a launched card walked Ready → Executing (`running`) → To review (`idle`)
+    on its own, with the turn count landing on the strip.
+  - **Still step 9's to finish:** the outcomes that need sources step 8 has not built yet
+    (`ready_for_review` / `needs_input` need the status-file source, `stale` needs the
+    watchdog), and the `Notification` classification below.
 - [ ] **10. Session view + card actions — both adapters** — the full session view
   (terminal + right rail: identity, cwd, agent/model, context %, cost, turns;
   back-to-board) and the drawer's **read-only** blocked-card presentation with

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Act.App.Cards;
 using Act.App.Resources;
 using Act.Core.Model;
 using Act.Core.Rules;
@@ -84,27 +85,17 @@ public partial class FlightStrip
 
     private Task LaunchAsync() => OnLaunch.InvokeAsync(Card);
 
-    private string? BadgeClass => Card.Badge switch
-    {
-        Badge.Running or Badge.Compacting => "b-run",
-        Badge.NeedsPermission or Badge.NeedsAnswer => "b-wait",
-        Badge.Error or Badge.Killed => "b-err",
-        Badge.Stale => "b-stale",
-        Badge.Idle => "b-review",
-        _ => Card.Column is BoardColumn.Completed ? "b-done" : null,
-    };
+    // The shared mapping, plus the two things that are about this surface rather than the signal: a
+    // Completed card shows `done` where it carries no badge, and `stale` says how long it has been
+    // quiet because the strip is where you scan for that.
+    private string? BadgeClass => CardVisuals.BadgeClass(Card.Badge)
+        ?? (Card.Column is BoardColumn.Completed ? "b-done" : null);
 
     private string? BadgeText => Card.Badge switch
     {
-        Badge.Running => Strings.Badge_Running,
-        Badge.Compacting => Strings.Badge_Compacting,
-        Badge.NeedsPermission => Strings.Badge_NeedsPermission,
-        Badge.NeedsAnswer => Strings.Badge_NeedsAnswer,
-        Badge.Error => Strings.Badge_Error,
-        Badge.Killed => Strings.Badge_Killed,
         Badge.Stale => StaleText,
-        Badge.Idle => Strings.Badge_IdleReady,
-        _ => Card.Column is BoardColumn.Completed ? Strings.Badge_Done : null,
+        null => Card.Column is BoardColumn.Completed ? Strings.Badge_Done : null,
+        _ => CardVisuals.BadgeText(Card.Badge),
     };
 
     private string StaleText

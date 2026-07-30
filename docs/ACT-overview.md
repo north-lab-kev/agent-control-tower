@@ -590,11 +590,18 @@ than aspirational — ACT has no decision to make, so it can accept-and-return
 immediately in every case. It also means no ACT bug can approve something on the
 user's behalf.
 
-- **Caveat (build-time).** Exactly what Claude Code's `Notification` hook fires for
-  on the pinned version is unverified, and it is the load-bearing signal for the
-  `needs permission` badge. If it proves too coarse, the fallback is `PreToolUse`
-  plus the absence of a matching `PostToolUse` within a short window — a heuristic,
-  and one to write down as such rather than hide.
+- **Caveat, now partly measured (2026-07-30, `claude-code v2.1.220`).**
+  `Notification` is **not** self-describing: alongside permission prompts it fires an
+  **idle nudge** whose message is exactly *"Claude is waiting for your input"*, about a
+  minute after a turn ends. So the message text is all ACT has to classify on, and an
+  unrecognised notification must produce **no event at all** — reporting it as a
+  permission request badges an idle card `needs permission` with nothing to approve, and
+  reporting it as activity is worse, since an idle nudge means the opposite of activity
+  and would send a reviewed card back to Executing on its own. A real permission prompt's
+  wording is still unobserved through the hook; if keying on "permission" / "approve"
+  proves too coarse, the fallback remains `PreToolUse` plus the absence of a matching
+  `PostToolUse` within a short window — a heuristic, and one to write down as such rather
+  than hide.
 
 ### Session identity / correlation
 

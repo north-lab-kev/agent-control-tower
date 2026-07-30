@@ -53,7 +53,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │  │                          #       BoardView "/", TaskView, SessionView,
 │  │  │  │                          #       ArchiveView, SettingsView, Error, NotFound
 │  │  │  ├─ Board/                  #     non-routable board parts (FlightStrip)
-│  │  │  ├─ Shared/                 #     CardSurfaceSwitch (Task|Terminal toggle) + FolderPicker
+│  │  │  ├─ Shared/                 #     CardTabs (Task|Terminal|Timeline) + FolderPicker
 │  │  │  └─ Layout/                 #     MainLayout, top bar, theme stylesheets
 │  │  ├─ Desktop/                   #   DesktopShell: the Electron window + tray icon and the
 │  │  │                            #     close/exit rules (Electron-only; registered when enabled)
@@ -120,11 +120,20 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   | `/` | `BoardView` |
   | `/card/new` · `/card/{id}/edit` | `TaskView` |
   | `/card/{id}/terminal` | `SessionView` |
+  | `/card/{id}/timeline` | `TimelineView` |
   | `/archive` | `ArchiveView` |
   | `/settings` | `SettingsView` |
   | `/Error` · `/not-found` | `Error` · `NotFound` |
 
   `grep -rn "^@page" src/Act.App` regenerates that table; keep it in step with the code.
+- **A card's faces are tabs over routes, not a toggle.** `CardTabs` sits on its own row under
+  the back-to-board bar — which is what gives the title the full width beside it — and each tab
+  is a `NavLink` to that face's url rather than a panel, so `active` state needs no C# and a
+  face is directly linkable. `Timeline` renders the card's stored transitions with the
+  mockup's rail (a dot per event coloured by the badge that reported it, a hairline joining
+  them, mono times held to the right). Note the CSS needs `::deep` to reach a `NavLink`'s
+  anchor: scoped styles stop at a child component's boundary, and without it the tabs arrive as
+  default blue links.
 - **Pages are destinations; dialogs are forks.** The new-task modal, the edit modal and the
   settings dialog all became routes, because each was somewhere you *go*. What stayed modal
   is the opposite kind of thing: a prompt that interrupts an action already under way and
@@ -149,6 +158,15 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
     bought for one file, that would have let anything there reach for `HttpContext`. Registration
     stays with the code (`HookRegistration`, called by `AddActInfrastructure`), and the app is
     left to sequence the three calls only it can — bind, guard, map.
+- **Anything stored is a code; wording is resolved at render time.** A `Transition` keeps a
+  `TransitionReason` plus a verbatim `Note` (an exit code, a CLI error, the adjustments a
+  launch made) — never a sentence. Two reasons: `Act.Core` has no resources and must not
+  acquire any, and a *stored* translation would freeze the language it was written in, so a
+  card moved before the user switched to French would keep explaining itself in English.
+  `Act.App/Resources/TransitionText` renders one, looking the resource up **by the enum name**
+  (`Transition_TurnNeedsInput`) rather than through a switch that could drift; a test asserts
+  every reason resolves in every shipped language, and that the French is actually different
+  from the English.
 - **The pseudo-terminal is a Core port, not adapter code.** Spawning a process under
   a pty and pumping its bytes is agent-agnostic plumbing; only the *command line* is
   agent-shaped. So `IPtyHost` lives in `Act.Core/Abstractions` and its `Porta.Pty`

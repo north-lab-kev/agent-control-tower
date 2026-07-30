@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Act.Core.Abstractions;
+using Act.Core.Events;
 using Act.Core.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -43,15 +44,32 @@ public sealed class HookRequestHandler(
             sink.Publish(taskId, observed);
 
         // An ingestion path nobody can see is one nobody can debug — and whether these arrive at
-        // all is the open question for both agents at this step.
+        // all is the open question for both agents at this step. Blocked-card events log what they
+        // are blocked on, because that text is what decided the badge and is the first thing to
+        // check when a card lands in the wrong column.
         log.LogInformation(
-            "Hook post for {Agent} on task {TaskId} accepted: {Count} event(s) {Events}.",
+            "Hook post for {Agent} on task {TaskId} accepted: {Count} event(s) {Events}.{Detail}",
             agent,
             taskId,
             normalized.Events.Count,
-            string.Join(", ", normalized.Events.Select(observed => observed.GetType().Name)));
+            string.Join(", ", normalized.Events.Select(observed => observed.GetType().Name)),
+            Detail(normalized));
 
         return HookResult.Accepted;
+    }
+
+    private static string Detail(HookNormalization normalized)
+    {
+        var waiting = normalized.Events
+            .Select(observed => observed switch
+            {
+                PermissionRequested permission => $"permission: {permission.Summary}",
+                QuestionAsked question => $"question: {question.Question}",
+                _ => null,
+            })
+            .FirstOrDefault(text => text is not null);
+
+        return waiting is null ? string.Empty : $" {waiting}";
     }
 }
 

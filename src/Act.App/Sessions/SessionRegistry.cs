@@ -13,6 +13,10 @@ public sealed class SessionRegistry(IHookEndpoint hooks, IAgentConfigFiles confi
 
     public event Action? Changed;
 
+    // Carries the session itself, unlike `Changed`: whoever drains an event stream has to be handed
+    // the stream, and it must be handed over before anything can be missed.
+    public event Action<IAgentSession>? Added;
+
     public int LiveCount => sessions.Count;
 
     public IAgentSession? For(Guid cardId) => sessions.GetValueOrDefault(cardId);
@@ -23,6 +27,7 @@ public sealed class SessionRegistry(IHookEndpoint hooks, IAgentConfigFiles confi
     {
         sessions[session.TaskId] = session;
 
+        Added?.Invoke(session);
         Changed?.Invoke();
     }
 

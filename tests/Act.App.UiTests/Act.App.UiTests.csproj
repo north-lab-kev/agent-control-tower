@@ -19,4 +19,8 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Act.App\Act.App.csproj" />
+  </ItemGroup>
+
 </Project>

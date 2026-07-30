@@ -90,7 +90,8 @@ public sealed class SessionLauncher(
                 At = clock.Now,
                 Column = BoardColumn.NeedsFeedback,
                 Badge = Badge.Error,
-                Note = $"Launch failed: {error.Message}",
+                Reason = TransitionReason.LaunchFailed,
+                Note = error.Message,
             });
 
             await board.UpdateAsync(card, cancellationToken);
@@ -109,7 +110,10 @@ public sealed class SessionLauncher(
             At = clock.Now,
             Column = BoardColumn.Executing,
             Badge = Badge.Running,
-            Note = Note(resolution),
+            Reason = resolution.Adjustments.Count == 0
+                ? TransitionReason.Launched
+                : TransitionReason.LaunchedWithAdjustments,
+            Note = Adjustments(resolution),
         });
 
         await board.UpdateAsync(card, cancellationToken);
@@ -118,11 +122,13 @@ public sealed class SessionLauncher(
     }
 
     // Adjustments are recorded on the card rather than only shown once, so "why is this running
-    // at a different effort than I asked for" stays answerable later.
-    private static string? Note(LaunchConfigResolution resolution)
+    // at a different effort than I asked for" stays answerable later. The field and value names are
+    // the agent's own vocabulary, so they stay verbatim; the sentence around them is the UI's, and
+    // it comes from `TransitionReason.LaunchedWithAdjustments` at render time.
+    private static string? Adjustments(LaunchConfigResolution resolution)
         => resolution.Adjustments.Count == 0
             ? null
-            : "Launched with adjustments: " + string.Join(
+            : string.Join(
                 "; ",
                 resolution.Adjustments.Select(a => $"{a.Field} {a.Requested} → {a.Substituted}"));
 }
