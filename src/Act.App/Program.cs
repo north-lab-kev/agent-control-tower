@@ -43,7 +43,10 @@ if (runElectron)
 
 var app = builder.Build();
 
-app.Services.GetRequiredService<UserSettingsService>().ApplyLanguage();
+var settings = app.Services.GetRequiredService<UserSettingsService>();
+
+settings.ApplyLanguage();
+settings.ApplyKeepAwake();
 
 await app.Services.GetRequiredService<BoardState>().LoadAsync();
 
@@ -76,11 +79,16 @@ static async Task CreateWindowAsync()
         TitleBarStyle = TitleBarStyle.hidden,
     };
 
+    // Transparent on purpose. The overlay is native and can only be coloured at window creation,
+    // so any fixed colour is wrong half the time — it cannot follow the theme, and it painted a
+    // flat block over the end of a bar that is a gradient with a rule under it. Left transparent,
+    // the page paints the whole strip and the seam disappears; only the glyphs stay native, in a
+    // grey chosen to read on both themes.
     if (OperatingSystem.IsWindows() || OperatingSystem.IsLinux())
         options.TitleBarOverlay = new TitleBarOverlay
         {
-            Color = "#151e26",
-            SymbolColor = "#8091a0",
+            Color = "rgba(0, 0, 0, 0)",
+            SymbolColor = "#7c8b99",
             Height = titleBarHeight,
         };
 

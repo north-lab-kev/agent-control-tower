@@ -50,6 +50,17 @@
                     </RadzenStack>
                 </RadzenStack>
             </RadzenFieldset>
+
+            <RadzenFieldset Text="@Strings.Settings_Group_System">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                             JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                    <RadzenStack Gap="0.1rem">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_KeepAwake" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_KeepAwake_Hint" class="hint" />
+                    </RadzenStack>
+                    <RadzenSwitch Value="KeepAwake" ValueChanged="@((bool value) => OnKeepAwakeChanged(value))" />
+                </RadzenStack>
+            </RadzenFieldset>
         </RadzenStack>
     </div>
 </div>

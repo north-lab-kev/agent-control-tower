@@ -35,6 +35,8 @@ public partial class SettingsView(UserSettingsService settings, NavigationManage
 
     private BoardDensity Density => settings.Density;
 
+    private bool KeepAwake => settings.KeepAwake;
+
     // A language change has to re-run the whole render tree under the new culture, so it reloads.
     // As a page that now lands the user back on settings rather than on the board, which is where
     // they were — the reload is no longer also a dismissal.
@@ -50,6 +52,8 @@ public partial class SettingsView(UserSettingsService settings, NavigationManage
     private void OnThemeChanged(ThemePreference theme) => settings.SetTheme(theme);
 
     private void OnDensityChanged(BoardDensity density) => settings.SetDensity(density);
+
+    private void OnKeepAwakeChanged(bool keepAwake) => settings.SetKeepAwake(keepAwake);
 
     private void BackToBoard() => navigation.NavigateTo("/");
 }

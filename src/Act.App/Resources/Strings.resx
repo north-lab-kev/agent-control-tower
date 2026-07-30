@@ -18,9 +18,6 @@
   <data name="Shell_AutoExecOn" xml:space="preserve">
     <value>auto-exec on</value>
   </data>
-  <data name="Shell_Awake" xml:space="preserve">
-    <value>☕ awake</value>
-  </data>
   <data name="Shell_NeedYou" xml:space="preserve">
     <value>{0} NEED YOU ›</value>
   </data>
@@ -293,6 +290,15 @@
   </data>
   <data name="Settings_Group_Appearance" xml:space="preserve">
     <value>Appearance</value>
+  </data>
+  <data name="Settings_Group_System" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Settings_KeepAwake" xml:space="preserve">
+    <value>Keep the computer awake</value>
+  </data>
+  <data name="Settings_KeepAwake_Hint" xml:space="preserve">
+    <value>Stop the machine sleeping while ACT is open, so a long run is not cut short.</value>
   </data>
   <data name="Settings_Language" xml:space="preserve">
     <value>Language</value>

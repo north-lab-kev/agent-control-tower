@@ -3,7 +3,7 @@ using Act.Core.Model;
 
 namespace Act.App.Settings;
 
-public sealed class UserSettingsService(ISettingsStore store, AppCulture culture)
+public sealed class UserSettingsService(ISettingsStore store, AppCulture culture, ISleepInhibitor sleep)
 {
     private readonly Lock gate = new();
 
@@ -17,7 +17,19 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
 
     public BoardDensity Density => current.Density;
 
+    public bool KeepAwake => current.KeepAwake;
+
     public void ApplyLanguage() => culture.Apply(current.Language);
+
+    // Called at startup as well as on every change, because a setting that only takes effect when
+    // you toggle it is a setting that quietly turns itself off every time the app restarts.
+    public void ApplyKeepAwake()
+    {
+        if (current.KeepAwake)
+            sleep.Hold();
+        else
+            sleep.Release();
+    }
 
     public void SetLanguage(LanguagePreference language)
     {
@@ -43,6 +55,14 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
         Update(settings => settings.Density = density);
     }
 
+    public void SetKeepAwake(bool keepAwake)
+    {
+        if (keepAwake == current.KeepAwake)
+            return;
+
+        Update(settings => settings.KeepAwake = keepAwake);
+    }
+
     private void Update(Action<UserSettings> change)
     {
         lock (gate)
@@ -52,6 +72,7 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
         }
 
         ApplyLanguage();
+        ApplyKeepAwake();
         Changed?.Invoke();
     }
 }

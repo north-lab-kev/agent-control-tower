@@ -116,22 +116,26 @@
     background: var(--rail, var(--act-run));
 }
 
-.strip.attn ::deep .stripcard {
-    border-color: color-mix(in srgb, var(--act-wait) 45%, transparent);
-}
-
+/* One pulse, two colours: the glow is driven by `--attn`, so an error card blinks in its own
+   red rather than being the one attention state that sits still. The resting box-shadow is the
+   animation's low point, which is what a reduced-motion user is left with. */
 .strip.attn {
+    --attn: var(--act-wait);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--attn) 14%, transparent),
+                0 0 18px -4px color-mix(in srgb, var(--attn) 35%, transparent);
     animation: act-attn 2s infinite;
 }
 
-.strip.attn.err ::deep .stripcard {
-    border-color: color-mix(in srgb, var(--act-err) 55%, transparent);
+.strip.attn ::deep .stripcard {
+    border-color: color-mix(in srgb, var(--attn) 45%, transparent);
 }
 
 .strip.attn.err {
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--act-err) 18%, transparent),
-                0 0 18px -4px color-mix(in srgb, var(--act-err) 45%, transparent);
-    animation: none;
+    --attn: var(--act-err);
+}
+
+.strip.attn.err ::deep .stripcard {
+    border-color: color-mix(in srgb, var(--attn) 55%, transparent);
 }
 
 .strip.attn::after {
@@ -142,23 +146,19 @@
     font-family: var(--act-mono);
     font-size: 11px;
     font-weight: 700;
-    color: var(--act-wait);
+    color: var(--attn);
     z-index: 2;
-}
-
-.strip.attn.err::after {
-    color: var(--act-err);
 }
 
 @keyframes act-attn {
     0%, 100% {
-        box-shadow: 0 0 0 1px color-mix(in srgb, var(--act-wait) 14%, transparent),
-                    0 0 18px -4px color-mix(in srgb, var(--act-wait) 35%, transparent);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--attn) 14%, transparent),
+                    0 0 18px -4px color-mix(in srgb, var(--attn) 35%, transparent);
     }
 
     50% {
-        box-shadow: 0 0 0 1px color-mix(in srgb, var(--act-wait) 28%, transparent),
-                    0 0 22px -2px color-mix(in srgb, var(--act-wait) 55%, transparent);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--attn) 30%, transparent),
+                    0 0 22px -2px color-mix(in srgb, var(--attn) 58%, transparent);
     }
 }
 

@@ -40,6 +40,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #   process supervision, Serilog wiring
 │  │  ├─ Storage/                   #   act.db open + BsonMapper, schema version, card/settings stores
 │  │  ├─ FileSystem/                #   IWorkingDirectories: ~ expansion, path validation, browsing
+│  │  ├─ Power/                     #   ISleepInhibitor: SetThreadExecutionState (Windows),
+│  │  │                            #     caffeinate (macOS), systemd-inhibit (Linux)
 │  │  ├─ Terminal/                  #   IPtyHost over Porta.Pty: spawn, incremental UTF-8 decode,
 │  │  │                            #     batched flush, capped scrollback, resize, kill
 │  │  └─ Hooks/                     #   hook endpoint + per-session token; route mapped from

@@ -1242,6 +1242,13 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   JS and no flash of the wrong theme on first paint. Dark is the signature look;
   the light variant keeps the same semantic status colors at adjusted
   lightness.
+  - **The window controls sit on ACT's own bar, not on a strip of their own.** Under
+    Electron the frame is hidden and the native minimise/maximise/close are drawn as a
+    Windows overlay on top of the page. Its background is left **transparent** so the
+    top bar's gradient and the rule under it run edge to edge: a fixed colour there can
+    only be set once, at window creation, so it cannot follow the theme and it painted a
+    flat block over the end of a bar that is neither flat nor unruled. Only the glyph
+    colour stays native — one grey chosen to read on both themes.
 - **Settings page** (`/settings`): the home for scattered preferences, opened from the
   gear in the top bar and grouped by type (**General**, **Appearance**, more to come).
   Every setting applies immediately and persists to LiteDB — no OK/Cancel, and no Close
@@ -1249,11 +1256,22 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   reason as the task form — see *Interaction*. It also fixes a wart the dialog had: a
   language change forces a reload, which used to dismiss the dialog as a side effect and
   dump you on the board; now you stay on settings.
-  Shipped: **language**, **theme** (follow-OS / light / dark override), and
+  Shipped: **language**, **theme** (follow-OS / light / dark override),
   **display mode** (compact / spacious — settings-only; there is no top-bar
-  density toggle). Still to land: the notification matrix, keep-awake,
+  density toggle), and **keep-awake**. Still to land: the notification matrix,
   `maxConcurrent`, weekly-reset time, and the auto-archive window /
   auto-execution pause.
+  - **Keep the computer awake** (*System*, off by default) holds the machine up for as
+    long as ACT runs — not per session, because a queue that opens at 02:00 needs the
+    machine already awake rather than woken by work it cannot start. It is `ISleepInhibitor`,
+    a port, because no two platforms spell it the same way: Windows takes a flag on a thread
+    and drops it when that thread ends (so one parks for the life of the hold), while macOS
+    and Linux express it as a child process that must stay alive — `caffeinate` and
+    `systemd-inhibit`. Every path degrades to doing nothing rather than throwing. It is
+    **off by default and applied at startup**, so it survives a restart instead of quietly
+    resetting, and holding someone's machine awake stays their decision.
+    This is what the old **"☕ awake"** chip in the top bar claimed to report; it never
+    reported anything, so it is gone.
 - **Localization:** the UI is translatable — **English and French**, defaulting to
   the **OS language** (anything other than French falls back to English). Strings
   live in `.resx` under `Act.App/Resources/`, reached through the SDK's
