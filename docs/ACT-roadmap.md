@@ -51,14 +51,25 @@ verifiable, and leaves something runnable.
 
 ## Phase 2 — Board (read-only, agent-agnostic)
 
-- [x] **4. Static board** — six flat columns, flight strips, compact/spacious
+- [x] **4. Static board** — five flat columns, flight strips, compact/spacious
   toggle, rendering seeded cards. Pure UI, no behavior. *Verify:* board reflects
-  store; density toggle works. ✅ Six columns with live counts, flight strips
+  store; density toggle works. ✅ Columns with live counts, flight strips
   covering all eight rail states, both densities rendering from the LiteDB store
   via `ICardStore`. Density is chosen in the settings dialog (no top-bar toggle)
   and survives a restart. Compact shows the **badge**, not a dot, per the spec —
   the title ellipsizes to give the badge its width, verified down to the 210px
   minimum column with no overflow and no clash with the `!` attention corner.
+  - [x] **Needs feedback + To review merged into Your turn** — decided and landed
+    2026-07-30, so the board is five columns, not six. The two said the same
+    operational thing and differed only in the reason, which the badge already
+    carried; `idle` became the **`to review`** badge, sign-off is gated by the
+    column rather than the badge (a crashed or killed card can now be signed off
+    without a terminal round trip), and `Act.Core/Rules/AttentionOrder` gives the
+    merged column the priority its two neighbours used to imply by adjacency. The
+    attention blink now covers the whole column in three colours — amber blocked,
+    red error/killed, review blue for `to review`. See the spec's *Why one column
+    and not two*. **`docs/ui-preview.html` still shows the old six** — it is a
+    frozen mockup, and the spec wins.
 - [x] **5. Task creation + manual moves** — new-task modal → card in Preparing;
   drag Preparing ↔ Ready with drag-time graying of invalid columns. *Verify:*
   can hand-manage cards through the human-controlled columns. ✅ Cards can be
@@ -80,12 +91,12 @@ verifiable, and leaves something runnable.
     immutable-`initialPrompt` rule for launched cards; gating comes with the
     drawer (step 10), which also replaces card-click as the way in.
   - [x] **Manual moves** — HTML5 drag and drop between **Preparing ↔ Ready**.
-    `Act.Core/Rules/ManualMove` owns the validity rules (unit-tested across all 36
-    column pairs); only human-controlled cards carry `draggable`, machine cards
+    `Act.Core/Rules/ManualMove` owns the validity rules (unit-tested across every
+    column pair); only human-controlled cards carry `draggable`, machine cards
     do not lift at all. On pick-up the valid target lights and every invalid
     column grays to 40%; the source column stays neutral. A drop appends a
     `Transition` and persists via `ICardStore.UpdateAsync`.
-    `Ready → Executing` (launch, step 7) and `Completed → To review`
+    `Ready → Executing` (launch, step 7) and `Completed → Your turn`
     (reopen, step 11) are deliberately **not** manual moves yet.
 
 ## Phase 3 — Agent abstraction + both adapters
@@ -184,7 +195,7 @@ verifiable, and leaves something runnable.
       a backslash.
       - **What let it hide for two steps:** every verification asked whether events arrived and
         whether the card moved, and both were true — a session that only greets the user still
-        emits `Stop` and still lands in To review. Checking the *transcript* for the task text is
+        emits `Stop` and still lands in Your turn. Checking the *transcript* for the task text is
         the assertion that would have caught it, and is what the fix is verified with.
     - **The opening prompt was never reaching the agent (the first cause).** It was typed —
       first output counted as "painted", 300ms of quiet counted as "ready", then bracketed paste
@@ -260,14 +271,14 @@ verifiable, and leaves something runnable.
       *"Claude is waiting for your input"*, about a minute after a turn ends, on
       `claude-code v2.1.220`. Caught by leaving a finished card untouched and watching the
       endpoint log. **It broke the first classifier:** treating "waiting for your input" as a
-      permission prompt badged an idle card `needs permission`, with nothing to approve, and
-      dragged it out of To review. An unrecognised notification now produces **no event** —
+      permission prompt badged a reviewable card `needs permission`, with nothing to approve, and
+      overwrote its `to review`. An unrecognised notification now produces **no event** —
       calling it activity would have been worse still, since an idle nudge means the opposite
       of activity and would send a reviewed card back to Executing by itself.
     - ✅ **A real permission prompt reports as `Claude needs your permission`** — observed
       2026-07-30, once the prompt-truncation fix let an agent actually start work and hit a write
       gate. The classifier keys on "permission" / "approve", so it routed correctly: the card
-      moved to Needs feedback with `needs permission`, from a prompt ACT never touched. Both
+      moved to Your turn with `needs permission`, from a prompt ACT never touched. Both
       halves of the `Notification` question are now measured rather than assumed.
     - ✅ **Codex hooks — tested, and they do not fire at all** on `0.146.0-alpha.3.1`; see
       *Codex hook findings*. This answers the two Codex questions that were here (env
@@ -278,10 +289,11 @@ verifiable, and leaves something runnable.
       files and the process can tell ACT.
 - [ ] **9. Rules engine** — agent-agnostic: normalized events → column/badge
   transitions; status-file convention (`ready_for_review` / `needs_input`) routes
-  Executing → To review / Needs feedback; `error`/`stale` from process signals;
-  **observed** permission/question in, and **observed activity** (`UserPromptSubmit`)
-  as the recovery out of Needs feedback and the send-back out of To review — since
-  the user acts in the terminal, ACT only ever learns about it.
+  Executing → Your turn with the badge the status file picks; `error`/`stale` from
+  process signals; **observed** permission/question in, and **observed activity**
+  (`UserPromptSubmit`) as the one way out of Your turn — the recovery and the
+  send-back are the same event, since the user acts in the terminal and ACT only
+  ever learns about it.
   *Verify:* a task walks the machine-region states correctly.
   - [x] **The engine itself, brought forward with step 8's pump.** `Act.Core/Rules/RulesEngine`
     is the spec's transition table as pure logic, `MetricsProjection` is the numbers half, and
@@ -292,8 +304,8 @@ verifiable, and leaves something runnable.
     event can produce Ready, Preparing or Completed — the launch boundary and the completion
     call are not the machine's to make — and that cards outside the machine region are never
     moved by any event.
-    Verified live: a launched card walked Ready → Executing (`running`) → To review (`idle`)
-    on its own, with the turn count landing on the strip.
+    Verified live: a launched card walked Ready → Executing (`running`) → Your turn
+    (`to review`) on its own, with the turn count landing on the strip.
   - **Still step 9's to finish:** the outcomes that need sources step 8 has not built yet
     (`ready_for_review` / `needs_input` need the status-file source, `stale` needs the
     watchdog), and the `Notification` classification below.
@@ -307,9 +319,24 @@ verifiable, and leaves something runnable.
 
 ## Phase 4 — Completion & lineage
 
-- [ ] **11. Complete + reopen + auto-complete** — To review → Completed and
+- [ ] **11. Complete + reopen + auto-complete** — Your turn → Completed and
   reopen; `autoComplete` and in-session `autoGit`. *Verify:* clean-finish tasks
   self-complete; reopen resumes.
+  - [x] **Your turn → Completed, brought forward.** `Act.Core/Rules/CardCompletion` is the
+    predicate (its own rule, because completing is neither a `ManualMove` — a machine column
+    still refuses every drop — nor something an event may decide), and
+    `Act.App/Sessions/CardCompleter` is the action, the mirror of `SessionLauncher`. It stamps
+    and persists the card *before* tearing the terminal down, so the `SessionKilled` the dying
+    pty reports lands on a card the engine no longer governs. The gate is the **column**, so
+    every card in Your turn can be signed off, `error` and `killed` included. Offered on the
+    strip (spacious, beside where Launch sits) and in the session view's rail, which also now
+    follows `BoardState.Changed` — a turn ending is what puts the sign-off in reach, and the
+    rail's badge and numbers were going stale in front of the user.
+    Verified live: a launched card walked to Your turn and was signed off from both surfaces —
+    Completed, badge `done`, `Marked completed` on the timeline, agent process gone.
+  - **Still step 11's to finish:** reopen (Completed → Your turn), `autoComplete`,
+    in-session `autoGit`, and the completion/git modal — completing is a plain action for now,
+    with no prompt and no spawned git task.
 - [ ] **12. Spawning & lineage** — `.act/followups/` ingestion, parent/children,
   the git-on-completion spawned task. *Verify:* a task spawns tracked follow-ups
   with correct lineage.

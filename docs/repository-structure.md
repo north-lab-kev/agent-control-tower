@@ -28,7 +28,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ Model/                     #   Card, Column, Badge, Transition, Lineage…
 │  │  ├─ Events/                    #   normalized event types (the adapter vocabulary)
 │  │  ├─ Agents/                    #   ActContract (.act/ paths) + AgentPreamble (injected text)
-│  │  ├─ Rules/                     #   the rules engine + manual-move validity (pure logic)
+│  │  ├─ Rules/                     #   the rules engine, manual-move validity, sign-off validity,
+│  │  │                            #     Your-turn ordering, which cards are resumable after their
+│  │  │                            #     process died (pure logic)
 │  │  ├─ Scheduling/                #   queue runner, schedule, backpressure
 │  │  └─ Abstractions/              #   INTERFACES: IAgentAdapter, IAgentSession,
 │  │                               #     IAgentTerminal, IPtyHost, IIngestionSource,
@@ -60,6 +62,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ Cards/                     #   BoardState — owns every card incl. archived ones, and
 │  │  │                            #     decides what may see which; task form model; capability
 │  │  │                            #     catalog built from the registered adapters
+│  │  ├─ Sessions/                  #   SessionRegistry (the live sessions), SessionLauncher
+│  │  │                            #     (launch + restore), SessionRestorer (startup re-attach),
+│  │  │                            #     SessionEventPump (drains events onto the board)
 │  │  ├─ Settings/                  #   user-settings service + culture
 │  │  ├─ Resources/                 #   .resx strings (en / fr)
 │  │  ├─ wwwroot/                   #   CSS (flight-strip look), assets
@@ -67,7 +72,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │  │                         #       pinning version + SHA-256 of each file
 │  │  │  └─ js/act-terminal.js      #     attach / write / resize / dispose interop module
 │  │  ├─ Properties/                #   launchSettings + electron-builder.json (packaging)
-│  │  └─ Program.cs                 #   startup / DI; Electron wired only when enabled
+│  │  ├─ ServiceCollectionExtensions.cs
+│  │  │                            #   AddActApp: every Act.App registration (agents, board,
+│  │  │                            #     sessions) + AddActDesktopShell for the Electron branch
+│  │  └─ Program.cs                 #   startup pipeline; Electron wired only when enabled
 │  └─ Act.Desktop/                  # unused under Option B (Electron lives in Act.App); pending removal
 │
 ├─ tests/

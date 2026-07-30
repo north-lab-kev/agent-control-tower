@@ -2,6 +2,7 @@ using Act.App.Cards;
 using Act.Core.Abstractions;
 using Act.Core.Agents;
 using Act.Core.Model;
+using Act.Core.Rules;
 
 namespace Act.App.Sessions;
 
@@ -17,12 +18,12 @@ public sealed class SessionLauncher(
         adapters.ToDictionary(adapter => adapter.Agent);
 
     // Ready is the launch; Executing is a re-attach (a card keeps its binding when ACT restarts
-    // but not its process); Needs feedback is the retry the spec promises for an `error`, and
-    // without it a failed launch would be a dead end — the failure itself moves the card there.
-    // Preparing, To review and Completed are refused: the terminal is reachable from any card now
-    // that the two faces toggle, and reaching it must not become a way to skip Ready.
+    // but not its process); Your turn is the retry the spec promises for an `error`, and without it
+    // a failed launch would be a dead end — the failure itself moves the card there. Preparing and
+    // Completed are refused: the terminal is reachable from any card now that the two faces toggle,
+    // and reaching it must not become a way to skip Ready.
     public bool CanLaunch(Card card)
-        => card.Column is BoardColumn.Ready or BoardColumn.Executing or BoardColumn.NeedsFeedback
+        => card.Column is BoardColumn.Ready or BoardColumn.Executing or BoardColumn.YourTurn
             && byAgent.ContainsKey(card.AgentType);
 
     public LaunchConfigResolution? Preview(Card card)
@@ -83,12 +84,12 @@ public sealed class SessionLauncher(
         {
             // The card must show that the launch failed rather than sitting in Ready looking
             // untouched, so this routes the same way a crash mid-session would.
-            card.Column = BoardColumn.NeedsFeedback;
+            card.Column = BoardColumn.YourTurn;
             card.Badge = Badge.Error;
             card.Transitions.Add(new Transition
             {
                 At = clock.Now,
-                Column = BoardColumn.NeedsFeedback,
+                Column = BoardColumn.YourTurn,
                 Badge = Badge.Error,
                 Reason = TransitionReason.LaunchFailed,
                 Note = error.Message,
@@ -114,6 +115,79 @@ public sealed class SessionLauncher(
                 ? TransitionReason.Launched
                 : TransitionReason.LaunchedWithAdjustments,
             Note = Adjustments(resolution),
+        });
+
+        await board.UpdateAsync(card, cancellationToken);
+
+        return LaunchResult.Ok();
+    }
+
+    // A restore is not a launch. The process died — with ACT, with a kill, with the CLI's own exit
+    // — while the binding in the store did not, so the session id comes back into a fresh terminal
+    // and the card stays exactly where the rules last put it. Moving it to Executing would claim
+    // work is running when all that is running is a prompt waiting for its user; the resume carries
+    // no message for the same reason.
+    public async Task<LaunchResult> RestoreAsync(
+        Card card,
+        TerminalSize size,
+        CancellationToken cancellationToken = default)
+    {
+        if (registry.IsLive(card.Id))
+            return LaunchResult.Ok();
+
+        if (!SessionRestore.IsResumable(card))
+            return LaunchResult.Refused($"A card in {card.Column} with no session cannot be restored.");
+
+        if (!byAgent.TryGetValue(card.AgentType, out var adapter))
+            return LaunchResult.Refused($"No adapter is registered for {card.AgentType}.");
+
+        var resolution = adapter.Resolve(card.LaunchConfig);
+        if (!resolution.CanLaunch)
+            return LaunchResult.Refused(string.Join(" ", resolution.Rejections));
+
+        IAgentSession session;
+
+        try
+        {
+            session = await adapter.ResumeAsync(
+                new AgentResumeRequest(
+                    card.Id,
+                    card.SessionId!,
+                    card.WorkingDir,
+                    AgentPreamble.Compose(card.Id, card.AutoComplete ? card.AutoGit : null),
+                    card.InitialPrompt,
+                    null,
+                    card.LaunchConfig,
+                    size),
+                cancellationToken);
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            // Unlike a failed launch this moves nothing: the card is already where the rules put it,
+            // and a terminal that could not be brought back is not a new failure of the work. It is
+            // recorded so the timeline answers why the terminal is empty.
+            card.Transitions.Add(new Transition
+            {
+                At = clock.Now,
+                Column = card.Column,
+                Badge = card.Badge,
+                Reason = TransitionReason.RestoreFailed,
+                Note = error.Message,
+            });
+
+            await board.UpdateAsync(card, cancellationToken);
+
+            return LaunchResult.Refused(error.Message);
+        }
+
+        registry.Add(session);
+
+        card.Transitions.Add(new Transition
+        {
+            At = clock.Now,
+            Column = card.Column,
+            Badge = card.Badge,
+            Reason = TransitionReason.SessionRestored,
         });
 
         await board.UpdateAsync(card, cancellationToken);

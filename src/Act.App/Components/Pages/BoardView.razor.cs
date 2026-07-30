@@ -12,12 +12,15 @@ namespace Act.App.Components.Pages;
 public partial class BoardView(
     BoardState board,
     SessionLauncher launcher,
+    CardCompleter completer,
     NotificationService notifications,
     NavigationManager navigation) : IDisposable
 {
     private static readonly BoardColumn[] AllColumns = Enum.GetValues<BoardColumn>();
 
     private readonly HashSet<Guid> launching = [];
+
+    private readonly HashSet<Guid> completing = [];
 
     private Card? dragging;
 
@@ -92,6 +95,25 @@ public partial class BoardView(
         finally
         {
             launching.Remove(card.Id);
+        }
+    }
+
+    private bool IsCompleting(Card card) => completing.Contains(card.Id);
+
+    // Your turn → Completed, the other transition the user drives by hand across the launch boundary.
+    // Guarded like the launch is, because ending the card's session is not something to do twice.
+    private async Task CompleteAsync(Card card)
+    {
+        if (!completing.Add(card.Id))
+            return;
+
+        try
+        {
+            await completer.CompleteAsync(card);
+        }
+        finally
+        {
+            completing.Remove(card.Id);
         }
     }
 

@@ -1,42 +1,15 @@
-using Act.Agents.ClaudeCode;
-using Act.Agents.Codex;
 using Act.App;
 using Act.App.Cards;
 using Act.App.Desktop;
 using Act.App.Sessions;
 using Act.App.Settings;
 using Act.App.Hooks;
-using Act.Core.Abstractions;
-using Act.Infrastructure;
-using Act.Infrastructure.Storage;
 using ElectronNET.API;
-using ElectronNET.API.Entities;
-using Radzen;
 using AppRoot = Act.App.Components.App;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
-
-builder.Services.AddRadzenComponents();
-
-builder.Services.AddSingleton<IAssetVersions, AssetVersions>();
-
-builder.Services.AddActInfrastructure(
-    ActDataDirectory.Resolve(builder.Configuration[ActDataDirectory.OverrideKey]));
-builder.Services.AddSingleton<IAgentAdapter, ClaudeCodeAdapter>();
-builder.Services.AddSingleton<IAgentAdapter, CodexAdapter>();
-builder.Services.AddSingleton<IHookNormalizer, ClaudeCodeHookNormalizer>();
-builder.Services.AddSingleton<IHookNormalizer, CodexHookNormalizer>();
-builder.Services.AddSingleton<IAgentEventSink, SessionEventSink>();
-builder.Services.AddSingleton<IAgentCapabilityCatalog, AgentCapabilityCatalog>();
-builder.Services.AddSingleton<AppCulture>();
-builder.Services.AddSingleton<UserSettingsService>();
-builder.Services.AddSingleton<BoardState>();
-builder.Services.AddSingleton<SessionRegistry>();
-builder.Services.AddSingleton<SessionLauncher>();
-builder.Services.AddSingleton<SessionEventPump>();
+builder.Services.AddActApp(builder.Configuration);
 
 var launchedByElectron = args.Any(a => a.StartsWith("/electronPort", StringComparison.OrdinalIgnoreCase));
 var runElectron = launchedByElectron
@@ -47,8 +20,7 @@ WebApplication? host = null;
 
 if (runElectron)
 {
-    builder.Services.AddElectron();
-    builder.Services.AddSingleton<DesktopShell>();
+    builder.Services.AddActDesktopShell();
     builder.UseElectron(args, () => host!.Services.GetRequiredService<DesktopShell>().StartAsync());
 }
 
@@ -68,6 +40,13 @@ await app.Services.GetRequiredService<BoardState>().LoadAsync();
 // Started before anything can launch an agent, and explicitly rather than on first resolve: a pump
 // that attaches late has already missed the events it exists to read.
 app.Services.GetRequiredService<SessionEventPump>().Start();
+
+// The terminals that died with the previous run come back here, and only once the host is actually
+// listening: a resumed agent posts its first hook within moments of starting, and the endpoint that
+// answers it is this app's. Not awaited — restoring several agents is several process spawns, and
+// none of them is a reason to hold up the window.
+app.Lifetime.ApplicationStarted.Register(
+    () => _ = app.Services.GetRequiredService<SessionRestorer>().RestoreAllAsync(app.Lifetime.ApplicationStopping));
 
 // Before everything: the two ports mean different things, and the guard is what says so — hooks
 // answer only on the loopback hook port, the UI only on the app's.

@@ -116,9 +116,10 @@
     background: var(--rail, var(--act-run));
 }
 
-/* One pulse, two colours: the glow is driven by `--attn`, so an error card blinks in its own
-   red rather than being the one attention state that sits still. The resting box-shadow is the
-   animation's low point, which is what a reduced-motion user is left with. */
+/* One pulse, three colours: the glow is driven by `--attn`, so an error card blinks in its own red
+   and a reviewable one in the calm review blue, rather than either being the attention state that
+   sits still. The resting box-shadow is the animation's low point, which is what a reduced-motion
+   user is left with. */
 .strip.attn {
     --attn: var(--act-wait);
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--attn) 14%, transparent),
@@ -138,6 +139,10 @@
     border-color: color-mix(in srgb, var(--attn) 55%, transparent);
 }
 
+.strip.attn.rev {
+    --attn: var(--act-review);
+}
+
 .strip.attn::after {
     content: "!";
     position: absolute;
@@ -148,6 +153,10 @@
     font-weight: 700;
     color: var(--attn);
     z-index: 2;
+}
+
+.strip.attn.rev::after {
+    content: "\2713";
 }
 
 @keyframes act-attn {

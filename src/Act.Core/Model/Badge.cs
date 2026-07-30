@@ -9,5 +9,5 @@ public enum Badge
     Killed,
     Stale,
     Compacting,
-    Idle,
+    ReadyForReview,
 }

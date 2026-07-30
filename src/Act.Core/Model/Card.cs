@@ -62,6 +62,12 @@ public sealed class Card
 
     public CardMetrics? Metrics { get; set; }
 
+    // Every badge that lands a card in Your turn, which is the same thing as saying the ball is in
+    // the user's court. The blink is driven from here; the badge itself says which of the five it is.
     public bool NeedsAttention
-        => Badge is Model.Badge.NeedsPermission or Model.Badge.NeedsAnswer or Model.Badge.Error;
+        => Badge is Model.Badge.NeedsPermission
+            or Model.Badge.NeedsAnswer
+            or Model.Badge.Error
+            or Model.Badge.Killed
+            or Model.Badge.ReadyForReview;
 }

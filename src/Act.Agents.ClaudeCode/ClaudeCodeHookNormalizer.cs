@@ -58,8 +58,8 @@ public sealed class ClaudeCodeHookNormalizer : IHookNormalizer
     // **"Claude is waiting for your input"**, roughly a minute after a turn ends.
     //
     // So the message is all there is to go on, and an unrecognised one produces **no event at
-    // all**. Neither alternative is safe: calling it a permission request drags an idle card out of
-    // To review and badges it `needs permission` with nothing to approve (the bug this replaces),
+    // all**. Neither alternative is safe: calling it a permission request overwrites a reviewable
+    // card's `to review` with `needs permission` and nothing to approve (the bug this replaces),
     // and calling it activity is worse still — an idle nudge means the opposite of activity, and
     // would send a reviewed card back to Executing on its own.
     private static AgentEvent[] Notification(JsonElement payload, string sessionId, DateTimeOffset at)

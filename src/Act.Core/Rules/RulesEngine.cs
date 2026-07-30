@@ -8,16 +8,16 @@ namespace Act.Core.Rules;
 // which is the whole point of normalizing at the source.
 //
 // Two transitions are deliberately absent because neither is a rule: **Ready → Executing** is ACT
-// spawning a process (an action), and **To review → Completed** is the user's explicit call. And
-// recovery out of Needs feedback is here rather than being an ACT command, because the user answers
-// in the terminal — ACT only ever learns that the session moved again.
+// spawning a process (an action), and **Your turn → Completed** is the user's explicit call. And
+// recovery out of Your turn is here rather than being an ACT command, because the user answers in
+// the terminal — ACT only ever learns that the session moved again.
 public static class RulesEngine
 {
     // Outside the machine region a card is the human's, and a late or stray event must not drag it
     // back. This is what keeps a Completed card completed when a dying session reports one last
     // thing, and what stops the launch boundary from being crossed by observation.
     public static bool Governs(BoardColumn column)
-        => column is BoardColumn.Executing or BoardColumn.NeedsFeedback or BoardColumn.ToReview;
+        => column is BoardColumn.Executing or BoardColumn.YourTurn;
 
     public static BoardMove? Decide(Card card, AgentEvent observed)
     {
@@ -27,8 +27,9 @@ public static class RulesEngine
         return observed switch
         {
             // The recovery and send-back rule, and the reason activity carries more weight than its
-            // name: from Needs feedback it means the user answered the prompt in the terminal, and
-            // from To review that they sent the work back. ACT sees the same event either way.
+            // name: from Your turn it means the user acted in the terminal — answered the prompt, or
+            // sent reviewed work back. ACT sees the same event either way, and the badge it is
+            // leaving behind is the only thing that distinguished the two.
             ActivityObserved => new BoardMove(
                 BoardColumn.Executing,
                 Badge.Running,
@@ -48,13 +49,13 @@ public static class RulesEngine
             // read-only summary. Allowed from any machine column — a session that asks is a session
             // that is alive and blocked, wherever the board currently has it.
             PermissionRequested permission => new BoardMove(
-                BoardColumn.NeedsFeedback,
+                BoardColumn.YourTurn,
                 Badge.NeedsPermission,
                 TransitionReason.PermissionRequested,
                 Message: permission.Summary),
 
             QuestionAsked question => new BoardMove(
-                BoardColumn.NeedsFeedback,
+                BoardColumn.YourTurn,
                 Badge.NeedsAnswer,
                 TransitionReason.QuestionAsked,
                 Message: question.Question),
@@ -65,7 +66,7 @@ public static class RulesEngine
             // exit is not a card state: the turn events already said where the work stands, and the
             // session simply being over must not overwrite that.
             ProcessExited exit when exit.ExitCode != 0 => new BoardMove(
-                BoardColumn.NeedsFeedback,
+                BoardColumn.YourTurn,
                 Badge.Error,
                 TransitionReason.AgentExited,
                 Detail: exit.ExitCode.ToString()),
@@ -74,7 +75,7 @@ public static class RulesEngine
             // but it still needs somewhere to land, and the card must not sit in Executing with no
             // process behind it.
             SessionKilled => new BoardMove(
-                BoardColumn.NeedsFeedback,
+                BoardColumn.YourTurn,
                 Badge.Killed,
                 TransitionReason.SessionKilled),
 
@@ -92,25 +93,26 @@ public static class RulesEngine
     }
 
     // The status file the preamble asks for is what separates "finished" from "blocked" — a bare
-    // `Stop` cannot. `Unknown` is the missing-or-malformed case and routes to To review on purpose:
-    // the spec's rule is never to trap a finished task in limbo, so the fallback favours the user
-    // seeing work they can review over a card stuck waiting for an answer nobody was asked for.
+    // `Stop` cannot. Both outcomes now land in the same column, so the badge is what carries the
+    // difference. `Unknown` is the missing-or-malformed case and gets the review badge on purpose:
+    // the spec's rule is never to trap a finished task in limbo, so the fallback favours work the
+    // user can sign off over a card waiting for an answer nobody was asked for.
     private static BoardMove ForTurn(TurnEnded turn) => turn.Outcome switch
     {
         TurnOutcome.NeedsInput => new BoardMove(
-            BoardColumn.NeedsFeedback,
+            BoardColumn.YourTurn,
             Badge.NeedsAnswer,
             TransitionReason.TurnNeedsInput,
             Message: turn.Question),
 
         TurnOutcome.ReadyForReview => new BoardMove(
-            BoardColumn.ToReview,
-            Badge.Idle,
+            BoardColumn.YourTurn,
+            Badge.ReadyForReview,
             TransitionReason.TurnReadyForReview),
 
         _ => new BoardMove(
-            BoardColumn.ToReview,
-            Badge.Idle,
+            BoardColumn.YourTurn,
+            Badge.ReadyForReview,
             TransitionReason.TurnWithoutStatusFile),
     };
 }

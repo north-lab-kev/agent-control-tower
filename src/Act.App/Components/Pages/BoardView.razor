@@ -28,8 +28,10 @@
                         foreach (var card in cards)
                         {
                             <FlightStrip Card="card" Density="Density" OnOpen="OpenAsync" OnLaunch="LaunchAsync"
+                                         OnComplete="CompleteAsync"
                                          OnDragStart="OnDragStartAsync" OnDragEnd="OnDragEndAsync"
-                                         IsDragging="dragging?.Id == card.Id" IsLaunching="IsLaunching(card)" />
+                                         IsDragging="dragging?.Id == card.Id" IsLaunching="IsLaunching(card)"
+                                         IsCompleting="IsCompleting(card)" />
                         }
                     }
                 </RadzenStack>

@@ -25,6 +25,9 @@ public partial class FlightStrip
     public EventCallback<Card> OnLaunch { get; set; }
 
     [Parameter]
+    public EventCallback<Card> OnComplete { get; set; }
+
+    [Parameter]
     public EventCallback<Card> OnDragStart { get; set; }
 
     [Parameter]
@@ -35,6 +38,9 @@ public partial class FlightStrip
 
     [Parameter]
     public bool IsLaunching { get; set; }
+
+    [Parameter]
+    public bool IsCompleting { get; set; }
 
     private bool Draggable => ManualMove.CanDrag(Card.Column);
 
@@ -49,9 +55,16 @@ public partial class FlightStrip
     private Task OnKeyDownAsync(KeyboardEventArgs args)
         => args.Key is "Enter" or " " ? OnOpen.InvokeAsync(Card) : Task.CompletedTask;
 
-    private string? AttentionClass => Card.NeedsAttention
-        ? Card.Badge is Badge.Error or Badge.Killed ? "attn err" : "attn"
-        : null;
+    // One blink, three colours. Ready for review pulses too — it is as much the user's turn as a
+    // permission prompt is — but in the calm blue the review rail already uses, so a scan still
+    // separates "something is stuck" from "something is done".
+    private string? AttentionClass => Card.Badge switch
+    {
+        Badge.Error or Badge.Killed => "attn err",
+        Badge.ReadyForReview => "attn rev",
+        _ when Card.NeedsAttention => "attn",
+        _ => null,
+    };
 
     private string StripClass => string.Join(' ', new[]
     {
@@ -70,7 +83,7 @@ public partial class FlightStrip
         Badge.NeedsPermission or Badge.NeedsAnswer => "r-wait",
         Badge.Error or Badge.Killed => "r-err",
         Badge.Stale => "r-stale",
-        Badge.Idle => "r-review",
+        Badge.ReadyForReview => "r-review",
         _ => Card.Column switch
         {
             BoardColumn.Ready => "r-ready",
@@ -84,6 +97,13 @@ public partial class FlightStrip
     private bool CanLaunch => Card.Column is BoardColumn.Ready && !IsCompact;
 
     private Task LaunchAsync() => OnLaunch.InvokeAsync(Card);
+
+    // The sign-off, on the strip for the same reason Launch is: it is the one thing the user does to
+    // a card in Your turn without opening its terminal, and a review that is over should not need
+    // the card opened to say so.
+    private bool CanComplete => CardCompletion.CanComplete(Card) && !IsCompact;
+
+    private Task CompleteAsync() => OnComplete.InvokeAsync(Card);
 
     // The shared mapping, plus the two things that are about this surface rather than the signal: a
     // Completed card shows `done` where it carries no badge, and `stale` says how long it has been

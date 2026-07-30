@@ -15,8 +15,7 @@ public class RulesEngineTests
     // names. If the table and this disagree, one of them is a bug.
     [Theory]
     [InlineData(BoardColumn.Executing, BoardColumn.Executing, Badge.Running)]
-    [InlineData(BoardColumn.NeedsFeedback, BoardColumn.Executing, Badge.Running)]
-    [InlineData(BoardColumn.ToReview, BoardColumn.Executing, Badge.Running)]
+    [InlineData(BoardColumn.YourTurn, BoardColumn.Executing, Badge.Running)]
     public void Activity_puts_a_governed_card_back_to_running(
         BoardColumn from,
         BoardColumn expected,
@@ -46,7 +45,7 @@ public class RulesEngineTests
             CardIn(BoardColumn.Executing),
             new PermissionRequested(SessionId, At, "req-1", "run a shell command"));
 
-        move!.Column.Should().Be(BoardColumn.NeedsFeedback);
+        move!.Column.Should().Be(BoardColumn.YourTurn);
         move.Badge.Should().Be(Badge.NeedsPermission);
         move.Message.Should().Be("run a shell command");
     }
@@ -58,25 +57,24 @@ public class RulesEngineTests
             CardIn(BoardColumn.Executing),
             new QuestionAsked(SessionId, At, "req-1", "which database?"));
 
-        move!.Column.Should().Be(BoardColumn.NeedsFeedback);
+        move!.Column.Should().Be(BoardColumn.YourTurn);
         move.Badge.Should().Be(Badge.NeedsAnswer);
         move.Message.Should().Be("which database?");
     }
 
+    // Every outcome lands in the same column now, so the badge is the whole answer: the status file
+    // decides what the card says it needs, not where it goes.
     [Theory]
-    [InlineData(TurnOutcome.ReadyForReview, BoardColumn.ToReview, Badge.Idle)]
-    [InlineData(TurnOutcome.NeedsInput, BoardColumn.NeedsFeedback, Badge.NeedsAnswer)]
-    [InlineData(TurnOutcome.Unknown, BoardColumn.ToReview, Badge.Idle)]
-    public void A_turn_ending_routes_on_the_status_file(
-        TurnOutcome outcome,
-        BoardColumn column,
-        Badge badge)
+    [InlineData(TurnOutcome.ReadyForReview, Badge.ReadyForReview)]
+    [InlineData(TurnOutcome.NeedsInput, Badge.NeedsAnswer)]
+    [InlineData(TurnOutcome.Unknown, Badge.ReadyForReview)]
+    public void A_turn_ending_routes_on_the_status_file(TurnOutcome outcome, Badge badge)
     {
         var move = RulesEngine.Decide(
             CardIn(BoardColumn.Executing),
             new TurnEnded(SessionId, At, outcome));
 
-        move!.Column.Should().Be(column);
+        move!.Column.Should().Be(BoardColumn.YourTurn);
         move.Badge.Should().Be(badge);
     }
 
@@ -99,7 +97,7 @@ public class RulesEngineTests
     {
         var move = RulesEngine.Decide(CardIn(BoardColumn.Executing), new ProcessExited(SessionId, At, 1));
 
-        move!.Column.Should().Be(BoardColumn.NeedsFeedback);
+        move!.Column.Should().Be(BoardColumn.YourTurn);
         move.Badge.Should().Be(Badge.Error);
         move.Reason.Should().Be(TransitionReason.AgentExited);
 
@@ -112,7 +110,7 @@ public class RulesEngineTests
     // session merely being over must not overwrite that with something less specific.
     [Fact]
     public void A_clean_exit_moves_nothing()
-        => RulesEngine.Decide(CardIn(BoardColumn.ToReview, Badge.Idle), new ProcessExited(SessionId, At, 0))
+        => RulesEngine.Decide(CardIn(BoardColumn.YourTurn, Badge.ReadyForReview), new ProcessExited(SessionId, At, 0))
             .Should().BeNull();
 
     [Fact]
@@ -120,7 +118,7 @@ public class RulesEngineTests
     {
         var move = RulesEngine.Decide(CardIn(BoardColumn.Executing), new SessionKilled(SessionId, At));
 
-        move!.Column.Should().Be(BoardColumn.NeedsFeedback);
+        move!.Column.Should().Be(BoardColumn.YourTurn);
         move.Badge.Should().Be(Badge.Killed);
     }
 
@@ -151,13 +149,12 @@ public class RulesEngineTests
     [InlineData(BoardColumn.Preparing, false)]
     [InlineData(BoardColumn.Ready, false)]
     [InlineData(BoardColumn.Executing, true)]
-    [InlineData(BoardColumn.NeedsFeedback, true)]
-    [InlineData(BoardColumn.ToReview, true)]
+    [InlineData(BoardColumn.YourTurn, true)]
     [InlineData(BoardColumn.Completed, false)]
     public void The_governed_region_is_exactly_the_machine_columns(BoardColumn column, bool governed)
         => RulesEngine.Governs(column).Should().Be(governed);
 
-    // Ready → Executing is ACT spawning a process, and To review → Completed is the user's call.
+    // Ready → Executing is ACT spawning a process, and Your turn → Completed is the user's call.
     // Neither is a rule, so no event may produce them.
     [Fact]
     public void No_event_ever_produces_a_launch_or_a_completion()
@@ -199,7 +196,7 @@ public class RulesEngineTests
         var move = RulesEngine.Decide(card, new ActivityObserved(SessionId, At))!;
 
         move.ChangesAnything(card).Should().BeFalse();
-        move.ChangesAnything(CardIn(BoardColumn.NeedsFeedback, Badge.NeedsAnswer)).Should().BeTrue();
+        move.ChangesAnything(CardIn(BoardColumn.YourTurn, Badge.NeedsAnswer)).Should().BeTrue();
     }
 
     // The rule the whole `TransitionReason` design exists for: a transition is stored, so nothing

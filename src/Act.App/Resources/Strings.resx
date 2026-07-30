@@ -198,11 +198,8 @@
   <data name="Column_Executing" xml:space="preserve">
     <value>Executing</value>
   </data>
-  <data name="Column_NeedsFeedback" xml:space="preserve">
-    <value>Needs feedback</value>
-  </data>
-  <data name="Column_ToReview" xml:space="preserve">
-    <value>To review</value>
+  <data name="Column_YourTurn" xml:space="preserve">
+    <value>Your turn</value>
   </data>
   <data name="Column_Completed" xml:space="preserve">
     <value>Completed</value>
@@ -234,8 +231,8 @@
   <data name="Badge_StaleHours" xml:space="preserve">
     <value>stale {0}h</value>
   </data>
-  <data name="Badge_IdleReady" xml:space="preserve">
-    <value>idle · ready</value>
+  <data name="Badge_ToReview" xml:space="preserve">
+    <value>to review</value>
   </data>
   <data name="Badge_Done" xml:space="preserve">
     <value>done</value>
@@ -414,6 +411,12 @@
   <data name="Board_Launch" xml:space="preserve">
     <value>Launch now</value>
   </data>
+  <data name="Board_Complete" xml:space="preserve">
+    <value>Complete</value>
+  </data>
+  <data name="Session_Complete" xml:space="preserve">
+    <value>Mark completed</value>
+  </data>
   <data name="Nav_BackToBoard" xml:space="preserve">
     <value>Board</value>
   </data>
@@ -434,6 +437,9 @@
   </data>
   <data name="Session_LaunchFailed" xml:space="preserve">
     <value>Launch failed</value>
+  </data>
+  <data name="Session_RestoreFailed" xml:space="preserve">
+    <value>Terminal not restored</value>
   </data>
   <data name="NewTask_CreateDir" xml:space="preserve">
     <value>Create it</value>
@@ -554,6 +560,15 @@
   </data>
   <data name="Transition_MovedByHand" xml:space="preserve">
     <value>Moved by hand</value>
+  </data>
+  <data name="Transition_CompletedByHand" xml:space="preserve">
+    <value>Marked completed</value>
+  </data>
+  <data name="Transition_SessionRestored" xml:space="preserve">
+    <value>Terminal restored</value>
+  </data>
+  <data name="Transition_RestoreFailed" xml:space="preserve">
+    <value>Terminal could not be restored: {0}</value>
   </data>
   <data name="Transition_PermissionRequested" xml:space="preserve">
     <value>Permission requested in the terminal</value>

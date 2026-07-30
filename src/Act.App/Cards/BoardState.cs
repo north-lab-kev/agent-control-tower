@@ -14,8 +14,16 @@ public sealed class BoardState(ICardStore store, IClock clock)
 
     public event Action? Changed;
 
+    // Your turn is the one column whose cards are there for different reasons, so it is ordered by
+    // how much the waiting costs rather than by insertion — see `AttentionOrder`.
     public IReadOnlyList<Card> In(BoardColumn column)
-        => [.. cards.Where(card => !card.IsDeleted && card.Column == column)];
+    {
+        var live = cards.Where(card => !card.IsDeleted && card.Column == column);
+
+        return column is BoardColumn.YourTurn
+            ? [.. live.OrderBy(card => AttentionOrder.Rank(card.Badge))]
+            : [.. live];
+    }
 
     public IReadOnlyList<Card> Archived
         => [.. cards.Where(card => card.IsDeleted).OrderByDescending(card => card.DeletedAt)];
@@ -25,6 +33,9 @@ public sealed class BoardState(ICardStore store, IClock clock)
     // Deleted cards are still addressable: the archive links to them, and a restore has to be able
     // to find one. Callers that care ask `IsDeleted`.
     public Card? Card(Guid id) => cards.FirstOrDefault(card => card.Id == id);
+
+    // The cards whose terminal died while their binding survived — see `SessionRestore`.
+    public IReadOnlyList<Card> Resumable => [.. cards.Where(SessionRestore.IsResumable)];
 
     public IReadOnlyList<Card> ChildrenOf(Card card)
         => [.. card.Children.Select(Card).OfType<Card>()];

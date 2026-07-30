@@ -17,8 +17,7 @@ public static class CardVisuals
         BoardColumn.Preparing => Strings.Column_Preparing,
         BoardColumn.Ready => Strings.Column_Ready,
         BoardColumn.Executing => Strings.Column_Executing,
-        BoardColumn.NeedsFeedback => Strings.Column_NeedsFeedback,
-        BoardColumn.ToReview => Strings.Column_ToReview,
+        BoardColumn.YourTurn => Strings.Column_YourTurn,
         BoardColumn.Completed => Strings.Column_Completed,
         _ => column.ToString(),
     };
@@ -30,7 +29,7 @@ public static class CardVisuals
         Badge.NeedsPermission or Badge.NeedsAnswer => "b-wait",
         Badge.Error or Badge.Killed => "b-err",
         Badge.Stale => "b-stale",
-        Badge.Idle => "b-review",
+        Badge.ReadyForReview => "b-review",
         _ => null,
     };
 
@@ -43,7 +42,7 @@ public static class CardVisuals
         Badge.Error => Strings.Badge_Error,
         Badge.Killed => Strings.Badge_Killed,
         Badge.Stale => Strings.Badge_Stale,
-        Badge.Idle => Strings.Badge_IdleReady,
+        Badge.ReadyForReview => Strings.Badge_ToReview,
         _ => null,
     };
 }

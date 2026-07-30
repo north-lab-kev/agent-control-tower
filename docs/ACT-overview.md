@@ -120,7 +120,7 @@ Standards to build against — not optional polish. Specifics named for the
   (the `sessionId`) so a task's whole trace is filterable — near-essential when
   orchestrating opaque subprocesses.
 - **No silent failures** — matches the spec's ethos (explicit fallbacks: the
-  To-review status fallback, error→retry, resume→fresh-seed). Surface errors to
+  `to review` status fallback, error→retry, resume→fresh-seed). Surface errors to
   the card/badge, never swallow.
 
 ### Local-endpoint security
@@ -201,33 +201,54 @@ be human- or machine-controlled; **badges are always automatic.**
 |---|---|---|---|---|
 | 1 | Preparing | Human | user creates task (initial) | Ready |
 | 2 | Ready | Human | manual from Preparing, **or spawned** from a completing task | Executing (launch) · Preparing (back) |
-| 3 | Executing | Machine | auto, on launch | Needs feedback · To review |
-| 4 | Needs feedback | Machine | auto: permission / question / error | Executing (after input) |
-| 5 | To review | Machine | auto: `Stop`, clean | Completed · Executing (send-back) |
-| 6 | Completed | Human *(or auto)* | manual from To review; **or auto** on clean finish if `autoComplete` | To review (reopen) |
+| 3 | Executing | Machine | auto, on launch | Your turn |
+| 4 | Your turn | Machine | auto: permission / question / error / `Stop` | Completed · Executing (after input or send-back) |
+| 5 | Completed | Human *(or auto)* | manual from Your turn; **or auto** on clean finish if `autoComplete` | Your turn (reopen) |
 
 **Control arc:** human → machine → human. Control starts with the user
-(Preparing, Ready), passes to the agent at launch (Executing, Needs feedback,
-To review), and returns to the user at the end (Completed). ("Control" here
-means who drives movement *out of* a state. A spawned task is *created* into
-Ready by machine/agent, but the user still controls its exit — gate the launch
-or send it back to Preparing — so Ready stays human-controlled.)
+(Preparing, Ready), passes to the agent at launch (Executing, Your turn), and
+returns to the user at the end (Completed). ("Control" here means who drives
+movement *out of* a state. A spawned task is *created* into Ready by
+machine/agent, but the user still controls its exit — gate the launch or send it
+back to Preparing — so Ready stays human-controlled.)
 
 **Launch boundary (key rule):** the moment a card enters Executing, the user
 can no longer move it by hand. Columns then change *only* through automated
 transitions — driven by **hooks** (in-session events) and by **process signals**
 (exit code / no-activity timeout, which hooks can't report, e.g. a crash). The
-one exception is the manual **Completed → To review** reopen — which re-enters
+one exception is the manual **Completed → Your turn** reopen — which re-enters
 the workflow rather than overriding a live session, so the rule still holds: no
 manual moves while a session is actively mid-flight.
 
 **Badges (orthogonal to columns, always auto):** `running`, `needs permission`,
 `needs answer`, `error`, `killed` (user-terminated via the kill/abandon hatch),
 `stale` (no activity past a timeout — possibly hung), `compacting` (context
-being compacted), `idle` (awaiting review). One event can both move a card *and*
-stamp its badge. Note: `stale` and `compacting` occur *during* Executing;
-`stale` does **not** auto-escalate (see Rules engine) — it stays in Executing as
-a warning, and escalation is the user's call via kill/abandon.
+being compacted), `to review` (finished, awaiting sign-off). One event can both
+move a card *and* stamp its badge. Note: `stale` and `compacting` occur *during*
+Executing; `stale` does **not** auto-escalate (see Rules engine) — it stays in
+Executing as a warning, and escalation is the user's call via kill/abandon.
+
+**Why one column and not two.** Needs feedback and To review were two columns
+saying the same operational thing — *the ball is in your court* — and differing
+only in **why**, which is exactly what the badge already carries. They also
+behaved identically: activity observed in the terminal returned a card to
+Executing from either one, under the same reason code. Merging them makes the
+badge the sole carrier of the reason, and gives the column a single meaning the
+attention blink and the notification rules can both key off. The consequences,
+all deliberate:
+
+- **Ordering replaces adjacency.** Two columns implied a priority by sitting
+  side by side; one column has to state it. Your turn is ordered by cost of
+  waiting: `needs permission` → `needs answer` → `error` → `killed` →
+  `to review`. A live session parked on a prompt is burning a turn nobody is
+  answering; finished work is waiting on nothing.
+- **Sign-off is gated by the column, not the badge.** Any card in Your turn can
+  be completed, including one that errored or was killed — previously those had
+  no path to Completed except a round trip through the terminal.
+- **The blink covers the whole column,** in three colours: amber for a blocked
+  prompt, red for `error`/`killed`, and the calm review blue for `to review`. So
+  a scan still separates "something is stuck" from "something is done" without
+  reading a word.
 
 ### The states
 
@@ -245,38 +266,46 @@ manually back to Preparing if the prompt needs work.
 First automated transition. On launch, ACT generates the session UUID, spawns
 the agent CLI (e.g. `claude`) in the task's working directory with that
 `--session-id` and the prepared prompt, and binds `session_id → card`. The task
-is actively being worked (`running`). Auto-exits: to Needs feedback (blocked)
-or To review (`Stop`, clean).
+is actively being worked (`running`). Auto-exit: to Your turn, whether the
+session blocked or finished — the badge says which.
 
 > **Liveness model** (see Liveness & the embedded terminal). ACT spawns the
 > agent's **interactive TUI under a pseudo-terminal it owns** and keeps that
-> process **alive for as long as the card is active** — through Executing, Needs
-> feedback and To review alike — tearing it down only on kill or completion. So
-> "working" = the TUI is mid-turn; "idle" (To review) = the same live TUI parked
-> at its prompt; "send input" = **the user typing into that terminal**, which ACT
-> hosts full-screen for the card.
+> process **alive for as long as the card is active** — through Executing and
+> Your turn alike — tearing it down only on kill or completion. So "working" =
+> the TUI is mid-turn; `to review` = the same live TUI parked at its prompt;
+> "send input" = **the user typing into that terminal**, which ACT hosts
+> full-screen for the card.
 
-**4. Needs feedback** *(machine-controlled)*
-The session is blocked and needs the user; the badge says why: a permission
-prompt → **needs permission**; a question → **needs answer**; crash / non-zero
-exit → **error**. Failures route here (not To review). The card is a *report*
-that the TUI is waiting — **ACT never answers on the user's behalf** (see Hooks
-are observability, not control). Exits: for permission/question, the user opens
-the card's terminal and answers there, and ACT sees the session move again → back
-to Executing (badge returns to `running`); for **error**, the user can **Retry**
-(see Error handling & retry) → back to Executing.
+**4. Your turn** *(machine-controlled → hands back to human)*
+Everything the user is on the hook for, in one column; the badge says which kind:
 
-**5. To review** *(machine-controlled → hands back to human)*
-The agent finished its turn cleanly (`Stop`, no question, no error); badge goes
-`idle`. Work is produced and nothing is blocking; it is the user's turn to
-inspect it. The TUI is still alive, parked at its prompt. Exits: **Completed**
-(approve/finish) or **Executing** (send-back — user feedback re-enters the same
-session by being typed into that same terminal).
+- **needs permission** — a permission prompt is open in the TUI.
+- **needs answer** — the agent asked a question.
+- **error** — crash or non-zero exit.
+- **killed** — the user terminated the session via the kill/abandon hatch.
+- **to review** — the agent finished its turn cleanly (`Stop`, no question, no
+  error). Work is produced and nothing is blocking.
 
-**6. Completed** *(terminal-ish, human-controlled)*
-The user marks the task done from To review. Not strictly terminal: it has one
-manual exit, **reopen → To review**, for when the user forgot some feedback.
-From there the normal To review exits apply.
+The card is a *report* that the TUI is waiting — **ACT never answers on the
+user's behalf** (see Hooks are observability, not control). In every case the
+session is still alive and parked at its prompt (or, for error/killed, gone but
+resumable), so the exits are the same regardless of badge:
+
+- **→ Executing.** The user acts in the terminal — answers a prompt, or sends
+  reviewed work back — and ACT sees the session move again (badge returns to
+  `running`). For **error**, **Retry** does the same thing explicitly (see Error
+  handling & retry).
+- **→ Completed.** The user's explicit sign-off, available on any card in the
+  column: a crashed or killed task is as legitimately done-with as a reviewed
+  one.
+
+Cards are ordered by cost of waiting — see the ordering note under Summary.
+
+**5. Completed** *(terminal-ish, human-controlled)*
+The user marks the task done from Your turn. Not strictly terminal: it has one
+manual exit, **reopen → Your turn**, for when the user forgot some feedback.
+From there the normal Your turn exits apply.
 
 ---
 
@@ -379,10 +408,9 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
 
 ### State
 
-- `column` — `Preparing | Ready | Executing | NeedsFeedback | ToReview |
-  Completed`.
+- `column` — `Preparing | Ready | Executing | YourTurn | Completed`.
 - `badge` (execution status) — `running | needs-permission | needs-answer |
-  error | stale | compacting | idle`; null before launch.
+  error | killed | stale | compacting | to-review`; null before launch.
 
 ### Agent / session
 
@@ -395,9 +423,9 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
   `manual`) and editable in Ready; only *displayed* as a badge in the Ready column
   (see Scheduling & queue policy).
 - `autoComplete` — bool, set at creation. On a **clean** finish
-  (`ready_for_review`), skip To review and auto-advance to Completed (see
-  Auto-complete below). Does **not** fire on error / `needs_input` / permission
-  stop — those route to Needs feedback as normal.
+  (`ready_for_review`), skip the `to review` stop and auto-advance to Completed
+  (see Auto-complete below). Does **not** fire on error / `needs_input` /
+  permission stop — those route to Your turn as normal.
 - `autoGit` — optional, only with `autoComplete`: the git actions
   (`commit` / `push` / `pr` + `draft`) to perform **in-session** before
   completing. Injected into the launch prompt (known at creation), so it needs
@@ -520,7 +548,7 @@ values, and defines behavior for unsupported values (map to nearest equivalent
   the never-silently-drop rule applied to a genuine overlap.
 
   - **This is a state-machine knob, not just config.** It governs how often a card
-    enters Needs feedback: `default` ⇒ often; `acceptEdits` ⇒ less; `auto`,
+    enters Your turn blocked: `default` ⇒ often; `acceptEdits` ⇒ less; `auto`,
     `dontAsk` and `bypass` ⇒ effectively never for permission, because none of
     them prompt. Note the difference that matters for unattended runs: `bypass`
     silently allows, while `dontAsk` silently **denies** — a `dontAsk` task never
@@ -581,7 +609,7 @@ xterm.js and never reads them for meaning (see *ACT never parses terminal output
 **ACT observes prompts; it never answers them.** When the agent asks for
 permission or asks a question, that arrives as a fire-and-forget hook
 (`Notification`, and `PreToolUse` for the tool about to run). ACT normalizes it,
-moves the card to Needs feedback with the right badge, and shows a **read-only**
+moves the card to Your turn with the right badge, and shows a **read-only**
 summary of what is being asked. Answering happens where the prompt actually lives:
 in the TUI, in the card's terminal, typed by the user.
 
@@ -654,11 +682,22 @@ confirm at build.)*
   persists too.
 - **Resume/fork** — a known `--session-id` / `--resume` keeps the binding; a
   Codex fork producing a *new* id is the deferred `sessions[]` case.
-- **ACT restart kills live terminals.** The PTY is a child of ACT's process, so
-  restarting ACT ends every session it was hosting. The binding survives (it is in
-  LiteDB), so the cards come back and each can be resumed with `--resume` into a
-  fresh terminal — but the on-screen scrollback does not. Worth surfacing on the
-  card rather than silently showing an empty terminal.
+- **ACT restart kills live terminals, and ACT brings them back.** The PTY is a
+  child of ACT's process, so restarting ACT ends every session it was hosting. The
+  binding survives (it is in LiteDB), so **startup resumes every card in the machine
+  region — Executing and Your turn — that still carries a `sessionId`**,
+  with `--resume` into a fresh terminal and no message, which drops the user at the
+  prompt. The same restore happens when a card's terminal is *opened* and its process
+  is gone (killed, exited on its own, or a restart that could not reach it), so the
+  terminal is never an empty pane behind a button. The on-screen scrollback does not
+  come back; the restore is recorded as a transition so the timeline says why.
+  - A restore **moves nothing**: the card stays in the column and badge the rules
+    last gave it, because resuming a session is not a claim that work is running.
+  - Not restored: Ready and Preparing (nothing has been launched — that is the
+    user's call), and Completed (done; it resumes on reopen). A card with no
+    `sessionId` has no binding to resume and is left alone.
+  - A kill still kills. The restore happens on the *next* open or the next start,
+    never in reaction to the kill itself.
 
 ---
 
@@ -669,23 +708,26 @@ Drives all transitions in the machine-controlled region. Operates on
 `Stop` / `Notification` / `PreToolUse` / …; Codex's set) into ACT's shared
 vocabulary, and the table is written against that. One transition is **not**
 event-driven: **Ready → Executing** is ACT-initiated (it spawns the process — an
-action, not a rule). **To review → Completed** is the human's explicit call in the
-UI. Everything else, including recovery from Needs feedback and send-back out of
-To review, reaches ACT as an *observation* — because the user acts in the terminal,
-not in ACT, so ACT learns about it the same way it learns about anything else.
+action, not a rule). **Your turn → Completed** is the human's explicit call in the
+UI. Everything else, including recovery out of Your turn, reaches ACT as an
+*observation* — because the user acts in the terminal, not in ACT, so ACT learns
+about it the same way it learns about anything else.
+
+Note what the merged column does to this table: past Executing every row targets
+the same column, so the **badge is the only thing the event decides**.
 
 | Current | Normalized event | → Column | Badge |
 |---|---|---|---|
 | Executing | activity (tool use / turn progress) | Executing | `running` |
 | Executing | compacting (`PreCompact`) | Executing | `compacting` → `running` |
-| Executing | permission requested *(observed)* | Needs feedback | `needs permission` |
-| Executing | turn ended + status `needs_input` | Needs feedback | `needs answer` |
-| Executing | turn ended + status `ready_for_review` | To review | `idle` |
-| Executing | turn ended, no/invalid status file | To review | `idle` *(fallback)* |
-| Executing | process exited non-zero / crash | Needs feedback | `error` |
+| Executing | permission requested *(observed)* | Your turn | `needs permission` |
+| Executing | turn ended + status `needs_input` | Your turn | `needs answer` |
+| Executing | turn ended + status `ready_for_review` | Your turn | `to review` |
+| Executing | turn ended, no/invalid status file | Your turn | `to review` *(fallback)* |
+| Executing | process exited non-zero / crash | Your turn | `error` |
+| Executing | killed by the user | Your turn | `killed` |
 | Executing | no-activity timeout | *(stays)* Executing | `stale` |
-| Needs feedback | activity observed *(the user answered in the terminal)* | Executing | `running` |
-| To review | activity observed *(the user sent it back in the terminal)* | Executing | `running` |
+| Your turn | activity observed *(the user answered, or sent it back, in the terminal)* | Executing | `running` |
 
 ### Completion signal — the status-file convention
 
@@ -701,10 +743,10 @@ guesswork, reusing the same agent→ACT file mechanism as follow-ups:
 - **Format:** `{ state: "ready_for_review" | "needs_input", question?: string }`.
   `needs_input` carries the question text (shown on the card); `ready_for_review`
   = done, nothing blocking.
-- **Read on `Stop`.** `needs_input` → Needs feedback (`needs answer`);
-  `ready_for_review` → To review (`idle`).
-- **Fallback:** missing or malformed file → **To review** (never trap a finished
-  task in limbo).
+- **Read on `Stop`.** Both outcomes land in Your turn; the file picks the badge —
+  `needs_input` → `needs answer`, `ready_for_review` → `to review`.
+- **Fallback:** missing or malformed file → **`to review`** (never trap a
+  finished task in limbo waiting for an answer nobody asked for).
 - **Caveat:** unlike an enforced `PermissionRequest`, this relies on the agent
   obeying the preamble; the fallback absorbs misses, and the preamble wording is
   something to tune over time.
@@ -712,10 +754,10 @@ guesswork, reusing the same agent→ACT file mechanism as follow-ups:
 ### Other resolutions
 
 - **`error` / `stale` come from process signals, not hooks.** ACT owns the
-  spawned process: non-zero exit → `error` (→ Needs feedback); watchdog with no
+  spawned process: non-zero exit → `error` (→ Your turn); watchdog with no
   activity → `stale`. Since the TUI now stays alive between turns, `stale` is
-  scoped to cards **in Executing** — a To-review card sitting idle at its prompt is
-  the normal resting state, not a hang.
+  scoped to cards **in Executing** — a `to review` card sitting quiet at its
+  prompt is the normal resting state, not a hang.
 - **`stale` does not auto-escalate.** Warning badge only; card stays in
   Executing; escalation is the user's call via the kill/abandon hatch.
 - **`permissionMode` changes frequency, not the table.** `default` ⇒ "permission
@@ -728,7 +770,7 @@ guesswork, reusing the same agent→ACT file mechanism as follow-ups:
 
 ### Error handling & retry
 
-Any `error` in Needs feedback is **manually retriable** — a **Retry** action in
+Any `error` in Your turn is **manually retriable** — a **Retry** action in
 the drawer re-attempts the task (via `--resume <sessionId>` to continue where it
 failed; fresh-seeded from `initialPrompt` if the transcript is gone) → back to
 Executing. Error kinds and what retry means:
@@ -757,12 +799,12 @@ For tasks with `autoComplete` set, the "turn ended clean" branch changes:
   - if `autoGit` was configured, the git actions were injected into the launch
     prompt, so they already ran in-session — the card goes straight to
     **Completed**.
-  - if the in-session git step failed → **Needs feedback** (`error`), not
+  - if the in-session git step failed → **Your turn** (`error`), not
     Completed (never complete with broken git).
-- Executing + `ready_for_review` **without** `autoComplete` → **To review**
-  (normal human sign-off).
+- Executing + `ready_for_review` **without** `autoComplete` → **Your turn**
+  (`to review`, normal human sign-off).
 - `autoComplete` never bypasses **error / `needs_input` / permission** — those
-  still route to Needs feedback and wait for the user. (Pair with
+  still route to Your turn and wait for the user. (Pair with
   `bypass`/`acceptEdits` `permissionMode` for truly hands-off overnight runs.)
 
 Control arc for these tasks: human → machine → **auto-done** (final human step
@@ -819,7 +861,7 @@ The division of labour this buys is the whole point:
 ### Alive while the card is active
 
 The process is spawned at launch and stays **alive across turns** — through
-Executing, Needs feedback and To review alike — until the user kills it or the
+Executing and Your turn alike — until the user kills it or the
 card completes. This is the natural shape for an interactive terminal: scrollback
 survives, and the user can keep typing without ACT re-spawning anything underneath
 them.
@@ -945,9 +987,9 @@ A task becomes **eligible** when its `schedule` condition is met, then launches
 only if **both**: the concurrency cap has a free slot, **and** its `dependsOn`
 prerequisites are Completed.
 
-- `maxConcurrent` — cap on tasks past the launch boundary and not yet in To
-  review/Completed (i.e. **Executing + Needs feedback** — blocked-but-alive
-  sessions count).
+- `maxConcurrent` — cap on tasks past the launch boundary that are not yet
+  awaiting sign-off (i.e. **Executing**, plus **Your turn** on any badge but
+  `to review` — blocked-but-alive sessions count).
 - **Rate-limit backpressure (safety net)** — if an eligible task's usage window
   is exhausted, it **waits for reset** (shown as `waiting-reset` in Ready)
   rather than erroring. Distinguish the two limits: 5-hour window → wait hours;
@@ -957,7 +999,7 @@ prerequisites are Completed.
 ### Spawned-task schedule defaults
 
 - **ACT-emitted** (git commit/push/PR): default **Now**; user can override the
-  schedule right in the To review → Completed git modal.
+  schedule right in the Your turn → Completed git modal.
 - **Agent-emitted** (plan follow-ups): default **Manual** (nobody chose them at
   spawn time → review-before-run is safer). *(Revisit if inherit/now preferred.)*
 
@@ -1062,14 +1104,16 @@ history.
 ### Session lifecycle — resumability rides the transcript
 
 Resumability does **not** depend on ACT keeping anything alive. Send-back
-(To review → Executing) and reopen (Completed → To review) work via `--resume
+(Your turn → Executing) and reopen (Completed → Your turn) work via `--resume
 <sessionId>` against the agent's **on-disk transcript**, which persists
 independently of ACT.
 
 - Per the liveness model, ACT keeps the terminal alive for the whole active life
   of a card and tears it down on kill or completion. Reopening a **Completed** card,
   or any card whose terminal died with ACT, re-spawns via `--resume` into a fresh
-  terminal.
+  terminal. For the machine region that re-spawn is **automatic** — at startup for
+  every bound card, and on opening a terminal whose process is gone (see *Edge
+  cases*); only Completed still waits for the explicit reopen.
 - **Caveat:** the transcript is outside ACT's control, subject to the agent's
   retention or user deletion — so a very old Completed task may no longer be
   resumable.
@@ -1112,7 +1156,7 @@ right answer.
 
 ## Git integration
 
-Optional git handoff on the **To review → Completed** transition. The completion
+Optional git handoff on the **Your turn → Completed** transition. The completion
 modal prompts for an optional action: **commit**, **push**, **create PR** (with a
 **draft** checkbox). Actions chain (commit → push → PR; draft modifies the PR
 only); "no git action" is always available.
@@ -1120,7 +1164,7 @@ only); "no git action" is always available.
 - **Mechanism:** the completing task simply **completes**, and ACT **spawns a new
   git task in Ready** (ACT-emitted — ACT writes its prompt from the user's
   choice) to do the commit/push/PR. No Executing round-trip on the parent; the
-  git work is its own tracked card that can hit Needs feedback on its own — just
+  git work is its own tracked card that can land in Your turn on its own — just
   the general task-spawning mechanism applied to git. The completion modal also
   offers the spawned task's `schedule` (default **Now**).
 - **Contrast — auto-complete tasks:** when git is known at **creation** (`autoGit`
@@ -1138,9 +1182,9 @@ unattended mode is half-blind.
 
 ### Events → triggers (map to attention-state transitions)
 
-- **Needs feedback** — `needs permission`, `needs answer`, `error` (blocked on
-  you). Always on.
-- **To review** — a task finished and wants sign-off.
+- **Blocked in Your turn** — `needs permission`, `needs answer`, `error`,
+  `killed` (blocked on you). Always on.
+- **`to review` in Your turn** — a task finished and wants sign-off.
 - **Completed (auto)** — an `autoComplete` task closed itself (the overnight
   "it's done" ping).
 - **`waiting-reset` / rate-limited** — queue paused until the window resets, and
@@ -1188,11 +1232,11 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   today: once the scheduler lands (step 14) a card can be waiting on a `schedule`, and
   this button is the **override** that starts it regardless. Naming it plain "Launch"
   now would have to change then, and the two would read as different actions.
-- **Board:** **six flat columns — no persistent zones.** The launch-boundary
+- **Board:** **five flat columns — no persistent zones.** The launch-boundary
   rule is shown **dynamically at drag time**: picking up a draggable card lights
   only its valid drop targets and **grays out invalid columns** (Ready →
-  Preparing + Executing; Completed → To review). Machine cards (Executing / Needs
-  feedback / To review) don't lift (can't be hand-moved).
+  Preparing + Executing; Completed → Your turn). Machine cards (Executing / Your
+  turn) don't lift (can't be hand-moved).
 - **Column lanes:** each column is a **bay** — a faint full-height track
   (`--act-lane` fill, `--act-lane-line` hairline, rounded) that separates the
   columns and, crucially, keeps an **empty** column legible instead of collapsing
@@ -1263,9 +1307,11 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     afterwards — you can read the prompt of a running task, or the terminal of one that
     has not launched. Consequence worth stating: reaching a terminal is not permission to
     start one. The launch action appears only for a card in **Ready** (the launch) or
-    **Executing** (a re-attach after ACT restarted, where the binding survived but the
-    process did not); anywhere else the page says to move the card to Ready. Otherwise
+    **Executing**; anywhere else the page says to move the card to Ready. Otherwise
     the toggle would quietly become a way to skip Ready and break the control arc.
+    A card that already has a `sessionId` never needs the button: opening its terminal
+    resumes the session by itself (see *Session lifecycle*), which is a re-attach to work
+    that was already started rather than a launch.
 - **Build split:** signature flight-strip look = custom Blazor markup + CSS;
   heavier widgets (dialog/modal, drawer, tables, inputs) = Radzen themed to the
   same palette via shared CSS variables. Mockups were hand-CSS only. The terminal

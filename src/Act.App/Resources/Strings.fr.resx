@@ -198,11 +198,8 @@
   <data name="Column_Executing" xml:space="preserve">
     <value>En exécution</value>
   </data>
-  <data name="Column_NeedsFeedback" xml:space="preserve">
-    <value>Intervention requise</value>
-  </data>
-  <data name="Column_ToReview" xml:space="preserve">
-    <value>À réviser</value>
+  <data name="Column_YourTurn" xml:space="preserve">
+    <value>À vous</value>
   </data>
   <data name="Column_Completed" xml:space="preserve">
     <value>Terminé</value>
@@ -234,8 +231,8 @@
   <data name="Badge_StaleHours" xml:space="preserve">
     <value>inactif {0} h</value>
   </data>
-  <data name="Badge_IdleReady" xml:space="preserve">
-    <value>au repos · prêt</value>
+  <data name="Badge_ToReview" xml:space="preserve">
+    <value>à réviser</value>
   </data>
   <data name="Badge_Done" xml:space="preserve">
     <value>terminé</value>
@@ -414,6 +411,12 @@
   <data name="Board_Launch" xml:space="preserve">
     <value>Démarrer maintenant</value>
   </data>
+  <data name="Board_Complete" xml:space="preserve">
+    <value>Terminer</value>
+  </data>
+  <data name="Session_Complete" xml:space="preserve">
+    <value>Marquer terminé</value>
+  </data>
   <data name="Nav_BackToBoard" xml:space="preserve">
     <value>Tableau</value>
   </data>
@@ -434,6 +437,9 @@
   </data>
   <data name="Session_LaunchFailed" xml:space="preserve">
     <value>Échec du démarrage</value>
+  </data>
+  <data name="Session_RestoreFailed" xml:space="preserve">
+    <value>Terminal non rétabli</value>
   </data>
   <data name="NewTask_CreateDir" xml:space="preserve">
     <value>Créer</value>
@@ -554,6 +560,15 @@
   </data>
   <data name="Transition_MovedByHand" xml:space="preserve">
     <value>Déplacé manuellement</value>
+  </data>
+  <data name="Transition_CompletedByHand" xml:space="preserve">
+    <value>Marqué terminé</value>
+  </data>
+  <data name="Transition_SessionRestored" xml:space="preserve">
+    <value>Terminal rétabli</value>
+  </data>
+  <data name="Transition_RestoreFailed" xml:space="preserve">
+    <value>Le terminal n&apos;a pas pu être rétabli : {0}</value>
   </data>
   <data name="Transition_PermissionRequested" xml:space="preserve">
     <value>Permission demandée dans le terminal</value>

@@ -42,6 +42,13 @@
                               Disabled="IsLaunching" Click="@LaunchAsync" @onclick:stopPropagation="true" />
             }
 
+            @if (CanComplete)
+            {
+                <RadzenButton Text="@Strings.Board_Complete" Icon="check" Size="ButtonSize.ExtraSmall"
+                              ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" class="complete"
+                              Disabled="IsCompleting" Click="@CompleteAsync" @onclick:stopPropagation="true" />
+            }
+
             @if (Card.Metrics is { } m)
             {
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="0.6rem" Wrap="FlexWrap.Wrap" class="metrics">

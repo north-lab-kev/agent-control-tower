@@ -17,6 +17,15 @@ public enum TransitionReason
     LaunchFailed,
     MovedByHand,
 
+    // Your turn → Completed, the user's explicit sign-off. Its own reason rather than a hand-move:
+    // it is the only transition that ends a card's session, and the timeline should say so.
+    CompletedByHand,
+
+    // The terminal came back for a card that never left its column: the process had died with the
+    // app, with a kill or with the CLI itself, and the stored binding was resumed into a fresh one.
+    SessionRestored,
+    RestoreFailed,
+
     // The recovery and send-back row: the user acted in the terminal and ACT saw the session move.
     ActivityObserved,
     CompactingStarted,

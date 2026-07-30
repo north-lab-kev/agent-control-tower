@@ -3,6 +3,7 @@ using Act.App.Resources;
 using Act.App.Sessions;
 using Act.Core.Abstractions;
 using Act.Core.Model;
+using Act.Core.Rules;
 using ElectronNET.API;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -17,6 +18,7 @@ public partial class SessionView(
     BoardState board,
     SessionRegistry registry,
     SessionLauncher launcher,
+    CardCompleter completer,
     IEnumerable<IAgentAdapter> adapters,
     NavigationManager navigation,
     NotificationService notifications,
@@ -36,6 +38,8 @@ public partial class SessionView(
 
     private bool launching;
 
+    private bool completing;
+
 
     [Parameter]
     public Guid CardId { get; set; }
@@ -45,6 +49,9 @@ public partial class SessionView(
     private TerminalSize Geometry { get; set; } = TerminalSize.Default;
 
     private bool CanLaunch => card is { } existing && launcher.CanLaunch(existing);
+
+    // The review happens in front of this terminal, so this is where the sign-off belongs.
+    private bool CanComplete => card is { } existing && completer.CanComplete(existing);
 
     // Null until the session id is known, which for Codex is a little after launch — and null
     // forever for an agent with no desktop app, so the action simply does not appear.
@@ -75,6 +82,10 @@ public partial class SessionView(
         }
 
         registry.Changed += OnRegistryChanged;
+
+        // The card moves under this view while the user watches it: a turn ending is what puts the
+        // sign-off within reach, and the badge and the rail's numbers are only true if they follow.
+        board.Changed += OnBoardChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -101,6 +112,7 @@ public partial class SessionView(
     public async ValueTask DisposeAsync()
     {
         registry.Changed -= OnRegistryChanged;
+        board.Changed -= OnBoardChanged;
 
         // Only the *view* goes away here. The session keeps running, which is the whole point
         // of the registry owning it — walking back into the card finds it still working.
@@ -133,7 +145,45 @@ public partial class SessionView(
 
         BindSession();
 
+        // Attach only, never on a later registry change: a card that lost its process — to a kill,
+        // to the CLI's own exit, to a restart the startup restore did not cover — gets its terminal
+        // back by being opened, but a kill from this very view has to stay killed.
+        if (session is null)
+            await RestoreAsync();
+
         StateHasChanged();
+    }
+
+    private async Task RestoreAsync()
+    {
+        if (card is not { } existing || !SessionRestore.IsResumable(existing) || launching)
+            return;
+
+        launching = true;
+
+        try
+        {
+            var result = await launcher.RestoreAsync(existing, Geometry);
+
+            if (result.Message is { } message)
+            {
+                notifications.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = Strings.Session_RestoreFailed,
+                    Detail = message,
+                    Duration = 20000,
+                });
+            }
+
+            card = board.Card(CardId);
+
+            BindSession();
+        }
+        finally
+        {
+            launching = false;
+        }
     }
 
     private void BindSession()
@@ -198,6 +248,26 @@ public partial class SessionView(
         }
     }
 
+    // Signing off ends the session, which leaves this view showing an empty pane for work that is
+    // done — so it returns to the board, where the card now sits in Completed.
+    private async Task CompleteAsync()
+    {
+        if (card is not { } existing || completing)
+            return;
+
+        completing = true;
+
+        try
+        {
+            if (await completer.CompleteAsync(existing))
+                navigation.NavigateTo("/");
+        }
+        finally
+        {
+            completing = false;
+        }
+    }
+
     private async Task KillAsync()
     {
         await registry.EndAsync(CardId);
@@ -248,6 +318,15 @@ public partial class SessionView(
     private void OnRegistryChanged() => InvokeAsync(() =>
     {
         BindSession();
+        StateHasChanged();
+    });
+
+    // The store's copy is a fresh object on every write, so the view has to take the new one rather
+    // than hold the instance it was initialized with.
+    private void OnBoardChanged() => InvokeAsync(() =>
+    {
+        card = board.Card(CardId);
+
         StateHasChanged();
     });
 

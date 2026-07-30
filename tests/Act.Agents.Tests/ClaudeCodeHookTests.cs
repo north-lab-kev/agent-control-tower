@@ -177,8 +177,8 @@ public class ClaudeCodeHookNormalizerTests
 
     // Measured live on 2026-07-30: `Notification` also fires an idle nudge with exactly this
     // message about a minute after a turn ends. It must produce nothing. Treating it as a
-    // permission request badges an idle card `needs permission` with nothing to approve and drags
-    // it out of To review; treating it as activity is worse, because an idle nudge means the
+    // permission request overwrites a reviewable card's `to review` with `needs permission` and
+    // nothing to approve; treating it as activity is worse, because an idle nudge means the
     // opposite of activity and would send a reviewed card back to Executing on its own.
     [Fact]
     public void The_idle_nudge_is_not_a_permission_prompt_and_produces_nothing()

@@ -16,8 +16,7 @@ public class ManualMoveTests
 
     [Theory]
     [InlineData(BoardColumn.Executing)]
-    [InlineData(BoardColumn.NeedsFeedback)]
-    [InlineData(BoardColumn.ToReview)]
+    [InlineData(BoardColumn.YourTurn)]
     [InlineData(BoardColumn.Completed)]
     public void A_card_past_the_launch_boundary_does_not_lift(BoardColumn column)
         => ManualMove.CanDrag(column).Should().BeFalse();
@@ -35,14 +34,13 @@ public class ManualMoveTests
 
     [Fact]
     public void Reopening_is_not_a_manual_move_yet()
-        => ManualMove.IsAllowed(BoardColumn.Completed, BoardColumn.ToReview).Should().BeFalse();
+        => ManualMove.IsAllowed(BoardColumn.Completed, BoardColumn.YourTurn).Should().BeFalse();
 
     [Theory]
     [InlineData(BoardColumn.Preparing)]
     [InlineData(BoardColumn.Ready)]
     [InlineData(BoardColumn.Executing)]
-    [InlineData(BoardColumn.NeedsFeedback)]
-    [InlineData(BoardColumn.ToReview)]
+    [InlineData(BoardColumn.YourTurn)]
     [InlineData(BoardColumn.Completed)]
     public void A_column_never_accepts_a_drop_from_itself(BoardColumn column)
         => ManualMove.IsAllowed(column, column).Should().BeFalse();
@@ -68,7 +66,7 @@ public class ManualMoveTests
     {
         var machineColumns = new[]
         {
-            BoardColumn.Executing, BoardColumn.NeedsFeedback, BoardColumn.ToReview, BoardColumn.Completed,
+            BoardColumn.Executing, BoardColumn.YourTurn, BoardColumn.Completed,
         };
 
         foreach (var target in machineColumns)

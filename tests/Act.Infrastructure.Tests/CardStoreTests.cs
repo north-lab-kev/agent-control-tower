@@ -33,7 +33,7 @@ public class CardStoreTests
             SessionId = "3c9a51e6-77b2-4d0f-8a41-9e5b0c72d183",
             Title = "Refactor session binding",
             InitialPrompt = "Rework how sessions bind to cards.",
-            Column = BoardColumn.NeedsFeedback,
+            Column = BoardColumn.YourTurn,
             Badge = Badge.NeedsPermission,
             AgentType = AgentType.Codex,
             WorkingDir = "~/dev/act",
@@ -101,8 +101,8 @@ public class CardStoreTests
         var card = new Card
         {
             Title = "Named enums",
-            Column = BoardColumn.ToReview,
-            Badge = Badge.Idle,
+            Column = BoardColumn.YourTurn,
+            Badge = Badge.ReadyForReview,
             AgentType = AgentType.Codex,
             Schedule = TaskSchedule.NextWindow,
             LaunchConfig = new LaunchConfig { PermissionMode = PermissionMode.DontAsk },
@@ -115,8 +115,8 @@ public class CardStoreTests
 
         var stored = database.GetCollection("cards").FindById(card.Id);
 
-        stored["Column"].AsString.Should().Be(nameof(BoardColumn.ToReview));
-        stored["Badge"].AsString.Should().Be(nameof(Badge.Idle));
+        stored["Column"].AsString.Should().Be(nameof(BoardColumn.YourTurn));
+        stored["Badge"].AsString.Should().Be(nameof(Badge.ReadyForReview));
         stored["AgentType"].AsString.Should().Be(nameof(AgentType.Codex));
         stored["Schedule"].AsString.Should().Be(nameof(TaskSchedule.NextWindow));
         stored["LaunchConfig"]["PermissionMode"].AsString.Should().Be(nameof(PermissionMode.DontAsk));

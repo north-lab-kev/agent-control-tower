@@ -48,7 +48,7 @@ public partial class TimelineView(BoardState board, NavigationManager navigation
     {
         public static Entry From(Transition transition) => new(
             transition.At,
-            transition.At.ToLocalTime().ToString("HH:mm", CultureInfo.CurrentCulture),
+            transition.At.ToLocalTime().ToString("HH:mm:ss", CultureInfo.CurrentCulture),
             Text: Wording(transition),
             // Suppressed for a row that has no reason of its own: the wording already *is* the
             // column, and "Entered Ready → Ready" reads like a bug.

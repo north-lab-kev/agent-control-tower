@@ -78,6 +78,12 @@ else
                 </dl>
 
                 <div class="actions">
+                    @if (CanComplete)
+                    {
+                        <RadzenButton Text="@Strings.Session_Complete" Icon="check" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat"
+                                      Disabled="completing" Click="CompleteAsync" />
+                    }
                     @if (HandoffUrl is { } url)
                     {
                         <RadzenButton Text="@Strings.Session_OpenInDesktop" Icon="open_in_new" Size="ButtonSize.Small"
