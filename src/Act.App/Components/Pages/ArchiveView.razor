@@ -1,0 +1,55 @@
+@page "/archive"
+@using Act.Core.Model
+
+<PageTitle>@Strings.Archive_Title</PageTitle>
+
+<div class="archive">
+    <header class="bar">
+        <RadzenButton Icon="arrow_back" Text="@Strings.Nav_BackToBoard" Size="ButtonSize.Small"
+                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="BackToBoard" />
+        <span class="title">@Strings.Archive_Title</span>
+
+        @* Also a dialog: this is the one irreversible action in the app, so it must not be quieter
+           than the reversible one next to it. *@
+        <div class="purge">
+            @if (board.HasArchived)
+            {
+                <RadzenButton Icon="delete_forever" Text="@Strings.Archive_Clear" Size="ButtonSize.ExtraSmall"
+                              ButtonStyle="ButtonStyle.Danger" Variant="Variant.Text" Disabled="purging"
+                              Click="PurgeAsync" />
+            }
+        </div>
+    </header>
+
+    <div class="body">
+        <div class="sheet">
+            @if (!board.HasArchived)
+            {
+                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Archive_Empty" class="empty" />
+            }
+            else
+            {
+                @foreach (var card in board.Archived)
+                {
+                    <div class="row">
+                        <span class="id">#@card.Number</span>
+                        <div class="what">
+                            <span class="ttl">@card.Title</span>
+                            <span class="meta">@Meta(card)</span>
+                        </div>
+                        <RadzenButton Icon="restore_from_trash" Size="ButtonSize.ExtraSmall"
+                                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
+                                      Click="@(() => RestoreAsync(card))"
+                                      title="@Strings.Archive_Restore" aria-label="@Strings.Archive_Restore" />
+                        @* Restoring puts the old run back; duplicating starts the same task over,
+                           which is the other reason to come looking for an archived card. *@
+                        <RadzenButton Icon="content_copy" Size="ButtonSize.ExtraSmall"
+                                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
+                                      Disabled="duplicating" Click="@(() => DuplicateAsync(card))"
+                                      title="@Strings.Archive_Duplicate" aria-label="@Strings.Archive_Duplicate" />
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>

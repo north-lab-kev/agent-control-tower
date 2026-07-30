@@ -1,0 +1,167 @@
+.strip {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--act-radius);
+    cursor: pointer;
+}
+
+.strip:focus-visible {
+    outline: 2px solid var(--act-review);
+    outline-offset: 1px;
+}
+
+/* Every card opens on click, so `pointer` is the resting affordance. Dragging is the
+   secondary gesture: the cursor only turns into a grab once the press begins. */
+.strip.liftable:active {
+    cursor: grabbing;
+}
+
+.strip.lifted {
+    opacity: .45;
+    cursor: grabbing;
+}
+
+.strip::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    z-index: 1;
+    background: var(--rail, var(--act-faint));
+}
+
+.r-plan { --rail: var(--act-plan); }
+.r-ready { --rail: var(--act-ready); }
+.r-run { --rail: var(--act-run); }
+.r-wait { --rail: var(--act-wait); }
+.r-err { --rail: var(--act-err); }
+.r-review { --rail: var(--act-review); }
+.r-done { --rail: var(--act-done); }
+.r-stale { --rail: var(--act-stale); }
+
+::deep .stripcard {
+    background: var(--act-surface);
+    border-color: var(--act-line);
+    border-radius: var(--act-radius);
+}
+
+::deep .cid,
+::deep .path,
+::deep .metrics,
+::deep .lin {
+    font-family: var(--act-mono);
+}
+
+::deep .cid,
+::deep .metrics,
+::deep .lin {
+    font-size: 9.5px;
+    color: var(--act-faint);
+}
+
+::deep .ttl {
+    font-size: 12.5px;
+    color: var(--act-ink);
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+::deep .path {
+    font-size: 10px;
+    color: var(--act-dim);
+    opacity: .7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+::deep .schip {
+    font-family: var(--act-mono);
+    font-size: 9px;
+    color: var(--act-faint);
+    border-style: dashed;
+    border-color: var(--act-line2);
+    white-space: nowrap;
+}
+
+::deep .badge {
+    font-family: var(--act-mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--tint, var(--act-faint));
+    background: color-mix(in srgb, var(--tint, var(--act-faint)) var(--act-tint-fill), transparent);
+    border: 1px solid color-mix(in srgb, var(--tint, var(--act-faint)) var(--act-tint-edge), transparent);
+}
+
+::deep .b-run { --tint: var(--act-run); }
+::deep .b-wait { --tint: var(--act-wait); }
+::deep .b-err { --tint: var(--act-err); }
+::deep .b-review { --tint: var(--act-review); }
+::deep .b-done { --tint: var(--act-done); }
+::deep .b-stale { --tint: var(--act-stale); }
+
+::deep .ctxbar {
+    height: 3px;
+    background: var(--act-track);
+}
+
+::deep .ctxbar .rz-progressbar-value {
+    background: var(--rail, var(--act-run));
+}
+
+/* One pulse, two colours: the glow is driven by `--attn`, so an error card blinks in its own
+   red rather than being the one attention state that sits still. The resting box-shadow is the
+   animation's low point, which is what a reduced-motion user is left with. */
+.strip.attn {
+    --attn: var(--act-wait);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--attn) 14%, transparent),
+                0 0 18px -4px color-mix(in srgb, var(--attn) 35%, transparent);
+    animation: act-attn 2s infinite;
+}
+
+.strip.attn ::deep .stripcard {
+    border-color: color-mix(in srgb, var(--attn) 45%, transparent);
+}
+
+.strip.attn.err {
+    --attn: var(--act-err);
+}
+
+.strip.attn.err ::deep .stripcard {
+    border-color: color-mix(in srgb, var(--attn) 55%, transparent);
+}
+
+.strip.attn::after {
+    content: "!";
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-family: var(--act-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--attn);
+    z-index: 2;
+}
+
+@keyframes act-attn {
+    0%, 100% {
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--attn) 14%, transparent),
+                    0 0 18px -4px color-mix(in srgb, var(--attn) 35%, transparent);
+    }
+
+    50% {
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--attn) 30%, transparent),
+                    0 0 22px -2px color-mix(in srgb, var(--attn) 58%, transparent);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .strip.attn { animation: none; }
+}

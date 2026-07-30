@@ -1,0 +1,546 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Shell_FullName" xml:space="preserve">
+    <value>Agent Control Tower</value>
+  </data>
+  <data name="Shell_AutoExecOn" xml:space="preserve">
+    <value>auto-exec on</value>
+  </data>
+  <data name="Shell_UnhandledError" xml:space="preserve">
+    <value>An unhandled error has occurred.</value>
+  </data>
+  <data name="Shell_Reload" xml:space="preserve">
+    <value>Reload</value>
+  </data>
+  <data name="Board_ColumnEmpty" xml:space="preserve">
+    <value>no cards</value>
+  </data>
+  <data name="Shell_NewTask" xml:space="preserve">
+    <value>New task</value>
+  </data>
+  <data name="NewTask_Group_Task" xml:space="preserve">
+    <value>Task</value>
+  </data>
+  <data name="NewTask_Group_Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="NewTask_Group_Automation" xml:space="preserve">
+    <value>Automation</value>
+  </data>
+  <data name="NewTask_Group_Advanced" xml:space="preserve">
+    <value>Advanced</value>
+  </data>
+  <data name="NewTask_Title" xml:space="preserve">
+    <value>Title</value>
+  </data>
+  <data name="NewTask_Prompt" xml:space="preserve">
+    <value>Prompt</value>
+  </data>
+  <data name="NewTask_Prompt_Hint" xml:space="preserve">
+    <value>The opening instruction. Kept verbatim for the life of the task.</value>
+  </data>
+  <data name="NewTask_WorkingDir" xml:space="preserve">
+    <value>Working directory</value>
+  </data>
+  <data name="NewTask_Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="NewTask_Model" xml:space="preserve">
+    <value>Model</value>
+  </data>
+  <data name="NewTask_Model_Hint" xml:space="preserve">
+    <value>Agent-specific. Leave empty to use the agent's own default.</value>
+  </data>
+  <data name="NewTask_Effort" xml:space="preserve">
+    <value>Reasoning effort</value>
+  </data>
+  <data name="NewTask_AgentDefault" xml:space="preserve">
+    <value>agent default</value>
+  </data>
+  <data name="NewTask_Permission" xml:space="preserve">
+    <value>Permission mode</value>
+  </data>
+  <data name="NewTask_Schedule" xml:space="preserve">
+    <value>Schedule</value>
+  </data>
+  <data name="NewTask_Schedule_Hint" xml:space="preserve">
+    <value>When the task may launch, once you move it to Ready.</value>
+  </data>
+  <data name="NewTask_ScheduledFor" xml:space="preserve">
+    <value>Date &amp; time</value>
+  </data>
+  <data name="NewTask_DateFormat" xml:space="preserve">
+    <value>yyyy-MM-dd HH:mm</value>
+  </data>
+  <data name="NewTask_AutoComplete" xml:space="preserve">
+    <value>Auto-complete</value>
+  </data>
+  <data name="NewTask_AutoComplete_Hint" xml:space="preserve">
+    <value>Skip review and finish on its own after a clean run.</value>
+  </data>
+  <data name="NewTask_AutoGit" xml:space="preserve">
+    <value>Git on completion</value>
+  </data>
+  <data name="NewTask_AutoGit_Hint" xml:space="preserve">
+    <value>Runs in-session, before the task completes.</value>
+  </data>
+  <data name="NewTask_NoGitAction" xml:space="preserve">
+    <value>none</value>
+  </data>
+  <data name="NewTask_Draft" xml:space="preserve">
+    <value>Draft pull request</value>
+  </data>
+  <data name="NewTask_AllowedTools" xml:space="preserve">
+    <value>Allowed tools</value>
+  </data>
+  <data name="NewTask_DisallowedTools" xml:space="preserve">
+    <value>Disallowed tools</value>
+  </data>
+  <data name="NewTask_Tools_Hint" xml:space="preserve">
+    <value>One per line, or comma-separated. Example: Bash(git *)</value>
+  </data>
+  <data name="NewTask_ExtraFlags" xml:space="preserve">
+    <value>Extra CLI flags</value>
+  </data>
+  <data name="NewTask_Env" xml:space="preserve">
+    <value>Environment variables</value>
+  </data>
+  <data name="NewTask_Env_Hint" xml:space="preserve">
+    <value>One KEY=value per line.</value>
+  </data>
+  <data name="NewTask_Required" xml:space="preserve">
+    <value>Required</value>
+  </data>
+  <data name="NewTask_Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="NewTask_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Permission_Default" xml:space="preserve">
+    <value>default</value>
+  </data>
+  <data name="Permission_Default_Hint" xml:space="preserve">
+    <value>Asks you before each sensitive action.</value>
+  </data>
+  <data name="Permission_Plan" xml:space="preserve">
+    <value>plan</value>
+  </data>
+  <data name="Permission_Plan_Hint" xml:space="preserve">
+    <value>Read-only — no tool execution at all.</value>
+  </data>
+  <data name="Permission_AcceptEdits" xml:space="preserve">
+    <value>accept edits</value>
+  </data>
+  <data name="Permission_AcceptEdits_Hint" xml:space="preserve">
+    <value>Edits are auto-accepted; other tools still ask.</value>
+  </data>
+  <data name="Permission_Auto" xml:space="preserve">
+    <value>auto</value>
+  </data>
+  <data name="Permission_Auto_Hint" xml:space="preserve">
+    <value>A model classifier approves or denies. Never asks.</value>
+  </data>
+  <data name="Permission_DontAsk" xml:space="preserve">
+    <value>don't ask</value>
+  </data>
+  <data name="Permission_DontAsk_Hint" xml:space="preserve">
+    <value>Denies anything not pre-approved. Never asks.</value>
+  </data>
+  <data name="Permission_Bypass" xml:space="preserve">
+    <value>bypass</value>
+  </data>
+  <data name="Permission_Bypass_Hint" xml:space="preserve">
+    <value>Allows everything. Never asks.</value>
+  </data>
+  <data name="ScheduleOption_Manual" xml:space="preserve">
+    <value>manual</value>
+  </data>
+  <data name="ScheduleOption_Now" xml:space="preserve">
+    <value>now</value>
+  </data>
+  <data name="ScheduleOption_NextWindow" xml:space="preserve">
+    <value>next 5-hour window</value>
+  </data>
+  <data name="ScheduleOption_WindowAfterNext" xml:space="preserve">
+    <value>window after next</value>
+  </data>
+  <data name="ScheduleOption_DateTime" xml:space="preserve">
+    <value>specific date &amp; time</value>
+  </data>
+  <data name="GitAction_Commit" xml:space="preserve">
+    <value>commit</value>
+  </data>
+  <data name="GitAction_Push" xml:space="preserve">
+    <value>commit + push</value>
+  </data>
+  <data name="GitAction_PullRequest" xml:space="preserve">
+    <value>commit + push + PR</value>
+  </data>
+  <data name="Column_Preparing" xml:space="preserve">
+    <value>Preparing</value>
+  </data>
+  <data name="Column_Ready" xml:space="preserve">
+    <value>Ready</value>
+  </data>
+  <data name="Column_Executing" xml:space="preserve">
+    <value>Executing</value>
+  </data>
+  <data name="Column_NeedsFeedback" xml:space="preserve">
+    <value>Needs feedback</value>
+  </data>
+  <data name="Column_ToReview" xml:space="preserve">
+    <value>To review</value>
+  </data>
+  <data name="Column_Completed" xml:space="preserve">
+    <value>Completed</value>
+  </data>
+  <data name="Badge_Running" xml:space="preserve">
+    <value>running</value>
+  </data>
+  <data name="Badge_Compacting" xml:space="preserve">
+    <value>compacting</value>
+  </data>
+  <data name="Badge_NeedsPermission" xml:space="preserve">
+    <value>needs permission</value>
+  </data>
+  <data name="Badge_NeedsAnswer" xml:space="preserve">
+    <value>needs answer</value>
+  </data>
+  <data name="Badge_Error" xml:space="preserve">
+    <value>error</value>
+  </data>
+  <data name="Badge_Killed" xml:space="preserve">
+    <value>killed</value>
+  </data>
+  <data name="Badge_Stale" xml:space="preserve">
+    <value>stale</value>
+  </data>
+  <data name="Badge_StaleMinutes" xml:space="preserve">
+    <value>stale {0}m</value>
+  </data>
+  <data name="Badge_StaleHours" xml:space="preserve">
+    <value>stale {0}h</value>
+  </data>
+  <data name="Badge_IdleReady" xml:space="preserve">
+    <value>idle · ready</value>
+  </data>
+  <data name="Badge_Done" xml:space="preserve">
+    <value>done</value>
+  </data>
+  <data name="Schedule_Manual" xml:space="preserve">
+    <value>manual</value>
+  </data>
+  <data name="Schedule_Now" xml:space="preserve">
+    <value>now</value>
+  </data>
+  <data name="Schedule_NextWindow" xml:space="preserve">
+    <value>next win</value>
+  </data>
+  <data name="Schedule_WindowAfterNext" xml:space="preserve">
+    <value>win +2</value>
+  </data>
+  <data name="Schedule_At" xml:space="preserve">
+    <value>⏱ {0}</value>
+  </data>
+  <data name="Schedule_DateFormat" xml:space="preserve">
+    <value>MMM d HH:mm</value>
+  </data>
+  <data name="Metrics_Context" xml:space="preserve">
+    <value>{0}/{1} ctx</value>
+  </data>
+  <data name="Metrics_Turns" xml:space="preserve">
+    <value>{0} turns</value>
+  </data>
+  <data name="Metrics_Compactions" xml:space="preserve">
+    <value>{0} compactions</value>
+  </data>
+  <data name="Card_Children" xml:space="preserve">
+    <value>{0} children ⤵</value>
+  </data>
+  <data name="Card_AutoComplete" xml:space="preserve">
+    <value>auto-complete</value>
+  </data>
+  <data name="Agent_ClaudeCode" xml:space="preserve">
+    <value>claude</value>
+  </data>
+  <data name="Agent_Codex" xml:space="preserve">
+    <value>codex</value>
+  </data>
+  <data name="Settings_Title" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Settings_Group_General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="Settings_Group_Appearance" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="Settings_Group_System" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Settings_KeepAwake" xml:space="preserve">
+    <value>Keep the computer awake</value>
+  </data>
+  <data name="Settings_KeepAwake_Hint" xml:space="preserve">
+    <value>Stop the machine sleeping while ACT is open, so a long run is not cut short.</value>
+  </data>
+  <data name="Settings_CloseToTray" xml:space="preserve">
+    <value>Close to the notification area</value>
+  </data>
+  <data name="Settings_CloseToTray_Hint" xml:space="preserve">
+    <value>Closing the window leaves ACT running behind its tray icon; agents carry on. Exit from that icon.</value>
+  </data>
+  <data name="Tray_Open" xml:space="preserve">
+    <value>Open ACT</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+    <value>Exit ACT</value>
+  </data>
+  <data name="Tray_ExitConfirm" xml:space="preserve">
+    <value>Exit ACT?</value>
+  </data>
+  <data name="Tray_ExitDetail" xml:space="preserve">
+    <value>Scheduled tasks will not run while ACT is closed.</value>
+  </data>
+  <data name="Tray_ExitDetailRunning" xml:space="preserve">
+    <value>{0} running task(s) will be stopped, and scheduled tasks will not run while ACT is closed.</value>
+  </data>
+  <data name="Tray_ExitYes" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="Settings_Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings_Language_Hint" xml:space="preserve">
+    <value>Follow the operating system, or pick a language.</value>
+  </data>
+  <data name="Settings_Language_System" xml:space="preserve">
+    <value>System default</value>
+  </data>
+  <data name="Settings_Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="Settings_Theme_Hint" xml:space="preserve">
+    <value>Follow the system, or force dark or light.</value>
+  </data>
+  <data name="Settings_Theme_System" xml:space="preserve">
+    <value>Based on the system</value>
+  </data>
+  <data name="Settings_Theme_Dark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Settings_Theme_Light" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Settings_Density" xml:space="preserve">
+    <value>Display mode</value>
+  </data>
+  <data name="Settings_Density_Hint" xml:space="preserve">
+    <value>How much detail each flight strip shows.</value>
+  </data>
+  <data name="Settings_Density_Spacious" xml:space="preserve">
+    <value>Spacious</value>
+  </data>
+  <data name="Settings_Density_Compact" xml:space="preserve">
+    <value>Compact</value>
+  </data>
+  <data name="Error_PageTitle" xml:space="preserve">
+    <value>Error — ACT</value>
+  </data>
+  <data name="Error_Heading" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Error_Subheading" xml:space="preserve">
+    <value>An error occurred while processing your request.</value>
+  </data>
+  <data name="Error_RequestId" xml:space="preserve">
+    <value>Request ID:</value>
+  </data>
+  <data name="Error_DevelopmentHint" xml:space="preserve">
+    <value>Set ASPNETCORE_ENVIRONMENT to Development and restart the app to see detailed error information. The Development environment should not be enabled for deployed applications, as it can expose sensitive details from exceptions.</value>
+  </data>
+  <data name="NotFound_Heading" xml:space="preserve">
+    <value>Not found</value>
+  </data>
+  <data name="NotFound_Text" xml:space="preserve">
+    <value>Sorry, the content you are looking for does not exist.</value>
+  </data>
+  <data name="Session_NoLiveSession" xml:space="preserve">
+    <value>No session is running for this card.</value>
+  </data>
+  <data name="Session_Launch" xml:space="preserve">
+    <value>Launch now</value>
+  </data>
+  <data name="Session_Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="Session_Directory" xml:space="preserve">
+    <value>Directory</value>
+  </data>
+  <data name="Session_SessionId" xml:space="preserve">
+    <value>Session</value>
+  </data>
+  <data name="Session_SessionPending" xml:space="preserve">
+    <value>reported at session start</value>
+  </data>
+  <data name="Session_Context" xml:space="preserve">
+    <value>Context</value>
+  </data>
+  <data name="Session_Turns" xml:space="preserve">
+    <value>Turns</value>
+  </data>
+  <data name="Session_OpenInDesktop" xml:space="preserve">
+    <value>Open in desktop app</value>
+  </data>
+  <data name="Session_Kill" xml:space="preserve">
+    <value>Kill session</value>
+  </data>
+  <data name="Session_Open" xml:space="preserve">
+    <value>Open terminal</value>
+  </data>
+  <data name="Board_Launch" xml:space="preserve">
+    <value>Launch now</value>
+  </data>
+  <data name="Nav_BackToBoard" xml:space="preserve">
+    <value>Board</value>
+  </data>
+  <data name="Card_NotFound" xml:space="preserve">
+    <value>That card no longer exists.</value>
+  </data>
+  <data name="TaskView_NewTitle" xml:space="preserve">
+    <value>New task</value>
+  </data>
+  <data name="Card_Surface_Task" xml:space="preserve">
+    <value>Task</value>
+  </data>
+  <data name="Card_Surface_Terminal" xml:space="preserve">
+    <value>Terminal</value>
+  </data>
+  <data name="Session_NotLaunchable" xml:space="preserve">
+    <value>Move the card to Ready to launch it.</value>
+  </data>
+  <data name="Session_LaunchFailed" xml:space="preserve">
+    <value>Launch failed</value>
+  </data>
+  <data name="NewTask_CreateDir" xml:space="preserve">
+    <value>Create it</value>
+  </data>
+  <data name="NewTask_DirMissing" xml:space="preserve">
+    <value>This directory does not exist yet.</value>
+  </data>
+  <data name="NewTask_CreateDirFailed" xml:space="preserve">
+    <value>Could not create the directory</value>
+  </data>
+  <data name="NewTask_DirMissingResolved" xml:space="preserve">
+    <value>This directory does not exist yet ({0}).</value>
+  </data>
+  <data name="NewTask_Browse" xml:space="preserve">
+    <value>Browse</value>
+  </data>
+  <data name="NewTask_DirNotAbsolute" xml:space="preserve">
+    <value>Enter an absolute path, or start with ~ for your home folder.</value>
+  </data>
+  <data name="NewTask_DirMalformed" xml:space="preserve">
+    <value>That is not a valid folder path.</value>
+  </data>
+  <data name="Picker_Home" xml:space="preserve">
+    <value>Home</value>
+  </data>
+  <data name="Picker_Roots" xml:space="preserve">
+    <value>Drives</value>
+  </data>
+  <data name="Picker_Up" xml:space="preserve">
+    <value>Up one level</value>
+  </data>
+  <data name="Picker_Use" xml:space="preserve">
+    <value>Use this folder</value>
+  </data>
+  <data name="Picker_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Picker_Empty" xml:space="preserve">
+    <value>No sub-folders here.</value>
+  </data>
+  <data name="Picker_Missing" xml:space="preserve">
+    <value>This folder no longer exists.</value>
+  </data>
+  <data name="Picker_Unreadable" xml:space="preserve">
+    <value>This folder cannot be read.</value>
+  </data>
+  <data name="Picker_Malformed" xml:space="preserve">
+    <value>That is not a valid folder path.</value>
+  </data>
+  <data name="Task_Delete" xml:space="preserve">
+    <value>Delete task</value>
+  </data>
+  <data name="Task_DeleteFailed" xml:space="preserve">
+    <value>Could not delete the task</value>
+  </data>
+  <data name="Task_Duplicate" xml:space="preserve">
+    <value>Duplicate task</value>
+  </data>
+  <data name="Task_Unsaved" xml:space="preserve">
+    <value>Unsaved changes</value>
+  </data>
+  <data name="Task_UnsavedConfirm" xml:space="preserve">
+    <value>This task has changes that were never saved. Leaving now loses them.</value>
+  </data>
+  <data name="Task_UnsavedDiscard" xml:space="preserve">
+    <value>Discard changes</value>
+  </data>
+  <data name="Task_UnsavedStay" xml:space="preserve">
+    <value>Keep editing</value>
+  </data>
+  <data name="Archive_Duplicate" xml:space="preserve">
+    <value>Duplicate as a new task</value>
+  </data>
+  <data name="Task_DuplicateTitle" xml:space="preserve">
+    <value>Copy of {0}</value>
+  </data>
+  <data name="Archive_Title" xml:space="preserve">
+    <value>Archive</value>
+  </data>
+  <data name="Archive_Empty" xml:space="preserve">
+    <value>Nothing archived.</value>
+  </data>
+  <data name="Archive_Restore" xml:space="preserve">
+    <value>Restore to the board</value>
+  </data>
+  <data name="Archive_Clear" xml:space="preserve">
+    <value>Clear archive</value>
+  </data>
+  <data name="Archive_ClearConfirm" xml:space="preserve">
+    <value>Permanently delete all {0} archived task(s)? This cannot be undone.</value>
+  </data>
+  <data name="Archive_ClearYes" xml:space="preserve">
+    <value>Delete permanently</value>
+  </data>
+  <data name="Task_DeleteFollowUps" xml:space="preserve">
+    <value>This task has {0} follow-up task(s). Archive them too?</value>
+  </data>
+  <data name="Task_DeleteWithFollowUps" xml:space="preserve">
+    <value>Archive with follow-ups</value>
+  </data>
+  <data name="Task_DeleteKeepFollowUps" xml:space="preserve">
+    <value>Keep follow-ups</value>
+  </data>
+  <data name="Task_DeleteRestoreHint" xml:space="preserve">
+    <value>Archived tasks can be restored from the archive.</value>
+  </data>
+  <data name="NewTask_WorkingDir_Placeholder" xml:space="preserve">
+    <value>Type a path, or browse</value>
+  </data>
+</root>

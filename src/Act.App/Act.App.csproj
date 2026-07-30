@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
     <PackageId>Act.App</PackageId>
+    <ElectronSingleInstance>true</ElectronSingleInstance>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(ElectronPackaging)' != 'true'">
@@ -15,10 +16,23 @@
   <ItemGroup>
     <PackageReference Include="ElectronNET.Core" />
     <PackageReference Include="ElectronNET.Core.AspNet" />
+    <PackageReference Include="Microsoft.CodeAnalysis.ResxSourceGenerator" PrivateAssets="all" />
+    <PackageReference Include="Radzen.Blazor" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="icon.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="Resources\Strings.resx" GenerateSource="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Act.Agents.ClaudeCode\Act.Agents.ClaudeCode.csproj" />
+    <ProjectReference Include="..\Act.Agents.Codex\Act.Agents.Codex.csproj" />
+    <ProjectReference Include="..\Act.Core\Act.Core.csproj" />
+    <ProjectReference Include="..\Act.Infrastructure\Act.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

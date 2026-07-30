@@ -1,0 +1,89 @@
+.archive {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0.6rem;
+    border-bottom: 1px solid var(--act-line);
+    background: linear-gradient(var(--act-bar-top), var(--act-bar-bottom));
+}
+
+.bar .title {
+    font-size: 0.82rem;
+    color: var(--act-ink);
+}
+
+.purge {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+::deep .purgeconfirm {
+    color: var(--act-err);
+}
+
+.body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1rem 0.75rem;
+}
+
+::deep .sheet {
+    width: 100%;
+    max-width: 46rem;
+    margin: 0 auto;
+}
+
+/* Bordered rows rather than cards: this is a dense list to scan, not a board to work on. */
+.row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.6rem;
+    border-bottom: 1px solid var(--act-line);
+}
+
+.row .id {
+    font-family: var(--act-mono);
+    font-size: 0.7rem;
+    color: var(--act-faint);
+    flex: none;
+}
+
+.row .what {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.row .ttl {
+    font-size: 0.82rem;
+    color: var(--act-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.row .meta {
+    font-family: var(--act-mono);
+    font-size: 0.65rem;
+    color: var(--act-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+::deep .empty {
+    color: var(--act-faint);
+}

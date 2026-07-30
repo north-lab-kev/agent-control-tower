@@ -1,60 +1,194 @@
-html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+.act-root {
+    --act-bg: #0d1217;
+    --act-surface: #18222b;
+    --act-surface2: #1e2a34;
+    --act-line: #26333f;
+    --act-line2: #31424f;
+    --act-ink: #dbe4ec;
+    --act-dim: #8091a0;
+    --act-faint: #55636e;
+
+    --act-run: #35c7b4;
+    --act-wait: #f0a93b;
+    --act-err: #e5565b;
+    --act-review: #5aa0e6;
+    --act-done: #5cae86;
+    --act-stale: #b9a24d;
+    --act-amber: #f2a93b;
+    --act-plan: #4a5966;
+    --act-ready: #7d8a55;
+
+    --act-bar-top: #151e26;
+    --act-bar-bottom: #111922;
+    --act-term-bg: #0b1219;
+    --act-lane: #ffffff05;
+    --act-lane-line: #ffffff0a;
+    --act-track: #ffffff10;
+    --act-attn-fill: #f0a93b;
+    --act-on-attn: #1a130a;
+    --act-tint-fill: 9%;
+    --act-tint-edge: 20%;
+
+    --act-radius: 7px;
+    --act-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+
+    color-scheme: dark;
+    background-color: var(--act-bg);
+    color: var(--act-ink);
 }
 
-a, .btn-link {
-    color: #006bb7;
+.act-root[data-act-theme="light"] {
+    --act-bg: #e9edf1;
+    --act-surface: #ffffff;
+    --act-surface2: #f4f7fa;
+    --act-line: #ccd6de;
+    --act-line2: #b1bfca;
+    --act-ink: #0f172a;
+    --act-dim: #475569;
+    --act-faint: #64748b;
+
+    --act-run: #0f8b7a;
+    --act-wait: #a26207;
+    --act-err: #c0272e;
+    --act-review: #1e6fbf;
+    --act-done: #2f7d57;
+    --act-stale: #856d0f;
+    --act-amber: #a26207;
+    --act-plan: #7a8794;
+    --act-ready: #6f7d43;
+
+    --act-bar-top: #ffffff;
+    --act-bar-bottom: #eef2f6;
+    --act-term-bg: #f7fafc;
+    --act-lane: #0f172a06;
+    --act-lane-line: #0f172a12;
+    --act-track: #0f172a14;
+    --act-attn-fill: #f6b93f;
+    --act-on-attn: #2b1d05;
+    --act-tint-fill: 12%;
+    --act-tint-edge: 30%;
+
+    color-scheme: light;
 }
 
-.btn-primary {
-    color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+@media (prefers-color-scheme: light) {
+    .act-root[data-act-theme="system"] {
+        --act-bg: #e9edf1;
+        --act-surface: #ffffff;
+        --act-surface2: #f4f7fa;
+        --act-line: #ccd6de;
+        --act-line2: #b1bfca;
+        --act-ink: #0f172a;
+        --act-dim: #475569;
+        --act-faint: #64748b;
+
+        --act-run: #0f8b7a;
+        --act-wait: #a26207;
+        --act-err: #c0272e;
+        --act-review: #1e6fbf;
+        --act-done: #2f7d57;
+        --act-stale: #856d0f;
+        --act-amber: #a26207;
+        --act-plan: #7a8794;
+        --act-ready: #6f7d43;
+
+        --act-bar-top: #ffffff;
+        --act-bar-bottom: #eef2f6;
+        --act-term-bg: #f7fafc;
+        --act-lane: #0f172a06;
+        --act-lane-line: #0f172a12;
+        --act-track: #0f172a14;
+        --act-attn-fill: #f6b93f;
+        --act-on-attn: #2b1d05;
+        --act-tint-fill: 12%;
+        --act-tint-edge: 30%;
+
+        color-scheme: light;
+    }
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+body {
+    background-image: none;
 }
 
-.content {
-    padding-top: 1.1rem;
+/* Radzen appends its popups — dropdown panels, dialogs, tooltips — to <body>, which is outside
+   `.act-root` and therefore outside every `--act-*` token and the `color` ACT sets there. Those
+   popups inherit from the document instead, and the document was still the browser default: black
+   text, which on a dark dropdown panel is invisible rather than merely dim. Anchoring the document
+   to Radzen's own text token fixes each of them at once and follows the theme automatically,
+   including an explicit light/dark override, because `ThemeMedia` switches which Radzen sheet
+   defines it. */
+html,
+body {
+    color: var(--rz-text-color);
 }
 
-h1:focus {
-    outline: none;
+/* Keep a tall dialog clear of the window edges; Radzen's own max-height is 100%. */
+.rz-dialog.act-dialog {
+    max-height: 90%;
 }
 
-.valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
+/* The minimize/maximize/close buttons are drawn by the OS *above* all web content, so a mask
+   covering the whole window dims everything except them and leaves them sitting in a bright
+   block against a dimmed bar. Nothing in CSS can dim them, so instead the mask stops below the
+   title strip and the strip stays undimmed as a unit — the seam disappears because there is no
+   longer a boundary running through it. `env()` is 0 outside the Electron shell, where there is
+   no native title bar and the mask should cover everything. */
+.rz-dialog-mask {
+    top: env(titlebar-area-height, 0px);
+
+    /* Radzen sizes the mask `height: 100%`, so moving its top down pushes the same height past
+       the bottom of the window. Pin the bottom instead and let the height follow. */
+    bottom: 0;
+    height: auto;
 }
 
-.invalid {
-    outline: 1px solid #e50000;
+/* The strip is no longer behind the mask, so it would still take clicks. Navigating away from an
+   open dialog would strand it, so its controls go inert while one is up — the native buttons
+   deliberately do not, since closing the window must always work. */
+body:has(.rz-dialog-wrapper) .bar .rz-button {
+    pointer-events: none;
+    opacity: 0.5;
 }
 
-.validation-message {
-    color: #e50000;
+/* Dialogs are rare — pages carry every surface you navigate to — but a fork in an action already
+   under way is not a place you go, so those stay modal. The custom title bar marks
+   the top strip `-webkit-app-region: drag`. Chromium builds drag regions from the union of
+   dragging elements minus no-drag ones, ignoring stacking, so anything overlapping that strip —
+   a dialog titlebar and its close button — would have its clicks swallowed by the OS window
+   drag. Punch the hole for the whole overlay. */
+.rz-dialog-wrapper,
+.rz-dialog-mask {
+    -webkit-app-region: no-drag;
 }
+
+#blazor-error-ui {
+    color-scheme: light only;
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }
 
 .blazor-error-boundary {
-    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
-    padding: 1rem 1rem 1rem 3.7rem;
+    background: #b32121;
+    padding: 1rem;
     color: white;
 }
 
     .blazor-error-boundary::after {
         content: "An error has occurred."
     }
-
-.darker-border-checkbox.form-check-input {
-    border-color: #929292;
-}
-
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-    color: var(--bs-secondary-color);
-    text-align: end;
-}
-
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-    text-align: start;
-}

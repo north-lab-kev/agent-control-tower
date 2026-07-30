@@ -1,0 +1,61 @@
+.board {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    padding: 14px 10px 40px;
+    overflow-x: auto;
+    min-height: 100%;
+    background: var(--act-bg);
+}
+
+::deep .cols {
+    width: 100%;
+    flex: 1 1 auto;
+}
+
+::deep .col {
+    padding: 8px;
+    flex: 1 1 0;
+    min-width: 0;
+    background: var(--act-lane);
+    border: 1px solid var(--act-lane-line);
+    border-radius: var(--act-radius);
+}
+
+::deep .col.drop-ok {
+    border-color: color-mix(in srgb, var(--act-run) 55%, transparent);
+    background: color-mix(in srgb, var(--act-run) 7%, transparent);
+}
+
+::deep .col.drop-no {
+    opacity: .4;
+}
+
+.board.compact ::deep .col {
+    min-width: 158px;
+}
+
+.board.spacious ::deep .col {
+    min-width: 177px;
+}
+
+::deep .colname {
+    color: var(--act-ink);
+    font-size: 12px;
+}
+
+::deep .colcount {
+    font-family: var(--act-mono);
+    font-size: 10px;
+    color: var(--act-faint);
+    border-color: var(--act-line);
+}
+
+::deep .empty {
+    font-family: var(--act-mono);
+    font-size: 9.5px;
+    color: var(--act-faint);
+    text-align: center;
+    padding: 10px 0 2px;
+    opacity: .75;
+}

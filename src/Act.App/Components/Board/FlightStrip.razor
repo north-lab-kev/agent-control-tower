@@ -1,0 +1,84 @@
+@using Act.Core.Model
+
+<div class="@StripClass" role="button" tabindex="0" title="@Card.Title"
+     draggable="@(Draggable ? "true" : "false")"
+     @ondragstart="OnDragStartAsync" @ondragend="OnDragEndAsync"
+     @onclick="OpenAsync" @onkeydown="OnKeyDownAsync">
+<RadzenCard Variant="Variant.Outlined" class="stripcard">
+    @if (IsCompact)
+    {
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.Caption" Text="@($"#{Card.Number}")" class="cid" />
+            <RadzenText TextStyle="TextStyle.Body2" Text="@Card.Title" class="ttl" />
+            @if (BadgeText is not null)
+            {
+                <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@BadgeText" class="@FullBadgeClass" />
+            }
+            @if (ScheduleText is not null)
+            {
+                <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="@ScheduleText" class="schip" />
+            }
+        </RadzenStack>
+    }
+    else
+    {
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                         JustifyContent="JustifyContent.SpaceBetween" Gap="0.4rem">
+                <RadzenText TextStyle="TextStyle.Caption" Text="@($"#{Card.Number}{AgentSuffix}")" class="cid" />
+                @if (BadgeText is not null)
+                {
+                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@BadgeText" class="@FullBadgeClass" />
+                }
+            </RadzenStack>
+
+            <RadzenText TextStyle="TextStyle.Body2" Text="@Card.Title" class="ttl" />
+            <RadzenText TextStyle="TextStyle.Caption" Text="@Card.WorkingDir" class="path" />
+
+            @if (CanLaunch)
+            {
+                <RadzenButton Text="@Strings.Board_Launch" Icon="play_arrow" Size="ButtonSize.ExtraSmall"
+                              ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" class="launch"
+                              Disabled="IsLaunching" Click="@LaunchAsync" @onclick:stopPropagation="true" />
+            }
+
+            @if (Card.Metrics is { } m)
+            {
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.6rem" Wrap="FlexWrap.Wrap" class="metrics">
+                    @foreach (var metric in Metrics(m))
+                    {
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@metric" />
+                    }
+                </RadzenStack>
+
+                @if (m.ContextPercent is { } percent)
+                {
+                    <RadzenProgressBar Value="percent" Mode="ProgressBarMode.Determinate"
+                                       ShowValue="false" class="ctxbar" />
+                }
+            }
+
+            @if (ScheduleText is not null || Card.Children.Count > 0 || Card.AutoComplete)
+            {
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                             Gap="0.45rem" Wrap="FlexWrap.Wrap">
+                    @if (Card.Children.Count > 0)
+                    {
+                        <RadzenText TextStyle="TextStyle.Caption"
+                                    Text="@Text.Format(Strings.Card_Children, Card.Children.Count)" class="lin" />
+                    }
+                    @if (Card.AutoComplete)
+                    {
+                        <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base"
+                                     Text="@Strings.Card_AutoComplete" class="schip" />
+                    }
+                    @if (ScheduleText is not null)
+                    {
+                        <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="@ScheduleText" class="schip" />
+                    }
+                </RadzenStack>
+            }
+        </RadzenStack>
+    }
+</RadzenCard>
+</div>

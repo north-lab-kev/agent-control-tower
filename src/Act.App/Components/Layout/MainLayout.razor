@@ -1,19 +1,46 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
+<div class="act-root" data-act-theme="@ThemeAttribute">
+    <RadzenComponents />
+
+    <div class="shell">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.SpaceBetween" Gap="0.75rem" class="bar">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                         Gap="0.55rem" class="brand">
+                <RadzenImage Path="@MarkPath" AlternateText="" class="mark" />
+                <RadzenText TextStyle="TextStyle.H6" Text="ACT" class="wordmark" />
+                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Shell_FullName" class="fullname" />
+            </RadzenStack>
+
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.6rem">
+                <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base"
+                             Text="@Strings.Shell_AutoExecOn" class="statchip live" />
+
+                <RadzenButton Icon="add" Text="@Strings.Shell_NewTask" ButtonStyle="ButtonStyle.Base"
+                              Variant="Variant.Outlined" Size="ButtonSize.Small" Click="OpenNewTask"
+                              class="newtaskbtn" aria-label="@Strings.Shell_NewTask" />
+
+                <RadzenButton Icon="inventory_2" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                              Size="ButtonSize.Small" Click="OpenArchive" class="gear"
+                              title="@Strings.Archive_Title" aria-label="@Strings.Archive_Title" />
+
+                <RadzenButton Icon="settings" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                              Size="ButtonSize.Small" Click="OpenSettings" class="gear"
+                              title="@Strings.Settings_Title" aria-label="@Strings.Settings_Title" />
+            </RadzenStack>
+        </RadzenStack>
+
+        <main>
+            <CascadingValue Value="Density" Name="Density">
+                @Body
+            </CascadingValue>
+        </main>
     </div>
-
-    <main>
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
+    @Strings.Shell_UnhandledError
+    <a href="." class="reload">@Strings.Shell_Reload</a>
     <span class="dismiss">🗙</span>
 </div>

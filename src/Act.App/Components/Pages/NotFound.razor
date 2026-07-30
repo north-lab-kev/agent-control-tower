@@ -1,5 +1,9 @@
-﻿@page "/not-found"
+@page "/not-found"
 @layout MainLayout
 
-<h3>Not Found</h3>
-<p>Sorry, the content you are looking for does not exist.</p>
+<PageTitle>@Strings.NotFound_Heading</PageTitle>
+
+<div class="errpage">
+    <h1>@Strings.NotFound_Heading</h1>
+    <p>@Strings.NotFound_Text</p>
+</div>

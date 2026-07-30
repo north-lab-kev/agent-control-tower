@@ -27,7 +27,7 @@ Early scaffolding. The design is complete; implementation has not started. See:
 ## Architecture
 
 Ports-and-adapters (hexagonal). `Act.Core` depends on nothing infrastructural;
-adapters, infrastructure, and UI all point *inward* to its `Ports/` interfaces.
+adapters, infrastructure, and UI all point *inward* to its `Abstractions/` interfaces.
 **The project boundaries are the architecture.**
 
 ## Development

@@ -44,7 +44,7 @@ shell.
 ## Ground rules
 
 - Respect the architecture: `Act.Core` depends on nothing below it. Adapters,
-  infrastructure, and UI depend on Core's `Ports/` interfaces — never the
+  infrastructure, and UI depend on Core's `Abstractions/` interfaces — never the
   reverse. Adding an agent must not touch core logic.
 - Use the spec's **domain vocabulary** verbatim in code (cards, columns, badges,
   transitions, adapters, sources) so spec and code stay legible together.
