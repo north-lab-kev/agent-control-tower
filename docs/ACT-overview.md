@@ -825,12 +825,22 @@ a pipe.**
 
 ### The input channel is the human at the keyboard
 
-ACT types exactly two things into a session: the **initial prompt** at launch, and
-a **send-back message** if the user chooses to seed one from the UI. Both go in as
-bracketed paste followed by the agent's submit key — an adapter detail, since the
-submit key is agent-shaped. Everything else — answering a permission prompt,
-answering a question, approving a plan, `/`-commands — the user types themselves,
-in the terminal ACT is showing them.
+ACT types exactly one thing into a session: a **send-back message**, if the user
+chooses to seed one from the UI into a session that is alive and parked at its
+prompt. It goes in as bracketed paste followed by the agent's submit key — an
+adapter detail, since the submit key is agent-shaped.
+
+The **initial prompt is not typed**: it is a positional argument on the launch
+command line for both agents (and a resume message likewise). Typing it looked
+equivalent and is not — measured at step 7, a CLI that has painted its banner is
+not yet listening to its prompt line, so the prompt landed nowhere and the card sat
+at an empty composer while the board said it was executing. On the command line it
+is in place before the TUI paints, and there is no race to lose. This is also why
+the send-back case is *not* the same problem: there the TUI has been up and idle
+for as long as the user took to decide.
+
+Everything else — answering a permission prompt, answering a question, approving a
+plan, `/`-commands — the user types themselves, in the terminal ACT is showing them.
 
 Consequently ACT has **no approve/deny surface at all**. See *Hooks are
 observability, not control*.

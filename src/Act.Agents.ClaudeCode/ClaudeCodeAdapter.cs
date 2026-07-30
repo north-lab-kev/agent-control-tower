@@ -5,9 +5,10 @@ using Act.Core.Model;
 namespace Act.Agents.ClaudeCode;
 
 // Claude Code hosted in a pseudo-terminal. ACT pre-mints the session id here, so the binding
-// exists before the process does — the easier of the two acquisition modes. The preamble is
-// delivered by typing it, because the interactive CLI takes its opening instruction from the
-// prompt line rather than from a flag.
+// exists before the process does — the easier of the two acquisition modes. The opening prompt
+// is a positional argument, as it is for Codex: typing it into the TUI looks equivalent but is
+// a race, because a CLI that has painted its banner is not yet listening to its prompt line and
+// swallows whatever arrives before it is.
 public sealed class ClaudeCodeAdapter(IPtyHost pty, IClock clock) : IAgentAdapter
 {
     public const string DefaultBinary = "claude";
@@ -59,7 +60,7 @@ public sealed class ClaudeCodeAdapter(IPtyHost pty, IClock clock) : IAgentAdapte
         LaunchConfig config,
         TerminalSize size,
         IReadOnlyList<string> sessionArguments,
-        string? opening,
+        string? prompt,
         CancellationToken cancellationToken)
     {
         var resolution = Resolve(config);
@@ -98,6 +99,10 @@ public sealed class ClaudeCodeAdapter(IPtyHost pty, IClock clock) : IAgentAdapte
 
         arguments.AddRange(resolved.ExtraFlags);
 
+        // Positional, and last: everything after it would be read as part of the prompt.
+        if (!string.IsNullOrWhiteSpace(prompt))
+            arguments.Add(prompt);
+
         var process = await pty.StartAsync(
             new PtyStartInfo(
                 resolved.AgentBinary ?? DefaultBinary,
@@ -107,12 +112,7 @@ public sealed class ClaudeCodeAdapter(IPtyHost pty, IClock clock) : IAgentAdapte
                 size),
             cancellationToken);
 
-        var session = new PtyAgentSession(taskId, sessionId, process, Submit, clock);
-
-        if (!string.IsNullOrWhiteSpace(opening))
-            session.Open(opening);
-
-        return session;
+        return new PtyAgentSession(taskId, sessionId, process, Submit, clock);
     }
 
     private static string PermissionModeFlag(PermissionMode mode) => mode switch

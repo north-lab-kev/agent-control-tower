@@ -11,13 +11,16 @@ public sealed class StubPtyHost : IPtyHost
 
     public PtyStartInfo Last => Started[^1];
 
+    public StubPtyProcess LastProcess { get; private set; } = new();
+
     public Task<IPtyProcess> StartAsync(
         PtyStartInfo startInfo,
         CancellationToken cancellationToken = default)
     {
         Started.Add(startInfo);
+        LastProcess = new StubPtyProcess();
 
-        return Task.FromResult<IPtyProcess>(new StubPtyProcess());
+        return Task.FromResult<IPtyProcess>(LastProcess);
     }
 }
 

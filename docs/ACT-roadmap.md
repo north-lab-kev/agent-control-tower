@@ -122,22 +122,23 @@ verifiable, and leaves something runnable.
     `AnswerAsync`, `SendAsync` and `InterruptAsync` (and `PermissionDecision` was
     deleted outright — ACT decides nothing), and **gained** `IAgentTerminal`
     (raw read/write, resize, bounded scrollback replay, and `SubmitAsync` for the
-    only two things ACT types itself). New port `IPtyHost` keeps the pseudo-terminal
+    only text ACT types itself — step 7 cut that down to the send-back message alone).
+    New port `IPtyHost` keeps the pseudo-terminal
     primitive in `Act.Core/Abstractions` and its `Porta.Pty` implementation in
     `Act.Infrastructure`, so adapters never depend sideways on infrastructure.
     `IAgentAdapter` gained `DesktopHandoffUrl`, `AgentCapabilities` gained
     `DesktopHandoff`, and both requests carry a `TerminalSize` (a pty must be sized
     at spawn). Disposal now **ends** the session rather than being a between-turns
     teardown.
-- [ ] **7. Launch under an embedded PTY — Claude Code + Codex** — Ready → Executing
+- [x] **7. Launch under an embedded PTY — Claude Code + Codex** — Ready → Executing
   spawns each agent's **interactive TUI** under a pseudo-terminal ACT owns, with a
-  pre-minted `--session-id`, the **injected preamble** (so the agent knows the
-  `.act/` conventions from turn one) and ACT's `--settings` hook file; bind session →
+  pre-minted `--session-id` and the **injected preamble** (so the agent knows the
+  `.act/` conventions from turn one); bind session →
   card; a **minimal full-screen terminal view** per card to see it in (xterm.js,
-  resize, scrollback replay); ACT types the initial prompt as bracketed paste.
+  resize, scrollback replay); the initial prompt rides the launch command line.
   *Verify:* both real agents launch inside ACT, the TUI is usable (typing, resize,
   leaving and re-entering the view), the preamble is visible in the session, and the
-  card binds. Lift `PtySession` + `prototype-pty.js` from the `prototype` branch,
+  card binds. ✅ Lifted `PtySession` + `prototype-pty.js` from the `prototype` branch,
   **without** `PtyStateProbe`.
   - [x] **Adapters + PTY host.** `IPtyHost`/`PtyProcess` over `Porta.Pty`;
     `Act.Agents.ClaudeCode` and `Act.Agents.Codex` both against the contract suite;
@@ -159,12 +160,33 @@ verifiable, and leaves something runnable.
     `IDisposable`, and killing the agent without disposing it leaks one `conhost.exe`
     per session ACT ever launches. Found by watching the process tree after a kill;
     `PtyProcess.DisposeAsync` now disposes the connection last.
-  - **Not verified: on-screen painting.** xterm repaints through
-      `requestAnimationFrame`, which never fires in the headless preview pane, so the
-      buffer fills but the rows stay blank there. Needs one look in a real window.
+  - [x] **Painting verified in a real window, and the typed opening prompt replaced.**
+    The preview pane reports `document.hidden`, so it never fires
+    `requestAnimationFrame` and xterm's render debouncer never runs — the buffer fills
+    while the rows stay blank. That is the pane, not the app: driven in a real browser
+    window, the TUI paints, the rail sits where it belongs, and the layout does not
+    overflow. Verifying it there is what exposed the launch bug below, which the
+    headless pane had been hiding.
+    - **The opening prompt was never reaching the agent.** It was typed — first output
+      counted as "painted", 300ms of quiet counted as "ready", then bracketed paste +
+      submit key. A CLI that has painted its banner is *not* yet listening: the paste
+      went nowhere, the composer sat empty at its placeholder, and the board happily
+      showed `running`. The write path itself was fine (typing into the same session by
+      hand landed immediately), so the flaw was the readiness guess — and no better
+      guess exists, because knowing when the prompt line is live means reading the
+      screen, which ACT does not do. **Fixed by deleting the guess:** Claude Code takes
+      the prompt positionally (`claude [prompt]`) exactly as Codex already did, so it is
+      in place before the TUI paints. `PtyAgentSession.Open` is gone with it;
+      `IAgentTerminal.SubmitAsync` stays for step 11's send-back, where the TUI has been
+      idle for as long as the user took to decide. Regression-guarded in
+      `ClaudeCodeAdapterTests` — prompt positional, and nothing written at launch.
 - [ ] **8. Ingestion — observability only** — normalized event stream fed per
   adapter (Claude: http hooks + files + process; Codex: command forwarder + files +
   process), over a localhost hook host on a random port with a **per-session token**.
+  **Includes the hook config injection itself** — Claude's `--settings` file and Codex's
+  `--profile` layer — which step 7 deliberately left out: a settings file pointing at a
+  hook host that does not exist yet buys nothing and only risks clobbering the user's own
+  `.claude/settings.json` a step early.
   Card shows live `running` / activity / metrics. **Nothing is ever posted back to
   the agent** — every source reports, none command. *Verify:* live state + metrics
   update for both agents; a permission prompt in the terminal raises the badge
@@ -233,8 +255,9 @@ verifiable, and leaves something runnable.
 - **What does `Notification` actually fire for** on the pinned CLI version? It is the
   load-bearing signal for the `needs permission` badge, and nothing else reports a
   prompt now that ACT does not read the screen.
-- **ConPTY behaviour** — resize while the TUI is mid-render, and bracketed paste for
-  the initial prompt (the only text ACT types).
+- **ConPTY behaviour** — resize while the TUI is mid-render. Bracketed paste is no
+  longer load-bearing at launch (the prompt is a launch argument); it matters for
+  step 11's send-back into a live session.
 - ✅ **Both TUIs run under ConPTY — verified** by launching each through
   `PtyHost` and answering its prompt with a written keystroke. Two findings came out
   of it:
