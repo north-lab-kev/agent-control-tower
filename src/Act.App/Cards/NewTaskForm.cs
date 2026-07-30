@@ -2,7 +2,10 @@ using Act.Core.Model;
 
 namespace Act.App.Cards;
 
-public sealed class NewTaskForm
+// A record rather than a class for one reason: value equality. It is what lets the task page ask
+// "has anything changed?" by comparing the live form with the snapshot taken when it loaded,
+// instead of maintaining a dirty flag per field and forgetting one.
+public sealed record NewTaskForm
 {
     public string Title { get; set; } = string.Empty;
 

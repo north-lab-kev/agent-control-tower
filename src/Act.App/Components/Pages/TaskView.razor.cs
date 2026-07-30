@@ -6,7 +6,10 @@ using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Infrastructure.FileSystem;
+using ElectronNET.API;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.JSInterop;
 using Radzen;
 
 namespace Act.App.Components.Pages;
@@ -23,7 +26,8 @@ public partial class TaskView(
     IClock clock,
     DialogService dialogService,
     NavigationManager navigation,
-    NotificationService notifications)
+    NotificationService notifications,
+    IJSRuntime js) : IAsyncDisposable
 {
     private NewTaskForm form = new();
 
@@ -39,8 +43,28 @@ public partial class TaskView(
 
     private bool duplicating;
 
+    // The form as it was when the page loaded or last saved. Comparing against it is the whole
+    // dirty check — `NewTaskForm` is a record, so this is one `!=` rather than a flag per field.
+    private NewTaskForm baseline = new();
+
+    private IDisposable? navigationGuard;
+
+    private DotNetObjectReference<TaskView>? owner;
+
+    private IJSObjectReference? unsaved;
+
+    private bool armed;
+
+    private bool asking;
+
+    // Set by the two exits that make the edits moot — a save that persisted them, a delete that
+    // took the card away — so leaving does not then ask about them.
+    private bool discarded;
+
     [Parameter]
     public Guid? CardId { get; set; }
+
+    private bool IsDirty => !missing && form != baseline;
 
     private string PageHeading => card is { } existing ? existing.Title : Strings.TaskView_NewTitle;
 
@@ -222,6 +246,9 @@ public partial class TaskView(
                 await registry.EndAsync(target.Id);
 
             await board.DeleteAsync(existing, includeChildren);
+
+            // Archiving the card settles what happens to the edits: they go with it.
+            discarded = true;
         }
         catch (InvalidOperationException error)
         {
@@ -300,6 +327,101 @@ public partial class TaskView(
 
         missing = card is null;
         form = card is { } existing ? NewTaskForm.From(existing) : new NewTaskForm();
+        baseline = form with { };
+        discarded = false;
+    }
+
+    // Two exits, two mechanisms, because they are two different things. Every move inside ACT —
+    // Cancel, back-to-board, the surface switch, the top bar, the browser's own back button —
+    // arrives here as a location change and can simply be refused. The window's close button
+    // never reaches Blazor at all, which is what the JS module is for.
+    protected override void OnInitialized()
+        => navigationGuard = navigation.RegisterLocationChangingHandler(ConfirmLeavingAsync);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            unsaved = await js.InvokeAsync<IJSObjectReference>("import", "/js/act-unsaved.js");
+            owner = DotNetObjectReference.Create(this);
+
+            await unsaved.InvokeVoidAsync("watch", owner, HybridSupport.IsElectronActive);
+        }
+
+        if (unsaved is not { } module || armed == IsDirty)
+            return;
+
+        armed = IsDirty;
+
+        await module.InvokeVoidAsync("arm", armed);
+    }
+
+    // Desktop only. Electron cancels a close silently when the page objects, so the page objects
+    // and then hands the question here — the dialog the user would have got in a browser.
+    [JSInvokable]
+    public async Task OnCloseBlocked()
+    {
+        if (await ConfirmDiscardAsync() && unsaved is { } module)
+            await module.InvokeVoidAsync("release");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        navigationGuard?.Dispose();
+
+        if (unsaved is { } module)
+        {
+            try
+            {
+                await module.InvokeVoidAsync("dispose");
+                await module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+
+        owner?.Dispose();
+    }
+
+    private async ValueTask ConfirmLeavingAsync(LocationChangingContext context)
+    {
+        if (discarded || !IsDirty)
+            return;
+
+        if (await ConfirmDiscardAsync())
+            return;
+
+        context.PreventNavigation();
+    }
+
+    private async Task<bool> ConfirmDiscardAsync()
+    {
+        // One at a time: a second prompt behind the first is a way to lose the work twice over.
+        if (asking)
+            return false;
+
+        asking = true;
+
+        try
+        {
+            var confirmed = await dialogService.Confirm(
+                Strings.Task_UnsavedConfirm,
+                Strings.Task_Unsaved,
+                new ConfirmOptions
+                {
+                    OkButtonText = Strings.Task_UnsavedDiscard,
+                    CancelButtonText = Strings.Task_UnsavedStay,
+                    CssClass = "act-dialog",
+                });
+
+            // Null when dismissed with the X or the overlay, which means the same as staying.
+            return confirmed is true;
+        }
+        finally
+        {
+            asking = false;
+        }
     }
 
     private void OnAgentChanged(AgentType agent)
@@ -347,6 +469,8 @@ public partial class TaskView(
             {
                 await board.CreateAsync(form.ToCard(clock.Now));
             }
+
+            discarded = true;
         }
         finally
         {

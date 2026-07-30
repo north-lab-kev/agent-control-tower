@@ -492,6 +492,18 @@
   <data name="Task_Duplicate" xml:space="preserve">
     <value>Duplicate task</value>
   </data>
+  <data name="Task_Unsaved" xml:space="preserve">
+    <value>Unsaved changes</value>
+  </data>
+  <data name="Task_UnsavedConfirm" xml:space="preserve">
+    <value>This task has changes that were never saved. Leaving now loses them.</value>
+  </data>
+  <data name="Task_UnsavedDiscard" xml:space="preserve">
+    <value>Discard changes</value>
+  </data>
+  <data name="Task_UnsavedStay" xml:space="preserve">
+    <value>Keep editing</value>
+  </data>
   <data name="Archive_Duplicate" xml:space="preserve">
     <value>Duplicate as a new task</value>
   </data>
