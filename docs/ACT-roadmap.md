@@ -181,8 +181,9 @@ verifiable, and leaves something runnable.
       idle for as long as the user took to decide. Regression-guarded in
       `ClaudeCodeAdapterTests` — prompt positional, and nothing written at launch.
 - [ ] **8. Ingestion — observability only** — normalized event stream fed per
-  adapter (Claude: http hooks + files + process; Codex: command forwarder + files +
-  process), over a localhost hook host on a random port with a **per-session token**.
+  adapter (Claude: http hooks + files + process; **Codex: files + process only** — its
+  hooks do not fire on the current CLI, see *Codex hook findings*), over a localhost hook
+  endpoint with a **per-session token**.
   **Includes the hook config injection itself** — Claude's `--settings` file and Codex's
   `--profile` layer — which step 7 deliberately left out: a settings file pointing at a
   hook host that does not exist yet buys nothing and only risks clobbering the user's own
@@ -191,6 +192,63 @@ verifiable, and leaves something runnable.
   the agent** — every source reports, none command. *Verify:* live state + metrics
   update for both agents; a permission prompt in the terminal raises the badge
   without ACT touching the prompt.
+  - **Endpoint shape — decided 2026-07-29.** One loopback endpoint on ACT's own web
+    host, shared by every session and both agents; see the spec's *Local-endpoint
+    security* for the reasoning.
+    - **One port, kept across restarts.** Bind `127.0.0.1:0`, store the assigned port,
+      reuse it next start, take a fresh one only if it is taken. Not a port per session
+      (more listeners, no isolation the token does not already give) and not fresh each
+      start (see the trust-hash item below). Off the app's own port so the hook surface
+      is not the one the browser uses.
+    - **`/hooks/claude` and `/hooks/codex`.** The path picks the parser, because the two
+      payload dialects are different; a payload on the wrong route is a 400, not a
+      silent mis-parse. Correlation to a card comes from the payload's `session_id` plus
+      `ACT_TASK_ID` on the process environment — never from the port.
+    - **The URL rides the environment, not just the token.** Codex hashes the hook
+      *definition*; anything in the command string that changes between launches costs a
+      fresh trust prompt. So the command is a fixed template reading `$ACT_HOOK_URL` and
+      `$ACT_HOOK_TOKEN` from the env ACT sets on the PTY process. Claude has no such
+      constraint — its `--settings` file is rewritten per launch anyway.
+  - ✅ **Endpoint + hook injection landed; Claude ingestion verified live.** Two loopback
+    listeners on the one web host (UI on the app's port, `/hooks/claude` and `/hooks/codex`
+    on a kept port), per-session tokens, a normalizer per adapter, and generated hook config
+    per launch. Verified end to end: a launched card's hooks posted and normalized to
+    `ActivityObserved` ×3 then `TurnEnded`; the app port answers 404 for `/hooks/*` and the
+    hook port 404 for the UI; an unknown token is 401; ending the session releases the token
+    (401 after) and deletes the generated settings file.
+    - **Two Kestrel traps, each of which moved the whole UI onto the hook port before being
+      fixed.** Configured addresses and explicit `Listen` endpoints are mutually exclusive,
+      so the app's own address is read back out of the `urls` configuration key and re-added
+      alongside the hook one. And `UseStatusCodePagesWithReExecute` re-executes a hook
+      rejection through the Blazor pipeline, which answers a json post *"incorrect
+      Content-type"* 400 instead of the intended 401 — so the hook endpoint turns the
+      status-code-pages feature off per request.
+    - **The shared-vs-per-task split is load-bearing, and a test caught it.** Claude's
+      settings file is per task because it carries the token; Codex's forwarder and hooks
+      json are **shared**, because the forwarder path appears inside the definition Codex
+      hashes — a per-task path would mean a trust prompt for every card ever created.
+  - **Open questions for this step** (each decides a fallback, so settle them first):
+    - ✅ **`--settings` accepts `type: "http"` hooks, and they carry a custom header —
+      verified live.** The token rides `x-act-hook-token`; posts authorized. So Claude needs
+      no command forwarder, and the token never has to go in a url. The flag takes a path and
+      ACT generates its own file per launch, so the user's committed `.claude/settings.json`
+      is never read or written.
+    - ⚠️ **`SessionStart` was not observed arriving**, though `UserPromptSubmit`, the tool
+      events and `Stop` all were. Not load-bearing for Claude Code — ACT pre-mints the
+      session id, so that payload was only wanted for `transcript_path` and `cwd`, which the
+      file source can supply — but do not rely on it without re-checking.
+    - **What does Claude's `Notification` hook actually fire for** on the pinned CLI? It
+      is the only permission signal now that ACT does not read the screen, and it stays
+      unobserved: the verification run never hit a permission prompt. ACT reports a
+      permission request when the message names one and plain activity otherwise, so a wrong
+      guess costs an unmoved badge rather than a stranded card.
+    - ✅ **Codex hooks — tested, and they do not fire at all** on `0.146.0-alpha.3.1`; see
+      *Codex hook findings*. This answers the two Codex questions that were here (env
+      expansion, `--profile` layering) by making them moot for now, and **changes this
+      step's plan: Codex ingestion starts from files + process signals**, with hooks as a
+      later upgrade. It also removes `PermissionRequest` as a usable signal, so Codex has
+      *no* event-based permission report either — for now both agents depend on what the
+      files and the process can tell ACT.
 - [ ] **9. Rules engine** — agent-agnostic: normalized events → column/badge
   transitions; status-file convention (`ready_for_review` / `needs_input`) routes
   Executing → To review / Needs feedback; `error`/`stale` from process signals;
@@ -248,13 +306,11 @@ verifiable, and leaves something runnable.
 
 ## Build-time items to verify (from the spec)
 
-- **Does `--settings` accept `type: "http"` hooks?** The prototype wrote both an
-  `http` and a `command`/`curl` variant precisely because this is unconfirmed
-  (`PrototypeHookSettings`); the command forwarder is the fallback. Also confirm the
-  flag never clobbers the user's committed `.claude/settings.json`.
-- **What does `Notification` actually fire for** on the pinned CLI version? It is the
-  load-bearing signal for the `needs permission` badge, and nothing else reports a
-  prompt now that ACT does not read the screen.
+- **The hook-injection unknowns now live with step 8** — `--settings` and `type: "http"`,
+  http-hook headers, Codex env expansion and `--profile` hook tables, and what
+  `Notification` fires for. They each decide a fallback in that step's design, so they are
+  listed there rather than duplicated here. The prototype's `PrototypeHookSettings` wrote
+  both an `http` and a `command`/`curl` variant precisely because the first is unconfirmed.
 - **ConPTY behaviour** — resize while the TUI is mid-render. Bracketed paste is no
   longer load-bearing at launch (the prompt is a launch argument); it matters for
   step 11's send-back into a live session.
@@ -294,12 +350,13 @@ here because three of them contradict assumptions the spec made for Claude Code.
 
 - **No `--session-id`. ACT cannot pre-mint the binding.** Codex mints its own id;
   `codex resume <SESSION_ID|name>` and `codex fork <SESSION_ID>` take a UUID
-  afterwards. ACT learns the id from the **`SessionStart` hook payload** (which
-  carries `session_id`, `cwd`, `transcript_path`), so `Card.sessionId` stays null
-  from launch until that hook arrives. Sessions land in
+  afterwards. The plan was to learn the id from the **`SessionStart` hook payload**, but
+  hooks do not fire on the current CLI (see *Codex hook findings*), so **the fallback is
+  now the primary path**: sessions land in
   `~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<uuid>.jsonl`, indexed by
-  `~/.codex/session_index.jsonl` (`{id, thread_name, updated_at}`) — the fallback if
-  the hook is missed.
+  `~/.codex/session_index.jsonl` (`{id, thread_name, updated_at}`). ACT binds by watching
+  for the rollout file whose `cwd` and start time match the launch it just made, so
+  `Card.sessionId` stays null from launch until that file appears.
 - **Hooks are a close cousin of Claude Code's**, and `PermissionRequest` is an
   **explicit event** rather than something to infer from `Notification`.
   Events: `SessionStart`, `SessionEnd`, `SubagentStart` (session-scoped);
@@ -309,18 +366,22 @@ here because three of them contradict assumptions the spec made for Claude Code.
   `transcript_path`. **`type: "command"` only — no `http` type**, so Codex uses the
   command-forwarder source exactly as the spec predicted.
 - **Hook trust, and why ACT's hook command must be byte-stable.** Codex hashes each
-  hook *definition* and silently skips untrusted ones; approval via `/hooks` persists
+  hook *definition* and silently skips untrusted ones; approval persists
   across sessions and is re-triggered only when the definition changes. So the
   per-session token must ride an **environment variable on the PTY process** (ACT owns
   the process env) and never be baked into the command string — otherwise every launch
   is a new hash and a fresh approval prompt. ACT's hooks are observability-only, so
   they must always return success and never `permissionDecision: "deny"`,
-  `decision: "block"`, or exit code 2.
-- **Config injection is `--profile`, not `--settings`.** `-p <name>` layers
-  `$CODEX_HOME/<name>.config.toml` over the user's config, which is where ACT writes
-  its `[[hooks.*]]` tables — the user's `~/.codex/config.toml` is never edited. ACT
-  must clean its profile files up. *(Verify at build: that `[[hooks.*]]` is honoured
-  from a profile layer, not just from `config.toml` / `hooks.json`.)*
+  `decision: "block"`, or exit code 2. **Measured — see the hook findings below.**
+- ⚠️ **Hooks are NOT `[[hooks.*]]` tables in `config.toml`, and on this build they never
+  run.** Tested end to end on 2026-07-29 (details in *Codex hook findings* below). The two
+  bullets above and the `--profile` claim were written from the docs and are wrong about
+  where hooks live; the `--profile` mechanism itself is unaffected and still how
+  `model_reasoning_effort` and the rest are layered.
+- **Config injection is `--profile`.** `-p <name>` layers
+  `$CODEX_HOME/<name>.config.toml` over the user's config, and the user's
+  `~/.codex/config.toml` is never edited *by ACT* (Codex itself writes hook-trust state
+  into it — see below). ACT must clean its profile files up.
 - **No `--effort` flag; effort is a config key and is per-model.** Set via
   `-c model_reasoning_effort=<value>`. From `codex debug models`:
 
@@ -340,6 +401,68 @@ here because three of them contradict assumptions the spec made for Claude Code.
   testing against xterm.js, since ACT keeps its own scrollback buffer.
 - `notify = [...]` is a separate fire-and-forget mechanism that fires only for
   `agent-turn-complete`; the hook set is strictly richer, so ACT ignores `notify`.
+
+### Codex hook findings (measured 2026-07-29, `codex-cli 0.146.0-alpha.3.1`)
+
+Tested against the real CLI, not the docs. **Bottom line: step 8 cannot rely on Codex
+hooks on this build.** What was established:
+
+- **Hooks live in a JSON file, not in `config.toml` tables.** `hooks` is a *string* key
+  holding an absolute path (`hooks = "/abs/path/hooks.json"`); a `[[hooks.SessionStart]]`
+  table fails with `invalid type: sequence, expected a string`.
+  **`$CODEX_HOME/hooks.json` is auto-discovered** with no config key at all — proven by
+  corrupting it and getting `warning: failed to parse hooks config …` on every session
+  start. Schema:
+
+      { "description": "…",
+        "hooks": { "SessionStart": [ { "matcher": "startup",
+                     "hooks": [ { "type": "command", "command": "…" } ] } ] } }
+
+  The file **must be BOM-free** — PowerShell's `Out-File -Encoding utf8` writes a BOM and
+  the parser dies at `line 1 column 1`. Use `UTF8Encoding($false)`.
+- **The trust gate is real, blocking, and visible.** A new or changed hook produces a
+  full-screen TUI startup prompt — *"Hooks need review / N hooks are new or changed /
+  1. Review hooks  2. Trust all and continue  3. Continue without trusting (hooks won't
+  run)"* — **before the session starts**. So a Codex card's first launch parks on that
+  screen, and it returns whenever ACT's hook definitions change. Two pre-session gates
+  now, stacked with the directory-trust prompt.
+- **Trust is stored in the user's own `config.toml`**, keyed positionally, hashed per
+  handler — so ACT cannot avoid the user's config being written to (Codex does it, not
+  ACT), and the hash confirms the byte-stability requirement:
+
+      [hooks.state.'C:\Users\<u>\.codex\hooks.json:session_start:0:0']
+      trusted_hash = "sha256:8325e47c…"
+
+- **Escape hatch exists:** `--dangerously-bypass-hook-trust` / `-c bypass_hook_trust=true`
+  ("Enabled hooks may run without review for this invocation"). Skips the review screen.
+- ⚠️ **Hooks never executed, under any combination tried.** Discovered and parsed, yes;
+  run, no. Tried: `SessionStart` with `matcher` `"*"` and `"startup"`, plus
+  `UserPromptSubmit`; untrusted, trusted (approved via the review screen), and
+  trust-bypassed; `codex exec` and the interactive TUI in a real console; a trusted
+  working directory; and a hook command reduced to a **single-token `.bat` path** so no
+  shell parsing, quoting, or redirection could be at fault. No output file, and no hook
+  entries in the session rollout `.jsonl`. Consistent with the open upstream issue
+  (openai/codex#17532, hooks not firing) — so this reads as a CLI defect, not a
+  misconfiguration. `codex exec` additionally appears to skip hooks entirely.
+- **Consequence for step 8:** the *original* question — whether a `command` hook expands
+  `$VAR` or needs a shell to read the inherited env — **could not be answered**, because
+  nothing ever ran. Step 8's Codex ingestion must therefore start from **files + process
+  signals** (the `sessions/*.jsonl` rollout and `session_index.jsonl` already carry the
+  session id, which is what the `SessionStart` payload was wanted for), and treat hooks as
+  an upgrade to switch on once a CLI build actually fires them. Re-test with:
+  a BOM-free `$CODEX_HOME/hooks.json`, `-c bypass_hook_trust=true`, and a single-token
+  `.bat` — if the file appears, hooks are back.
+- **Useful side-findings.** The Store-packaged `codex.exe` under `WindowsApps` **cannot be
+  executed** by a normal process (access denied) and is not on `PATH`; the runnable copy is
+  at the `CODEX_CLI_PATH` recorded in `~/.codex/config.toml`
+  (`%LOCALAPPDATA%\OpenAI\Codex\bin\<hash>\codex.exe`) — `ExecutableResolver` will not find
+  `codex` by name on a desktop-app-only install. There is also an app-server JSON-RPC
+  method **`hooks/list`** (seen in `logs_2.sqlite`) which would be the clean way to inspect
+  hook state, if the `initialize` handshake shape can be worked out.
+- **`codex debug models` no longer matches the table above** — `gpt-5.6-sol` is now listed
+  (efforts low…ultra, default low), and the account rejected `gpt-5.4`, `gpt-5.6-sol` and
+  `gpt-5.4-mini` with *"not supported when using Codex with a ChatGPT account"*; `gpt-5.5`
+  worked. Treat the effort table as a snapshot, and resolve models at runtime.
 
 ## Go-public checklist (when ready)
 

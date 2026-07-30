@@ -125,9 +125,26 @@ Standards to build against — not optional polish. Specifics named for the
 
 ### Local-endpoint security
 
-- The hook/ingestion HTTP endpoint binds to **localhost only**, on a
-  **random port**, and requires a **per-session token** (injected into the hook
-  config at launch) so only ACT's own launched agents can post to it.
+- The hook/ingestion HTTP endpoint binds to **localhost only**, on an
+  **OS-assigned port ACT then keeps**, and requires a **per-session token**
+  (injected into the hook config at launch) so only ACT's own launched agents can
+  post to it.
+- **One endpoint for every session and both agents** — a loopback endpoint on
+  ACT's own web host, not a second server and not a port per session. The port is
+  not the boundary: any local process can enumerate listening ports, so a port
+  ACT did not publish buys collision-avoidance, and the **token** does the
+  authorizing. A port per session would multiply listeners for no isolation the
+  token does not already give, and would break Codex's hook-trust hash (below).
+- **Sticky, not fresh each start.** ACT binds port `0` on first run, stores the
+  port it got, and reuses it after that (falling back to a new one if it is
+  taken). Codex hashes each hook *definition* and re-prompts for trust whenever it
+  changes, so any value that moves between restarts and appears in the hook
+  command string costs the user an approval prompt every launch.
+- **Routed per agent** — `/hooks/claude` and `/hooks/codex`. The two CLIs' hook
+  payloads are different dialects, and the path is what picks the parser, so a
+  payload arriving on the wrong route fails loudly instead of being mis-parsed.
+- Which card an event belongs to comes from the **payload** (`session_id`, plus
+  ACT's own task id on the process environment) — never from the port.
 
 ### Dependency licensing
 

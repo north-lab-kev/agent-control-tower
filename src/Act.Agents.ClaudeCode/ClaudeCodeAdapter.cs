@@ -9,7 +9,11 @@ namespace Act.Agents.ClaudeCode;
 // is a positional argument, as it is for Codex: typing it into the TUI looks equivalent but is
 // a race, because a CLI that has painted its banner is not yet listening to its prompt line and
 // swallows whatever arrives before it is.
-public sealed class ClaudeCodeAdapter(IPtyHost pty, IClock clock) : IAgentAdapter
+public sealed class ClaudeCodeAdapter(
+    IPtyHost pty,
+    IClock clock,
+    IHookEndpoint hooks,
+    IAgentConfigFiles configFiles) : IAgentAdapter
 {
     public const string DefaultBinary = "claude";
 
@@ -85,6 +89,8 @@ public sealed class ClaudeCodeAdapter(IPtyHost pty, IClock clock) : IAgentAdapte
         arguments.Add("--permission-mode");
         arguments.Add(PermissionModeFlag(resolved.PermissionMode));
 
+        var hookToken = InjectHooks(taskId, arguments);
+
         foreach (var tool in resolved.AllowedTools)
         {
             arguments.Add("--allowed-tools");
@@ -108,11 +114,36 @@ public sealed class ClaudeCodeAdapter(IPtyHost pty, IClock clock) : IAgentAdapte
                 resolved.AgentBinary ?? DefaultBinary,
                 arguments,
                 workingDir,
-                AgentEnvironment.For(taskId, resolved.Env),
+                AgentEnvironment.For(
+                    taskId,
+                    resolved.Env,
+                    hookToken,
+                    hooks.UrlFor(Agent)?.ToString()),
                 size),
             cancellationToken);
 
         return new PtyAgentSession(taskId, sessionId, process, Submit, clock);
+    }
+
+    // No endpoint means no hooks and a launch that still happens: ingestion is observability, and
+    // losing it must never cost the user their session. The settings file is passed by path so the
+    // user's own `.claude/settings.json` is neither read nor written.
+    private string? InjectHooks(Guid taskId, List<string> arguments)
+    {
+        if (hooks.UrlFor(Agent) is not { } url)
+            return null;
+
+        var token = hooks.Register(taskId);
+
+        var path = configFiles.Write(
+            taskId,
+            ClaudeCodeHookSettings.FileName,
+            ClaudeCodeHookSettings.Compose(url, token));
+
+        arguments.Add("--settings");
+        arguments.Add(path);
+
+        return token;
     }
 
     private static string PermissionModeFlag(PermissionMode mode) => mode switch

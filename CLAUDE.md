@@ -17,6 +17,10 @@ Instructions for Claude Code when working in this repository.
 - **`docs/ACT-roadmap.md` — read when needed.** Build sequence and step status.
   Consult it to know what comes next or what a step's *verify* line requires;
   tick steps off as they land.
+- **`docs/codex-hooks-findings.md` — read before touching Codex hook wiring.**
+  Codex hooks do not fire on the pinned CLI, so that code is written blind; the
+  file records what was measured, what ACT assumed, and the checklist to re-test
+  it against a newer CLI.
 
 ## Running the app
 

@@ -10,7 +10,7 @@ namespace Act.Agents.Tests;
 public class ClaudeCodeAdapterContractTests : AgentAdapterContract
 {
     protected override IAgentAdapter CreateAdapter()
-        => new ClaudeCodeAdapter(new StubPtyHost(), new TestClock());
+        => new ClaudeCodeAdapter(new StubPtyHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
 }
 
 public class ClaudeCodeAdapterTests
@@ -58,7 +58,7 @@ public class ClaudeCodeAdapterTests
     public async Task Resuming_passes_the_session_id_and_the_message_positionally()
     {
         var pty = new StubPtyHost();
-        var adapter = new ClaudeCodeAdapter(pty, new TestClock());
+        var adapter = new ClaudeCodeAdapter(pty, new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
 
         await using var session = await adapter.ResumeAsync(new AgentResumeRequest(
             TaskId,
@@ -81,7 +81,7 @@ public class ClaudeCodeAdapterTests
     public async Task A_bare_resume_adds_no_prompt_argument()
     {
         var pty = new StubPtyHost();
-        var adapter = new ClaudeCodeAdapter(pty, new TestClock());
+        var adapter = new ClaudeCodeAdapter(pty, new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
 
         await using var session = await adapter.ResumeAsync(new AgentResumeRequest(
             TaskId,
@@ -98,7 +98,7 @@ public class ClaudeCodeAdapterTests
     }
 
     private static Task<IAgentSession> LaunchAsync(StubPtyHost pty, LaunchConfig? config = null)
-        => new ClaudeCodeAdapter(pty, new TestClock()).LaunchAsync(new AgentLaunchRequest(
+        => new ClaudeCodeAdapter(pty, new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles()).LaunchAsync(new AgentLaunchRequest(
             TaskId,
             SessionId,
             "C:/repo",

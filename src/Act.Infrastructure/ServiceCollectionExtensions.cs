@@ -1,5 +1,6 @@
 using Act.Core.Abstractions;
 using Act.Infrastructure.FileSystem;
+using Act.Infrastructure.Hooks;
 using Act.Infrastructure.Power;
 using Act.Infrastructure.Storage;
 using Act.Infrastructure.Terminal;
@@ -19,6 +20,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ILiteDatabase>(_ => ActDatabase.Open(dataDirectory));
         services.AddSingleton<ISettingsStore, LiteDbSettingsStore>();
         services.AddSingleton<ICardStore, LiteDbCardStore>();
+        services.AddActHookEndpoint(dataDirectory);
 
         return services;
     }

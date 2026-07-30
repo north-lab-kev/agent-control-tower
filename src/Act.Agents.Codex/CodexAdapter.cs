@@ -14,7 +14,11 @@ namespace Act.Agents.Codex;
 //     per model.
 //   * the opening prompt is a positional argument rather than something typed, which is
 //     better: it is in place before the TUI paints, so there is no race with the prompt line.
-public sealed class CodexAdapter(IPtyHost pty, IClock clock) : IAgentAdapter
+public sealed class CodexAdapter(
+    IPtyHost pty,
+    IClock clock,
+    IHookEndpoint hooks,
+    IAgentConfigFiles configFiles) : IAgentAdapter
 {
     public const string DefaultBinary = "codex";
 
@@ -122,6 +126,8 @@ public sealed class CodexAdapter(IPtyHost pty, IClock clock) : IAgentAdapter
         arguments.Add("--cd");
         arguments.Add(workingDir);
 
+        var hookToken = InjectHooks(taskId, arguments);
+
         arguments.AddRange(resolved.ExtraFlags);
 
         // Positional, and last: everything after it would be read as part of the prompt.
@@ -133,10 +139,51 @@ public sealed class CodexAdapter(IPtyHost pty, IClock clock) : IAgentAdapter
                 resolved.AgentBinary ?? DefaultBinary,
                 arguments,
                 workingDir,
-                AgentEnvironment.For(taskId, resolved.Env),
+                AgentEnvironment.For(
+                    taskId,
+                    resolved.Env,
+                    hookToken,
+                    hooks.UrlFor(Agent)?.ToString()),
                 size),
             cancellationToken);
 
         return new PtyAgentSession(taskId, sessionId, process, Submit, clock);
+    }
+
+    // PENDING — the hooks this writes have never been seen to fire; see `CodexHookConfig` and
+    // `docs/codex-hooks-findings.md`. It is wired anyway because the cost is one file and one
+    // flag, and because a CLI fix is expected: when hooks start firing, Codex ingestion and its
+    // `PermissionRequest` signal come online without further work here.
+    //
+    // The three files are written on every launch and are byte-identical every time, which is what
+    // keeps Codex's hook-trust hash stable — the token and the endpoint url ride the process
+    // environment instead. ACT never passes `bypass_hook_trust`: the review screen is the user's
+    // call, and the card will park on it the first time.
+    private string? InjectHooks(Guid taskId, List<string> arguments)
+    {
+        if (hooks.UrlFor(Agent) is null)
+            return null;
+
+        var token = hooks.Register(taskId);
+
+        // Shared, not per task, and that is the load-bearing part: the forwarder path appears inside
+        // the hook definition Codex hashes, so a per-task path would demand fresh approval for
+        // every card. One file, one hash, one review — ever.
+        var forwarder = configFiles.WriteShared(
+            CodexHookConfig.ForwarderFileName,
+            CodexHookConfig.ComposeForwarder());
+
+        var hooksFile = configFiles.WriteShared(
+            CodexHookConfig.HooksFileName,
+            CodexHookConfig.ComposeHooks(forwarder));
+
+        configFiles.WriteExternal(
+            CodexHookConfig.ProfilePath(CodexHookConfig.ResolveCodexHome()),
+            CodexHookConfig.ComposeProfile(hooksFile));
+
+        arguments.Add("--profile");
+        arguments.Add(CodexHookConfig.ProfileName);
+
+        return token;
     }
 }

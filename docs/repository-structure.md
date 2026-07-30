@@ -44,8 +44,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     caffeinate (macOS), systemd-inhibit (Linux)
 │  │  ├─ Terminal/                  #   IPtyHost over Porta.Pty: spawn, incremental UTF-8 decode,
 │  │  │                            #     batched flush, capped scrollback, resize, kill
-│  │  └─ Hooks/                     #   hook endpoint + per-session token; route mapped from
-│  │                               #     Program.cs via an extension (no ASP.NET in Core)
+│  │  └─ Hooks/                     #   hook endpoint + per-session token + kept-port store and
+│  │                               #     binder + guard rule + generated agent config files.
+│  │                               #     No ASP.NET: the routing/middleware half is Act.App/Hooks/
 │  ├─ Act.App/                      # Blazor Server UI + Electron desktop host (ElectronNET.Core)
 │  │  ├─ Components/
 │  │  │  ├─ Pages/                  #     EVERY @page component and nothing else:
@@ -130,6 +131,24 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   would be meaningless as a URL — archiving a card with follow-ups, and emptying the
   archive. Step 11's completion/git prompt is the same shape. `RadzenComponents`
   and the `-webkit-app-region: no-drag` rule are kept for it.
+- **The hook endpoint is two listeners on one web host, not a second server.** The UI keeps
+  the app's address; `/hooks/claude` and `/hooks/codex` answer on a loopback port ACT
+  allocates once and remembers. `HookPortGuard` is what makes the two ports mean different
+  things — hooks 404 off the hook port, the UI 404 on it. `Act.Core` holds only the ports
+  (`IHookEndpoint`, `IHookNormalizer`, `IAgentEventSink`, `IAgentConfigFiles`) plus the wire
+  constants both sides must agree on (`Agents/HookTransport`); each **normalizer lives with
+  its adapter**, because a payload dialect is a fact about that CLI exactly like its command
+  line. `SessionEventSink` in `Act.App` is the one piece that knows how to turn the task id a
+  token proves into the live session an event belongs to.
+  - **The endpoint is split by capability, not by feature.** `Act.Infrastructure/Hooks/` keeps
+    everything web-free and unit-testable — token registry, port allocator and store, the guard
+    *rule*, the normalizing dispatcher, the config-file writer — and `Act.App/Hooks/` holds the
+    ~100 lines that genuinely need ASP.NET: the address, the middleware, the two routes. It was
+    briefly all in infrastructure behind a `Microsoft.AspNetCore.App` framework reference, and
+    that reference was the problem: a capability grant to a project of passive port adapters,
+    bought for one file, that would have let anything there reach for `HttpContext`. Registration
+    stays with the code (`HookRegistration`, called by `AddActInfrastructure`), and the app is
+    left to sequence the three calls only it can — bind, guard, map.
 - **The pseudo-terminal is a Core port, not adapter code.** Spawning a process under
   a pty and pumping its bytes is agent-agnostic plumbing; only the *command line* is
   agent-shaped. So `IPtyHost` lives in `Act.Core/Abstractions` and its `Porta.Pty`

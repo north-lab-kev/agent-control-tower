@@ -7,7 +7,7 @@ namespace Act.App.Sessions;
 // a child of the board: navigating to a card has to find the process that is already running
 // for it, not start a second one. Sessions outlive every component that shows them and die
 // with the app, which is why this is a singleton and why it disposes what it still holds.
-public sealed class SessionRegistry : IAsyncDisposable
+public sealed class SessionRegistry(IHookEndpoint hooks, IAgentConfigFiles configFiles) : IAsyncDisposable
 {
     private readonly ConcurrentDictionary<Guid, IAgentSession> sessions = new();
 
@@ -33,6 +33,8 @@ public sealed class SessionRegistry : IAsyncDisposable
 
         await session.DisposeAsync();
 
+        Retire(cardId);
+
         Changed?.Invoke();
 
         return true;
@@ -43,7 +45,19 @@ public sealed class SessionRegistry : IAsyncDisposable
         foreach (var cardId in sessions.Keys.ToList())
         {
             if (sessions.TryRemove(cardId, out var session))
+            {
                 await session.DisposeAsync();
+
+                Retire(cardId);
+            }
         }
+    }
+
+    // A token outliving its session would keep authorizing posts for a card that is no longer
+    // running, and the generated settings file still holds that token — so both go together.
+    private void Retire(Guid cardId)
+    {
+        hooks.Release(cardId);
+        configFiles.Clear(cardId);
     }
 }
