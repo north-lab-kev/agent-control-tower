@@ -8,9 +8,13 @@ namespace Act.Agents.Codex;
 // per model rather than per agent. `codex-auto-review` is omitted: the catalog marks it
 // `visibility: hide`, so it is not a model a user picks.
 //
-// PENDING — this is a snapshot of a catalog the CLI can render at runtime
-// (`codex debug models` emits JSON). Reading it live would keep ACT honest across CLI
-// upgrades; that is a step-8 job, once ACT is allowed to shell out to the binary at all.
+// Pinned on purpose, and staying that way. Codex does publish this list at runtime — `codex
+// debug models` renders it, and the CLI caches the same JSON at `$CODEX_HOME/models_cache.json`
+// — but neither is a contract ACT is party to: an internal cache whose schema can move under a
+// CLI upgrade would fail back to this list silently, which is the same staleness wearing a
+// costume. A pinned list is at least honest about being a snapshot, and re-checking it is a line
+// on the CLI-upgrade checklist. Claude Code publishes nothing comparable at all — see
+// ClaudeCodeCapabilities.
 public static class CodexCapabilities
 {
     private static readonly IReadOnlyList<string> ThroughXHigh = ["low", "medium", "high", "xhigh"];

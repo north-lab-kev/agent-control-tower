@@ -52,13 +52,29 @@
             </RadzenFieldset>
 
             <RadzenFieldset Text="@Strings.Settings_Group_System">
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
-                             JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
-                    <RadzenStack Gap="0.1rem">
-                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_KeepAwake" />
-                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_KeepAwake_Hint" class="hint" />
+                <RadzenStack Gap="1.1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_KeepAwake" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_KeepAwake_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenSwitch Value="KeepAwake" ValueChanged="@((bool value) => OnKeepAwakeChanged(value))" />
                     </RadzenStack>
-                    <RadzenSwitch Value="KeepAwake" ValueChanged="@((bool value) => OnKeepAwakeChanged(value))" />
+
+                    @* Desktop-only: in browser mode there is no window to close and no tray to
+                       close it into, and a switch that does nothing is worse than no switch. *@
+                    @if (IsDesktop)
+                    {
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                     JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_CloseToTray" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_CloseToTray_Hint" class="hint" />
+                            </RadzenStack>
+                            <RadzenSwitch Value="CloseToTray" ValueChanged="@((bool value) => OnCloseToTrayChanged(value))" />
+                        </RadzenStack>
+                    }
                 </RadzenStack>
             </RadzenFieldset>
         </RadzenStack>

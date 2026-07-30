@@ -28,12 +28,6 @@
                 <RadzenButton Icon="settings" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
                               Size="ButtonSize.Small" Click="OpenSettings" class="gear"
                               title="@Strings.Settings_Title" aria-label="@Strings.Settings_Title" />
-
-                @if (AttentionCount > 0)
-                {
-                    <RadzenBadge BadgeStyle="BadgeStyle.Warning" IsPill="true"
-                                 Text="@Text.Format(Strings.Shell_NeedYou, AttentionCount)" class="needpill" />
-                }
             </RadzenStack>
         </RadzenStack>
 

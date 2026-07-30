@@ -13,6 +13,8 @@ public sealed class SessionRegistry : IAsyncDisposable
 
     public event Action? Changed;
 
+    public int LiveCount => sessions.Count;
+
     public IAgentSession? For(Guid cardId) => sessions.GetValueOrDefault(cardId);
 
     public bool IsLive(Guid cardId) => sessions.ContainsKey(cardId);

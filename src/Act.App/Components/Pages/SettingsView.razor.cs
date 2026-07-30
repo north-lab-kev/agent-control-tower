@@ -1,6 +1,7 @@
 using Act.App.Resources;
 using Act.App.Settings;
 using Act.Core.Model;
+using ElectronNET.API;
 using Microsoft.AspNetCore.Components;
 
 namespace Act.App.Components.Pages;
@@ -37,6 +38,10 @@ public partial class SettingsView(UserSettingsService settings, NavigationManage
 
     private bool KeepAwake => settings.KeepAwake;
 
+    private bool CloseToTray => settings.CloseToTray;
+
+    private static bool IsDesktop => HybridSupport.IsElectronActive;
+
     // A language change has to re-run the whole render tree under the new culture, so it reloads.
     // As a page that now lands the user back on settings rather than on the board, which is where
     // they were — the reload is no longer also a dismissal.
@@ -54,6 +59,8 @@ public partial class SettingsView(UserSettingsService settings, NavigationManage
     private void OnDensityChanged(BoardDensity density) => settings.SetDensity(density);
 
     private void OnKeepAwakeChanged(bool keepAwake) => settings.SetKeepAwake(keepAwake);
+
+    private void OnCloseToTrayChanged(bool closeToTray) => settings.SetCloseToTray(closeToTray);
 
     private void BackToBoard() => navigation.NavigateTo("/");
 }

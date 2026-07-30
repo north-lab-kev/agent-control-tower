@@ -19,6 +19,8 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
 
     public bool KeepAwake => current.KeepAwake;
 
+    public bool CloseToTray => current.CloseToTray;
+
     public void ApplyLanguage() => culture.Apply(current.Language);
 
     // Called at startup as well as on every change, because a setting that only takes effect when
@@ -61,6 +63,14 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
             return;
 
         Update(settings => settings.KeepAwake = keepAwake);
+    }
+
+    public void SetCloseToTray(bool closeToTray)
+    {
+        if (closeToTray == current.CloseToTray)
+            return;
+
+        Update(settings => settings.CloseToTray = closeToTray);
     }
 
     private void Update(Action<UserSettings> change)

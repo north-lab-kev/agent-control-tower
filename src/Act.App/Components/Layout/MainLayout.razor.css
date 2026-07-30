@@ -65,8 +65,7 @@
     border-color: var(--act-line2);
 }
 
-::deep .statchip.live::before,
-::deep .needpill::before {
+::deep .statchip.live::before {
     content: "";
     display: inline-block;
     width: 6px;
@@ -74,23 +73,7 @@
     border-radius: 50%;
     margin-right: 6px;
     vertical-align: middle;
-}
-
-::deep .statchip.live::before {
     background: var(--act-run);
-}
-
-::deep .needpill {
-    font-family: var(--act-mono);
-    font-size: 11px;
-    font-weight: 600;
-    background: var(--act-attn-fill);
-    color: var(--act-on-attn);
-}
-
-::deep .needpill::before {
-    background: var(--act-on-attn);
-    animation: act-blink 1.5s infinite;
 }
 
 ::deep .newtaskbtn {
@@ -113,13 +96,4 @@ main {
     flex: 1;
     min-height: 0;
     overflow: auto;
-}
-
-@keyframes act-blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: .3; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    ::deep .needpill::before { animation: none; }
 }

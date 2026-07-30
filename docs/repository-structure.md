@@ -54,6 +54,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │  ├─ Board/                  #     non-routable board parts (FlightStrip)
 │  │  │  ├─ Shared/                 #     CardSurfaceSwitch (Task|Terminal toggle) + FolderPicker
 │  │  │  └─ Layout/                 #     MainLayout, top bar, theme stylesheets
+│  │  ├─ Desktop/                   #   DesktopShell: the Electron window + tray icon and the
+│  │  │                            #     close/exit rules (Electron-only; registered when enabled)
 │  │  ├─ Cards/                     #   BoardState — owns every card incl. archived ones, and
 │  │  │                            #     decides what may see which; task form model; capability
 │  │  │                            #     catalog built from the registered adapters

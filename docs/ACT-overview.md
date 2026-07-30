@@ -99,7 +99,7 @@ Standards to build against — not optional polish. Specifics named for the
   (`dotnet run`), driven by the **mock adapter** so flows are deterministic. Run
   against browser mode, **not** the Electron shell (single-instance-lock / CDP
   friction). Cover: task creation, drag + drag-time graying, event-driven column
-  moves, the per-state drawer actions, and the "N need you" jump.
+  moves, and the per-state drawer actions.
 - **Coverage:** **coverlet**; weighted — domain core / rules engine ~90%+; no
   blanket 100% mandate elsewhere.
 - **No automated integration tests against real CLIs** (deliberate — slow,
@@ -1175,8 +1175,11 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   compact the title ellipsizes so the badge keeps its full width: the badge is
   the signal, the title yields.
 - **Attention:** needs-you cards get a **loud in-place treatment** (glowing rail
-  + pulse + `!` corner); no separate inbox. Top-bar **"N need you ›"** pill
-  summarizes *and* jumps to the next attention card.
+  + pulse + `!` corner); no separate inbox, and no top-bar counter either. A
+  **"N need you ›"** pill was there and is gone: ACT answers no permission prompt,
+  so the pill could only ever count cards and point at the board it sat above.
+  The card is the signal — the strip is already loud, and the columns already
+  group by state.
 - **Interaction — two surfaces, one rule.** The **drawer** is where you *read* a
   card; the **session view** is where you *talk* to it.
   - **Contextual right-side drawer** over a dimmed board, action set by state.
@@ -1188,8 +1191,8 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   - **Session view — a full-screen route per card.** The xterm terminal takes the
     window, with a right rail carrying identity (`#1042`, cwd, agent/model) and the
     live metrics (context %, cost, turns), the same action set, and back-to-board in
-    the top bar. This is the answer to every "needs you" state: the top-bar
-    **"N need you ›"** pill and the OS notification both land here.
+    the top bar. This is the answer to every "needs you" state — it is where the card
+    and the OS notification both lead.
   - The terminal replays its scrollback on entry, so leaving the view and returning
     is free.
   - **Transient failures are notifications, not page furniture.** A failed launch is a
@@ -1258,20 +1261,35 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   dump you on the board; now you stay on settings.
   Shipped: **language**, **theme** (follow-OS / light / dark override),
   **display mode** (compact / spacious — settings-only; there is no top-bar
-  density toggle), and **keep-awake**. Still to land: the notification matrix,
+  density toggle), **keep-awake** and **close-to-tray**. Still to land: the notification matrix,
   `maxConcurrent`, weekly-reset time, and the auto-archive window /
   auto-execution pause.
-  - **Keep the computer awake** (*System*, off by default) holds the machine up for as
+  - **Keep the computer awake** (*System*, on by default) holds the machine up for as
     long as ACT runs — not per session, because a queue that opens at 02:00 needs the
     machine already awake rather than woken by work it cannot start. It is `ISleepInhibitor`,
     a port, because no two platforms spell it the same way: Windows takes a flag on a thread
     and drops it when that thread ends (so one parks for the life of the hold), while macOS
     and Linux express it as a child process that must stay alive — `caffeinate` and
     `systemd-inhibit`. Every path degrades to doing nothing rather than throwing. It is
-    **off by default and applied at startup**, so it survives a restart instead of quietly
-    resetting, and holding someone's machine awake stays their decision.
+    **on by default and applied at startup**, so it survives a restart instead of quietly
+    resetting.
     This is what the old **"☕ awake"** chip in the top bar claimed to report; it never
     reported anything, so it is gone.
+  - **Close to the notification area** (*System*, desktop-only, on by default) makes the
+    window's close button leave ACT running behind a tray icon. The window is genuinely
+    **destroyed and rebuilt**, not hidden: Electron.NET's `close` handler never calls
+    `preventDefault`, so a close cannot be cancelled from C#. That costs a page load on the
+    way back and nothing else — sessions belong to the registry, not to a view, so agents
+    keep working across the gap and the terminal re-attaches. The switch is hidden in browser
+    mode, where there is no window to close and no tray to close it into.
+    - **Exit lives on the tray icon, behind a confirmation** that names what is lost: the
+      running tasks it will stop (with a count, when there are any) and the scheduled tasks
+      that will not run while ACT is closed. It is a **native message box**, because the
+      window it would otherwise open in is usually the one just closed. Electron shows
+      nothing for a parentless message box, so choosing Exit with no window brings the window
+      back to carry the question — being shown what is about to stop is no bad thing.
+      Confirming ends every live session first: the confirmation promised it, and an agent
+      must not outlive the app supervising it.
 - **Localization:** the UI is translatable — **English and French**, defaulting to
   the **OS language** (anything other than French falls back to English). Strings
   live in `.resx` under `Act.App/Resources/`, reached through the SDK's

@@ -2,6 +2,7 @@ using Act.Agents.ClaudeCode;
 using Act.Agents.Codex;
 using Act.App;
 using Act.App.Cards;
+using Act.App.Desktop;
 using Act.App.Sessions;
 using Act.App.Settings;
 using Act.Core.Abstractions;
@@ -35,13 +36,20 @@ builder.Services.AddSingleton<SessionLauncher>();
 var launchedByElectron = args.Any(a => a.StartsWith("/electronPort", StringComparison.OrdinalIgnoreCase));
 var runElectron = launchedByElectron
     || builder.Configuration.GetValue<bool>("Electron:Enabled");
+// Assigned right after Build and read only when Electron signals ready, which is later still —
+// the callback has to reach a container that does not exist yet at the point it is registered.
+WebApplication? host = null;
+
 if (runElectron)
 {
     builder.Services.AddElectron();
-    builder.UseElectron(args, CreateWindowAsync);
+    builder.Services.AddSingleton<DesktopShell>();
+    builder.UseElectron(args, () => host!.Services.GetRequiredService<DesktopShell>().StartAsync());
 }
 
 var app = builder.Build();
+
+host = app;
 
 var settings = app.Services.GetRequiredService<UserSettingsService>();
 
@@ -66,44 +74,3 @@ app.MapRazorComponents<AppRoot>()
 
 app.Run();
 
-static async Task CreateWindowAsync()
-{
-    const int titleBarHeight = 49;
-
-    Electron.Menu.SetApplicationMenu(Array.Empty<MenuItem>());
-
-    var options = new BrowserWindowOptions
-    {
-        Show = false,
-        Icon = Path.Combine(AppContext.BaseDirectory, "icon.ico"),
-        TitleBarStyle = TitleBarStyle.hidden,
-    };
-
-    // Transparent on purpose. The overlay is native and can only be coloured at window creation,
-    // so any fixed colour is wrong half the time — it cannot follow the theme, and it painted a
-    // flat block over the end of a bar that is a gradient with a rule under it. Left transparent,
-    // the page paints the whole strip and the seam disappears; only the glyphs stay native, in a
-    // grey chosen to read on both themes.
-    if (OperatingSystem.IsWindows() || OperatingSystem.IsLinux())
-        options.TitleBarOverlay = new TitleBarOverlay
-        {
-            Color = "rgba(0, 0, 0, 0)",
-            SymbolColor = "#7c8b99",
-            Height = titleBarHeight,
-        };
-
-    var window = await Electron.WindowManager.CreateWindowAsync(options);
-
-    window.OnReadyToShow += () => window.Show();
-
-    await Electron.App.RequestSingleInstanceLockAsync(
-        (_, _) => RevealWindow(window),
-        CancellationToken.None);
-}
-
-static void RevealWindow(BrowserWindow window)
-{
-    window.Restore();
-    window.Show();
-    window.Focus();
-}

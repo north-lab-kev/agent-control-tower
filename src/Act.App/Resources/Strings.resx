@@ -18,9 +18,6 @@
   <data name="Shell_AutoExecOn" xml:space="preserve">
     <value>auto-exec on</value>
   </data>
-  <data name="Shell_NeedYou" xml:space="preserve">
-    <value>{0} NEED YOU ›</value>
-  </data>
   <data name="Shell_UnhandledError" xml:space="preserve">
     <value>An unhandled error has occurred.</value>
   </data>
@@ -299,6 +296,30 @@
   </data>
   <data name="Settings_KeepAwake_Hint" xml:space="preserve">
     <value>Stop the machine sleeping while ACT is open, so a long run is not cut short.</value>
+  </data>
+  <data name="Settings_CloseToTray" xml:space="preserve">
+    <value>Close to the notification area</value>
+  </data>
+  <data name="Settings_CloseToTray_Hint" xml:space="preserve">
+    <value>Closing the window leaves ACT running behind its tray icon; agents carry on. Exit from that icon.</value>
+  </data>
+  <data name="Tray_Open" xml:space="preserve">
+    <value>Open ACT</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+    <value>Exit ACT</value>
+  </data>
+  <data name="Tray_ExitConfirm" xml:space="preserve">
+    <value>Exit ACT?</value>
+  </data>
+  <data name="Tray_ExitDetail" xml:space="preserve">
+    <value>Scheduled tasks will not run while ACT is closed.</value>
+  </data>
+  <data name="Tray_ExitDetailRunning" xml:space="preserve">
+    <value>{0} running task(s) will be stopped, and scheduled tasks will not run while ACT is closed.</value>
+  </data>
+  <data name="Tray_ExitYes" xml:space="preserve">
+    <value>Exit</value>
   </data>
   <data name="Settings_Language" xml:space="preserve">
     <value>Language</value>

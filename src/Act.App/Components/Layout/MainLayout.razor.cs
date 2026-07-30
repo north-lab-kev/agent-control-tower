@@ -1,4 +1,3 @@
-using Act.App.Cards;
 using Act.App.Resources;
 using Act.App.Settings;
 using Act.Core.Model;
@@ -9,7 +8,6 @@ namespace Act.App.Components.Layout;
 
 public partial class MainLayout(
     UserSettingsService settings,
-    BoardState board,
     IAssetVersions assetVersions,
     NavigationManager navigation,
     IJSRuntime js) : IDisposable
@@ -22,22 +20,12 @@ public partial class MainLayout(
 
     private BoardDensity Density => settings.Density;
 
-    private int AttentionCount => board.AttentionCount;
-
     private string MarkPath
         => markPath ??= $"favicon.png{assetVersions.For(typeof(MainLayout).Assembly)}";
 
-    protected override void OnInitialized()
-    {
-        settings.Changed += OnChanged;
-        board.Changed += OnChanged;
-    }
+    protected override void OnInitialized() => settings.Changed += OnChanged;
 
-    public void Dispose()
-    {
-        settings.Changed -= OnChanged;
-        board.Changed -= OnChanged;
-    }
+    public void Dispose() => settings.Changed -= OnChanged;
 
     private void OnChanged() => _ = InvokeAsync(async () =>
     {

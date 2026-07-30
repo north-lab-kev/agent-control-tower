@@ -8,7 +8,7 @@ public sealed class UserSettings
 
     public BoardDensity Density { get; set; } = BoardDensity.Spacious;
 
-    // Off by default: holding someone's machine awake is not something an app may decide for
-    // itself, however good its reason.
-    public bool KeepAwake { get; set; }
+    public bool KeepAwake { get; set; } = true;
+
+    public bool CloseToTray { get; set; } = true;
 }

@@ -14,8 +14,6 @@ public sealed class BoardState(ICardStore store, IClock clock)
 
     public event Action? Changed;
 
-    public int AttentionCount => cards.Count(card => !card.IsDeleted && card.NeedsAttention);
-
     public IReadOnlyList<Card> In(BoardColumn column)
         => [.. cards.Where(card => !card.IsDeleted && card.Column == column)];
 

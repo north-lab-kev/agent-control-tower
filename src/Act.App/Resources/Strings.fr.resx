@@ -18,9 +18,6 @@
   <data name="Shell_AutoExecOn" xml:space="preserve">
     <value>exéc. auto activée</value>
   </data>
-  <data name="Shell_NeedYou" xml:space="preserve">
-    <value>{0} À TRAITER ›</value>
-  </data>
   <data name="Shell_UnhandledError" xml:space="preserve">
     <value>Une erreur non gérée s’est produite.</value>
   </data>
@@ -299,6 +296,30 @@
   </data>
   <data name="Settings_KeepAwake_Hint" xml:space="preserve">
     <value>Empêche la mise en veille pendant qu'ACT est ouvert, pour qu'une longue exécution ne soit pas interrompue.</value>
+  </data>
+  <data name="Settings_CloseToTray" xml:space="preserve">
+    <value>Fermer vers la zone de notification</value>
+  </data>
+  <data name="Settings_CloseToTray_Hint" xml:space="preserve">
+    <value>Fermer la fenêtre laisse ACT actif derrière son icône; les agents continuent. Quittez depuis cette icône.</value>
+  </data>
+  <data name="Tray_Open" xml:space="preserve">
+    <value>Ouvrir ACT</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+    <value>Quitter ACT</value>
+  </data>
+  <data name="Tray_ExitConfirm" xml:space="preserve">
+    <value>Quitter ACT?</value>
+  </data>
+  <data name="Tray_ExitDetail" xml:space="preserve">
+    <value>Les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
+  </data>
+  <data name="Tray_ExitDetailRunning" xml:space="preserve">
+    <value>{0} tâche(s) en cours seront arrêtées, et les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
+  </data>
+  <data name="Tray_ExitYes" xml:space="preserve">
+    <value>Quitter</value>
   </data>
   <data name="Settings_Language" xml:space="preserve">
     <value>Langue</value>
