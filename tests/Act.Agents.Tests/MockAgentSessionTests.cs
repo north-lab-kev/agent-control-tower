@@ -190,7 +190,7 @@ public class MockAgentSessionTests
     }
 
     [Fact]
-    public async Task A_launch_carries_the_pre_minted_session_id_the_preamble_and_a_terminal_size()
+    public async Task A_launch_carries_the_pre_minted_session_id_the_task_text_and_a_terminal_size()
     {
         var adapter = new MockAgentAdapter();
 
@@ -200,7 +200,7 @@ public class MockAgentSessionTests
 
         var launch = adapter.Launches.Should().ContainSingle().Subject;
 
-        launch.Preamble.Should().Contain(ActContract.RelativeStatusDirectory);
+        launch.InitialPrompt.Should().Be("do the thing");
         launch.Size.Should().Be(TerminalSize.Default);
     }
 
@@ -213,7 +213,6 @@ public class MockAgentSessionTests
             TaskId,
             SessionId,
             "C:/repo",
-            AgentPreamble.Compose(TaskId),
             "do the thing",
             "actually target main",
             new LaunchConfig(),
@@ -243,7 +242,6 @@ public class MockAgentSessionTests
         TaskId,
         SessionId,
         "C:/repo",
-        AgentPreamble.Compose(TaskId),
         "do the thing",
         config ?? new LaunchConfig(),
         TerminalSize.Default);

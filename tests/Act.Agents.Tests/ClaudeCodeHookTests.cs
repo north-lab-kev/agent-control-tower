@@ -106,7 +106,6 @@ public class ClaudeCodeHookInjectionTests
             TaskId,
             SessionId,
             "C:/repo",
-            AgentPreamble.Compose(TaskId),
             "do the thing",
             new LaunchConfig(),
             TerminalSize.Default));
@@ -146,6 +145,62 @@ public class ClaudeCodeHookNormalizerTests
             .Which.ToolName.Should().Be("Bash");
     }
 
+    // The tool that asks the user is the one `PreToolUse` must not report as activity: the agent has
+    // stopped, and this payload is the only one carrying what it asked.
+    [Fact]
+    public void The_question_tool_is_reported_as_a_question_with_what_it_asked()
+    {
+        var result = Normalize("""
+            {
+              "hook_event_name": "PreToolUse",
+              "session_id": "abc",
+              "tool_name": "AskUserQuestion",
+              "tool_use_id": "toolu_01",
+              "tool_input": {
+                "questions": [
+                  { "question": "Pick a number between 1 and 3.", "header": "Pick a number" }
+                ]
+              }
+            }
+            """);
+
+        var asked = result.Events.Should().ContainSingle().Which.Should().BeOfType<QuestionAsked>().Subject;
+
+        asked.Question.Should().Be("Pick a number between 1 and 3.");
+        asked.RequestId.Should().Be("toolu_01");
+    }
+
+    [Fact]
+    public void Several_questions_in_one_call_are_all_reported()
+        => Normalize("""
+            {
+              "hook_event_name": "PreToolUse",
+              "session_id": "abc",
+              "tool_name": "AskUserQuestion",
+              "tool_input": { "questions": [{ "question": "Which store?" }, { "question": "Which port?" }] }
+            }
+            """)
+            .Events.Should().ContainSingle().Which.Should().BeOfType<QuestionAsked>()
+            .Which.Question.Should().Be("Which store? · Which port?");
+
+    // The badge is the point, so a payload ACT cannot read the question out of still has to produce
+    // the question event rather than fall back to activity.
+    [Fact]
+    public void A_question_with_no_readable_input_is_still_a_question()
+        => Normalize("""
+            { "hook_event_name": "PreToolUse", "session_id": "abc", "tool_name": "AskUserQuestion" }
+            """)
+            .Events.Should().ContainSingle().Which.Should().BeOfType<QuestionAsked>()
+            .Which.Question.Should().BeEmpty();
+
+    // The tool finishing means the user answered it, in the terminal, where the answer lives.
+    [Fact]
+    public void The_question_tool_finishing_is_activity()
+        => Normalize("""
+            { "hook_event_name": "PostToolUse", "session_id": "abc", "tool_name": "AskUserQuestion" }
+            """)
+            .Events.Should().ContainSingle().Which.Should().BeOfType<ActivityObserved>();
+
     // A prompt submitted is how ACT learns a blocked card recovered, since the user acts in the
     // terminal and never tells ACT directly.
     [Fact]
@@ -160,14 +215,18 @@ public class ClaudeCodeHookNormalizerTests
             .Events.Should().ContainSingle().Which.Should().BeOfType<TurnEnded>()
             .Which.Outcome.Should().Be(TurnOutcome.Unknown);
 
+    // Measured live on 2026-07-30 against `claude-code v2.1.220`, and the type is what ACT keys on:
+    // the wording is shared with the question tool's prompt, the type is not shared with the idle
+    // nudge.
     [Fact]
-    public void A_notification_about_permission_is_reported_as_a_waiting_prompt()
+    public void A_permission_prompt_notification_is_reported_as_a_waiting_prompt()
     {
         var result = Normalize("""
             {
               "hook_event_name": "Notification",
               "session_id": "abc",
-              "message": "Claude needs your permission to use Bash"
+              "message": "Claude needs your permission",
+              "notification_type": "permission_prompt"
             }
             """);
 
@@ -175,28 +234,55 @@ public class ClaudeCodeHookNormalizerTests
             .Which.Summary.Should().Contain("permission");
     }
 
-    // Measured live on 2026-07-30: `Notification` also fires an idle nudge with exactly this
-    // message about a minute after a turn ends. It must produce nothing. Treating it as a
-    // permission request overwrites a reviewable card's `to review` with `needs permission` and
-    // nothing to approve; treating it as activity is worse, because an idle nudge means the
-    // opposite of activity and would send a reviewed card back to Executing on its own.
+    // Measured live on the same build: `Notification` also fires an idle nudge about a minute after
+    // a turn ends. It must produce nothing. Treating it as a permission request overwrites a
+    // reviewable card's `to review` with `needs permission` and nothing to approve; treating it as
+    // activity is worse, because an idle nudge means the opposite of activity and would send a
+    // reviewed card back to Executing on its own.
     [Fact]
     public void The_idle_nudge_is_not_a_permission_prompt_and_produces_nothing()
         => Normalize("""
             {
               "hook_event_name": "Notification",
               "session_id": "abc",
-              "message": "Claude is waiting for your input"
+              "message": "Claude is waiting for your input",
+              "notification_type": "idle_prompt"
             }
             """)
             .Events.Should().BeEmpty();
 
+    // Permission wording on an unknown type is still an unknown notification. The type is the
+    // signal, and guessing from the message is what the question tool's prompt already defeats.
     [Fact]
-    public void An_unrecognised_notification_produces_nothing_rather_than_a_guess()
+    public void An_unrecognised_notification_type_produces_nothing_rather_than_a_guess()
         => Normalize("""
+            {
+              "hook_event_name": "Notification",
+              "session_id": "abc",
+              "message": "Claude needs your permission",
+              "notification_type": "something_new"
+            }
+            """)
+            .Events.Should().BeEmpty();
+
+    // A CLI that stops sending the type must not stop reporting permission prompts.
+    [Fact]
+    public void With_no_type_the_message_still_classifies_the_notification()
+    {
+        Normalize("""
+            {
+              "hook_event_name": "Notification",
+              "session_id": "abc",
+              "message": "Claude needs your permission"
+            }
+            """)
+            .Events.Should().ContainSingle().Which.Should().BeOfType<PermissionRequested>();
+
+        Normalize("""
             { "hook_event_name": "Notification", "session_id": "abc", "message": "still working" }
             """)
             .Events.Should().BeEmpty();
+    }
 
     [Fact]
     public void An_unknown_event_normalizes_to_nothing_rather_than_failing()

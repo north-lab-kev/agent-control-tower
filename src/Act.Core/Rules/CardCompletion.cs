@@ -6,8 +6,8 @@ namespace Act.Core.Rules;
 // user's. It is deliberately neither of the other two kinds of move, which is why it gets its own
 // predicate instead of being folded into one of them:
 //
-//   * not a `ManualMove` — nothing is dragged out of a machine column, so a Your turn card still
-//     does not lift, and Completed is reached by an explicit action rather than by a drop;
+//   * not a `ManualMove` — the card is dragged there, but reaching Completed stamps the sign-off and
+//     ends the session, which `BoardState.MoveAsync` neither does nor should;
 //   * not a `RulesEngine` decision — no observed event may ever produce Completed, because a card
 //     nobody has reviewed is not done.
 //
@@ -18,4 +18,7 @@ public static class CardCompletion
 {
     public static bool CanComplete(Card card)
         => !card.IsDeleted && card.Column is BoardColumn.YourTurn;
+
+    public static bool CanCompleteInto(Card card, BoardColumn target)
+        => target is BoardColumn.Completed && CanComplete(card);
 }

@@ -76,8 +76,8 @@ verifiable, and leaves something runnable.
   created, reopened for editing, and dragged between the two human columns, with
   every change persisted.
   - [x] **Creation** — new-task modal with the full control set (title, prompt,
-    dir, agent, model, effort, permission mode, schedule, auto-complete,
-    auto-git; tools / flags / env behind *Advanced*), required-field validation,
+    dir, agent, model, effort, permission mode, schedule; tools / flags / env
+    behind *Advanced*), required-field validation,
     single Save → card lands in Preparing with a freshly minted number. A
     `BoardState` service owns the card list and raises `Changed`, so the board
     updates live. `model` / `effort` now come through `IAgentCapabilityCatalog`
@@ -141,6 +141,13 @@ verifiable, and leaves something runnable.
     `DesktopHandoff`, and both requests carry a `TerminalSize` (a pty must be sized
     at spawn). Disposal now **ends** the session rather than being a between-turns
     teardown.
+  - **Revised again 2026-07-30 — the `.act/` file contract is gone.** What this step
+    shipped as the agent↔ACT contract (`ActContract`, `AgentPreamble`, and the
+    `Preamble` field on both launch requests) is being deleted: the status file went
+    with auto-completion, and follow-ups become an MCP tool at step 12. The seam is
+    otherwise unchanged — this removes a convention, not a port. Step 8 item 3 does
+    the deletion; the reasoning is in the spec's *Agent ↔ ACT contract* and *There is
+    no completion signal*.
 - [x] **7. Launch under an embedded PTY — Claude Code + Codex** — Ready → Executing
   spawns each agent's **interactive TUI** under a pseudo-terminal ACT owns, with a
   pre-minted `--session-id` and the **injected preamble** (so the agent knows the
@@ -211,9 +218,9 @@ verifiable, and leaves something runnable.
       idle for as long as the user took to decide. Regression-guarded in
       `ClaudeCodeAdapterTests` — prompt positional, and nothing written at launch.
 - [ ] **8. Ingestion — observability only** — normalized event stream fed per
-  adapter (Claude: http hooks + files + process; **Codex: files + process only** — its
-  hooks do not fire on the current CLI, see *Codex hook findings*), over a localhost hook
-  endpoint with a **per-session token**.
+  adapter (Claude: http hooks + transcript + process; **Codex: transcript + process only**
+  — its hooks do not fire on the current CLI, see *Codex hook findings*), over a localhost
+  hook endpoint with a **per-session token**.
   **Includes the hook config injection itself** — Claude's `--settings` file and Codex's
   `--profile` layer — which step 7 deliberately left out: a settings file pointing at a
   hook host that does not exist yet buys nothing and only risks clobbering the user's own
@@ -257,6 +264,64 @@ verifiable, and leaves something runnable.
       settings file is per task because it carries the token; Codex's forwarder and hooks
       json are **shared**, because the forwarder path appears inside the definition Codex
       hashes — a per-task path would mean a trust prompt for every card ever created.
+  - **To finalize step 8 — seven items, in this order.** Two of them are decisions that
+    change where later code lives, so they come first.
+    - [ ] **1. Decide what `IIngestionSource` is for, or delete it.** The port has **zero
+      implementations**: hook events arrive by *push* through `IAgentEventSink` →
+      `SessionEventSink` → `PtyAgentSession.Publish`, and the process signals are raised by
+      the session itself. Meanwhile `PtyAgentSession`'s own comment says the adapter decides
+      "which ingestion sources to compose" and hands them in — and its constructor takes
+      none. That drift has to be settled before the transcript tailer is written, because it
+      decides whether the tailer is a composed `IIngestionSource` (pull) or another publisher
+      (push). Recommendation: make the transcript source the first real implementation and
+      have the adapter hand it in, which is what the design says and what a second one
+      (Codex's rollout tail) will want anyway.
+    - [ ] **2. Collapse `TurnOutcome`.** `TurnEnded` carries `Outcome` and `Question` fed by
+      the status file that no longer exists, and `TurnOutcome.Unknown`'s comment describes
+      reading it. Delete the enum and both fields: a `Stop` is a turn end, full stop, and the
+      question case is already its own `QuestionAsked` event carrying text no status file ever
+      had.
+    - [x] **3. Delete the preamble and the `.act/` contract.** ✅ Landed. `AgentPreamble`,
+      `ActContract` and their two test classes are gone, `Preamble` is off both launch
+      requests, and each adapter passes `request.InitialPrompt` verbatim — so **the opening
+      prompt is now the user's task text alone**, removing the largest and most quote-dense
+      part of the launch argument. `autoComplete` / `AutoGitOptions` / `GitAction` went with
+      it (card model, `CardDuplicate`, `NewTaskForm`, the task page's Automation fieldset,
+      the flight-strip chip, ten resx entries across both languages, one store fixture).
+      The two adapter regression guards were rewritten from "carries the preamble" to
+      **"is the task text alone"**, which is the stronger assertion. 332 tests green; the
+      task form and board verified in a real browser with no console errors.
+    - [ ] **4. Transcript source — the one missing ingestion source, and the biggest item.**
+      `SessionEnriched` has **no producer**, so `MetricsProjection.Merge` is unreachable and
+      every enrichment field is permanently empty: observed model, tokens in/out, context
+      used/limit, last message. Step 8's own "card shows live metrics" is not met without it.
+      Tail the session's JSONL transcript and emit `SessionEnriched` snapshots (null means
+      "no news", which the projection already handles). **Take `transcript_path` and `cwd`
+      off whichever hook payload arrives first, not off `SessionStart`** — that one was never
+      observed arriving (see the open question below), and every Claude payload carries both.
+    - [ ] **5. Idle watchdog — `NoActivityElapsed` has no producer.** `RulesEngine` already
+      routes it to `stale`; nothing raises it. Same shape as the `StartupPromptWaiting` timer
+      already in `PtyAgentSession`, but recurring and keyed off `Metrics.LastActivityAt`.
+      Decide the threshold and whether it re-arms after firing (it should: `stale` is a
+      heads-up, not a terminal state, and the card stays in Executing).
+    - [ ] **6. Codex session binding — `sessionId` is null forever today.** `CodexAdapter`
+      passes `sessionId: null` and **nothing ever calls `Bind`**, so every Codex event
+      publishes `SessionId ?? string.Empty` and resume is impossible. Watch for the rollout
+      file whose `cwd` and start time match the launch just made
+      (`~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<uuid>.jsonl`, indexed by
+      `session_index.jsonl`) and bind from it. This is the same tailer as item 4, which is
+      why they share a step.
+    - [ ] **7. Codex turn boundaries and activity from the rollout.** With hooks dormant the
+      transcript source does double duty for Codex: binding, activity, turn end, enrichment.
+      **Accept the gap explicitly** — until a CLI build fires hooks, a Codex card can show
+      `running` / metrics / `to review` / `error` / `stale`, but will **never** badge
+      `needs permission` or `needs answer`, because no file or process signal reports a
+      waiting prompt. Step 8's verify line has to say so rather than imply parity.
+  - **Verify (revised):** for **Claude Code** — live state and metrics update, and a
+    permission prompt in the terminal raises the badge without ACT touching the prompt
+    (both already observed live). For **Codex** — the card binds its session id from the
+    rollout file, and shows live state and metrics; no permission/question badge, by
+    measured CLI limitation.
   - **Open questions for this step** (each decides a fallback, so settle them first):
     - ✅ **`--settings` accepts `type: "http"` hooks, and they carry a custom header —
       verified live.** The token rides `x-act-hook-token`; posts authorized. So Claude needs
@@ -277,9 +342,21 @@ verifiable, and leaves something runnable.
       of activity and would send a reviewed card back to Executing by itself.
     - ✅ **A real permission prompt reports as `Claude needs your permission`** — observed
       2026-07-30, once the prompt-truncation fix let an agent actually start work and hit a write
-      gate. The classifier keys on "permission" / "approve", so it routed correctly: the card
-      moved to Your turn with `needs permission`, from a prompt ACT never touched. Both
-      halves of the `Notification` question are now measured rather than assumed.
+      gate. The card moved to Your turn with `needs permission`, from a prompt ACT never
+      touched. Both halves of the `Notification` question are now measured rather than assumed.
+    - ✅ **`Notification` carries `notification_type`, and the message never had to be
+      guessed at** — captured 2026-07-30 by logging raw payloads at the endpoint on
+      `claude-code v2.1.220`: `permission_prompt` for a waiting prompt, `idle_prompt` for the
+      nudge. The classifier keys on that field now, and keeps the "permission" / "approve"
+      substring check only as a fallback for a payload without it.
+    - ✅ **`AskUserQuestion` is announced as a permission prompt, and only `PreToolUse` knows
+      better** — measured the same way. Its `Notification` is byte-for-byte a `Bash`
+      approval's, so **a question to the user was badged `needs permission`**. The fix keys on
+      `tool_name` — that one `PreToolUse` normalizes to a question and carries the text from
+      `tool_input.questions[]`, which no notification has — and the rules engine drops the
+      permission notice that follows, since it describes the same block and says less. Verified
+      live: an `AskUserQuestion` card lands on `needs answer`, a `Bash` approval on
+      `needs permission`.
     - ✅ **Codex hooks — tested, and they do not fire at all** on `0.146.0-alpha.3.1`; see
       *Codex hook findings*. This answers the two Codex questions that were here (env
       expansion, `--profile` layering) by making them moot for now, and **changes this
@@ -288,8 +365,8 @@ verifiable, and leaves something runnable.
       *no* event-based permission report either — for now both agents depend on what the
       files and the process can tell ACT.
 - [ ] **9. Rules engine** — agent-agnostic: normalized events → column/badge
-  transitions; status-file convention (`ready_for_review` / `needs_input`) routes
-  Executing → Your turn with the badge the status file picks; `error`/`stale` from
+  transitions; a turn end (`Stop`) routes Executing → Your turn with `to review`;
+  `error`/`stale` from
   process signals; **observed** permission/question in, and **observed activity**
   (`UserPromptSubmit`) as the one way out of Your turn — the recovery and the
   send-back are the same event, since the user acts in the terminal and ACT only
@@ -306,9 +383,11 @@ verifiable, and leaves something runnable.
     moved by any event.
     Verified live: a launched card walked Ready → Executing (`running`) → Your turn
     (`to review`) on its own, with the turn count landing on the strip.
-  - **Still step 9's to finish:** the outcomes that need sources step 8 has not built yet
-    (`ready_for_review` / `needs_input` need the status-file source, `stale` needs the
-    watchdog), and the `Notification` classification below.
+  - **Still step 9's to finish:** `stale`, which needs step 8's idle watchdog to have a
+    producer for `NoActivityElapsed`. **That is now the only one** — the
+    `ready_for_review` / `needs_input` outcomes were deleted with the status file (see the
+    spec's *There is no completion signal*), and the `Notification` classification below
+    landed with step 8.
 - [ ] **10. Session view + card actions — both adapters** — the full session view
   (terminal + right rail: identity, cwd, agent/model, context %, cost, turns;
   back-to-board) and the drawer's **read-only** blocked-card presentation with
@@ -319,27 +398,80 @@ verifiable, and leaves something runnable.
 
 ## Phase 4 — Completion & lineage
 
-- [ ] **11. Complete + reopen + auto-complete** — Your turn → Completed and
-  reopen; `autoComplete` and in-session `autoGit`. *Verify:* clean-finish tasks
-  self-complete; reopen resumes.
+- [ ] **11. Complete + reopen** — Your turn → Completed and reopen. *Verify:* a
+  signed-off task lands in Completed; reopen resumes.
+  - **Auto-complete and in-session `autoGit` were cut on 2026-07-30** — see the
+    spec's *No auto-completion*. Completion is always the user's drag, so this step
+    is now just the two manual transitions, and nothing in ACT needs the agent to
+    assert that it finished.
   - [x] **Your turn → Completed, brought forward.** `Act.Core/Rules/CardCompletion` is the
-    predicate (its own rule, because completing is neither a `ManualMove` — a machine column
-    still refuses every drop — nor something an event may decide), and
-    `Act.App/Sessions/CardCompleter` is the action, the mirror of `SessionLauncher`. It stamps
+    predicate (its own rule, because reaching Completed stamps the sign-off and ends the session,
+    which `BoardState.MoveAsync` neither does nor should — and because no event may decide it),
+    and `Act.App/Sessions/CardCompleter` is the action, the mirror of `SessionLauncher`. It stamps
     and persists the card *before* tearing the terminal down, so the `SessionKilled` the dying
     pty reports lands on a card the engine no longer governs. The gate is the **column**, so
-    every card in Your turn can be signed off, `error` and `killed` included. Offered on the
-    strip (spacious, beside where Launch sits) and in the session view's rail, which also now
-    follows `BoardState.Changed` — a turn ending is what puts the sign-off in reach, and the
-    rail's badge and numbers were going stale in front of the user.
+    every card in Your turn can be signed off, `error` and `killed` included.
     Verified live: a launched card walked to Your turn and was signed off from both surfaces —
     Completed, badge `done`, `Marked completed` on the timeline, agent process gone.
-  - **Still step 11's to finish:** reopen (Completed → Your turn), `autoComplete`,
-    in-session `autoGit`, and the completion/git modal — completing is a plain action for now,
-    with no prompt and no spawned git task.
-- [ ] **12. Spawning & lineage** — `.act/followups/` ingestion, parent/children,
-  the git-on-completion spawned task. *Verify:* a task spawns tracked follow-ups
-  with correct lineage.
+  - [x] **The sign-off is a drag, not a button.** A Your turn card now lifts (`ManualMove.CanDrag`)
+    and Completed is its only legal drop (`CardCompletion.CanCompleteInto`), which `BoardView`
+    routes to `CardCompleter` rather than to `MoveAsync`. The strip's Complete button is gone —
+    the board has one gesture for moving a card — and the session view keeps its rail action for
+    a card you are already inside.
+  - **Still step 11's to finish:** reopen (Completed → Your turn), and the completion/git
+    modal — completing is a plain action for now, with no prompt and no spawned git task.
+- [ ] **12. Spawning & lineage — an MCP server** — the `create_followup` tool,
+  parent/children, the git-on-completion spawned task. *Verify:* a real agent calls the
+  tool mid-session and a tracked child card appears in Ready with correct lineage, on both
+  agents.
+  - **Decided 2026-07-30: one MCP tool, not a file and not a curl command.** The whole
+    agent→ACT contract is this one tool; the `.act/followups/` file mechanism was dropped
+    with the status file. Rationale (payload shape, grant width, sandbox avoidance,
+    instruction decay, simpler `dependsOn`) is in the spec's *Agent ↔ ACT contract* — read
+    it before building, it is the design.
+  - [ ] **Host it on the kept hook port, streamable HTTP, at `/mcp`.** Not stdio: stdio
+    means one child process per session, and ACT has already paid once for leaking a
+    process per session (the `conhost` bug at step 7). The Kestrel listener, the kept port
+    and the per-session token all exist — this is a third route family beside
+    `/hooks/claude` and `/hooks/codex`, and it reuses `x-act-hook-token` and the same
+    task-resolution path as `SessionEventSink`.
+  - [ ] **One tool, one namespace.** `create_followup` under server name `act`, so the
+    pre-allow entry reads `mcp__act__create_followup`. Arguments
+    `{ title, prompt, cwd?, dependsOn? }`; returns the minted `number` and `id`.
+    **No `parentId` argument** — the token identifies the calling task, so an agent
+    cannot spawn onto another card. That is also why the config file carrying the token
+    must be per launch, never shared.
+  - [ ] **Config injection per adapter**, mirroring what the hook config already does:
+    Claude via `--mcp-config <path>` (per-launch file, alongside `act-settings.json`) plus
+    `permissions.allow: ["mcp__act__create_followup"]` in the generated `--settings` so
+    there is no approval prompt; Codex via `mcp_servers` layered through ACT's `--profile`.
+  - [ ] **Dependency: the C# MCP SDK** — expected MIT, so check the license and add it to
+    `THIRD-PARTY-NOTICES.md` before it lands (same discipline as `Porta.Pty` / xterm).
+  - [ ] **Dead code to remove:** the `FollowUpsWritten` event, which has neither a producer
+    nor a consumer and described the file mechanism.
+  - **Open questions — each decides a fallback, settle before building:**
+    - ⚠️ **Does Codex's `mcp_servers` support streamable HTTP *with custom headers*?** It
+      was stdio-only historically. If not, the fallbacks are (a) an ACT-shipped stdio
+      shim that forwards to the loopback endpoint, or (b) the token in the URL path
+      rather than a header — which then must not be logged.
+    - ⚠️ **Can a per-launch MCP config coexist with Codex's byte-stable profile?** The
+      hook-trust hash covers hook definitions, not `mcp_servers`, so a per-launch profile
+      *should* be safe — but that is inference from the hook findings, not a measurement.
+      If it is not safe, the stdio shim above solves it too, since a fixed shim path is
+      byte-stable and the token can ride the process env.
+    - ⚠️ **Does an MCP tool call really escape both sandboxes?** The premise is that the
+      CLI's own process makes the MCP connection, so Codex's `workspace-write` network
+      block and Claude's bash sandbox never apply. Measure it — it is the main reason the
+      tool was chosen over a `curl` command.
+    - ⚠️ **Does Claude Code's MCP approval respect `permissions.allow` from `--settings`
+      for an `mcp__*` tool id?** If not, the first follow-up per session costs an
+      approval prompt, which is tolerable but should be a known cost rather than a
+      surprise.
+    - ⚠️ **Do either CLI surface an MCP server's `instructions` to the model?** Not
+      load-bearing — the tool description carries everything needed, and ACT injects no
+      preamble by design (see the spec's *ACT does not announce the tool*). It decides
+      only where any future framing would live if it is ever wanted, so it is worth one
+      look while the server is being built rather than a separate investigation later.
 
 ## Phase 5 — Automation (on a proven base)
 
@@ -389,12 +521,16 @@ verifiable, and leaves something runnable.
     `claude` / `codex` is looked for in the working directory and fails. Resolution
     lives in `Act.Infrastructure/Terminal/ExecutableResolver` — the one layer allowed
     to know about `PATHEXT`.
-  - **Both agents open with a directory-trust prompt** on a working directory they
+  - ✅ **Both agents open with a directory-trust prompt** on a working directory they
     have not seen before ("Do you trust the contents of this directory?" /
     "Is this a project you created or one you trust?"), *before* the session starts.
-    ACT must not treat that first screen as a hang, and the card should say what is
-    waiting. It is answered in the terminal like everything else — but note it gates
-    project-local config and hooks on Codex, so it is load-bearing for step 8.
+    **Resolved:** measured on 2026-07-30 that *no* hook fires while it is up — not
+    even `SessionStart` — against ~0.8 s to the first hook in a directory the CLI
+    already trusts. So the process source reports the silence: no hook within an 8 s
+    startup grace publishes `StartupPromptWaiting`, and the card goes to Your turn
+    with `needs permission`. It is answered in the terminal like everything else, and
+    the resulting activity brings the card back — but note it gates project-local
+    config and hooks on Codex, so it is load-bearing for step 8.
 - ✅ **`claude://resume?session=<uuid>` — verified** by the prototype against the
   desktop app's own `app.asar` (v1.24012.9.0): it validates a canonical UUID and
   calls `importCliSession`. Parameter is `session`, not `sessionId`; no `cwd` is

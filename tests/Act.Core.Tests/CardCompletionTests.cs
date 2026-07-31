@@ -47,8 +47,21 @@ public class CardCompletionTests
         CardCompletion.CanComplete(card).Should().BeFalse();
     }
 
-    // The two halves of the human-controlled model must not overlap: completing is an action on a
-    // machine column, and a machine column still refuses every drop.
+    [Fact]
+    public void The_sign_off_is_the_drop_onto_completed()
+        => CardCompletion.CanCompleteInto(CardIn(BoardColumn.YourTurn), BoardColumn.Completed)
+            .Should().BeTrue();
+
+    [Theory]
+    [InlineData(BoardColumn.Preparing)]
+    [InlineData(BoardColumn.Ready)]
+    [InlineData(BoardColumn.Executing)]
+    [InlineData(BoardColumn.YourTurn)]
+    public void No_other_column_signs_a_card_off(BoardColumn target)
+        => CardCompletion.CanCompleteInto(CardIn(BoardColumn.YourTurn), target).Should().BeFalse();
+
+    // The two halves of the human-controlled model must not overlap: the drop onto Completed stamps
+    // the card and ends its session, so it must never be reachable as a plain move.
     [Fact]
     public void Completing_is_not_a_manual_move()
         => ManualMove.IsAllowed(BoardColumn.YourTurn, BoardColumn.Completed).Should().BeFalse();

@@ -155,36 +155,6 @@ else
                             </div>
                             <RadzenRequiredValidator Component="ScheduledFor" Text="@Strings.NewTask_Required" />
                         }
-
-                        <div class="row">
-                            <RadzenStack Gap="0.1rem">
-                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AutoComplete" />
-                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_AutoComplete_Hint" class="hint" />
-                            </RadzenStack>
-                            <RadzenSwitch Value="form.AutoComplete" ValueChanged="OnAutoCompleteChanged" />
-                        </div>
-
-                        @if (form.AutoComplete)
-                        {
-                            <div class="row">
-                                <RadzenStack Gap="0.1rem">
-                                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AutoGit" />
-                                    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_AutoGit_Hint" class="hint" />
-                                </RadzenStack>
-                                <RadzenDropDown TValue="GitAction?" @bind-Value="form.SelectedGitAction"
-                                                Data="GitChoices" TextProperty="Text" ValueProperty="Value"
-                                                AllowClear="true" Placeholder="@Strings.NewTask_NoGitAction"
-                                                class="control" />
-                            </div>
-
-                            @if (form.SelectedGitAction is GitAction.PullRequest)
-                            {
-                                <div class="row">
-                                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Draft" />
-                                    <RadzenSwitch @bind-Value="form.Draft" />
-                                </div>
-                            }
-                        }
                     </RadzenStack>
                 </RadzenFieldset>
 

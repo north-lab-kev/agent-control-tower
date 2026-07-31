@@ -26,10 +26,6 @@ public sealed class Card
 
     public DateTimeOffset? ScheduledFor { get; set; }
 
-    public bool AutoComplete { get; set; }
-
-    public AutoGitOptions? AutoGit { get; set; }
-
     public TaskOrigin Origin { get; set; }
 
     public Guid? ParentId { get; set; }

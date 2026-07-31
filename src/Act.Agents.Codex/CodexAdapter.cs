@@ -65,7 +65,7 @@ public sealed class CodexAdapter(
             request.Config,
             request.Size,
             leadingArguments: [],
-            prompt: $"{request.Preamble}\n\n{request.InitialPrompt}",
+            prompt: request.InitialPrompt,
             cancellationToken);
 
     public Task<IAgentSession> ResumeAsync(

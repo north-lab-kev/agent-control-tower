@@ -62,6 +62,69 @@ public class RulesEngineTests
         move.Message.Should().Be("which database?");
     }
 
+    // Claude Code prompts for its question tool the way it prompts for any other, so the generic
+    // permission notice arrives a beat after the question and describes the same block. Left alone it
+    // would replace `needs answer` with `needs permission` and nothing to approve.
+    [Fact]
+    public void A_permission_request_does_not_overwrite_an_unanswered_question()
+        => RulesEngine.Decide(
+                CardIn(BoardColumn.YourTurn, Badge.NeedsAnswer),
+                new PermissionRequested(SessionId, At, "req-1", "Claude needs your permission"))
+            .Should().BeNull();
+
+    // Everything else the card may be waiting on says less than a permission prompt does, so the
+    // prompt still wins — including the review badge, which is where the idle-nudge bug used to land.
+    [Theory]
+    [InlineData(BoardColumn.Executing, Badge.Running)]
+    [InlineData(BoardColumn.Executing, Badge.Stale)]
+    [InlineData(BoardColumn.YourTurn, Badge.ReadyForReview)]
+    [InlineData(BoardColumn.YourTurn, Badge.NeedsPermission)]
+    public void A_permission_request_still_blocks_every_other_card(BoardColumn column, Badge badge)
+        => RulesEngine.Decide(
+                CardIn(column, badge),
+                new PermissionRequested(SessionId, At, "req-1", "run a shell command"))!
+            .Badge.Should().Be(Badge.NeedsPermission);
+
+    // The directory-trust prompt blocks before the session exists, so no hook reports it and the
+    // card would otherwise sit in Executing claiming to run while the CLI waits on a keypress.
+    [Fact]
+    public void A_silent_launch_is_reported_as_the_startup_prompt()
+    {
+        var move = RulesEngine.Decide(CardIn(BoardColumn.Executing), new StartupPromptWaiting(SessionId, At));
+
+        move!.Column.Should().Be(BoardColumn.YourTurn);
+        move.Badge.Should().Be(Badge.NeedsPermission);
+        move.Reason.Should().Be(TransitionReason.StartupPrompt);
+    }
+
+    // Silence says less than anything the agent itself reported, and a restored card is sitting in
+    // Your turn precisely because the rules put it there. Neither may be overwritten by a guess.
+    [Theory]
+    [InlineData(Badge.ReadyForReview)]
+    [InlineData(Badge.NeedsAnswer)]
+    [InlineData(Badge.Killed)]
+    public void The_startup_prompt_never_disturbs_a_card_already_in_your_turn(Badge badge)
+        => RulesEngine.Decide(CardIn(BoardColumn.YourTurn, badge), new StartupPromptWaiting(SessionId, At))
+            .Should().BeNull();
+
+    // Recovery needs no rule of its own: the answer starts the session, and the session's first
+    // hook is activity.
+    [Fact]
+    public void Answering_the_startup_prompt_comes_back_as_activity()
+        => RulesEngine.Decide(
+                CardIn(BoardColumn.YourTurn, Badge.NeedsPermission),
+                new ActivityObserved(SessionId, At))!
+            .Column.Should().Be(BoardColumn.Executing);
+
+    // The recovery half of the pair: the tool finishing is the user having answered, and it has to
+    // move the card back out even though a permission request no longer can.
+    [Fact]
+    public void Activity_still_recovers_a_card_holding_a_question()
+        => RulesEngine.Decide(
+                CardIn(BoardColumn.YourTurn, Badge.NeedsAnswer),
+                new ActivityObserved(SessionId, At, "AskUserQuestion"))!
+            .Badge.Should().Be(Badge.Running);
+
     // Every outcome lands in the same column now, so the badge is the whole answer: the status file
     // decides what the card says it needs, not where it goes.
     [Theory]
@@ -237,6 +300,7 @@ public class RulesEngineTests
         new SessionEnriched(SessionId, At, new EnrichmentSnapshot()),
         new NoActivityElapsed(SessionId, At, TimeSpan.FromHours(2)),
         new FollowUpsWritten(SessionId, At, ["001.json"]),
+        new StartupPromptWaiting(SessionId, At),
     ];
 
     private static Card CardIn(BoardColumn column, Badge? badge = null)

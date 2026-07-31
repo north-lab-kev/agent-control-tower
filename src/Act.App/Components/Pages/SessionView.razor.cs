@@ -1,10 +1,10 @@
 using Act.App.Cards;
+using Act.App.Desktop;
 using Act.App.Resources;
 using Act.App.Sessions;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
-using ElectronNET.API;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using Radzen;
@@ -22,6 +22,7 @@ public partial class SessionView(
     IEnumerable<IAgentAdapter> adapters,
     NavigationManager navigation,
     NotificationService notifications,
+    IDesktopBridge desktop,
     IJSRuntime js) : IAsyncDisposable
 {
     private readonly string terminalId = $"act-term-{Guid.NewGuid():N}";
@@ -276,25 +277,7 @@ public partial class SessionView(
         live = false;
     }
 
-    // A `claude://` url is for the OS to route, not for a browser to load — and under Electron
-    // `window.open` takes that literally: the scheme launches the desktop app, and the
-    // `BrowserWindow` it opened to get there stays behind, blank and titled "Electron". The shell
-    // API hands the url to the OS with no window in between.
-    //
-    // Browser mode keeps `window.open` because there is no shell to ask. Whether the browser tidies
-    // up the tab it opens is the browser's business and varies; the desktop shell is where ACT
-    // actually runs, and it is the one that was leaving a window behind.
-    private async Task OpenDesktopAsync(string url)
-    {
-        if (HybridSupport.IsElectronActive)
-        {
-            await Electron.Shell.OpenExternalAsync(url);
-
-            return;
-        }
-
-        await js.InvokeVoidAsync("open", url, "_blank");
-    }
+    private Task OpenDesktopAsync(string url) => desktop.OpenExternalAsync(url);
 
     private void BackToBoard() => navigation.NavigateTo("/");
 

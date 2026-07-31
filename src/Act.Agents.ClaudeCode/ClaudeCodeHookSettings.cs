@@ -15,8 +15,9 @@ public static class ClaudeCodeHookSettings
     public const string FileName = "act-settings.json";
 
     // `Notification` is load-bearing rather than incidental: it is the only signal that reports a
-    // permission prompt now that ACT does not read the screen. What it actually fires for on a
-    // given CLI build is still unconfirmed — see the roadmap's step 8 open questions.
+    // permission prompt now that ACT does not read the screen. `PreToolUse` is load-bearing for the
+    // same reason — a question to the user reaches ACT only as the tool about to run, never as the
+    // notification. See the normalizer for what each one is measured to carry.
     private static readonly string[] Events =
     [
         "SessionStart",

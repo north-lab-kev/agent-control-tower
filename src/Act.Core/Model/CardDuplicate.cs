@@ -17,10 +17,6 @@ public static class CardDuplicate
         LaunchConfig = card.LaunchConfig.Copy(),
         Schedule = card.Schedule,
         ScheduledFor = card.ScheduledFor,
-        AutoComplete = card.AutoComplete,
-        AutoGit = card.AutoGit is { } git
-            ? new AutoGitOptions { Action = git.Action, Draft = git.Draft }
-            : null,
         Column = BoardColumn.Preparing,
         Origin = TaskOrigin.Manual,
         CreatedAt = createdAt,

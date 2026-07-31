@@ -45,6 +45,15 @@ public static class RulesEngine
                 Badge.Running,
                 TransitionReason.CompactingFinished),
 
+            // A permission request is not news to a card already holding an unanswered question, and
+            // it says strictly less: the question names what the user is being asked, a permission
+            // notice only that *something* is waiting. Claude Code prompts for its question tool the
+            // way it prompts for any other, so both events describe the same block and the generic
+            // one arrives second — unsuppressed it would replace `needs answer` with `needs
+            // permission` and nothing to approve. Nothing legitimate is lost: the agent is stopped
+            // until the user answers in the terminal, and that answer comes back as activity.
+            PermissionRequested when card.Badge is Badge.NeedsAnswer => null,
+
             // Observed, never answered: the card reports that the TUI is waiting and shows a
             // read-only summary. Allowed from any machine column — a session that asks is a session
             // that is alive and blocked, wherever the board currently has it.
@@ -53,6 +62,17 @@ public static class RulesEngine
                 Badge.NeedsPermission,
                 TransitionReason.PermissionRequested,
                 Message: permission.Summary),
+
+            // The pre-session prompt, and the only rule that fires on something *not* happening: a
+            // CLI parked on its directory-trust screen has produced no hook to report it. Executing
+            // only — a restore deliberately leaves a card where the rules last had it, and a card
+            // already in Your turn is blocked on something the agent named, which says more than
+            // this does. Recovery needs no rule of its own: answering the prompt lets the session
+            // start, and its first hook arrives as activity.
+            StartupPromptWaiting when card.Column is BoardColumn.Executing => new BoardMove(
+                BoardColumn.YourTurn,
+                Badge.NeedsPermission,
+                TransitionReason.StartupPrompt),
 
             QuestionAsked question => new BoardMove(
                 BoardColumn.YourTurn,

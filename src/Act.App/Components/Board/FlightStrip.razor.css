@@ -143,22 +143,6 @@
     --attn: var(--act-review);
 }
 
-.strip.attn::after {
-    content: "!";
-    position: absolute;
-    top: 6px;
-    right: 8px;
-    font-family: var(--act-mono);
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--attn);
-    z-index: 2;
-}
-
-.strip.attn.rev::after {
-    content: "\2713";
-}
-
 @keyframes act-attn {
     0%, 100% {
         box-shadow: 0 0 0 1px color-mix(in srgb, var(--attn) 14%, transparent),

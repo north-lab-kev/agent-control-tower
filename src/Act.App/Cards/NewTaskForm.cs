@@ -25,12 +25,6 @@ public sealed record NewTaskForm
 
     public DateTime? ScheduledFor { get; set; }
 
-    public bool AutoComplete { get; set; }
-
-    public GitAction? SelectedGitAction { get; set; }
-
-    public bool Draft { get; set; }
-
     public string AllowedTools { get; set; } = string.Empty;
 
     public string DisallowedTools { get; set; } = string.Empty;
@@ -52,9 +46,6 @@ public sealed record NewTaskForm
         Permission = card.LaunchConfig.PermissionMode,
         Schedule = card.Schedule ?? TaskSchedule.Manual,
         ScheduledFor = card.ScheduledFor?.LocalDateTime,
-        AutoComplete = card.AutoComplete,
-        SelectedGitAction = card.AutoGit?.Action,
-        Draft = card.AutoGit?.Draft ?? false,
         AllowedTools = Joined(card.LaunchConfig.AllowedTools),
         DisallowedTools = Joined(card.LaunchConfig.DisallowedTools),
         ExtraFlags = Joined(card.LaunchConfig.ExtraFlags),
@@ -86,8 +77,6 @@ public sealed record NewTaskForm
         card.AgentType = Agent;
         card.Schedule = Schedule;
         card.ScheduledFor = ScheduledAt();
-        card.AutoComplete = AutoComplete;
-        card.AutoGit = GitOptions();
         card.LaunchConfig = new LaunchConfig
         {
             AgentBinary = card.LaunchConfig.AgentBinary,
@@ -110,11 +99,6 @@ public sealed record NewTaskForm
 
     private static string JoinedEnvironment(IEnumerable<KeyValuePair<string, string>> variables)
         => string.Join('\n', variables.Select(variable => $"{variable.Key}={variable.Value}"));
-
-    private AutoGitOptions? GitOptions()
-        => AutoComplete && SelectedGitAction is { } action
-            ? new AutoGitOptions { Action = action, Draft = Draft && action is GitAction.PullRequest }
-            : null;
 
     private static string? Cleaned(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

@@ -45,14 +45,13 @@ public class CodexAdapterTests
     }
 
     [Fact]
-    public async Task The_opening_prompt_is_positional_and_carries_the_preamble()
+    public async Task The_opening_prompt_is_positional_and_is_the_task_text_alone()
     {
         var pty = new StubPtyHost();
 
         await using var session = await LaunchAsync(pty);
 
-        pty.Last.Arguments[^1].Should().Contain("do the thing");
-        pty.Last.Arguments[^1].Should().Contain(Act.Core.Agents.ActContract.RelativeStatusDirectory);
+        pty.Last.Arguments[^1].Should().Be("do the thing");
     }
 
     [Fact]
@@ -132,7 +131,6 @@ public class CodexAdapterTests
             TaskId,
             "019ea722-d3f0-7563-b3cd-8ac7fb3f9a69",
             "C:/repo",
-            AgentPreamble.Compose(TaskId),
             "do the thing",
             null,
             new LaunchConfig(),
@@ -164,7 +162,6 @@ public class CodexAdapterTests
             TaskId,
             "ignored-by-codex",
             "C:/repo",
-            AgentPreamble.Compose(TaskId),
             "do the thing",
             config ?? new LaunchConfig(),
             TerminalSize.Default));

@@ -84,24 +84,6 @@
   <data name="NewTask_DateFormat" xml:space="preserve">
     <value>yyyy-MM-dd HH:mm</value>
   </data>
-  <data name="NewTask_AutoComplete" xml:space="preserve">
-    <value>Clôture automatique</value>
-  </data>
-  <data name="NewTask_AutoComplete_Hint" xml:space="preserve">
-    <value>Termine seule, sans révision, après une exécution propre.</value>
-  </data>
-  <data name="NewTask_AutoGit" xml:space="preserve">
-    <value>Git à la clôture</value>
-  </data>
-  <data name="NewTask_AutoGit_Hint" xml:space="preserve">
-    <value>Exécuté dans la session, avant la clôture de la tâche.</value>
-  </data>
-  <data name="NewTask_NoGitAction" xml:space="preserve">
-    <value>aucune</value>
-  </data>
-  <data name="NewTask_Draft" xml:space="preserve">
-    <value>Pull request brouillon</value>
-  </data>
   <data name="NewTask_AllowedTools" xml:space="preserve">
     <value>Outils autorisés</value>
   </data>
@@ -180,15 +162,6 @@
   <data name="ScheduleOption_DateTime" xml:space="preserve">
     <value>date et heure précises</value>
   </data>
-  <data name="GitAction_Commit" xml:space="preserve">
-    <value>commit</value>
-  </data>
-  <data name="GitAction_Push" xml:space="preserve">
-    <value>commit + push</value>
-  </data>
-  <data name="GitAction_PullRequest" xml:space="preserve">
-    <value>commit + push + PR</value>
-  </data>
   <data name="Column_Preparing" xml:space="preserve">
     <value>Préparation</value>
   </data>
@@ -266,9 +239,6 @@
   </data>
   <data name="Card_Children" xml:space="preserve">
     <value>{0} enfants ⤵</value>
-  </data>
-  <data name="Card_AutoComplete" xml:space="preserve">
-    <value>clôture auto</value>
   </data>
   <data name="Agent_ClaudeCode" xml:space="preserve">
     <value>claude</value>
@@ -410,9 +380,6 @@
   </data>
   <data name="Board_Launch" xml:space="preserve">
     <value>Démarrer maintenant</value>
-  </data>
-  <data name="Board_Complete" xml:space="preserve">
-    <value>Terminer</value>
   </data>
   <data name="Session_Complete" xml:space="preserve">
     <value>Marquer terminé</value>
@@ -602,6 +569,9 @@
   </data>
   <data name="Transition_CompactingFinished" xml:space="preserve">
     <value>Compactage terminé</value>
+  </data>
+  <data name="Transition_StartupPrompt" xml:space="preserve">
+    <value>En attente de l&apos;invite de démarrage de la CLI</value>
   </data>
   <data name="Card_Surface_Timeline" xml:space="preserve">
     <value>Historique</value>

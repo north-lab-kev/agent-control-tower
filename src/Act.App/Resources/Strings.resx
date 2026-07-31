@@ -84,24 +84,6 @@
   <data name="NewTask_DateFormat" xml:space="preserve">
     <value>yyyy-MM-dd HH:mm</value>
   </data>
-  <data name="NewTask_AutoComplete" xml:space="preserve">
-    <value>Auto-complete</value>
-  </data>
-  <data name="NewTask_AutoComplete_Hint" xml:space="preserve">
-    <value>Skip review and finish on its own after a clean run.</value>
-  </data>
-  <data name="NewTask_AutoGit" xml:space="preserve">
-    <value>Git on completion</value>
-  </data>
-  <data name="NewTask_AutoGit_Hint" xml:space="preserve">
-    <value>Runs in-session, before the task completes.</value>
-  </data>
-  <data name="NewTask_NoGitAction" xml:space="preserve">
-    <value>none</value>
-  </data>
-  <data name="NewTask_Draft" xml:space="preserve">
-    <value>Draft pull request</value>
-  </data>
   <data name="NewTask_AllowedTools" xml:space="preserve">
     <value>Allowed tools</value>
   </data>
@@ -180,15 +162,6 @@
   <data name="ScheduleOption_DateTime" xml:space="preserve">
     <value>specific date &amp; time</value>
   </data>
-  <data name="GitAction_Commit" xml:space="preserve">
-    <value>commit</value>
-  </data>
-  <data name="GitAction_Push" xml:space="preserve">
-    <value>commit + push</value>
-  </data>
-  <data name="GitAction_PullRequest" xml:space="preserve">
-    <value>commit + push + PR</value>
-  </data>
   <data name="Column_Preparing" xml:space="preserve">
     <value>Preparing</value>
   </data>
@@ -266,9 +239,6 @@
   </data>
   <data name="Card_Children" xml:space="preserve">
     <value>{0} children ⤵</value>
-  </data>
-  <data name="Card_AutoComplete" xml:space="preserve">
-    <value>auto-complete</value>
   </data>
   <data name="Agent_ClaudeCode" xml:space="preserve">
     <value>claude</value>
@@ -410,9 +380,6 @@
   </data>
   <data name="Board_Launch" xml:space="preserve">
     <value>Launch now</value>
-  </data>
-  <data name="Board_Complete" xml:space="preserve">
-    <value>Complete</value>
   </data>
   <data name="Session_Complete" xml:space="preserve">
     <value>Mark completed</value>
@@ -602,6 +569,9 @@
   </data>
   <data name="Transition_CompactingFinished" xml:space="preserve">
     <value>Compacting finished</value>
+  </data>
+  <data name="Transition_StartupPrompt" xml:space="preserve">
+    <value>Waiting on the CLI's start-up prompt</value>
   </data>
   <data name="Card_Surface_Timeline" xml:space="preserve">
     <value>Timeline</value>

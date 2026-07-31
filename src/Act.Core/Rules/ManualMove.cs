@@ -4,11 +4,15 @@ namespace Act.Core.Rules;
 
 // The human-controlled half of the state model: which cards the user may pick up, and
 // where they may drop them. Past the launch boundary a card moves only through automated
-// transitions, so machine columns neither lift nor accept drops.
+// transitions, so Executing neither lifts nor accepts drops.
+//
+// Your turn lifts, even though it is a machine column, because sign-off is the user's — but the
+// only place it may land is Completed, and that landing is `CardCompletion`'s rather than a plain
+// move: see the note there.
 public static class ManualMove
 {
     public static bool CanDrag(BoardColumn column)
-        => column is BoardColumn.Preparing or BoardColumn.Ready;
+        => column is BoardColumn.Preparing or BoardColumn.Ready or BoardColumn.YourTurn;
 
     public static bool IsAllowed(BoardColumn from, BoardColumn to) => (from, to) switch
     {

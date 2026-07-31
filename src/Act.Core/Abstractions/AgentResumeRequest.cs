@@ -10,7 +10,6 @@ public sealed record AgentResumeRequest(
     Guid TaskId,
     string SessionId,
     string WorkingDir,
-    string Preamble,
     string InitialPrompt,
     string? Message,
     LaunchConfig Config,

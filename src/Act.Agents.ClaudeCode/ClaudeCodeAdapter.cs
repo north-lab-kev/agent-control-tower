@@ -41,7 +41,7 @@ public sealed class ClaudeCodeAdapter(
             request.Config,
             request.Size,
             ["--session-id", request.SessionId],
-            $"{request.Preamble}\n\n{request.InitialPrompt}",
+            request.InitialPrompt,
             cancellationToken);
 
     public Task<IAgentSession> ResumeAsync(

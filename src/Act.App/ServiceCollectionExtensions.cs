@@ -8,6 +8,7 @@ using Act.Core.Abstractions;
 using Act.Infrastructure;
 using Act.Infrastructure.Storage;
 using ElectronNET.API;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Radzen;
 
 namespace Act.App;
@@ -20,9 +21,8 @@ public static class ServiceCollectionExtensions
             .AddInteractiveServerComponents();
 
         services.AddRadzenComponents();
-
         services.AddSingleton<IAssetVersions, AssetVersions>();
-
+        services.AddScoped<IDesktopBridge, BrowserDesktopBridge>();
         services.AddActInfrastructure(
             ActDataDirectory.Resolve(configuration[ActDataDirectory.OverrideKey]));
 
@@ -38,6 +38,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddElectron();
         services.AddSingleton<DesktopShell>();
+        services.Replace(ServiceDescriptor.Scoped<IDesktopBridge, ElectronDesktopBridge>());
 
         return services;
     }

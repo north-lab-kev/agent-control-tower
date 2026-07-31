@@ -91,7 +91,7 @@ Standards to build against — not optional polish. Specifics named for the
   column/badge out); test it exhaustively with no processes, files, or agents.
   Highest-value surface.
 - **Mock adapter as the lifecycle fixture** (roadmap step 6). Drive whole task
-  lifecycles — scheduling, spawning, auto-complete — through scripted fake
+  lifecycles — scheduling, spawning, sign-off — through scripted fake
   events, deterministically, no real CLI or tokens.
 - **Contract tests.** One shared xUnit suite that **every** agent adapter must
   pass, so Claude Code and Codex are held to the same normalized behavior.
@@ -145,6 +145,11 @@ Standards to build against — not optional polish. Specifics named for the
   payload arriving on the wrong route fails loudly instead of being mis-parsed.
 - Which card an event belongs to comes from the **payload** (`session_id`, plus
   ACT's own task id on the process environment) — never from the port.
+- **The MCP server shares all of it** — same listener, same kept port, same token
+  header, on `/mcp` (step 12). One difference is load-bearing: a hook payload is an
+  observation ACT can afford to drop, while an MCP call **mutates** ACT's store by
+  creating a card, so the token is the *only* thing that decides which card becomes
+  the parent — it is never an argument the agent supplies. See *Agent ↔ ACT contract*.
 
 ### Dependency licensing
 
@@ -202,8 +207,8 @@ be human- or machine-controlled; **badges are always automatic.**
 | 1 | Preparing | Human | user creates task (initial) | Ready |
 | 2 | Ready | Human | manual from Preparing, **or spawned** from a completing task | Executing (launch) · Preparing (back) |
 | 3 | Executing | Machine | auto, on launch | Your turn |
-| 4 | Your turn | Machine | auto: permission / question / error / `Stop` | Completed · Executing (after input or send-back) |
-| 5 | Completed | Human *(or auto)* | manual from Your turn; **or auto** on clean finish if `autoComplete` | Your turn (reopen) |
+| 4 | Your turn | Machine | auto: permission / question / error / `Stop` | Completed (drag) · Executing (after input or send-back) |
+| 5 | Completed | Human | **dragged** from Your turn | Your turn (reopen) |
 
 **Control arc:** human → machine → human. Control starts with the user
 (Preparing, Ready), passes to the agent at launch (Executing, Your turn), and
@@ -216,9 +221,11 @@ back to Preparing — so Ready stays human-controlled.)
 can no longer move it by hand. Columns then change *only* through automated
 transitions — driven by **hooks** (in-session events) and by **process signals**
 (exit code / no-activity timeout, which hooks can't report, e.g. a crash). The
-one exception is the manual **Completed → Your turn** reopen — which re-enters
-the workflow rather than overriding a live session, so the rule still holds: no
-manual moves while a session is actively mid-flight.
+exceptions are the two moves at the far end of the workflow — the **Your turn →
+Completed** sign-off and the **Completed → Your turn** reopen. Neither overrides
+a live session: the first *ends* one, the second re-enters the workflow. So the
+rule still holds: no manual moves while a session is actively mid-flight, which
+is why **Executing** is the one column that neither lifts nor accepts a drop.
 
 **Badges (orthogonal to columns, always auto):** `running`, `needs permission`,
 `needs answer`, `error`, `killed` (user-terminated via the kill/abandon hatch),
@@ -298,7 +305,9 @@ resumable), so the exits are the same regardless of badge:
   handling & retry).
 - **→ Completed.** The user's explicit sign-off, available on any card in the
   column: a crashed or killed task is as legitimately done-with as a reviewed
-  one.
+  one. On the board it is a **drag onto Completed** — the same gesture as every
+  other column change, so the strip carries no sign-off button; the session view
+  keeps its **Complete** action for a card you are already inside.
 
 Cards are ordered by cost of waiting — see the ordering note under Summary.
 
@@ -346,27 +355,22 @@ card (creation ≠ a manual column move).
 has the prompt, so it creates the Ready card **directly in its own store**. No
 disk round-trip.
 
-**Agent-emitted spawns** use the file mechanism below, which reuses the existing
-`FileSystemWatcher` ingestion — no MCP server or live endpoint required.
+**Agent-emitted spawns** call the **`create_followup` MCP tool** — the whole
+agent→ACT contract, described in *Agent ↔ ACT contract*. The file mechanism this
+section used to specify (`.act/followups/`, ACT-prefixed filenames, atomic writes,
+consume-on-ingest, a `FileSystemWatcher`) was **dropped on 2026-07-30**; the
+reasoning is recorded there.
 
-- **Location:** a spawn directory, `.act/followups/`, in the task's working dir.
-- **One file per follow-up** — avoids concurrent-write / partial-read races.
-- **Filename = ACT-owned prefix + agent sequence:** `<taskId>-001.json`,
-  `-002.json`, … ACT reuses the **spawning task's own `id`** as the prefix
-  (globally collision-free; the `.act/` dir may be shared across tasks in one
-  repo); the agent fills the sequence (handles any count, no coordination). The
-  filename is only a **write-safety transport handle** — ACT mints each child's
-  real task id (its own UUID) on ingest, so ACT owns task-id assignment.
-- **Atomic write:** agent writes to a temp name then renames into place, so the
-  watcher never fires on a half-written file.
-- **Read trigger:** on the `Stop` hook, ACT scans the spawn dir and mints one
-  Ready card per unconsumed file.
-- **Consume-on-ingest:** ACT moves each ingested file to
-  `.act/followups/consumed/` — race-free and idempotent, no hashing needed.
-- **Per-file schema:** `{ title, prompt, cwd?, dependsOn? }`. `cwd` is optional
-  and defaults to the parent task's working directory. ACT injects both the
-  spawn-dir path and this schema into the launch prompt so the agent knows where
-  and how to write.
+- **Arguments:** `{ title, prompt, cwd?, dependsOn? }` — `cwd` defaults to the
+  parent's working directory.
+- **The parent is the token, not an argument.** ACT resolves the calling session
+  from the per-session token, so an agent can only spawn onto its own card.
+- **ACT still owns id assignment.** Each child gets a freshly minted UUID and
+  `number`, and the call **returns** them, which is what lets `dependsOn` name real
+  ids instead of transport handles.
+- **Ingested immediately, not at `Stop`.** The card lands in Ready when the tool is
+  called; there is no scan trigger and no consumed directory, so ingestion is
+  idempotent by construction — one call, one card.
 
 `dependsOn` is the seed of task ordering (a plan implies sequence); ordering is
 enforced by the scheduling runner — a task launches only after its `dependsOn`
@@ -380,9 +384,8 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
 
 ### Identity — three distinct IDs
 
-- `id` — ACT-minted **UUID**, permanent, internal. Used for store keys,
-  `parentId` lineage, and the `.act/` filename prefixes (follow-ups + status).
-  Never shown to the user.
+- `id` — ACT-minted **UUID**, permanent, internal. Used for store keys and
+  `parentId` lineage. Never shown to the user.
 - `number` — friendly sequential **`#1039`**, display only.
 - `sessionId` — the **agent's** session id. **Single value; null until launch** —
   and, for some agents, for a little longer. This is the join key for inbound hooks
@@ -422,14 +425,8 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
   window-after-next | datetime`. Set at **creation** (new-task modal, default
   `manual`) and editable in Ready; only *displayed* as a badge in the Ready column
   (see Scheduling & queue policy).
-- `autoComplete` — bool, set at creation. On a **clean** finish
-  (`ready_for_review`), skip the `to review` stop and auto-advance to Completed
-  (see Auto-complete below). Does **not** fire on error / `needs_input` /
-  permission stop — those route to Your turn as normal.
-- `autoGit` — optional, only with `autoComplete`: the git actions
-  (`commit` / `push` / `pr` + `draft`) to perform **in-session** before
-  completing. Injected into the launch prompt (known at creation), so it needs
-  no follow-up task and no input channel.
+*(There is deliberately no `autoComplete` and no in-session `autoGit` — see
+No auto-completion below.)*
 
 ### Lineage
 
@@ -489,8 +486,7 @@ values, and defines behavior for unsupported values (map to nearest equivalent
   matters. The card keeps showing the short form. The **task form** runs the same check
   as you type and offers to create the directory, so the commonest launch failure is
   caught where it can still be fixed rather than at launch. Resolution is the
-  `IWorkingDirectories` port, since the launch, the form and step 8's `.act/` watchers
-  all need the same answer. Its placeholder names the two ways in ("Type a path, or
+  `IWorkingDirectories` port, since the launch and the form need the same answer. Its placeholder names the two ways in ("Type a path, or
   browse") rather than showing a sample path — a greyed `C:\dev\act` reads as a value
   the field already holds, and the format it was teaching is better taught by the
   validation message on the rare occasion it is wrong. The field is **type-or-pick**: a
@@ -589,17 +585,26 @@ Flow: `sources (per adapter) → normalize → event bus → rules engine + stor
 2. **Command-hook forwarder** — a command hook pipes stdin → ACT's endpoint
    (Codex, which supports command hooks only; also usable by Claude Code). A
    tiny shipped helper or `curl`.
-3. **File source** — `FileSystemWatcher` on known paths: `.act/status/`
-   (completion signal), `.act/followups/` (spawns), and the JSONL transcript
-   (enrichment). Atomic-write + consume-on-ingest conventions apply.
+3. **Transcript source** — tails the session's JSONL transcript for **enrichment
+   only** (observed model, token counts, context %, last message) and, for an agent
+   that cannot pre-mint its id, for the **session binding** and turn boundaries.
+   Read-only; ACT never writes into a transcript. *(This replaces the former "file
+   source". It no longer watches `.act/` for anything: the status file was dropped
+   with auto-completion, and follow-ups moved to the MCP tool.)*
 4. **Process source** — ACT's own process supervision of the PTY (always
    ACT-internal, not agent-provided): non-zero exit → `error`; watchdog timeout →
-   `stale`.
+   `stale`; **no hook at all within the startup grace → the pre-session prompt**
+   (see *The one prompt no hook reports*).
+5. **MCP tool call** — the one *inbound* channel the agent drives deliberately
+   rather than emits as a side effect: `create_followup`. Distinct from the four
+   above because it is a request with a return value, not an observation.
 
 **Example compositions** (adapter's choice, freely mixable):
-- *Claude Code:* HTTP hooks (lifecycle) + file source (status / follow-ups /
-  JSONL enrichment) + process source.
-- *Codex:* command-hook forwarder + file source + process source.
+- *Claude Code:* HTTP hooks (lifecycle) + transcript source (enrichment) + process
+  source.
+- *Codex:* transcript source (binding, turn boundaries, enrichment) + process source
+  — its hooks do not fire on the pinned CLI, so the command-hook forwarder is wired
+  but dormant (see *Codex hook findings* in the roadmap).
 
 Note what is **not** a source: the terminal itself. ACT pipes the PTY's bytes to
 xterm.js and never reads them for meaning (see *ACT never parses terminal output*).
@@ -618,18 +623,64 @@ than aspirational — ACT has no decision to make, so it can accept-and-return
 immediately in every case. It also means no ACT bug can approve something on the
 user's behalf.
 
-- **Caveat, now partly measured (2026-07-30, `claude-code v2.1.220`).**
-  `Notification` is **not** self-describing: alongside permission prompts it fires an
-  **idle nudge** whose message is exactly *"Claude is waiting for your input"*, about a
-  minute after a turn ends. So the message text is all ACT has to classify on, and an
-  unrecognised notification must produce **no event at all** — reporting it as a
-  permission request badges an idle card `needs permission` with nothing to approve, and
-  reporting it as activity is worse, since an idle nudge means the opposite of activity
-  and would send a reviewed card back to Executing on its own. A real permission prompt's
-  wording is still unobserved through the hook; if keying on "permission" / "approve"
-  proves too coarse, the fallback remains `PreToolUse` plus the absence of a matching
-  `PostToolUse` within a short window — a heuristic, and one to write down as such rather
-  than hide.
+#### Classifying a waiting prompt (measured 2026-07-30, `claude-code v2.1.220`)
+
+`Notification` fires for more than one thing, and its *message* cannot separate the
+three cases ACT cares about. Two payload fields can, and both are structured rather
+than prose:
+
+| What is happening | Hook | The field that says so |
+|---|---|---|
+| Waiting on a permission prompt | `Notification` | `notification_type: "permission_prompt"` |
+| Idle nudge, ~1 min after a turn ends | `Notification` | `notification_type: "idle_prompt"` |
+| Waiting on a **question** to the user | `PreToolUse` | `tool_name: "AskUserQuestion"` |
+
+- **`notification_type`, not the wording.** Both notifications carry a fixed English
+  sentence (*"Claude needs your permission"*, *"Claude is waiting for your input"*), and
+  the wording is not even unique to a permission prompt — see the next point. ACT keys on
+  the type and keeps the substring check only as a fallback for a payload that omits it.
+- **A question is announced as a permission prompt.** The CLI blocks on `AskUserQuestion`
+  behind an ordinary permission prompt, so its `Notification` is byte-for-byte the one a
+  `Bash` approval fires. The **tool name** on the preceding `PreToolUse` is the only thing
+  that tells the two apart, and its `tool_input.questions[]` is the only place the question
+  text exists at all — the notification has none. So `PreToolUse` for that one tool
+  normalizes to a **question**, not to activity.
+- **The notification that follows the question is dropped by the rules engine**, not by the
+  normalizer: it arrives second and describes the same block, and unsuppressed it would
+  replace `needs answer` with `needs permission` and nothing to approve. The rule is
+  stateless and agent-agnostic — *a permission request never overwrites an unanswered
+  question* — and nothing legitimate is lost, because the agent is stopped until the user
+  answers in the terminal and that answer arrives as activity.
+- **An unrecognised notification produces no event at all.** Reporting it as a permission
+  request badges an idle card `needs permission` with nothing to approve, and reporting it
+  as activity is worse, since an idle nudge means the opposite of activity and would send a
+  reviewed card back to Executing on its own.
+
+#### The one prompt no hook reports (measured 2026-07-30, `claude-code v2.1.220`)
+
+Both CLIs open on a **directory-trust prompt** for a working directory they have not
+seen before — *"Is this a project you created or one you trust?"* — and it blocks
+**before the session exists**. Measured by launching under `PtyHost` against a fresh
+directory and leaving the prompt up: **not one hook fires, for as long as it is left
+there — not even `SessionStart`.** So there is no payload to normalize, and the card
+sat in Executing badged `running` while the CLI waited on a keypress.
+
+The signal is therefore the **absence** of one, and it belongs to the process source
+because it is a fact about ACT's own child process rather than anything read off the
+screen:
+
+- **No hook of any kind within the startup grace → `startup prompt waiting`.** The
+  grace is **8 s**, an order of magnitude over the ~0.8 s a directory the CLI already
+  trusts takes to produce its first hook.
+- **Terminal output does not disarm it.** A CLI parked on its trust prompt paints a
+  full screen and has still started nothing. Only a hook proves a session exists.
+- **Executing only.** A restore deliberately leaves a card where the rules last had
+  it, and a card already in Your turn is blocked on something the agent named, which
+  says more than silence does.
+- **Recovery needs no rule of its own.** Answering starts the session and its first
+  hook arrives as activity — measured at ~370 ms after the keypress.
+- **Overshooting is cheap.** A slow start costs the card two extra transitions and
+  nothing else, because that first hook puts it straight back.
 
 ### Session identity / correlation
 
@@ -668,10 +719,14 @@ confirm at build.)*
 - `UserPromptSubmit` / `PreToolUse` / `PostToolUse` → activity (`running`).
   `UserPromptSubmit` is also the **recovery** signal: it is how ACT learns the user
   answered a prompt in the terminal, since no answer passes through ACT.
-- **permission requested / question** → `Notification` (Claude Code) /
-  `PermissionRequest` (Codex), read-only
+- **question asked** → `PreToolUse` with `tool_name: "AskUserQuestion"` (Claude Code),
+  read-only, carrying the question text from `tool_input`. The one `PreToolUse` that is
+  *not* activity — see *Classifying a waiting prompt*.
+- **permission requested** → `Notification` with
+  `notification_type: "permission_prompt"` (Claude Code) / `PermissionRequest` (Codex),
+  read-only
 - `PreCompact` → compacting
-- `Stop` → turn ended → read status file → route (to review / needs answer)
+- `Stop` → turn ended → Your turn, `to review`
 - `SessionEnd` → session ended (persistence)
 - process exit code (process source, not a hook) → `error`
 
@@ -708,8 +763,8 @@ Drives all transitions in the machine-controlled region. Operates on
 `Stop` / `Notification` / `PreToolUse` / …; Codex's set) into ACT's shared
 vocabulary, and the table is written against that. One transition is **not**
 event-driven: **Ready → Executing** is ACT-initiated (it spawns the process — an
-action, not a rule). **Your turn → Completed** is the human's explicit call in the
-UI. Everything else, including recovery out of Your turn, reaches ACT as an
+action, not a rule). **Your turn → Completed** is the human's explicit call — a
+drag on the board, or the session view's Complete action. Everything else, including recovery out of Your turn, reaches ACT as an
 *observation* — because the user acts in the terminal, not in ACT, so ACT learns
 about it the same way it learns about anything else.
 
@@ -721,35 +776,46 @@ the same column, so the **badge is the only thing the event decides**.
 | Executing | activity (tool use / turn progress) | Executing | `running` |
 | Executing | compacting (`PreCompact`) | Executing | `compacting` → `running` |
 | Executing | permission requested *(observed)* | Your turn | `needs permission` |
-| Executing | turn ended + status `needs_input` | Your turn | `needs answer` |
-| Executing | turn ended + status `ready_for_review` | Your turn | `to review` |
-| Executing | turn ended, no/invalid status file | Your turn | `to review` *(fallback)* |
+| Executing | question asked *(observed)* | Your turn | `needs answer` |
+| Executing | turn ended (`Stop`) | Your turn | `to review` |
 | Executing | process exited non-zero / crash | Your turn | `error` |
 | Executing | killed by the user | Your turn | `killed` |
 | Executing | no-activity timeout | *(stays)* Executing | `stale` |
+| Executing | startup prompt waiting *(no hook at all since the spawn)* | Your turn | `needs permission` |
 | Your turn | activity observed *(the user answered, or sent it back, in the terminal)* | Executing | `running` |
+| Your turn + `needs answer` | permission requested | *(ignored)* | *(stays)* `needs answer` |
+| Your turn | startup prompt waiting | *(ignored)* | *(stays)* |
 
-### Completion signal — the status-file convention
+### There is no completion signal — dropped 2026-07-30
 
-Resolves "clean `Stop` vs. question `Stop`" with an explicit signal instead of
-guesswork, reusing the same agent→ACT file mechanism as follow-ups:
+A `Stop` is a `Stop`: **every turn end lands in Your turn with `to review`**, and
+ACT does not try to tell a finished turn from one that ended on a question.
 
-- **Injected preamble.** At session start ACT prepends a small instruction block
-  to `initialPrompt`, telling the agent how/where to write a **completion
-  signal** before ending each turn.
-- **Status file**, written atomically (temp → rename), in a known dir — a
-  sibling of the spawn dir, e.g. `.act/status/<taskId>-<turn>.json` (the task's
-  own `id`, so it never collides with `.act/followups/` or other tasks).
-- **Format:** `{ state: "ready_for_review" | "needs_input", question?: string }`.
-  `needs_input` carries the question text (shown on the card); `ready_for_review`
-  = done, nothing blocking.
-- **Read on `Stop`.** Both outcomes land in Your turn; the file picks the badge —
-  `needs_input` → `needs answer`, `ready_for_review` → `to review`.
-- **Fallback:** missing or malformed file → **`to review`** (never trap a
-  finished task in limbo waiting for an answer nobody asked for).
-- **Caveat:** unlike an enforced `PermissionRequest`, this relies on the agent
-  obeying the preamble; the fallback absorbs misses, and the preamble wording is
-  something to tune over time.
+The spec used to specify a status file (`.act/status/<taskId>-<turn>.json`, `{ state:
+"ready_for_review" | "needs_input" }`) written before every turn end, so the badge
+could distinguish the two. It was designed before `Stop` was measured, when it was
+also the only thing that could route Executing → Your turn at all. Three things then
+removed its reason to exist:
+
+- **`Stop` does the routing.** Measured and verified live at step 9 — the card walks
+  to Your turn on the hook alone.
+- **The badge distinction stopped mattering.** Needs feedback and To review merged
+  into one column (see *Why one column and not two*), so both outcomes were already
+  targeting the same place and differing only in a label.
+- **The two blocked cases are observed, not self-reported, and with better fidelity.**
+  A permission gate arrives as `Notification`/`permission_prompt`; a question arrives
+  as `PreToolUse`/`AskUserQuestion` carrying the actual question text — which no
+  status file ever had. The only case left uncovered is an agent that ends a turn
+  asking something in *prose*, and that costs the user one click to discover.
+- **Its last real consumer went away.** Auto-completion needed a positive "done,
+  nothing blocking" assertion, because `Stop` alone cannot support skipping review.
+  With no auto-completion (see *No auto-completion*), nothing in ACT needs the agent
+  to assert anything.
+
+What that buys: no `.act/` directory in the user's repository, no watcher, no
+atomic-write convention, no `<turn>` counter for the agent to track, no advisory rule
+it can silently fail — and an injected preamble that shrinks to nothing (see *Agent ↔
+ACT contract*).
 
 ### Other resolutions
 
@@ -783,7 +849,6 @@ Executing. Error kinds and what retry means:
   manual).
 - **Execution** — crash / non-zero exit / tool failure. Retriable (resume), may
   warrant investigation first.
-- **Inline git failure** (auto-complete) — retriable the same way.
 
 So the drawer's action set is state-specific — and, since ACT no longer answers
 anything, mostly a way *into* the terminal: permission / question → **Open
@@ -791,56 +856,102 @@ terminal** (with a read-only statement of what is being asked); **error → Retr
 (± edit launch config)**; review → send-back / complete / kill. Open terminal,
 Open in Desktop and Kill are available on any active card.
 
-### Auto-complete (fire-and-forget)
+### No auto-completion — decided 2026-07-30
 
-For tasks with `autoComplete` set, the "turn ended clean" branch changes:
+**Every finished turn stops in Your turn, and only the user's drag reaches
+Completed.** There is no `autoComplete`, and no card ever signs itself off.
 
-- Executing + `ready_for_review` **and** `autoComplete`:
-  - if `autoGit` was configured, the git actions were injected into the launch
-    prompt, so they already ran in-session — the card goes straight to
-    **Completed**.
-  - if the in-session git step failed → **Your turn** (`error`), not
-    Completed (never complete with broken git).
-- Executing + `ready_for_review` **without** `autoComplete` → **Your turn**
-  (`to review`, normal human sign-off).
-- `autoComplete` never bypasses **error / `needs_input` / permission** — those
-  still route to Your turn and wait for the user. (Pair with
-  `bypass`/`acceptEdits` `permissionMode` for truly hands-off overnight runs.)
+- **Completion is the one thing ACT asks of the user, and it is the whole point of
+  the board.** A tower that closes its own cards is a log, not a control tower —
+  the value is that a finished run *waits* for you to look at it. Making the
+  sign-off skippable makes the review optional, and an optional review is the
+  first thing to get skipped on the night it mattered.
+- **It removes ACT's only would-be dependency on the agent's self-report.**
+  Auto-completion was the sole consumer that needed a positive "I am done and
+  nothing is blocking me" assertion from the agent, because `Stop` alone cannot
+  distinguish finished work from a turn that ended on a question asked in prose.
+  Without it, the observed events carry the whole model — see the *Agent ↔ ACT
+  contract*.
+- **Control arc stays human → machine → human**, with no opt-in that drops the
+  final step.
 
-Control arc for these tasks: human → machine → **auto-done** (final human step
-dropped by opt-in; launch boundary unchanged).
+**In-session `autoGit` went with it** — its only defined trigger was "before the
+`ready_for_review` file on an auto-completing task", so it has no meaning once
+completion is always a human gesture. Git chosen at review time remains, as the
+spawned task described in *Git handoff on completion*.
 
-### Agent ↔ ACT contract
+### Agent ↔ ACT contract — one MCP tool, decided 2026-07-30
 
-The two `.act/` conventions — **follow-ups** (`.act/followups/`) and **status**
-(`.act/status/`) — together form the agent→ACT contract, both taught by the
-injected preamble. **Built at step 6**, and deliberately owned by the **core**, not
-by an adapter: the convention is ACT's, so `Act.Core/Agents/ActContract` owns the
-paths and `Act.Core/Agents/AgentPreamble` composes the text from those same
-constants. An adapter only chooses *how* the preamble reaches its agent (prepended
-to the prompt, a system-prompt flag, a settings file).
+**The agent→ACT contract is a single MCP tool, `create_followup`, and nothing else.**
+There is no status file, no follow-up file, and no `.act/` directory. Everything ACT
+knows about a running session it *observes* (hooks, transcript, process); the one
+thing an agent can *tell* ACT is that some work belongs in its own task.
 
-As built:
+| | `mcp__act__create_followup` |
+|---|---|
+| Transport | streamable HTTP on ACT's kept hook port, `/mcp` |
+| Auth | the session's existing hook token, `x-act-hook-token` |
+| Arguments | `{ "title", "prompt", "cwd"?, "dependsOn"? }` |
+| Returns | the minted card's number and id |
+| Not called | nothing spawned |
 
-| | Status | Follow-ups |
-|---|---|---|
-| Path | `.act/status/<taskId>-<turn>.json` | `.act/followups/<taskId>-<nnn>.json` |
-| Written | before the agent ends **every** turn | optional, before the turn ends |
-| Body | `{ "state": "ready_for_review" \| "needs_input", "question"? }` | `{ "title", "prompt", "cwd"?, "dependsOn"? }` |
-| Missing | assumed `ready_for_review` (never trap a finished task) | nothing spawned |
+**Why a tool and not a file or a curl command.** All three cost about the same in
+tokens — 150–250 in a prompt-cached prefix — so the deciding factors were elsewhere:
 
-- **ACT owns the prefix, the agent owns the suffix** (`<turn>` / `<nnn>`), so one
-  `.act/` directory shared by several tasks in a repo can never mix their files up.
-  `ActContract.FilePrefix` / `FilePattern` / `BelongsToTask` are the only places that
-  knowledge lives.
-- **`dependsOn` in a follow-up file lists sibling *sequence numbers*** (`["001"]`) —
-  the agent cannot know the task ids ACT is about to mint, so ordering is expressed
-  in the only handles it has, and step 12 resolves them to ids on ingest.
-- **Atomic writes** (temp name → rename in the same directory) are stated to the
-  agent explicitly, so a watcher never fires on a half-written file.
-- **`autoGit` rides the same preamble.** When configured, the git actions are spelled
-  out as the last work before the `ready_for_review` file, and a failed git step is
-  routed back to the user as `needs_input` naming the step — never completed.
+- **The payload is the wrong shape for a shell command.** `prompt` is long free text
+  with quotes and newlines in it; getting that through a `curl -d` body and whatever
+  shell the agent's Bash tool got is the same class of bug that truncated the launch
+  argument (see *Launch*). A typed schema removes the quoting question entirely.
+- **The grant is narrower.** One pre-allowed tool id (`mcp__act__create_followup`)
+  versus allowing the agent all shell `curl`, or all writes under a directory.
+- **It very likely sidesteps both sandboxes.** The MCP connection is made by the CLI's
+  own process, not by a sandboxed tool invocation, so Codex's `workspace-write`
+  network block and Claude's bash sandbox should never enter the picture.
+  ⚠️ To verify at step 12.
+- **Tool definitions do not decay.** A preamble rule is 80k tokens back by the end of
+  a long session; a tool is re-presented every turn, at the moment the model might
+  reach for it.
+- **`dependsOn` gets simpler.** The file scheme needed sibling *sequence handles*
+  (`["001"]`) because the agent could not know the ids ACT was about to mint. A tool
+  call **returns** the created card, so the agent passes real ids and ACT resolves
+  nothing.
+
+**Correlation is the token, never an argument.** The token identifies the task, so
+the parent is inferred and `parentId` is not a parameter — an agent cannot spawn a
+follow-up onto somebody else's card. Same trust property the hook endpoint already
+has, and the reason a shared, byte-stable config file cannot carry the token.
+
+**The preamble shrinks to nothing, and stays that way.** With the status convention
+gone, `AgentPreamble` has no remaining job: the injected instruction block goes away
+and the opening prompt is the user's task text alone. `ActContract` and
+`AgentPreamble` are deleted with it, along with the largest and most quote-dense part
+of the launch argument.
+
+**ACT does not announce the tool, because the tool announces itself.** The obvious
+question is whether the agent needs to be *told* the MCP tool exists and when to use
+it. It does not, and a preamble would be the wrong place for it anyway:
+
+- **Existence is automatic** — an MCP tool arrives with its name, description and
+  schema in the model's tool list, re-presented every turn.
+- **"When and why" goes in the tool description**, which beats a preamble on every
+  axis: it does not decay over a long session, it is present at the moment of the
+  call rather than 80k tokens back, it costs nothing per launch, and it never touches
+  the launch argument. The description carries the *when not to* as well — a
+  follow-up is for work that belongs in its own task, not for deferring part of the
+  current one.
+- **If broader framing is ever wanted**, MCP's own `instructions` field in the
+  initialize response is where it belongs — it travels over the connection, not in
+  the opening prompt. ⚠️ Whether either CLI surfaces server instructions to the model
+  is unmeasured; see step 12.
+- **It keeps the read-only stance total.** ACT never parses the screen, never answers
+  a prompt, and every source reports rather than commands. An injected instruction
+  block is the write-side version of exactly that — dropping it makes the principle
+  complete instead of nearly so.
+
+One candidate for a future one-liner, unrelated to MCP and deliberately deferred:
+since nothing auto-completes, the agent's closing message is what the user reads on
+the card when deciding to sign off. Telling the agent that might improve it — but
+leaving it out is the only way to learn whether it needs saying.
 
 ---
 
@@ -888,6 +999,10 @@ single CLI version bump* (the input line moved from `│ >` to `❯`), against a
 screen that redraws constantly. Any state ACT inferred that way would be
 version-brittle and silently wrong. **Hooks are the state channel; the terminal is
 a pipe.**
+
+The pre-session trust prompt is the one state no hook can report, and it does not
+bend this rule: what ACT observes there is its own process staying silent, never a
+string on the screen. See *The one prompt no hook reports*.
 
 ### The input channel is the human at the keyboard
 
@@ -1088,8 +1203,8 @@ history.
     work the user meant to be rid of.
 - **Duplicate copies the intent, never the run.** Next to the task page's delete, and on
   every archive row beside Restore, a **duplicate** makes a new card carrying only what to
-  run, where and how — title, prompt, working directory, agent, launch config, schedule and
-  auto-complete. The copy is titled **"Copy of &lt;title&gt;"** (localised), so two cards that
+  run, where and how — title, prompt, working directory, agent, launch config and
+  schedule. The copy is titled **"Copy of &lt;title&gt;"** (localised), so two cards that
   differ only by number never look identical on the board. It lands in **Preparing** with a
   fresh id and number, and with no session
   id, badge, metrics, observed model, last message or transition history: a copy is a task
@@ -1097,9 +1212,10 @@ history.
   card spawned belong to the run that spawned them, so a copy has neither children nor a
   parent. Duplicating an archived card leaves it archived; the copy is live, which is the
   point — it is how a finished or abandoned task gets run again without disturbing its record.
-- **Artifact housekeeping:** on completion/archival ACT cleans up **its own**
-  `.act/status/` and `.act/followups/consumed/` files for that task. It **never**
-  touches the agent's transcripts (not ACT's to delete, and needed for resume).
+- **Artifact housekeeping:** ACT writes nothing into the user's working directory, so
+  there is nothing there to clean up — the generated launch config (settings / profile /
+  MCP config) lives in ACT's own data directory and is removed when the session ends. It
+  **never** touches the agent's transcripts (not ACT's to delete, and needed for resume).
 
 ### Session lifecycle — resumability rides the transcript
 
@@ -1167,10 +1283,9 @@ only); "no git action" is always available.
   git work is its own tracked card that can land in Your turn on its own — just
   the general task-spawning mechanism applied to git. The completion modal also
   offers the spawned task's `schedule` (default **Now**).
-- **Contrast — auto-complete tasks:** when git is known at **creation** (`autoGit`
-  with `autoComplete`), it's injected into the launch prompt and done
-  **in-session** — no follow-up task. Spawning applies to git chosen at **review
-  time**, which wasn't known at launch.
+- **This is the only git mechanism.** In-session `autoGit` at creation time was
+  dropped with `autoComplete` (see *No auto-completion*), so git is always chosen at
+  **review time** and always its own spawned card.
 
 ---
 
@@ -1184,9 +1299,8 @@ unattended mode is half-blind.
 
 - **Blocked in Your turn** — `needs permission`, `needs answer`, `error`,
   `killed` (blocked on you). Always on.
-- **`to review` in Your turn** — a task finished and wants sign-off.
-- **Completed (auto)** — an `autoComplete` task closed itself (the overnight
-  "it's done" ping).
+- **`to review` in Your turn** — a task finished and wants sign-off. This *is* the
+  overnight "it's done" ping, since nothing completes itself.
 - **`waiting-reset` / rate-limited** — queue paused until the window resets, and
   again when it resumes.
 - **`stale`** — optional "possibly hung" heads-up.
@@ -1234,15 +1348,16 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   now would have to change then, and the two would read as different actions.
 - **Board:** **five flat columns — no persistent zones.** The launch-boundary
   rule is shown **dynamically at drag time**: picking up a draggable card lights
-  only its valid drop targets and **grays out invalid columns** (Ready →
-  Preparing + Executing; Completed → Your turn). Machine cards (Executing / Your
-  turn) don't lift (can't be hand-moved).
+  only its valid drop targets and **grays out invalid columns** (Preparing ↔
+  Ready; Your turn → Completed only). An **Executing** card does not lift at all —
+  it is the one column with a live turn to protect.
 - **Column lanes:** each column is a **bay** — a faint full-height track
   (`--act-lane` fill, `--act-lane-line` hairline, rounded) that separates the
   columns and, crucially, keeps an **empty** column legible instead of collapsing
   to a floating header. An empty bay shows one muted mono line (`no cards`).
-  Deliberately **not** a dashed drop-zone: nothing is ever hand-droppable in the
-  four machine columns, so a drop affordance there would teach the wrong rule.
+  Deliberately **not** a dashed drop-zone: most columns take no drop at all, so a
+  standing drop affordance would teach the wrong rule — the drag-time lighting is
+  what says where a card may land.
   The board background is a flat `--act-bg` — an earlier fixed-pitch vertical
   grid was dropped because its 40px pitch never aligned with the flexible column
   widths, so it read as noise rather than structure.
@@ -1280,7 +1395,7 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     a dismissal belongs on the card, not in a toast.
 - **New task / edit task:** a **page**, not a modal — `/card/new` and
   `/card/{id}/edit`, matching the session view. Same control set (title, prompt, dir,
-  agent, model, effort, permission mode, schedule, auto-complete, auto-git; tools /
+  agent, model, effort, permission mode, schedule; tools /
   env / flags behind **Advanced**) and a **single Save** → lands in Preparing; the
   user drags it onward. The fields sit in a centred column so a wide window does not
   stretch them.

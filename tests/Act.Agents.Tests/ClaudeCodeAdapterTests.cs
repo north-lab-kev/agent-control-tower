@@ -34,14 +34,13 @@ public class ClaudeCodeAdapterTests
     // typed into the TUI once it had painted and gone quiet, and a CLI that has painted its banner
     // is not yet listening — the prompt went nowhere and the card sat at an empty composer.
     [Fact]
-    public async Task The_opening_prompt_is_positional_and_carries_the_preamble()
+    public async Task The_opening_prompt_is_positional_and_is_the_task_text_alone()
     {
         var pty = new StubPtyHost();
 
         await using var session = await LaunchAsync(pty);
 
-        pty.Last.Arguments[^1].Should().Contain("do the thing");
-        pty.Last.Arguments[^1].Should().Contain(ActContract.RelativeStatusDirectory);
+        pty.Last.Arguments[^1].Should().Be("do the thing");
     }
 
     [Fact]
@@ -64,7 +63,6 @@ public class ClaudeCodeAdapterTests
             TaskId,
             SessionId,
             "C:/repo",
-            AgentPreamble.Compose(TaskId),
             "do the thing",
             "pick it back up",
             new LaunchConfig(),
@@ -87,7 +85,6 @@ public class ClaudeCodeAdapterTests
             TaskId,
             SessionId,
             "C:/repo",
-            AgentPreamble.Compose(TaskId),
             "do the thing",
             null,
             new LaunchConfig(),
@@ -102,7 +99,6 @@ public class ClaudeCodeAdapterTests
             TaskId,
             SessionId,
             "C:/repo",
-            AgentPreamble.Compose(TaskId),
             "do the thing",
             config ?? new LaunchConfig(),
             TerminalSize.Default));

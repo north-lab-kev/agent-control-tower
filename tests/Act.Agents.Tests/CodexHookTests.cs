@@ -161,7 +161,6 @@ public class CodexHookInjectionTests
             taskId ?? TaskId,
             "ignored-by-codex",
             "C:/repo",
-            AgentPreamble.Compose(taskId ?? TaskId),
             "do the thing",
             new LaunchConfig(),
             TerminalSize.Default));

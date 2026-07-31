@@ -1,14 +1,17 @@
+using Act.App.Desktop;
 using Act.App.Resources;
 using Act.App.Settings;
 using Act.Core.Model;
-using ElectronNET.API;
 using Microsoft.AspNetCore.Components;
 
 namespace Act.App.Components.Pages;
 
 // Every setting applies and persists the moment it changes, so there is no Save and no Cancel —
 // the only action is leaving, which is what the back arrow is for.
-public partial class SettingsView(UserSettingsService settings, NavigationManager navigation)
+public partial class SettingsView(
+    UserSettingsService settings,
+    IDesktopBridge desktop,
+    NavigationManager navigation)
 {
     private static SettingChoice<LanguagePreference>[] LanguageChoices =>
     [
@@ -40,7 +43,7 @@ public partial class SettingsView(UserSettingsService settings, NavigationManage
 
     private bool CloseToTray => settings.CloseToTray;
 
-    private static bool IsDesktop => HybridSupport.IsElectronActive;
+    private bool IsDesktop => desktop.IsDesktop;
 
     // A language change has to re-run the whole render tree under the new culture, so it reloads.
     // As a page that now lands the user back on settings rather than on the board, which is where

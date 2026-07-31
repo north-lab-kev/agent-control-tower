@@ -42,13 +42,6 @@
                               Disabled="IsLaunching" Click="@LaunchAsync" @onclick:stopPropagation="true" />
             }
 
-            @if (CanComplete)
-            {
-                <RadzenButton Text="@Strings.Board_Complete" Icon="check" Size="ButtonSize.ExtraSmall"
-                              ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" class="complete"
-                              Disabled="IsCompleting" Click="@CompleteAsync" @onclick:stopPropagation="true" />
-            }
-
             @if (Card.Metrics is { } m)
             {
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="0.6rem" Wrap="FlexWrap.Wrap" class="metrics">
@@ -65,7 +58,7 @@
                 }
             }
 
-            @if (ScheduleText is not null || Card.Children.Count > 0 || Card.AutoComplete)
+            @if (ScheduleText is not null || Card.Children.Count > 0)
             {
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
                              Gap="0.45rem" Wrap="FlexWrap.Wrap">
@@ -73,11 +66,6 @@
                     {
                         <RadzenText TextStyle="TextStyle.Caption"
                                     Text="@Text.Format(Strings.Card_Children, Card.Children.Count)" class="lin" />
-                    }
-                    @if (Card.AutoComplete)
-                    {
-                        <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base"
-                                     Text="@Strings.Card_AutoComplete" class="schip" />
                     }
                     @if (ScheduleText is not null)
                     {

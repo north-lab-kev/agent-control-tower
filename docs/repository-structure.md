@@ -27,7 +27,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  ├─ Act.Core/                     # DOMAIN + APPLICATION — no infra/UI/agent deps
 │  │  ├─ Model/                     #   Card, Column, Badge, Transition, Lineage…
 │  │  ├─ Events/                    #   normalized event types (the adapter vocabulary)
-│  │  ├─ Agents/                    #   ActContract (.act/ paths) + AgentPreamble (injected text)
+│  │  ├─ Agents/                    #   PtyAgentSession/Terminal, launch-config resolution,
+│  │  │                            #     agent process environment (shared by both adapters)
 │  │  ├─ Rules/                     #   the rules engine, manual-move validity, sign-off validity,
 │  │  │                            #     Your-turn ordering, which cards are resumable after their
 │  │  │                            #     process died (pure logic)
@@ -35,10 +36,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  └─ Abstractions/              #   INTERFACES: IAgentAdapter, IAgentSession,
 │  │                               #     IAgentTerminal, IPtyHost, IIngestionSource,
 │  │                               #     IAgentCapabilityCatalog, ICardStore, INotifier, IClock…
-│  ├─ Act.Agents.ClaudeCode/        # Claude Code adapter (pty command line, hook settings,
-│  │                               #   preamble delivery, claude:// handoff, mappings)
+│  ├─ Act.Agents.ClaudeCode/        # Claude Code adapter (pty command line, hook + mcp settings,
+│  │                               #   claude:// handoff, mappings)
 │  ├─ Act.Agents.Codex/             # Codex adapter
-│  ├─ Act.Infrastructure/           # LiteDB store, localhost hook host, FileSystemWatcher,
+│  ├─ Act.Infrastructure/           # LiteDB store, localhost hook + mcp host, transcript tailer,
 │  │  │                            #   process supervision, Serilog wiring
 │  │  ├─ Storage/                   #   act.db open + BsonMapper, schema version, card/settings stores
 │  │  ├─ FileSystem/                #   IWorkingDirectories: ~ expansion, path validation, browsing
@@ -59,6 +60,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │  └─ Layout/                 #     MainLayout, top bar, theme stylesheets
 │  │  ├─ Desktop/                   #   DesktopShell: the Electron window + tray icon and the
 │  │  │                            #     close/exit rules (Electron-only; registered when enabled)
+│  │  │                            #     + IDesktopBridge and its two implementations — the only
+│  │  │                            #     shell surface a page may touch
 │  │  ├─ Cards/                     #   BoardState — owns every card incl. archived ones, and
 │  │  │                            #     decides what may see which; task form model; capability
 │  │  │                            #     catalog built from the registered adapters
@@ -113,11 +116,12 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   deterministic sessions through it. It ships with `AgentScript` (a lifecycle as one
   fluent line) and `TestClock`, and is constructed for a chosen `AgentType` so the
   same script can be replayed as either agent.
-- **The agent↔ACT contract is Core's, not an adapter's.** `Act.Core/Agents/`
-  owns the `.act/` paths (`ActContract`) and the injected preamble text
-  (`AgentPreamble`) because the convention is agent-agnostic; an adapter only
-  decides *how* to deliver the preamble. One place to tune the wording, one place
-  every later step resolves those paths from.
+- **The agent↔ACT contract is Core's, not an adapter's** — and as of 2026-07-30 it is
+  a single MCP tool (`create_followup`), not a file convention. `ActContract` and
+  `AgentPreamble` are gone with the status file and the injected preamble; the tool's
+  schema and handler belong to Core, and an adapter only decides how the MCP server is
+  *declared* to its CLI (`--mcp-config` vs. a `--profile` table). Same principle, one
+  fewer moving part: see the spec's *Agent ↔ ACT contract*.
 - **`Components/Pages/` holds every routable component, and nothing else.** The rule is
   simply *a component with `@page` lives in `Pages/`* — so the folder listing is the
   route list, and there is one place to look. Non-routable components stay with their
@@ -192,6 +196,24 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   too (gated on Electron being active), with a no-op/web fallback for the plain
   `dotnet run` browser mode. *(Originally slated for `Act.Desktop`; moved when
   Electron wiring was consolidated into `Act.App`.)*
+- **No page references ElectronNET.** `Desktop/IDesktopBridge` carries the only two
+  things a view needs from the shell — `IsDesktop`, and `OpenExternalAsync` for a
+  `claude://` handoff — with `ElectronDesktopBridge` and `BrowserDesktopBridge`
+  behind it. `AddActApp` registers the browser one; `AddActDesktopShell` (the
+  Electron-only branch) `Replace`s it, so the composition root is the single place
+  that knows which mode ACT is in. The interface stays in `Act.App` rather than
+  `Act.Core/Abstractions` because nothing in Core calls it — unlike `INotifier` and
+  `ISleepInhibitor`, which Core-side code triggers. `DesktopShell` is deliberately
+  *not* behind it: window, tray and native dialogs are inherently Electron, and one
+  quarantined class is cheaper than an abstraction with a single implementation.
+- **Never ask `HybridSupport.IsElectronActive` during startup.** It reads
+  `ElectronNetRuntime.RuntimeController != null`, and for an ASP.NET host that
+  controller is only assigned in `RuntimeControllerAspNetBase`'s constructor — i.e.
+  when DI resolves it, well after `AddElectron`. Before then it answers `false` in
+  *every* mode, packaged or not; that is why `Program.cs` sniffs the
+  `/electronPort` argument itself to decide whether to run as a desktop shell. Views
+  are free of the timing question because `IDesktopBridge.IsDesktop` is a constant
+  per implementation, fixed by the registration.
 - **The store owns its own conventions.** `Storage/` keeps one entry point
   (`ActDatabase.Open`) that configures the `BsonMapper` and applies the schema —
   a **version document plus an ordered migration list**, so `CurrentVersion` is
@@ -215,8 +237,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 
 ## Notes
 
-- The `.act/` directories (`status/`, `followups/`) are **not** part of the
-  repo — they're created at runtime inside each task's working directory.
+- **ACT writes nothing into a task's working directory.** The `.act/` directories
+  (`status/`, `followups/`) were dropped on 2026-07-30 — status with auto-completion,
+  follow-ups in favour of the MCP tool. Generated launch config (hook settings, Codex
+  profile, MCP config) lives in ACT's own data directory instead.
 - The **`prototype` branch** (commit `bb7633d`) is reference material for the PTY
   work, not something to merge — it also carries a throwaway `Act.App/Prototype/`
   page and its `Program.cs` wiring. Read individual files with

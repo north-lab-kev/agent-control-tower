@@ -38,4 +38,10 @@ public enum TransitionReason
     AgentExited,
     SessionKilled,
     NoActivity,
+
+    // The CLI is parked on its directory-trust prompt, which blocks before the session exists and
+    // so reaches ACT as no hook at all. Its own reason rather than `PermissionRequested`: nothing
+    // was requested by an agent that has not started, and the timeline should say which prompt it
+    // was.
+    StartupPrompt,
 }

@@ -14,11 +14,16 @@ public class ManualMoveTests
     public void A_human_controlled_card_can_be_picked_up(BoardColumn column)
         => ManualMove.CanDrag(column).Should().BeTrue();
 
+    // It lifts so it can be dropped on Completed — the sign-off — and nowhere else: the drop side
+    // of that transition belongs to `CardCompletion`, not to `IsAllowed`.
+    [Fact]
+    public void A_card_handed_back_to_the_user_lifts_for_the_sign_off()
+        => ManualMove.CanDrag(BoardColumn.YourTurn).Should().BeTrue();
+
     [Theory]
     [InlineData(BoardColumn.Executing)]
-    [InlineData(BoardColumn.YourTurn)]
     [InlineData(BoardColumn.Completed)]
-    public void A_card_past_the_launch_boundary_does_not_lift(BoardColumn column)
+    public void A_card_the_user_no_longer_moves_does_not_lift(BoardColumn column)
         => ManualMove.CanDrag(column).Should().BeFalse();
 
     [Fact]

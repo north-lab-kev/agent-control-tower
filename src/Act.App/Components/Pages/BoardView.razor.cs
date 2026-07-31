@@ -42,8 +42,11 @@ public partial class BoardView(
         if (dragging is not { } card || card.Column == column)
             return "col";
 
-        return ManualMove.IsAllowed(card.Column, column) ? "col drop-ok" : "col drop-no";
+        return CanDrop(card, column) ? "col drop-ok" : "col drop-no";
     }
+
+    private static bool CanDrop(Card card, BoardColumn column)
+        => ManualMove.IsAllowed(card.Column, column) || CardCompletion.CanCompleteInto(card, column);
 
     private void OnDragStartAsync(Card card) => dragging = card;
 
@@ -54,7 +57,19 @@ public partial class BoardView(
         var card = dragging;
         dragging = null;
 
-        if (card is null || !ManualMove.IsAllowed(card.Column, column))
+        if (card is null)
+            return;
+
+        // The one drop that is not a move: sign-off stamps the card and ends its session, so it goes
+        // through the completer rather than through `MoveAsync`.
+        if (CardCompletion.CanCompleteInto(card, column))
+        {
+            await CompleteAsync(card);
+
+            return;
+        }
+
+        if (!ManualMove.IsAllowed(card.Column, column))
             return;
 
         await board.MoveAsync(card, column);
@@ -97,8 +112,6 @@ public partial class BoardView(
             launching.Remove(card.Id);
         }
     }
-
-    private bool IsCompleting(Card card) => completing.Contains(card.Id);
 
     // Your turn → Completed, the other transition the user drives by hand across the launch boundary.
     // Guarded like the launch is, because ending the card's session is not something to do twice.

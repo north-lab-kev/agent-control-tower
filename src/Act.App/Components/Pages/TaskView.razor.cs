@@ -1,4 +1,5 @@
 using Act.App.Cards;
+using Act.App.Desktop;
 using Act.App.Resources;
 using Act.App.Components.Shared;
 using Act.App.Sessions;
@@ -6,7 +7,6 @@ using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Infrastructure.FileSystem;
-using ElectronNET.API;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
@@ -27,6 +27,7 @@ public partial class TaskView(
     DialogService dialogService,
     NavigationManager navigation,
     NotificationService notifications,
+    IDesktopBridge desktop,
     IJSRuntime js) : IAsyncDisposable
 {
     private NewTaskForm form = new();
@@ -93,12 +94,6 @@ public partial class TaskView(
         new(TaskSchedule.SpecificDateTime, Strings.ScheduleOption_DateTime),
     ];
 
-    private static SettingChoice<GitAction?>[] GitChoices =>
-    [
-        new(GitAction.Commit, Strings.GitAction_Commit),
-        new(GitAction.Push, Strings.GitAction_Push),
-        new(GitAction.PullRequest, Strings.GitAction_PullRequest),
-    ];
 
     // Keeps a stored model visible even when the agent no longer offers it — otherwise editing
     // a card would show an empty dropdown for a value it is still carrying.
@@ -345,7 +340,7 @@ public partial class TaskView(
             unsaved = await js.InvokeAsync<IJSObjectReference>("import", "/js/act-unsaved.js");
             owner = DotNetObjectReference.Create(this);
 
-            await unsaved.InvokeVoidAsync("watch", owner, HybridSupport.IsElectronActive);
+            await unsaved.InvokeVoidAsync("watch", owner, desktop.IsDesktop);
         }
 
         if (unsaved is not { } module || armed == IsDirty)
@@ -438,17 +433,6 @@ public partial class TaskView(
 
         if (!form.WantsDateTime)
             form.ScheduledFor = null;
-    }
-
-    private void OnAutoCompleteChanged(bool autoComplete)
-    {
-        form.AutoComplete = autoComplete;
-
-        if (autoComplete)
-            return;
-
-        form.SelectedGitAction = null;
-        form.Draft = false;
     }
 
     private async Task OnSubmitAsync(NewTaskForm _)

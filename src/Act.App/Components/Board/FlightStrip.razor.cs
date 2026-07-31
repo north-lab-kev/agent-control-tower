@@ -25,9 +25,6 @@ public partial class FlightStrip
     public EventCallback<Card> OnLaunch { get; set; }
 
     [Parameter]
-    public EventCallback<Card> OnComplete { get; set; }
-
-    [Parameter]
     public EventCallback<Card> OnDragStart { get; set; }
 
     [Parameter]
@@ -38,9 +35,6 @@ public partial class FlightStrip
 
     [Parameter]
     public bool IsLaunching { get; set; }
-
-    [Parameter]
-    public bool IsCompleting { get; set; }
 
     private bool Draggable => ManualMove.CanDrag(Card.Column);
 
@@ -97,13 +91,6 @@ public partial class FlightStrip
     private bool CanLaunch => Card.Column is BoardColumn.Ready && !IsCompact;
 
     private Task LaunchAsync() => OnLaunch.InvokeAsync(Card);
-
-    // The sign-off, on the strip for the same reason Launch is: it is the one thing the user does to
-    // a card in Your turn without opening its terminal, and a review that is over should not need
-    // the card opened to say so.
-    private bool CanComplete => CardCompletion.CanComplete(Card) && !IsCompact;
-
-    private Task CompleteAsync() => OnComplete.InvokeAsync(Card);
 
     // The shared mapping, plus the two things that are about this surface rather than the signal: a
     // Completed card shows `done` where it carries no badge, and `stale` says how long it has been
