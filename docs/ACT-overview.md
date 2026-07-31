@@ -1608,9 +1608,13 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   dump you on the board; now you stay on settings.
   Shipped: **language**, **theme** (follow-OS / light / dark override),
   **display mode** (compact / spacious — settings-only; there is no top-bar
-  density toggle), **keep-awake** and **close-to-tray**. Still to land: the notification matrix,
-  `maxConcurrent`, weekly-reset time, and the auto-archive window /
+  density toggle), **blink in Your turn**, **keep-awake** and **close-to-tray**. Still to land:
+  the notification matrix, `maxConcurrent`, weekly-reset time, and the auto-archive window /
   auto-execution pause.
+  - **Blink cards in Your turn** (*Appearance*, on by default) governs the attention pulse only.
+    Off keeps the rail colour, the glow and the border — the card still reads as needing you, it
+    simply holds still, which is exactly what a reduced-motion user already gets. The state is
+    never what gets turned off, because a card waiting on the user must stay legible as one.
   - **Keep the computer awake** (*System*, on by default) holds the machine up for as
     long as ACT runs — not per session, because a queue that opens at 02:00 needs the
     machine already awake rather than woken by work it cannot start. It is `ISleepInhibitor`,

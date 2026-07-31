@@ -160,6 +160,11 @@
     }
 }
 
+/* The setting turns the pulse off, not the state off: the colour, the glow and the border stay, so
+   a Your turn card still reads as one — it just holds still, exactly as it does under reduced
+   motion. */
+.strip.attn.still { animation: none; }
+
 @media (prefers-reduced-motion: reduce) {
     .strip.attn { animation: none; }
 }

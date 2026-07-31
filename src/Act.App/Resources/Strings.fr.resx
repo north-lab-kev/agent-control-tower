@@ -345,6 +345,12 @@
   <data name="Settings_Density_Hint" xml:space="preserve">
     <value>Niveau de détail affiché sur chaque bande de vol.</value>
   </data>
+  <data name="Settings_BlinkYourTurn" xml:space="preserve">
+    <value>Faire clignoter les cartes de « À vous »</value>
+  </data>
+  <data name="Settings_BlinkYourTurn_Hint" xml:space="preserve">
+    <value>Fait pulser une carte qui vous attend. Désactivez pour garder la couleur sans le mouvement.</value>
+  </data>
   <data name="Settings_Density_Spacious" xml:space="preserve">
     <value>Spacieux</value>
   </data>
@@ -627,6 +633,9 @@
   <data name="Usage_AfterReset" xml:space="preserve">
     <value>réinitialisé · aucune activité</value>
   </data>
+  <data name="Usage_ResetStamp" xml:space="preserve">
+    <value>{0} à {1}</value>
+  </data>
   <data name="Usage_DaysHours" xml:space="preserve">
     <value>{0} j {1} h</value>
   </data>
@@ -637,6 +646,6 @@
     <value>{0} min</value>
   </data>
   <data name="Usage_Tooltip" xml:space="preserve">
-    <value>{0} — fenêtre {1}. Réinitialisation {2}. Relevé à {3}.</value>
+    <value>{0} — fenêtre {1} · réinitialisation {2} · relevé à {3}</value>
   </data>
 </root>

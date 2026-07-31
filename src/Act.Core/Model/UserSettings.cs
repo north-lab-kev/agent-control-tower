@@ -8,6 +8,8 @@ public sealed class UserSettings
 
     public BoardDensity Density { get; set; } = BoardDensity.Spacious;
 
+    public bool BlinkYourTurn { get; set; } = true;
+
     public bool KeepAwake { get; set; } = true;
 
     public bool CloseToTray { get; set; } = true;

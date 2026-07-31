@@ -17,6 +17,8 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
 
     public BoardDensity Density => current.Density;
 
+    public bool BlinkYourTurn => current.BlinkYourTurn;
+
     public bool KeepAwake => current.KeepAwake;
 
     public bool CloseToTray => current.CloseToTray;
@@ -55,6 +57,14 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
             return;
 
         Update(settings => settings.Density = density);
+    }
+
+    public void SetBlinkYourTurn(bool blink)
+    {
+        if (blink == current.BlinkYourTurn)
+            return;
+
+        Update(settings => settings.BlinkYourTurn = blink);
     }
 
     public void SetKeepAwake(bool keepAwake)

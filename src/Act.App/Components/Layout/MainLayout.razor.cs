@@ -20,6 +20,8 @@ public partial class MainLayout(
 
     private BoardDensity Density => settings.Density;
 
+    private bool BlinkYourTurn => settings.BlinkYourTurn;
+
     private string MarkPath
         => markPath ??= $"favicon.png{assetVersions.For(typeof(MainLayout).Assembly)}";
 

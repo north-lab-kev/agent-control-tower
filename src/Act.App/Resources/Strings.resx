@@ -345,6 +345,12 @@
   <data name="Settings_Density_Hint" xml:space="preserve">
     <value>How much detail each flight strip shows.</value>
   </data>
+  <data name="Settings_BlinkYourTurn" xml:space="preserve">
+    <value>Blink cards in Your turn</value>
+  </data>
+  <data name="Settings_BlinkYourTurn_Hint" xml:space="preserve">
+    <value>Pulse a card that is waiting on you. Turn it off to keep the colour without the movement.</value>
+  </data>
   <data name="Settings_Density_Spacious" xml:space="preserve">
     <value>Spacious</value>
   </data>
@@ -627,6 +633,9 @@
   <data name="Usage_AfterReset" xml:space="preserve">
     <value>reset · no activity</value>
   </data>
+  <data name="Usage_ResetStamp" xml:space="preserve">
+    <value>{0} {1}</value>
+  </data>
   <data name="Usage_DaysHours" xml:space="preserve">
     <value>{0}d {1}h</value>
   </data>
@@ -637,6 +646,6 @@
     <value>{0}m</value>
   </data>
   <data name="Usage_Tooltip" xml:space="preserve">
-    <value>{0} — {1} window. Resets {2}. Read at {3}.</value>
+    <value>{0} — {1} window · resets {2} · read at {3}</value>
   </data>
 </root>

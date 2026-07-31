@@ -48,6 +48,15 @@
                                         Data="DensityChoices" TextProperty="Text" ValueProperty="Value"
                                         AllowClear="false" class="control" />
                     </RadzenStack>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_BlinkYourTurn" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_BlinkYourTurn_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenSwitch Value="BlinkYourTurn" ValueChanged="@((bool value) => OnBlinkYourTurnChanged(value))" />
+                    </RadzenStack>
                 </RadzenStack>
             </RadzenFieldset>
 

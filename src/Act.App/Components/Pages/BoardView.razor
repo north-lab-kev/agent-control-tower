@@ -27,7 +27,8 @@
                     {
                         foreach (var card in cards)
                         {
-                            <FlightStrip Card="card" Density="Density" OnOpen="OpenAsync" OnLaunch="LaunchAsync"
+                            <FlightStrip Card="card" Density="Density" Blink="BlinkYourTurn"
+                                         OnOpen="OpenAsync" OnLaunch="LaunchAsync"
                                          OnDragStart="OnDragStartAsync" OnDragEnd="OnDragEndAsync"
                                          IsDragging="dragging?.Id == card.Id" IsLaunching="IsLaunching(card)" />
                         }

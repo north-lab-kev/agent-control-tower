@@ -39,6 +39,8 @@ public partial class SettingsView(
 
     private BoardDensity Density => settings.Density;
 
+    private bool BlinkYourTurn => settings.BlinkYourTurn;
+
     private bool KeepAwake => settings.KeepAwake;
 
     private bool CloseToTray => settings.CloseToTray;
@@ -60,6 +62,8 @@ public partial class SettingsView(
     private void OnThemeChanged(ThemePreference theme) => settings.SetTheme(theme);
 
     private void OnDensityChanged(BoardDensity density) => settings.SetDensity(density);
+
+    private void OnBlinkYourTurnChanged(bool blink) => settings.SetBlinkYourTurn(blink);
 
     private void OnKeepAwakeChanged(bool keepAwake) => settings.SetKeepAwake(keepAwake);
 

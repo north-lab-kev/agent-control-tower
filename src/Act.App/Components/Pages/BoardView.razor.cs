@@ -34,6 +34,9 @@ public partial class BoardView(
     [CascadingParameter(Name = "Density")]
     private BoardDensity Density { get; set; }
 
+    [CascadingParameter(Name = "BlinkYourTurn")]
+    private bool BlinkYourTurn { get; set; }
+
     private string DensityClass => Density is BoardDensity.Compact ? "compact" : "spacious";
 
     protected override void OnInitialized()

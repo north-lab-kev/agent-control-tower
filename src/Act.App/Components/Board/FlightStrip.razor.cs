@@ -19,6 +19,9 @@ public partial class FlightStrip
     public BoardDensity Density { get; set; }
 
     [Parameter]
+    public bool Blink { get; set; } = true;
+
+    [Parameter]
     public EventCallback<Card> OnOpen { get; set; }
 
     [Parameter]
@@ -65,6 +68,7 @@ public partial class FlightStrip
         "strip",
         RailClass,
         AttentionClass,
+        AttentionClass is not null && !Blink ? "still" : null,
         Draggable ? "liftable" : null,
         IsDragging ? "lifted" : null,
     }.Where(part => !string.IsNullOrEmpty(part)));
