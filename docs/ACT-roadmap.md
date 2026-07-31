@@ -405,13 +405,33 @@ verifiable, and leaves something runnable.
       - **New event `TurnFailed`** — the CLI reporting a failed turn while its process stays alive
         and would exit zero (measured: an account rejecting `gpt-5.4`). `ProcessExited` cannot see
         it, and a bare `TurnEnded` would offer an api error up for review as if it were work.
-      - ⚠️ **Blocker found, and it is the step's own open question: Codex's TUI does not paint under
-        ACT's pty.** The process launches with the right command line and stays alive, but produces
-        **zero bytes** — so its pre-session prompt cannot be answered, no session is ever created, no
-        rollout file appears, and there is nothing for any of the above to ingest. Claude Code paints
-        fine through the same `PtyHost`, so this is Codex-specific. Next thing to chase: `--no-alt-screen`
-        (already flagged in *Codex facts*), a resize nudge after spawn, and whether the TUI needs a
-        different startup handshake than ConPTY gives it.
+      - ✅ **"Codex's TUI does not paint" was wrong — measured 2026-07-31 and withdrawn.** Spawned
+        through ACT's own `PtyHost`, Codex paints in **93 ms**: 644 characters, its directory-trust
+        screen legible in the captured stream. It also **accepts ACT's keystrokes** — writing `\r`
+        through `IPtyProcess.WriteAsync` answered the prompt, the session started and a rollout
+        appeared. Both halves of the pty contract hold.
+        - **What was actually broken: the preview pane.** It reports `document.hidden`, and xterm in
+          a hidden, unfocused document neither renders (22 empty row divs) nor delivers input — so
+          "empty terminal, keystroke ignored" was the harness, not ACT and not Codex. Rendering was
+          already recorded as a pane limitation; **input is the new half of that finding**. Verifying
+          anything terminal-shaped needs a real window.
+      - ⚠️ **The real blocker, and it is a consequence of restoring `--profile`: a second pre-session
+        gate.** With ACT declaring hooks, every Codex launch parks on a full-screen
+        *"Hooks need review / 9 hooks are new or changed / 1. Review hooks · 2. Trust all and
+        continue · 3. Continue without trusting"* — **before** the session exists, so no rollout, no
+        binding, nothing to ingest. And **`-c bypass_hook_trust=true` does not skip it** on this
+        build, though it is the documented escape hatch. Two ways out, and it is a decision rather
+        than a fix: answer the review once so Codex stores its `trusted_hash` (a one-time cost, like
+        directory trust — but it grants ACT's hooks permission to run outside the sandbox), or write
+        the profile **without** hook declarations until hooks actually fire, keeping the measured
+        composer ready for that day.
+      - ✅ **A real mis-binding bug, found by the live run and fixed.** Card #1082 bound itself to a
+        session from 30 minutes earlier and reported *its* tokens and turns. Cause:
+        `SessionLauncher` does `card.LaunchedAt ??= clock.Now`, so on a relaunch that stamp is
+        arbitrarily stale and every rollout written since passed the time filter. The search now takes
+        **this session's spawn** (`clock.Now` as the pump starts looking) and, when the card already
+        has a session id — a restore — matches the rollout **by identity** rather than guessing at
+        all. Four tests, including the exact scenario that bit.
       - ✅ **And a launch-killing bug found and fixed on the way in — the hooks schema moved.** ACT's
         generated `--profile` carried `hooks = "<path>"`, which this CLI **rejects outright**:
         *"Error loading config.toml: invalid type: string … expected struct HooksToml"*. Every Codex
@@ -444,12 +464,14 @@ verifiable, and leaves something runnable.
         `LaunchConfig.AgentBinary` existed and nothing could ever set it, so a Store-installed Codex —
         not on `PATH`, runnable only from the `CODEX_CLI_PATH` in `~/.codex/config.toml` — could not
         be launched at all. One field under *Advanced*, both languages.
-    - [ ] **8. Make Codex's TUI paint under the pty — the only thing left in this step.** Until it
-      does, none of the code above can be exercised: no paint means no answered prompt, no session,
-      no rollout, nothing to ingest. Order to try: `--no-alt-screen`, a resize nudge right after
-      spawn, and a comparison of what ConPTY hands Claude Code (which paints) against what it hands
-      Codex (which does not). *Verify:* a launched Codex card shows its TUI, binds its session id
-      from the rollout, and reports live state and metrics.
+    - [ ] **8. Decide what ACT declares in the Codex profile — the only thing left in this step.**
+      The pty is fine and the ingestion code is written; what stops a Codex card is the hook-review
+      gate ACT's own declarations raise, which the documented bypass does not skip. Either the review
+      is answered once (Codex then remembers the hash, and launches are clean — at the price of
+      trusting ACT's hooks to run outside the sandbox), or ACT writes the profile without hook
+      declarations until hooks fire. *Verify:* a launched Codex card reaches its TUI, binds its
+      session id from the rollout, and reports live state and metrics — **in a real window**, since
+      the preview pane neither renders nor accepts terminal input.
       - **The gap to accept when it does work.** Until a CLI build fires hooks, a Codex card can show
         `running` / metrics / `to review` / `error`, but will **never** badge `needs permission` or
         `needs answer`, because no file or process signal reports a waiting prompt. The quiet chip is
@@ -706,11 +728,14 @@ verifiable, and leaves something runnable.
   - **Still open for step 14:** clean mid-task resume after a rate-limit interruption.
     The backpressure signals now have a source, though — Codex's `limit_reached` /
     `rate_limit_reached_type` and the window `resets_at` are what `waiting-reset` needs.
-- ⚠️ **Codex's TUI does not paint under ConPTY — measured 2026-07-31, and now step 8's
-  last blocker.** The process spawns with the right command line and stays alive, but writes
-  **zero bytes** to the pty, so its pre-session prompt cannot be answered and no session is
-  ever created. Claude Code paints through the same `PtyHost`, so it is Codex-specific. Its
-  submit key for `SubmitAsync` is still unknown for the same reason.
+- ✅ **Codex runs under ConPTY — verified 2026-07-31 through ACT's own `PtyHost`.** It paints in
+  93 ms (644 characters, its trust screen legible), and a `\r` written to the pty answers that
+  screen and starts a session. So both directions of the pty contract hold for both agents, and
+  `\r` is the submit key for `SubmitAsync`.
+  - **What does *not* work is verifying it in the preview pane.** That pane reports
+    `document.hidden`, and a hidden, unfocused xterm neither paints nor accepts keystrokes — which
+    reads exactly like a broken CLI and cost a whole round of wrong conclusions. Anything
+    terminal-shaped has to be checked in a real window, or at the pty layer directly.
 - ✅ **Codex equivalents — resolved** against the installed CLI (`codex-cli
   0.146.0-alpha.3.1`) and the official docs; see *Codex facts* below.
 - ✅ **`Porta.Pty` and `xterm.js` licenses — checked.** Both **MIT**, both recorded in

@@ -26,6 +26,10 @@ public sealed class CodexRolloutFinder(
     // read. A rollout older than the last handful cannot belong to a launch ACT just made.
     private const int Candidates = 12;
 
+    // A known session id is matched against the *filename*, which carries the uuid, so a restored
+    // session finds its own rollout however far down the list it has sunk.
+    private const int Known = 500;
+
     // The launch stamp and the file's own stamp are taken by different clocks. A second of slack
     // costs nothing — a stale rollout is still excluded by its cwd and by being already claimed.
     private static readonly TimeSpan Skew = TimeSpan.FromSeconds(2);
@@ -36,6 +40,25 @@ public sealed class CodexRolloutFinder(
     {
         var root = Path.Combine(CodexHookConfig.ResolveCodexHome(), SessionsFolder);
 
+        return search.SessionId is { Length: > 0 } known
+            ? ByIdentity(root, known)
+            : ByLaunch(root, search);
+    }
+
+    // The id is in the filename, so no file has to be opened to find the right one.
+    private TranscriptLocation? ByIdentity(string root, string sessionId)
+    {
+        var path = directory.Newest(root, Pattern, Known)
+            .FirstOrDefault(candidate => candidate.Contains(sessionId, StringComparison.OrdinalIgnoreCase));
+
+        return path is null ? null : new TranscriptLocation(path, sessionId);
+    }
+
+    // The only guessing left, and each of the three filters earns its place: the directory says it
+    // could be this card's, the start time says it is not one that already existed, and `Claimed`
+    // stops two cards in one directory from taking each other's session.
+    private TranscriptLocation? ByLaunch(string root, TranscriptSearch search)
+    {
         // Oldest first among the newest few: two cards launched seconds apart in one directory take
         // the files in the order they were created, so the first card does not steal the second's.
         var candidates = directory.Newest(root, Pattern, Candidates)
@@ -50,7 +73,9 @@ public sealed class CodexRolloutFinder(
             if (!SameDirectory(meta.Cwd, search.WorkingDir))
                 continue;
 
-            if (meta.StartedAt is { } startedAt && startedAt + Skew < search.LaunchedAt)
+            // A rollout with no timestamp at all cannot be shown to be this launch's, and the cost of
+            // guessing wrong is a card reporting another session's numbers.
+            if (meta.StartedAt is not { } startedAt || startedAt + Skew < search.StartedAfter)
                 continue;
 
             return new TranscriptLocation(path, meta.SessionId);

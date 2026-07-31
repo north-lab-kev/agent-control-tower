@@ -84,6 +84,48 @@ public class CodexRolloutFinderTests
         finder.Locate(Search(@"C:\dev\act"))!.SessionId.Should().Be("019f-1111");
     }
 
+    // The mis-binding this class exists to prevent, and it happened for real: a card relaunched after
+    // other sessions had run in the same directory bound itself to one of *those*, and reported its
+    // tokens and turns. The launch stamp is what separates them, so it has to be this session's spawn
+    // rather than the card's first-ever launch.
+    [Fact]
+    public void A_rollout_from_a_session_that_ran_between_launches_is_not_it()
+    {
+        var finder = Finder(
+            ("mine.jsonl", Meta("019f-mine", @"C:\dev\act", "2026-07-30T02:38:41Z")),
+            ("someone-elses.jsonl", Meta("019f-else", @"C:\dev\act", "2026-07-30T02:20:00Z")));
+
+        finder.Locate(Search(@"C:\dev\act"))!.SessionId.Should().Be("019f-mine");
+    }
+
+    // A rollout that names no start time cannot be shown to be this launch's.
+    [Fact]
+    public void A_rollout_with_no_timestamp_is_not_it()
+        => Finder(("r.jsonl", """{ "type": "session_meta", "payload": { "session_id": "x", "cwd": "C:\\dev\\act" } }"""))
+            .Locate(Search(@"C:\dev\act"))
+            .Should().BeNull();
+
+    // A session already bound — a restore — is matched by identity, not by guessing. Its rollout is as
+    // old as the session is, so every time and directory filter would throw it away.
+    [Fact]
+    public void A_known_session_id_matches_its_own_rollout_however_old()
+    {
+        var finder = Finder(
+            ("rollout-2026-07-29T01-00-00-019f-old.jsonl", Meta("019f-old", @"C:\dev\somewhere-else", "2026-07-29T01:00:00Z")),
+            ("rollout-2026-07-30T02-38-41-019f-new.jsonl", Meta("019f-new", @"C:\dev\act", "2026-07-30T02:38:41Z")));
+
+        var found = finder.Locate(Search(@"C:\dev\act") with { SessionId = "019f-old" });
+
+        found!.Path.Should().EndWith("019f-old.jsonl");
+        found.SessionId.Should().Be("019f-old");
+    }
+
+    [Fact]
+    public void A_known_session_id_with_no_rollout_yet_finds_nothing()
+        => Finder(("rollout-019f-other.jsonl", Meta("019f-other", @"C:\dev\act", "2026-07-30T02:38:41Z")))
+            .Locate(Search(@"C:\dev\act") with { SessionId = "019f-missing" })
+            .Should().BeNull();
+
     [Fact]
     public void No_sessions_folder_yet_is_silence_rather_than_a_failure()
         => Finder().Locate(Search(@"C:\dev\act")).Should().BeNull();

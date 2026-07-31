@@ -63,10 +63,15 @@ public sealed class TranscriptPump(
         if (Agent(session) is not { } agent || !findersByAgent.TryGetValue(agent, out var finder))
             return;
 
+        // `clock.Now`, not the card's `LaunchedAt`: that field is stamped on a card's first launch and
+        // never again, so on a relaunch it is stale and every transcript written in between looks like
+        // a candidate — which is exactly how a card once bound itself to a session from an hour
+        // earlier. This runs the moment the session is registered, so it is the spawn to within a tick.
         var search = new TranscriptSearch(
             board.Card(session.TaskId)?.WorkingDir ?? string.Empty,
-            board.Card(session.TaskId)?.LaunchedAt ?? clock.Now,
-            sessions.ClaimedTranscripts);
+            clock.Now,
+            sessions.ClaimedTranscripts,
+            session.SessionId);
 
         var deadline = clock.Now + SearchWindow;
 
@@ -76,7 +81,15 @@ public sealed class TranscriptPump(
         {
             while (sessions.IsLive(session.TaskId) && clock.Now < deadline)
             {
-                if (finder.Locate(search with { Claimed = sessions.ClaimedTranscripts }) is { } found)
+                // The id can arrive while the search is running — a restore binds it late — and an
+                // exact-id match beats the guessing, so it is re-read on every tick.
+                var attempt = search with
+                {
+                    Claimed = sessions.ClaimedTranscripts,
+                    SessionId = session.SessionId ?? search.SessionId,
+                };
+
+                if (finder.Locate(attempt) is { } found)
                 {
                     // The binding and the file arrive together for Codex, and this is the only place
                     // either can come from: there is no id to pre-mint and no payload to read.

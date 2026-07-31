@@ -19,12 +19,22 @@ public interface ITranscriptFinder
     TranscriptLocation? Locate(TranscriptSearch search);
 }
 
-// `Claimed` is what keeps two cards launched in the same directory from binding to each other's
-// session: a path another live card already holds is not a candidate, however well it matches.
+// Two different searches, and conflating them is what let a stale rollout bind to a fresh card:
+//
+//   * **`SessionId` known** — a restored session, or one already bound. Then the id *is* the match
+//     and nothing else matters: the file is whichever rollout carries it, however old.
+//   * **`SessionId` null** — a fresh Codex launch, which is the only case with any guessing in it.
+//     A candidate must be in the same directory, must have started no earlier than this **session**
+//     did, and must not already be claimed by another live card.
+//
+// `StartedAfter` is when *this session* spawned, deliberately not the card's `LaunchedAt`: that field
+// is stamped on a card's first launch and never again, so on a relaunch it is arbitrarily stale and
+// every rollout made in between looks like a candidate. It cost a real mis-binding to learn.
 public sealed record TranscriptSearch(
     string WorkingDir,
-    DateTimeOffset LaunchedAt,
-    IReadOnlySet<string> Claimed);
+    DateTimeOffset StartedAfter,
+    IReadOnlySet<string> Claimed,
+    string? SessionId = null);
 
 // `SessionId` is null when the file names no session — the path is still worth having, since
 // enrichment does not need the id.
