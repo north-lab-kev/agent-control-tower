@@ -9,7 +9,7 @@ namespace Act.App.Cards;
 //
 // Only the common part lives here. The strip's extras stay with the strip, because they are about
 // that surface rather than about the signal: a Completed card shows `done` where it has no badge,
-// and its `stale` badge carries how long it has been quiet.
+// and a quiet session is stated beside its badge rather than in it.
 public static class CardVisuals
 {
     public static string Column(BoardColumn column) => column switch
@@ -28,7 +28,6 @@ public static class CardVisuals
         Badge.Running or Badge.Compacting => "b-run",
         Badge.NeedsPermission or Badge.NeedsAnswer => "b-wait",
         Badge.Error or Badge.Killed => "b-err",
-        Badge.Stale => "b-stale",
         Badge.ReadyForReview => "b-review",
         _ => null,
     };
@@ -41,7 +40,6 @@ public static class CardVisuals
         Badge.NeedsAnswer => Strings.Badge_NeedsAnswer,
         Badge.Error => Strings.Badge_Error,
         Badge.Killed => Strings.Badge_Killed,
-        Badge.Stale => Strings.Badge_Stale,
         Badge.ReadyForReview => Strings.Badge_ToReview,
         _ => null,
     };

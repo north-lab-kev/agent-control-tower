@@ -108,6 +108,12 @@
   <data name="NewTask_ExtraFlags" xml:space="preserve">
     <value>Extra CLI flags</value>
   </data>
+  <data name="NewTask_AgentBinary" xml:space="preserve">
+    <value>Agent executable</value>
+  </data>
+  <data name="NewTask_AgentBinary_Hint" xml:space="preserve">
+    <value>Leave empty to find the agent on PATH. Set a full path when it is not there — a Store-installed Codex, for one.</value>
+  </data>
   <data name="NewTask_Env" xml:space="preserve">
     <value>Environment variables</value>
   </data>
@@ -216,15 +222,6 @@
   <data name="Badge_Killed" xml:space="preserve">
     <value>killed</value>
   </data>
-  <data name="Badge_Stale" xml:space="preserve">
-    <value>stale</value>
-  </data>
-  <data name="Badge_StaleMinutes" xml:space="preserve">
-    <value>stale {0}m</value>
-  </data>
-  <data name="Badge_StaleHours" xml:space="preserve">
-    <value>stale {0}h</value>
-  </data>
   <data name="Badge_ToReview" xml:space="preserve">
     <value>to review</value>
   </data>
@@ -257,6 +254,15 @@
   </data>
   <data name="Metrics_Compactions" xml:space="preserve">
     <value>{0} compactions</value>
+  </data>
+  <data name="Metrics_Tokens" xml:space="preserve">
+    <value>{0} tokens</value>
+  </data>
+  <data name="Metrics_QuietMinutes" xml:space="preserve">
+    <value>quiet {0}m</value>
+  </data>
+  <data name="Metrics_QuietHours" xml:space="preserve">
+    <value>quiet {0}h</value>
   </data>
   <data name="Card_Children" xml:space="preserve">
     <value>{0} children ⤵</value>
@@ -567,14 +573,14 @@
   <data name="Transition_TurnEnded" xml:space="preserve">
     <value>Turn ended, ready for review</value>
   </data>
+  <data name="Transition_TurnFailed" xml:space="preserve">
+    <value>The agent reported a failed turn</value>
+  </data>
   <data name="Transition_AgentExited" xml:space="preserve">
     <value>Agent exited with code {0}</value>
   </data>
   <data name="Transition_SessionKilled" xml:space="preserve">
     <value>Session killed</value>
-  </data>
-  <data name="Transition_NoActivity" xml:space="preserve">
-    <value>No activity for {0}</value>
   </data>
   <data name="Transition_ActivityObserved" xml:space="preserve">
     <value>Activity observed in the terminal</value>
@@ -596,5 +602,41 @@
   </data>
   <data name="Timeline_EnteredColumn" xml:space="preserve">
     <value>Entered {0}</value>
+  </data>
+  <data name="Usage_Agent_ClaudeCode" xml:space="preserve">
+    <value>Claude</value>
+  </data>
+  <data name="Usage_Agent_Codex" xml:space="preserve">
+    <value>Codex</value>
+  </data>
+  <data name="Usage_Window_Session" xml:space="preserve">
+    <value>5h</value>
+  </data>
+  <data name="Usage_Window_Weekly" xml:space="preserve">
+    <value>week</value>
+  </data>
+  <data name="Usage_Window_Monthly" xml:space="preserve">
+    <value>month</value>
+  </data>
+  <data name="Usage_Percent" xml:space="preserve">
+    <value>{0}%</value>
+  </data>
+  <data name="Usage_Resets" xml:space="preserve">
+    <value>in {0} · {1}</value>
+  </data>
+  <data name="Usage_AfterReset" xml:space="preserve">
+    <value>reset · no activity</value>
+  </data>
+  <data name="Usage_DaysHours" xml:space="preserve">
+    <value>{0}d {1}h</value>
+  </data>
+  <data name="Usage_HoursMinutes" xml:space="preserve">
+    <value>{0}h {1}m</value>
+  </data>
+  <data name="Usage_Minutes" xml:space="preserve">
+    <value>{0}m</value>
+  </data>
+  <data name="Usage_Tooltip" xml:space="preserve">
+    <value>{0} — {1} window. Resets {2}. Read at {3}.</value>
   </data>
 </root>

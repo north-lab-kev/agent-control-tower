@@ -180,6 +180,12 @@ else
                 <RadzenFieldset Text="@Strings.NewTask_Group_Advanced" AllowCollapse="true" Collapsed="true">
                     <RadzenStack Gap="0.9rem">
                         <RadzenStack Gap="0.3rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AgentBinary" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_AgentBinary_Hint" class="hint" />
+                            <RadzenTextBox @bind-Value="form.AgentBinary" class="wide" />
+                        </RadzenStack>
+
+                        <RadzenStack Gap="0.3rem">
                             <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AllowedTools" />
                             <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Tools_Hint" class="hint" />
                             <RadzenTextArea @bind-Value="form.AllowedTools" Rows="2" class="wide" />

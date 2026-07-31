@@ -4,6 +4,7 @@ using Act.Infrastructure.Hooks;
 using Act.Infrastructure.Power;
 using Act.Infrastructure.Storage;
 using Act.Infrastructure.Terminal;
+using Act.Infrastructure.Transcripts;
 using LiteDB;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,6 +21,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ILiteDatabase>(_ => ActDatabase.Open(dataDirectory));
         services.AddSingleton<ISettingsStore, LiteDbSettingsStore>();
         services.AddSingleton<ICardStore, LiteDbCardStore>();
+        services.AddSingleton<ITranscriptReader, TranscriptReader>();
+        services.AddSingleton<ITranscriptDirectory, TranscriptDirectory>();
+        services.AddSingleton<ITextFileReader, TextFileReader>();
         services.AddActHookEndpoint(dataDirectory);
 
         return services;

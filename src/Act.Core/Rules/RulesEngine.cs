@@ -89,6 +89,16 @@ public static class RulesEngine
                 Badge.ReadyForReview,
                 TransitionReason.TurnEnded),
 
+            // The agent's own report that the turn failed, which is not the same as its process
+            // failing: the CLI is still there and would exit zero, so this is the only way ACT hears
+            // about an api error or a model the account cannot use. `error` rather than `to review`,
+            // because there is nothing to review.
+            TurnFailed failure => new BoardMove(
+                BoardColumn.YourTurn,
+                Badge.Error,
+                TransitionReason.TurnFailed,
+                Message: failure.Reason),
+
             // ACT owns the process, so this is the one failure it can report first-hand. A clean
             // exit is not a card state: the turn events already said where the work stands, and the
             // session simply being over must not overwrite that.
@@ -106,15 +116,10 @@ public static class RulesEngine
                 Badge.Killed,
                 TransitionReason.SessionKilled),
 
-            // Stale is a badge, not a move: the work may still be fine and the TUI is still there,
-            // so the card stays where it is and says it has gone quiet.
-            NoActivityElapsed idle when card.Column is BoardColumn.Executing
-                => new BoardMove(
-                    BoardColumn.Executing,
-                    Badge.Stale,
-                    TransitionReason.NoActivity,
-                    Detail: idle.Idle.ToString()),
-
+            // Silence is deliberately not a rule. A card that has gone quiet gets no badge and no
+            // transition, because ACT cannot tell a hung agent from a forty-minute build from its
+            // own ingestion having broken — see `QuietSession`, which states the gap instead of
+            // guessing at its cause.
             _ => null,
         };
     }

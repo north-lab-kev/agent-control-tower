@@ -7,11 +7,13 @@ namespace Act.Core.Tests;
 public class SessionRestoreTests
 {
     // Executing is work that was running, and Your turn is work whose next step is said in the
-    // terminal that went away — the answer to a prompt, or a send-back after review.
+    // terminal that went away — the answer to a prompt, or a send-back after review. Completed is
+    // there for the history: the session is the record of what was done.
     [Theory]
     [InlineData(BoardColumn.Executing)]
     [InlineData(BoardColumn.YourTurn)]
-    public void A_bound_card_in_the_machine_region_is_resumable(BoardColumn column)
+    [InlineData(BoardColumn.Completed)]
+    public void A_bound_card_that_has_been_launched_is_resumable(BoardColumn column)
         => SessionRestore.IsResumable(CardIn(column)).Should().BeTrue();
 
     // Killed and errored cards live in Your turn and come back too — the process is gone, the
@@ -23,12 +25,11 @@ public class SessionRestoreTests
         => SessionRestore.IsResumable(CardIn(BoardColumn.YourTurn, badge)).Should().BeTrue();
 
     // Restoring resumes a session id; it never starts one. Ready is a launch the user has not made
-    // yet, and Completed is done — it resumes on reopen, as an explicit act.
+    // yet, and Preparing is a card that has never been one.
     [Theory]
     [InlineData(BoardColumn.Preparing)]
     [InlineData(BoardColumn.Ready)]
-    [InlineData(BoardColumn.Completed)]
-    public void A_card_outside_the_machine_region_is_left_alone(BoardColumn column)
+    public void A_card_that_was_never_launched_is_left_alone(BoardColumn column)
         => SessionRestore.IsResumable(CardIn(column)).Should().BeFalse();
 
     [Fact]
@@ -50,6 +51,19 @@ public class SessionRestoreTests
 
         SessionRestore.IsResumable(card).Should().BeFalse();
     }
+
+    // Startup restores the machine region only.
+    [Theory]
+    [InlineData(BoardColumn.Executing)]
+    [InlineData(BoardColumn.YourTurn)]
+    public void Live_work_comes_back_by_itself(BoardColumn column)
+        => SessionRestore.RestoresUnattended(CardIn(column)).Should().BeTrue();
+
+    // A signed-off card waits to be opened: a pty per completed task at every start would be a fleet
+    // of processes for work that is over.
+    [Fact]
+    public void A_completed_card_is_not_restored_unattended()
+        => SessionRestore.RestoresUnattended(CardIn(BoardColumn.Completed)).Should().BeFalse();
 
     private static Card CardIn(BoardColumn column, Badge? badge = null)
         => new()

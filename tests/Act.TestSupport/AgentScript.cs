@@ -57,9 +57,6 @@ public sealed class AgentScript
     public AgentScript EndsTurn()
         => Emit((session, at) => new TurnEnded(session, at));
 
-    public AgentScript GoesQuiet(TimeSpan idle)
-        => Emit((session, at) => new NoActivityElapsed(session, at, idle));
-
     public AgentScript Exits(int exitCode)
         => Emit((session, at) => new ProcessExited(session, at, exitCode));
 

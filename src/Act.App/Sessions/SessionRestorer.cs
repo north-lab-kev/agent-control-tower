@@ -16,7 +16,7 @@ public sealed class SessionRestorer(
 {
     public async Task RestoreAllAsync(CancellationToken cancellationToken = default)
     {
-        foreach (var card in board.Resumable)
+        foreach (var card in board.RestorableUnattended)
         {
             try
             {

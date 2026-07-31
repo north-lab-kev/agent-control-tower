@@ -39,7 +39,6 @@
 .r-err { --rail: var(--act-err); }
 .r-review { --rail: var(--act-review); }
 .r-done { --rail: var(--act-done); }
-.r-stale { --rail: var(--act-stale); }
 
 ::deep .stripcard {
     background: var(--act-surface);
@@ -50,8 +49,15 @@
 ::deep .cid,
 ::deep .path,
 ::deep .metrics,
+::deep .quiet,
 ::deep .lin {
     font-family: var(--act-mono);
+}
+
+/* Stated, not alarmed: the colour says "worth a look", the badge beside it still says `running`. */
+::deep .quiet {
+    font-size: 9.5px;
+    color: var(--act-quiet);
 }
 
 ::deep .cid,
@@ -105,7 +111,6 @@
 ::deep .b-err { --tint: var(--act-err); }
 ::deep .b-review { --tint: var(--act-review); }
 ::deep .b-done { --tint: var(--act-done); }
-::deep .b-stale { --tint: var(--act-stale); }
 
 ::deep .ctxbar {
     height: 3px;

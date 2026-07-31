@@ -76,7 +76,6 @@ public partial class FlightStrip
         Badge.Running or Badge.Compacting => "r-run",
         Badge.NeedsPermission or Badge.NeedsAnswer => "r-wait",
         Badge.Error or Badge.Killed => "r-err",
-        Badge.Stale => "r-stale",
         Badge.ReadyForReview => "r-review",
         _ => Card.Column switch
         {
@@ -92,34 +91,25 @@ public partial class FlightStrip
 
     private Task LaunchAsync() => OnLaunch.InvokeAsync(Card);
 
-    // The shared mapping, plus the two things that are about this surface rather than the signal: a
-    // Completed card shows `done` where it carries no badge, and `stale` says how long it has been
-    // quiet because the strip is where you scan for that.
+    // The shared mapping, plus the one thing that is about this surface rather than the signal: a
+    // Completed card shows `done` where it carries no badge.
     private string? BadgeClass => CardVisuals.BadgeClass(Card.Badge)
         ?? (Card.Column is BoardColumn.Completed ? "b-done" : null);
 
     private string? BadgeText => Card.Badge switch
     {
-        Badge.Stale => StaleText,
         null => Card.Column is BoardColumn.Completed ? Strings.Badge_Done : null,
         _ => CardVisuals.BadgeText(Card.Badge),
     };
 
-    private string StaleText
-    {
-        get
-        {
-            var since = Card.Metrics?.LastActivityAt;
-            if (since is null)
-                return Strings.Badge_Stale;
-
-            var minutes = (int)(DateTimeOffset.UtcNow - since.Value).TotalMinutes;
-
-            return minutes < 60
-                ? Text.Format(Strings.Badge_StaleMinutes, minutes)
-                : Text.Format(Strings.Badge_StaleHours, minutes / 60);
-        }
-    }
+    // Stated beside `running`, never instead of it — the card has gone quiet, and what that means is
+    // the user's to judge. Computed at render time from the stored stamp, so it needs no event and no
+    // stored state; the board's refresh tick is what makes the number advance.
+    private string? QuietText => QuietSession.QuietFor(Card, DateTimeOffset.UtcNow) is { } quiet
+        ? quiet.TotalMinutes < 60
+            ? Text.Format(Strings.Metrics_QuietMinutes, (int)quiet.TotalMinutes)
+            : Text.Format(Strings.Metrics_QuietHours, (int)quiet.TotalHours)
+        : null;
 
     private string AgentName => Card.AgentType switch
     {
@@ -155,10 +145,10 @@ public partial class FlightStrip
         if (m.Compactions > 0)
             yield return Text.Format(Strings.Metrics_Compactions, m.Compactions);
 
-        if (m.Cost > 0)
-            yield return m.Cost.ToString("C2", Culture);
+        if (m.TokensTotal > 0)
+            yield return Text.Format(Strings.Metrics_Tokens, Thousands(m.TokensTotal));
     }
 
-    private static string Thousands(int value)
+    private static string Thousands(long value)
         => value >= 1000 ? $"{value / 1000}k" : value.ToString(Culture);
 }

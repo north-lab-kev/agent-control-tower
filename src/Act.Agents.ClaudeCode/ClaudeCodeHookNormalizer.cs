@@ -29,7 +29,7 @@ public sealed class ClaudeCodeHookNormalizer : IHookNormalizer
         var name = Text(payload, "hook_event_name");
 
         if (name is null)
-            return new HookNormalization(sessionId, []);
+            return new HookNormalization(sessionId, [], Text(payload, "transcript_path"));
 
         var id = sessionId ?? string.Empty;
 
@@ -53,7 +53,7 @@ public sealed class ClaudeCodeHookNormalizer : IHookNormalizer
             _ => [],
         };
 
-        return new HookNormalization(sessionId, events);
+        return new HookNormalization(sessionId, events, Text(payload, "transcript_path"));
     }
 
     // Most tools mean "the session is doing something". `AskUserQuestion` means the opposite: the

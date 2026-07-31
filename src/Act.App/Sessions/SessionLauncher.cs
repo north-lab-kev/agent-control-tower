@@ -120,11 +120,12 @@ public sealed class SessionLauncher(
         return LaunchResult.Ok();
     }
 
-    // A restore is not a launch. The process died — with ACT, with a kill, with the CLI's own exit
-    // — while the binding in the store did not, so the session id comes back into a fresh terminal
-    // and the card stays exactly where the rules last put it. Moving it to Executing would claim
-    // work is running when all that is running is a prompt waiting for its user; the resume carries
-    // no message for the same reason.
+    // A restore is not a launch. The process died — with ACT, with a kill, with the CLI's own exit,
+    // with the sign-off that ended it — while the binding in the store did not, so the session id
+    // comes back into a fresh terminal and the card stays exactly where it was. Moving it to
+    // Executing would claim work is running when all that is running is a prompt waiting for its
+    // user, and a Completed card reopened to read its history is not work being resumed; the resume
+    // carries no message for the same reason.
     public async Task<LaunchResult> RestoreAsync(
         Card card,
         TerminalSize size,

@@ -14,13 +14,20 @@ public partial class BoardView(
     SessionLauncher launcher,
     CardCompleter completer,
     NotificationService notifications,
-    NavigationManager navigation) : IDisposable
+    NavigationManager navigation) : IAsyncDisposable
 {
+    // What the quiet chip costs: it is derived from a stamp rather than from an event, so nothing
+    // pushes a re-render when it changes. Half a minute is finer than the thing it renders — a chip
+    // counting whole minutes — and a board with no live session never ticks at all.
+    private static readonly TimeSpan RefreshInterval = TimeSpan.FromSeconds(30);
+
     private static readonly BoardColumn[] AllColumns = Enum.GetValues<BoardColumn>();
 
     private readonly HashSet<Guid> launching = [];
 
     private readonly HashSet<Guid> completing = [];
+
+    private readonly CancellationTokenSource leaving = new();
 
     private Card? dragging;
 
@@ -29,11 +36,40 @@ public partial class BoardView(
 
     private string DensityClass => Density is BoardDensity.Compact ? "compact" : "spacious";
 
-    protected override void OnInitialized() => board.Changed += OnChanged;
+    protected override void OnInitialized()
+    {
+        board.Changed += OnChanged;
 
-    public void Dispose() => board.Changed -= OnChanged;
+        _ = RefreshLoopAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        board.Changed -= OnChanged;
+
+        await leaving.CancelAsync();
+
+        leaving.Dispose();
+    }
 
     private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private async Task RefreshLoopAsync()
+    {
+        using var timer = new PeriodicTimer(RefreshInterval);
+
+        try
+        {
+            while (await timer.WaitForNextTickAsync(leaving.Token))
+            {
+                if (board.In(BoardColumn.Executing).Count > 0)
+                    await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
 
     private IReadOnlyList<Card> CardsIn(BoardColumn column) => board.In(column);
 

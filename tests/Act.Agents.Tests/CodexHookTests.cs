@@ -26,10 +26,13 @@ public class CodexHookInjectionTests
         pty.Last.Arguments.Should().ContainInOrder("--profile", CodexHookConfig.ProfileName);
     }
 
-    // `hooks` is a string path to a json file, not a `[[hooks.*]]` table. Getting this wrong is
-    // what the findings caught: a table fails with "invalid type: sequence, expected a string".
+    // The regression this pins cost a whole verification run: the profile used to carry
+    // `hooks = "<path>"`, which the CLI rejects outright — *"invalid type: string … expected struct
+    // HooksToml"* — so every Codex card died on exit code 1 with an empty terminal. The shape below
+    // was measured by type-probing the parser (see `CodexHookConfig.ComposeProfile`), and the parser
+    // **ignores unknown keys**, so nothing but an assertion on the exact shape can catch a drift.
     [Fact]
-    public async Task The_profile_points_at_a_hooks_file_by_path()
+    public async Task The_profile_declares_handlers_as_event_tables_not_a_file_path()
     {
         var files = new StubAgentConfigFiles();
 
@@ -38,8 +41,71 @@ public class CodexHookInjectionTests
         var profile = files.External.Should().ContainSingle().Which;
 
         profile.Key.Should().EndWith($"{CodexHookConfig.ProfileName}.config.toml");
-        profile.Value.Should().StartWith("#").And.Contain("hooks = \"");
-        profile.Value.Should().Contain(CodexHookConfig.HooksFileName.Replace(".", "."));
+        profile.Value.Should().StartWith("#");
+        profile.Value.Should().NotContain("hooks = \"");
+        profile.Value.Should().Contain("[[hooks.SessionStart]]")
+            .And.Contain("[[hooks.SessionStart.hooks]]")
+            .And.Contain("matcher = ")
+            .And.Contain("type = \"command\"");
+    }
+
+    // Every event ACT observes has to be declared, or the ones left out are simply never reported.
+    [Fact]
+    public async Task The_profile_declares_every_event_the_hooks_file_does()
+    {
+        var files = new StubAgentConfigFiles();
+
+        await using var session = await LaunchAsync(new StubPtyHost(), new StubHookEndpoint(), files);
+
+        var profile = files.External.Single().Value;
+        var declared = JsonDocument.Parse(files.Content(CodexHookConfig.HooksFileName)!)
+            .RootElement.GetProperty("hooks")
+            .EnumerateObject()
+            .Select(property => property.Name);
+
+        foreach (var name in declared)
+            profile.Should().Contain($"[[hooks.{name}]]");
+    }
+
+    // The command value wraps the forwarder path in quotes so a path with spaces survives, and TOML
+    // basic strings need both those quotes and the separators escaped. Leaving the quotes bare
+    // produced a file the parser could not read — caught only by handing the real CLI the real bytes.
+    [Fact]
+    public async Task The_profile_escapes_the_quotes_and_separators_in_the_command()
+    {
+        var files = new StubAgentConfigFiles();
+
+        await using var session = await LaunchAsync(new StubPtyHost(), new StubHookEndpoint(), files);
+
+        var profile = files.External.Single().Value;
+        var value = profile.Split('\n')
+            .First(line => line.StartsWith("command = ", StringComparison.Ordinal))
+            .Trim();
+
+        value.Should().StartWith("command = \"\\\"").And.EndWith("\\\" SessionStart\"");
+        value.Should().NotContain(@"\\\\\");
+    }
+
+    // The definition is hashed for trust, so the profile and the json must not drift: two spellings
+    // of the same handler would be two hashes and a second review prompt.
+    [Fact]
+    public async Task The_profile_and_the_hooks_file_declare_the_same_command()
+    {
+        var files = new StubAgentConfigFiles();
+
+        await using var session = await LaunchAsync(new StubPtyHost(), new StubHookEndpoint(), files);
+
+        var command = JsonDocument.Parse(files.Content(CodexHookConfig.HooksFileName)!)
+            .RootElement.GetProperty("hooks")
+            .GetProperty("SessionStart")[0]
+            .GetProperty("hooks")[0]
+            .GetProperty("command")
+            .GetString()!;
+
+        // The same command, spelled for TOML: separators and quotes both escaped.
+        var escaped = command.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
+        files.External.Single().Value.Should().Contain(escaped);
     }
 
     [Fact]

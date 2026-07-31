@@ -17,6 +17,11 @@ Instructions for Claude Code when working in this repository.
 - **`docs/ACT-roadmap.md` — read when needed.** Build sequence and step status.
   Consult it to know what comes next or what a step's *verify* line requires;
   tick steps off as they land.
+- **`docs/agent-usage-findings.md` — read before touching usage code.** Where the
+  5-hour and weekly numbers come from: the two undocumented HTTP endpoints, their
+  response shapes, the unit and encoding traps between them, the rules ACT holds
+  itself to around the CLIs' credential files, and the alternatives that were
+  measured and rejected.
 - **`docs/codex-hooks-findings.md` — read before touching Codex hook wiring.**
   Codex hooks do not fire on the pinned CLI, so that code is written blind; the
   file records what was measured, what ACT assumed, and the checklist to re-test

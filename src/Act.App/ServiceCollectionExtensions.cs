@@ -4,9 +4,11 @@ using Act.App.Cards;
 using Act.App.Desktop;
 using Act.App.Sessions;
 using Act.App.Settings;
+using Act.App.Usage;
 using Act.Core.Abstractions;
 using Act.Infrastructure;
 using Act.Infrastructure.Storage;
+using Act.Infrastructure.Usage;
 using ElectronNET.API;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Radzen;
@@ -15,6 +17,8 @@ namespace Act.App;
 
 public static class ServiceCollectionExtensions
 {
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
+
     public static IServiceCollection AddActApp(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddRazorComponents()
@@ -29,7 +33,8 @@ public static class ServiceCollectionExtensions
         return services
             .AddActAgents()
             .AddActBoard()
-            .AddActSessions();
+            .AddActSessions()
+            .AddActUsage(configuration);
     }
 
     // Electron-only, and registered from the branch that decides the app runs as a desktop shell:
@@ -49,6 +54,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAgentAdapter, CodexAdapter>();
         services.AddSingleton<IHookNormalizer, ClaudeCodeHookNormalizer>();
         services.AddSingleton<IHookNormalizer, CodexHookNormalizer>();
+        services.AddSingleton<ITranscriptNormalizer, ClaudeCodeTranscriptNormalizer>();
+        services.AddSingleton<ITranscriptNormalizer, CodexTranscriptNormalizer>();
+
+        // Codex only, and only until its hooks fire: Claude Code is told where its transcript is.
+        services.AddSingleton<ITranscriptFinder, CodexRolloutFinder>();
         services.AddSingleton<IAgentCapabilityCatalog, AgentCapabilityCatalog>();
 
         return services;
@@ -64,12 +74,38 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
+    private static IServiceCollection AddActUsage(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSingleton(
+            configuration.GetSection(UsageOptions.SectionName).Get<UsageOptions>() ?? new UsageOptions());
+
+        services.AddHttpClient(HttpUsageProbe.ClientName, client => client.Timeout = RequestTimeout);
+
+        services.AddSingleton<IUsageProbe>(provider => Probe(provider, new ClaudeCodeUsageDialect()));
+        services.AddSingleton<IUsageProbe>(provider => Probe(provider, new CodexUsageDialect()));
+
+        services.AddSingleton<UsageState>();
+        services.AddSingleton<UsagePump>();
+
+        return services;
+    }
+
+    private static HttpUsageProbe Probe(IServiceProvider provider, IUsageDialect dialect)
+        => new(
+            dialect,
+            () => provider.GetRequiredService<IHttpClientFactory>().CreateClient(HttpUsageProbe.ClientName),
+            provider.GetRequiredService<ITextFileReader>(),
+            provider.GetRequiredService<IClock>(),
+            provider.GetRequiredService<UsageOptions>(),
+            provider.GetRequiredService<ILogger<HttpUsageProbe>>());
+
     private static IServiceCollection AddActSessions(this IServiceCollection services)
     {
         services.AddSingleton<IAgentEventSink, SessionEventSink>();
         services.AddSingleton<SessionRegistry>();
         services.AddSingleton<SessionLauncher>();
         services.AddSingleton<SessionEventPump>();
+        services.AddSingleton<TranscriptPump>();
         services.AddSingleton<SessionRestorer>();
 
         return services;

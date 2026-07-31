@@ -23,15 +23,23 @@ internal static class ActBsonMapper
             value => value.ToString(TimeSpanFormat, CultureInfo.InvariantCulture),
             bson => TimeSpan.ParseExact(bson.AsString, TimeSpanFormat, CultureInfo.InvariantCulture));
 
-        // A stored reason is a code from a vocabulary that keeps changing, so a card written by an
-        // older build must still load: a name this build no longer has reads back as null, which the
-        // timeline already renders as its verbatim note. Without this, retiring one reason makes
-        // every card that ever carried it unreadable.
+        // A stored badge or reason is a code from a vocabulary that keeps changing, so a card written
+        // by an older build must still load: a name this build no longer has reads back as null,
+        // which both the strip and the timeline already handle. Without this, retiring one value
+        // makes every card that ever carried it unreadable — `stale` and two turn-end reasons have
+        // been retired already.
         mapper.RegisterType(
             typeof(TransitionReason),
             value => value.ToString(),
             bson => Enum.TryParse<TransitionReason>(bson.AsString, out var reason)
                 ? reason
+                : null);
+
+        mapper.RegisterType(
+            typeof(Badge),
+            value => value.ToString(),
+            bson => Enum.TryParse<Badge>(bson.AsString, out var badge)
+                ? badge
                 : null);
 
         mapper.Entity<Card>()

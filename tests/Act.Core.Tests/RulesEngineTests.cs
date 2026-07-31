@@ -76,7 +76,7 @@ public class RulesEngineTests
     // prompt still wins — including the review badge, which is where the idle-nudge bug used to land.
     [Theory]
     [InlineData(BoardColumn.Executing, Badge.Running)]
-    [InlineData(BoardColumn.Executing, Badge.Stale)]
+    [InlineData(BoardColumn.Executing, Badge.Compacting)]
     [InlineData(BoardColumn.YourTurn, Badge.ReadyForReview)]
     [InlineData(BoardColumn.YourTurn, Badge.NeedsPermission)]
     public void A_permission_request_still_blocks_every_other_card(BoardColumn column, Badge badge)
@@ -137,6 +137,21 @@ public class RulesEngineTests
         move.Reason.Should().Be(TransitionReason.TurnEnded);
     }
 
+    // The failure `ProcessExited` cannot see: the CLI reports the turn failed and stays alive, so
+    // without this the card would offer an api error up for review as if it were finished work.
+    [Fact]
+    public void A_turn_the_agent_reports_as_failed_is_an_error_rather_than_review()
+    {
+        var move = RulesEngine.Decide(
+            CardIn(BoardColumn.Executing),
+            new TurnFailed(SessionId, At, "the model is not supported on this account"));
+
+        move!.Column.Should().Be(BoardColumn.YourTurn);
+        move.Badge.Should().Be(Badge.Error);
+        move.Reason.Should().Be(TransitionReason.TurnFailed);
+        move.Message.Should().Be("the model is not supported on this account");
+    }
+
     // A turn that ends while the card is blocked ends for a reason — the prompt was denied and the
     // agent stopped — so it must still be offered for review rather than left waiting on a prompt
     // nobody is answering any more.
@@ -175,16 +190,6 @@ public class RulesEngineTests
 
         move!.Column.Should().Be(BoardColumn.YourTurn);
         move.Badge.Should().Be(Badge.Killed);
-    }
-
-    // Stale is a badge and not a move — the TUI is still alive and the work may still be fine.
-    [Fact]
-    public void Going_quiet_marks_the_card_without_moving_it()
-    {
-        var move = RulesEngine.Decide(CardIn(BoardColumn.Executing), new NoActivityElapsed(SessionId, At, TimeSpan.FromHours(2)));
-
-        move!.Column.Should().Be(BoardColumn.Executing);
-        move.Badge.Should().Be(Badge.Stale);
     }
 
     // The launch boundary, from the other side: observation must never drag a card back across it.
@@ -282,13 +287,13 @@ public class RulesEngineTests
         new PermissionRequested(SessionId, At, "req", "summary"),
         new QuestionAsked(SessionId, At, "req", "question"),
         new TurnEnded(SessionId, At),
+        new TurnFailed(SessionId, At, "the model is not supported on this account"),
         new ProcessExited(SessionId, At, 0),
         new ProcessExited(SessionId, At, 3),
         new SessionKilled(SessionId, At),
         new SessionEnded(SessionId, At),
         new SessionStarted(SessionId, At, "t.jsonl", "C:/repo"),
         new SessionEnriched(SessionId, At, new EnrichmentSnapshot()),
-        new NoActivityElapsed(SessionId, At, TimeSpan.FromHours(2)),
         new FollowUpsWritten(SessionId, At, ["001.json"]),
         new StartupPromptWaiting(SessionId, At),
     ];

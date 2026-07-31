@@ -117,7 +117,6 @@
 .tl .b-wait { --rail: var(--act-wait); }
 .tl .b-err { --rail: var(--act-err); }
 .tl .b-review { --rail: var(--act-review); }
-.tl .b-stale { --rail: var(--act-stale); }
 .tl .b-done { --rail: var(--act-done); }
 .tl .b-ready { --rail: var(--act-ready); }
 .tl .b-plan { --rail: var(--act-plan); }

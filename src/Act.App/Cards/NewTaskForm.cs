@@ -29,6 +29,12 @@ public sealed record NewTaskForm
 
     public bool Draft { get; set; }
 
+    // Empty means "resolve the agent's own name off `PATH`", which is the normal case. It exists
+    // because one real install shape cannot be launched otherwise: a Store-packaged Codex is not on
+    // `PATH` at all, and its runnable copy lives at the `CODEX_CLI_PATH` recorded in
+    // `~/.codex/config.toml`.
+    public string AgentBinary { get; set; } = string.Empty;
+
     public string AllowedTools { get; set; } = string.Empty;
 
     public string DisallowedTools { get; set; } = string.Empty;
@@ -52,6 +58,7 @@ public sealed record NewTaskForm
         ScheduledFor = card.ScheduledFor?.LocalDateTime,
         SelectedGitAction = card.AutoGit?.Action,
         Draft = card.AutoGit?.Draft ?? false,
+        AgentBinary = card.LaunchConfig.AgentBinary ?? string.Empty,
         AllowedTools = Joined(card.LaunchConfig.AllowedTools),
         DisallowedTools = Joined(card.LaunchConfig.DisallowedTools),
         ExtraFlags = Joined(card.LaunchConfig.ExtraFlags),
@@ -86,7 +93,7 @@ public sealed record NewTaskForm
         card.AutoGit = GitOptions();
         card.LaunchConfig = new LaunchConfig
         {
-            AgentBinary = card.LaunchConfig.AgentBinary,
+            AgentBinary = Cleaned(AgentBinary),
             Model = Cleaned(Model),
             Effort = Cleaned(Effort),
             PermissionMode = Permission,

@@ -12,8 +12,6 @@ public sealed class CardMetrics
 
     public int ContextLimit { get; set; }
 
-    public decimal Cost { get; set; }
-
     public int TurnCount { get; set; }
 
     public int ToolCalls { get; set; }

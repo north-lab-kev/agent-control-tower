@@ -1,0 +1,20 @@
+@if (Meters.Count > 0)
+{
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.6rem" class="usage">
+        @foreach (var meter in Meters)
+        {
+            <div class="meter @meter.State" title="@meter.Tooltip">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                             JustifyContent="JustifyContent.SpaceBetween" Gap="0.4rem" class="mtop">
+                    <RadzenText TextStyle="TextStyle.Caption" Text="@meter.Label" class="mlabel" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="@meter.Value" class="mvalue" />
+                </RadzenStack>
+
+                <RadzenProgressBar Value="@meter.Percent" ShowValue="false"
+                                   Mode="ProgressBarMode.Determinate" class="mbar" />
+
+                <RadzenText TextStyle="TextStyle.Caption" Text="@meter.Reset" class="mreset" />
+            </div>
+        }
+    </RadzenStack>
+}

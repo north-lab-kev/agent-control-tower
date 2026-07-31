@@ -24,4 +24,6 @@ public sealed class SessionEventSink(SessionRegistry sessions) : IAgentEventSink
         if (sessions.For(taskId) is PtyAgentSession session)
             session.BindSessionId(sessionId);
     }
+
+    public void LocateTranscript(Guid taskId, string path) => sessions.LocateTranscript(taskId, path);
 }

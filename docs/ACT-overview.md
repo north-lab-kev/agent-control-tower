@@ -232,11 +232,11 @@ is why **Executing** is the one column that neither lifts nor accepts a drop.
 
 **Badges (orthogonal to columns, always auto):** `running`, `needs permission`,
 `needs answer`, `error`, `killed` (user-terminated via the kill/abandon hatch),
-`stale` (no activity past a timeout — possibly hung), `compacting` (context
-being compacted), `to review` (finished, awaiting sign-off). One event can both
-move a card *and* stamp its badge. Note: `stale` and `compacting` occur *during*
-Executing; `stale` does **not** auto-escalate (see Rules engine) — it stays in
-Executing as a warning, and escalation is the user's call via kill/abandon.
+`compacting` (context being compacted), `to review` (finished, awaiting
+sign-off). One event can both move a card *and* stamp its badge. `compacting`
+occurs *during* Executing. There is deliberately **no `stale` badge** — a card
+that has gone quiet says so beside its badge instead of in it (see *No stale
+badge — the quiet chip instead*).
 
 **Why one column and not two.** Needs feedback and To review were two columns
 saying the same operational thing — *the ball is in your court* — and differing
@@ -416,7 +416,9 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
 
 - `column` — `Preparing | Ready | Executing | YourTurn | Completed`.
 - `badge` (execution status) — `running | needs-permission | needs-answer |
-  error | killed | stale | compacting | to-review`; null before launch.
+  error | killed | compacting | to-review`; null before launch. A name this build
+  no longer knows (a card written before `stale` was retired) reads back as null
+  rather than failing to load — see *Anything stored is a code*.
 
 ### Agent / session
 
@@ -465,16 +467,27 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
 - `metrics` — grouped health/at-a-glance object (derived/observed, not
   user-set):
   - `tokensIn` / `tokensOut` — cumulative input / output tokens over the whole
-    task (priced differently); `tokensTotal` derived.
+    task, counting **fresh work only**; `tokensTotal` derived. Reads off the
+    prompt cache are deliberately excluded: a long session re-reads the same
+    cached prefix on every request, and summing those reaches tens of millions
+    and stops meaning anything.
   - `compactions` — counter, incremented on each `PreCompact` (thrash signal).
   - `contextUsed` / `contextLimit` — **live** active-context usage vs. the
-    model's window (e.g. 142k / 200k); drops after a compaction. Distinct from
-    cumulative tokens. Percentage derived.
-  - `cost` — derived from tokens × model rates.
+    model's window (e.g. 142k / 1000k); drops after a compaction. Distinct from
+    cumulative tokens in both directions: it is the *last* request's total,
+    cache reads included, and it overwrites rather than accumulates. Percentage
+    derived. The limit is **not observable** — no transcript reports a window —
+    so it comes from `AgentModel.ContextLimit` in the adapter's capability list,
+    matched against the *observed* model; an unknown model shows no percentage
+    rather than a wrong one.
+  - **No `cost`.** Dropped on 2026-07-30: nothing reports it, deriving it needs a
+    price table that drifts silently as models and rates change, and on a
+    subscription the number is notional. Tokens are shown instead — observed, not
+    computed.
   - `turnCount` — number of exchanges.
   - `toolCalls` — number of tool invocations (activity/complexity signal).
-  - `lastActivityAt` — timestamp of the last event; what the `stale` watchdog
-    compares against.
+  - `lastActivityAt` — timestamp of the last event; what the quiet chip is
+    measured from.
   - `activeTime` — wall-clock time actually executing (optional; pairs with
     elapsed-since-`launchedAt`).
 
@@ -605,10 +618,27 @@ process is something ACT pulls from.
    Read-only; ACT never writes into a transcript. *(This replaces the former "file
    source". It no longer watches `.act/` for anything: the status file was dropped
    with auto-completion, and follow-ups moved to the MCP tool.)*
+   - **How it reads:** polled once a second from a stored offset, not watched — an
+     appended file needs a debounce to watch and reports late anyway, while a read
+     from an offset is a few kilobytes. The **first** read takes the whole file, so a
+     restart or a resume does not report an hour-old session as if it had just
+     started; the offset comes back from the reader rather than being taken from the
+     file's length, because a line the agent is mid-way through writing has to be
+     left for the next read. A file that has *shrunk* was replaced, so the read
+     starts over.
+   - **Where the path comes from:** whichever hook payload arrives first names it
+     (`HookNormalization.TranscriptPath` → `IAgentEventSink.LocateTranscript`), which
+     is deliberate rather than convenient — `SessionStart`, the payload designed to
+     carry it, was never observed firing. Deriving the path instead is possible for
+     Claude Code (`~/.claude/projects/<cwd-slug>/<sessionId>.jsonl`) and was rejected:
+     it would hardcode undocumented slug rules that break silently.
+   - **What owns which number:** the hooks count turns and tool calls first-hand, so
+     the transcript leaves both null for Claude Code and the two never fight over a
+     field. Codex takes them from its rollout only because its hooks are dormant.
 4. **Process source** — ACT's own process supervision of the PTY (always
-   ACT-internal, not agent-provided): non-zero exit → `error`; watchdog timeout →
-   `stale`; **no hook at all within the startup grace → the pre-session prompt**
-   (see *The one prompt no hook reports*).
+   ACT-internal, not agent-provided): non-zero exit → `error`; **no hook at all
+   within the startup grace → the pre-session prompt** (see *The one prompt no
+   hook reports*). No idle watchdog — see *No stale badge*.
 5. **MCP tool call** — the one *inbound* channel the agent drives deliberately
    rather than emits as a side effect: `create_followup`. Distinct from the four
    above because it is a request with a return value, not an observation.
@@ -757,14 +787,20 @@ confirm at build.)*
   region — Executing and Your turn — that still carries a `sessionId`**,
   with `--resume` into a fresh terminal and no message, which drops the user at the
   prompt. The same restore happens when a card's terminal is *opened* and its process
-  is gone (killed, exited on its own, or a restart that could not reach it), so the
-  terminal is never an empty pane behind a button. The on-screen scrollback does not
-  come back; the restore is recorded as a transition so the timeline says why.
+  is gone (killed, exited on its own, signed off, or a restart that could not reach
+  it), so the terminal is never an empty pane behind a button. The on-screen scrollback
+  does not come back; the restore is recorded as a transition so the timeline says why.
   - A restore **moves nothing**: the card stays in the column and badge the rules
     last gave it, because resuming a session is not a claim that work is running.
+  - **Completed restores on open, never unattended.** The session is the record of
+    what was done, so a signed-off card opens on its CLI history rather than a blank
+    pane — but it waits to be opened, because a pty per completed task at every start
+    would be a fleet of processes for work that is over. It stays Completed: the rules
+    do not govern that column, so nothing the resumed session says can move it, and
+    reopening it into **Your turn** remains a separate, explicit action.
   - Not restored: Ready and Preparing (nothing has been launched — that is the
-    user's call), and Completed (done; it resumes on reopen). A card with no
-    `sessionId` has no binding to resume and is left alone.
+    user's call). A card with no `sessionId` has no binding to resume and is left
+    alone.
   - A kill still kills. The restore happens on the *next* open or the next start,
     never in reaction to the kill itself.
 
@@ -793,8 +829,8 @@ the same column, so the **badge is the only thing the event decides**.
 | Executing | question asked *(observed)* | Your turn | `needs answer` |
 | Executing | turn ended (`Stop`) | Your turn | `to review` |
 | Executing | process exited non-zero / crash | Your turn | `error` |
+| Executing | the agent reports the turn failed *(api error, model refused)* | Your turn | `error` |
 | Executing | killed by the user | Your turn | `killed` |
-| Executing | no-activity timeout | *(stays)* Executing | `stale` |
 | Executing | startup prompt waiting *(no hook at all since the spawn)* | Your turn | `needs permission` |
 | Your turn | activity observed *(the user answered, or sent it back, in the terminal)* | Executing | `running` |
 | Your turn + `needs answer` | permission requested | *(ignored)* | *(stays)* `needs answer` |
@@ -831,15 +867,60 @@ atomic-write convention, no `<turn>` counter for the agent to track, no advisory
 it can silently fail — and an injected preamble that shrinks to nothing (see *Agent ↔
 ACT contract*).
 
+### No stale badge — the quiet chip instead
+
+*(Decided 2026-07-31, reversing the `stale` badge this spec carried from the start.)*
+
+**The question that killed it:** every block on the user already moves the card. A
+permission prompt, a question, the pre-session trust screen — each has a signal, and
+each lands in Your turn. So what is left that sits in Executing and is genuinely
+hung? Not the model: measured across 2,729 within-turn gaps in real Claude Code
+transcripts, p50 is 1.3 s, p99 is 45 s, and **every gap past three minutes turned out
+to be a session waiting on its human**, not working. An agent that stops answering is
+not a thing this codebase has evidence for.
+
+What silence in Executing actually means, honestly enumerated:
+
+- **Codex, entirely** — its hooks do not fire, so *no* waiting prompt moves a Codex
+  card. Silence is the only signal such a card can give.
+- **Blocked *inside* a tool call** — permission was already granted and the command
+  itself is waiting (an interactive CLI reading stdin, an install stuck on a private
+  registry). The agent is not asking, so no hook fires.
+- **A rate limit hit mid-turn** — the CLI sits showing a reset time. `waiting-reset`
+  is a *Ready*-column state for the queue runner; nothing covers this.
+- **Auth expiry mid-session** — not a tool permission, so no notification.
+- **ACT having lost sight of a healthy agent** — hook port moved, generated settings
+  clobbered, session resumed in the desktop app. The card claiming `running` is then
+  the *lie*, and silence is the only way to catch it.
+- **The pty layer**, which is ACT's own code path and not one the CLI's normal users
+  exercise.
+
+Every one of those is unknowable from silence alone — and `running` is still ACT's
+best knowledge. So **ACT states the gap and claims nothing**: past a threshold
+(`QuietSession.Threshold`, 15 minutes — ~20× the measured p99) the strip renders a
+`quiet 22m` chip **beside** the badge, which keeps saying `running`. No event, no
+transition, no state.
+
+What this costs, and it is a real cost: **no history**. A watchdog would have written
+a transition, so a morning-after timeline could say "went quiet at 03:12"; the chip
+only ever shows the current gap. Accepted deliberately — a recorded guess is still a
+guess, and the badge it would have overwritten carried information the guess does not.
+
+Consequences: `Badge.Stale`, `NoActivityElapsed` and `TransitionReason.NoActivity` are
+deleted, the rules engine has no rule for silence, and the board carries a 30-second
+refresh tick (presentation only, and only while a card is in Executing) because a
+number derived from a stamp has nothing to push a re-render. If a real hang ever shows
+up, this becomes a badge again — with evidence behind it.
+
 ### Other resolutions
 
-- **`error` / `stale` come from process signals, not hooks.** ACT owns the
-  spawned process: non-zero exit → `error` (→ Your turn); watchdog with no
-  activity → `stale`. Since the TUI now stays alive between turns, `stale` is
-  scoped to cards **in Executing** — a `to review` card sitting quiet at its
-  prompt is the normal resting state, not a hang.
-- **`stale` does not auto-escalate.** Warning badge only; card stays in
-  Executing; escalation is the user's call via the kill/abandon hatch.
+- **`error` has two sources, and they see different failures.** ACT owns the
+  spawned process, so a non-zero exit → `error` (→ Your turn) is the one failure it
+  can report first-hand. The other is the agent's own report that a *turn* failed
+  while its process stays alive and would exit zero — an api error, a model the
+  account cannot use. Codex writes that into its rollout as `task_complete` with an
+  `error`, and it becomes `TurnFailed`; without it the card would offer an api error
+  up for review as if it were finished work.
 - **`permissionMode` changes frequency, not the table.** `default` ⇒ "permission
   requested" fires often; `acceptEdits` ⇒ less; `auto` / `dontAsk` / `bypass` ⇒
   it effectively never fires (cards sail to `Stop`), since none of those prompt.
@@ -1177,9 +1258,11 @@ release it otherwise.
 
 ### Build-time dependencies (not blockers)
 
-- **"Next window" needs the 5-hour reset time.** It's rolling (~5h after the
-  session's first message) — compute from tracked activity or read `/usage`.
-- **Weekly reset** = a fixed per-account day/time, configured once.
+- ✅ **"Next window" needs the 5-hour reset time — solved.** Neither computing it
+  from tracked activity nor reading `/usage` is necessary: both vendors serve the
+  reset instant over HTTP (see *Usage indicator* below), so `schedule` reads the real
+  boundary rather than estimating one.
+- ✅ **Weekly reset** — likewise served, so it needs no per-account configuration.
 - **Unattended overnight runs require a non-prompting `permissionMode`** (`auto`,
   `dontAsk` or `bypass`). This is now a hard requirement rather than a strong
   suggestion: since ACT never answers a prompt, a prompting mode leaves the task
@@ -1190,8 +1273,38 @@ release it otherwise.
 - **`maxConcurrent` now caps live terminals too.** Every card past the launch
   boundary holds a live agent process, so the cap is a real resource ceiling, not
   just a politeness setting.
-- Verify at build: `/usage` scriptability, and clean mid-task resume after a
-  rate-limit interruption.
+- Verify at build: clean mid-task resume after a rate-limit interruption.
+
+### Usage indicator
+
+The top bar carries a live meter per usage window per agent — percentage used, how
+long until it resets, and the local time it resets at. It is the same data
+`schedule` and backpressure reason about, made visible.
+
+**Source: a live HTTP endpoint per agent**, authenticated with a bearer token read
+from that CLI's own credential file, polled once a minute. Endpoints, response
+shapes and the alternatives that were rejected (Claude Code's `statusLine` payload,
+scraping `/usage` from a pty, deriving from transcripts, Codex's rollout
+`rate_limits`) are recorded in **`docs/agent-usage-findings.md`**. Read it before
+touching usage code.
+
+Three rules the design turns on:
+
+- **A window is named by the length the server declares.** A paid Codex plan reports
+  5-hour plus weekly; a free one reports a single 30-day window. Two hardcoded
+  captions would mislabel a real account.
+- **A reading held past its own reset reports zero, not the number it was given.**
+  ACT polls, so nothing ran in between; the old percentage describes a window that no
+  longer exists. Rendered subdued, because it is inferred from this machine alone —
+  usage from another machine, the web, or an IDE extension counts against the same
+  quota and is invisible here.
+- **ACT reads those credential files and never writes them.** Each CLI owns and
+  refreshes its own; ACT re-reads before each poll and never attempts a refresh,
+  because refresh tokens rotate and racing the CLI could invalidate the user's login.
+  The token is never logged, never persisted, and goes nowhere but the vendor.
+
+Everything degrades to *usage unavailable*: a missing file, an expired token, a 401,
+a timeout, a changed response shape. Nothing about the indicator can break the board.
 
 ---
 
@@ -1260,11 +1373,12 @@ Resumability does **not** depend on ACT keeping anything alive. Send-back
 independently of ACT.
 
 - Per the liveness model, ACT keeps the terminal alive for the whole active life
-  of a card and tears it down on kill or completion. Reopening a **Completed** card,
-  or any card whose terminal died with ACT, re-spawns via `--resume` into a fresh
-  terminal. For the machine region that re-spawn is **automatic** — at startup for
-  every bound card, and on opening a terminal whose process is gone (see *Edge
-  cases*); only Completed still waits for the explicit reopen.
+  of a card and tears it down on kill or completion. Opening a **Completed** card's
+  terminal, or any card whose terminal died with ACT, re-spawns via `--resume` into a
+  fresh terminal. That re-spawn is **automatic** on open for every bound card that has
+  been launched, Completed included, and additionally at startup for the machine
+  region (see *Edge cases*). What Completed still waits for is the **reopen** — the
+  move back to Your turn — not the terminal.
 - **Caveat:** the transcript is outside ACT's control, subject to the agent's
   retention or user deletion — so a very old Completed task may no longer be
   resumable.
@@ -1338,7 +1452,10 @@ unattended mode is half-blind.
   overnight "it's done" ping, since nothing completes itself.
 - **`waiting-reset` / rate-limited** — queue paused until the window resets, and
   again when it resumes.
-- **`stale`** — optional "possibly hung" heads-up.
+
+There is nothing to notify for a *quiet* card: silence is not a state and ACT makes
+no claim about it (see *No stale badge*). Waking someone for a card that may simply
+be running a long build is exactly the false alarm the chip exists to avoid.
 
 ### Behavior rules
 
@@ -1375,7 +1492,7 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   dark is the signature look (deep blue-slate bg), with a light variant for the
   OS light setting (see Theme below); semantic status colors are the same in
   both: teal=running, amber=needs permission/answer, red=error,
-  blue=idle/to-review, muted green=done, dim yellow=stale. Brand mark = a small
+  blue=idle/to-review, muted green=done, dim yellow=quiet. Brand mark = a small
   radar sweep.
 - **Launch is "Launch now".** Named for what it will mean rather than what it does
   today: once the scheduler lands (step 14) a card can be waiting on a `schedule`, and

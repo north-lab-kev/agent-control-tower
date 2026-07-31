@@ -28,15 +28,19 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ Model/                     #   Card, Column, Badge, Transition, Lineage…
 │  │  ├─ Events/                    #   normalized event types (the adapter vocabulary)
 │  │  ├─ Agents/                    #   PtyAgentSession/Terminal, launch-config resolution,
-│  │  │                            #     agent process environment (shared by both adapters)
+│  │  │                            #     agent process environment, TranscriptTail (offset +
+│  │  │                            #     running snapshot) — all shared by both adapters
 │  │  ├─ Rules/                     #   the rules engine, manual-move validity, sign-off validity,
 │  │  │                            #     Your-turn ordering, which cards are resumable after their
-│  │  │                            #     process died (pure logic)
+│  │  │                            #     process died, how long a running card has been quiet
+│  │  │                            #     (pure logic)
 │  │  ├─ Scheduling/                #   queue runner, schedule, backpressure
 │  │  ├─ Resources/                 #   CoreStrings (+ .fr) — localised text the CORE writes,
 │  │  │                            #     e.g. the autoGit sentence appended to a prompt
 │  │  └─ Abstractions/              #   INTERFACES: IAgentAdapter, IAgentSession,
 │  │                               #     IAgentTerminal, IPtyHost, IAgentEventSink,
+│  │                               #     ITranscriptReader, ITranscriptNormalizer,
+│  │                               #     IUsageProbe, IUsageDialect, ITextFileReader,
 │  │                               #     IAgentCapabilityCatalog, ICardStore, INotifier, IClock…
 │  ├─ Act.Agents.ClaudeCode/        # Claude Code adapter (pty command line, hook + mcp settings,
 │  │                               #   claude:// handoff, mappings)
@@ -49,9 +53,15 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     caffeinate (macOS), systemd-inhibit (Linux)
 │  │  ├─ Terminal/                  #   IPtyHost over Porta.Pty: spawn, incremental UTF-8 decode,
 │  │  │                            #     batched flush, capped scrollback, resize, kill
-│  │  └─ Hooks/                     #   hook endpoint + per-session token + kept-port store and
-│  │                               #     binder + guard rule + generated agent config files.
-│  │                               #     No ASP.NET: the routing/middleware half is Act.App/Hooks/
+│  │  ├─ Hooks/                     #   hook endpoint + per-session token + kept-port store and
+│  │  │                            #     binder + guard rule + generated agent config files.
+│  │  │                            #     No ASP.NET: the routing/middleware half is Act.App/Hooks/
+│  │  ├─ Transcripts/               #   ITranscriptReader over a JSONL the agent still holds open:
+│  │  │                            #     read from an offset, leave a partial line, restart on
+│  │  │                            #     truncation
+│  │  └─ Usage/                     #   HttpUsageProbe: credential file → bearer → GET → dialect.
+│  │                               #     UsageOptions binds the "Usage" appsettings section
+│  │                               #     (poll interval, per-agent path/endpoint overrides)
 │  ├─ Act.App/                      # Blazor Server UI + Electron desktop host (ElectronNET.Core)
 │  │  ├─ Components/
 │  │  │  ├─ Pages/                  #     EVERY @page component and nothing else:
@@ -69,7 +79,11 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     catalog built from the registered adapters
 │  │  ├─ Sessions/                  #   SessionRegistry (the live sessions), SessionLauncher
 │  │  │                            #     (launch + restore), SessionRestorer (startup re-attach),
-│  │  │                            #     SessionEventPump (drains events onto the board)
+│  │  │                            #     SessionEventPump (drains events onto the board),
+│  │  │                            #     TranscriptPump (one polling tail per live session)
+│  │  ├─ Usage/                     #   UsageState (latest reading per agent) + UsagePump
+│  │  │                            #     (one poll loop per probe); UsageIndicator renders it
+│  │  │                            #     in the top bar
 │  │  ├─ Settings/                  #   user-settings service + culture
 │  │  ├─ Resources/                 #   .resx strings (en / fr)
 │  │  ├─ wwwroot/                   #   CSS (flight-strip look), assets
@@ -180,6 +194,34 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
     bought for one file, that would have let anything there reach for `HttpContext`. Registration
     stays with the code (`HookRegistration`, called by `AddActInfrastructure`), and the app is
     left to sequence the three calls only it can — bind, guard, map.
+- **The transcript tail is the hook pipeline's mirror image, and lands the same way.** Same
+  three-way split: the port and the stateful tail in `Act.Core` (`ITranscriptReader`,
+  `ITranscriptNormalizer`, `Agents/TranscriptTail`), the file handling in
+  `Act.Infrastructure/Transcripts/`, and the **line dialect with its adapter** — a JSONL shape
+  is a fact about that CLI exactly like its payload shape. `Act.App/Sessions/TranscriptPump`
+  owns the loop, because a poll per live session is session lifetime and that lives with the
+  registry. The file system stays behind a port for the same reason `IAgentConfigFiles` does:
+  the adapters must not reach sideways into infrastructure, and the fold has to be testable
+  with a string instead of a file.
+- **The usage probe is the hook and transcript split a third time, and the paths it reads
+  are discovered, never hardcoded.** Same three-way shape: the ports in `Act.Core`
+  (`IUsageProbe`, `IUsageDialect`, `ITextFileReader`), the transport in
+  `Act.Infrastructure/Usage/HttpUsageProbe`, and the **dialect with its adapter** — where a
+  CLI keeps its credentials, which endpoint answers for it, how to lift a token out of the
+  one and windows out of the other are facts about that CLI exactly like its hook payload.
+  Each dialect resolves its own default path from the environment (`CLAUDE_CONFIG_DIR` /
+  `CODEX_HOME`, else the CLI's folder under the user profile), because ACT ships to machines
+  whose home directory it cannot know; `appsettings.json` → `Usage:Agents:<agent>` overrides
+  the path and the endpoint per agent, and an empty value means *use the discovered default*.
+  The measured endpoints, response shapes and traps are in `docs/agent-usage-findings.md`.
+  - **A window is named by the length the server declares, not by a fixed caption pair.**
+    A paid Codex plan reports 5-hour plus weekly; a free one reports a single 30-day window
+    and no secondary. Hardcoding two bars would mislabel a real account, so
+    `UsageWindow.Classify` maps a duration onto `Session`/`Weekly`/`Monthly` and both dialects
+    feed it.
+  - **A reading held past its own reset reports zero, not the number it was given.** ACT
+    polls, so nothing ran in between — the stale percentage describes a window that no longer
+    exists. It renders subdued, because it is inferred from this machine only.
 - **Anything stored is a code; wording is resolved at render time.** A `Transition` keeps a
   `TransitionReason` plus a verbatim `Note` (an exit code, a CLI error, the adjustments a
   launch made) — never a sentence. Two reasons: `Act.Core` has no resources and must not

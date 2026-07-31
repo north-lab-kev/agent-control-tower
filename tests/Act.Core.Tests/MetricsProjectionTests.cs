@@ -21,8 +21,8 @@ public class MetricsProjectionTests
         card.Metrics!.LastActivityAt.Should().Be(At);
     }
 
-    // What the stale watchdog compares against, so every event that means "the session is alive"
-    // has to move it.
+    // What the quiet chip is measured from, so every event that means "the session is alive" has to
+    // move it — an unmoved stamp is a card that claims to have gone silent while it was working.
     [Fact]
     public void Every_sign_of_life_refreshes_the_activity_stamp()
     {
@@ -67,7 +67,10 @@ public class MetricsProjectionTests
         var card = new Card();
 
         MetricsProjection.Apply(card, new TurnEnded(SessionId, At));
-        MetricsProjection.Apply(card, new TurnEnded(SessionId, At));
+
+        // A failed turn was still attempted and is still over, so hiding it from the count would make
+        // a card that failed twice look untouched.
+        MetricsProjection.Apply(card, new TurnFailed(SessionId, At, "api error"));
         MetricsProjection.Apply(card, new CompactingStarted(SessionId, At));
 
         card.Metrics!.TurnCount.Should().Be(2);

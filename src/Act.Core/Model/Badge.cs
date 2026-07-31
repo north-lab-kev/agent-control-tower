@@ -7,7 +7,6 @@ public enum Badge
     NeedsAnswer,
     Error,
     Killed,
-    Stale,
     Compacting,
     ReadyForReview,
 }

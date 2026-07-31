@@ -74,7 +74,6 @@ public class CardStoreTests
                 Compactions = 2,
                 ContextUsed = 142_000,
                 ContextLimit = 200_000,
-                Cost = 0.74m,
                 TurnCount = 18,
                 ToolCalls = 97,
                 LastActivityAt = created.AddMinutes(38),
@@ -159,6 +158,40 @@ public class CardStoreTests
 
         reloaded!.Transitions[0].Reason.Should().BeNull();
         reloaded.Transitions[0].Note.Should().Be("written by an older build");
+    }
+
+    // `stale` was retired with its watchdog, and a real board had cards carrying it. Losing the badge
+    // must not lose the card.
+    [Fact]
+    public async Task A_badge_this_build_no_longer_has_reads_back_as_null()
+    {
+        using var temp = new TempDirectory();
+        var card = new Card
+        {
+            Title = "Retired badge",
+            Column = BoardColumn.Executing,
+            Badge = Badge.Running,
+        };
+
+        using (var provider = Provider(temp.Path))
+            await provider.GetRequiredService<ICardStore>().AddAsync(card);
+
+        using (var database = new LiteDatabase(Path.Combine(temp.Path, "act.db")))
+        {
+            var cards = database.GetCollection("cards");
+            var stored = cards.FindById(card.Id);
+
+            stored["Badge"] = "Stale";
+            cards.Update(stored);
+        }
+
+        using var reading = Provider(temp.Path);
+
+        var reloaded = await reading.GetRequiredService<ICardStore>().GetAsync(card.Id);
+
+        reloaded.Should().NotBeNull();
+        reloaded!.Badge.Should().BeNull();
+        reloaded.Column.Should().Be(BoardColumn.Executing);
     }
 
     [Fact]

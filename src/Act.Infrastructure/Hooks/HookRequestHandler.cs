@@ -40,6 +40,9 @@ public sealed class HookRequestHandler(
         if (normalized.SessionId is { Length: > 0 } sessionId)
             sink.Bind(taskId, sessionId);
 
+        if (normalized.TranscriptPath is { Length: > 0 } transcript)
+            sink.LocateTranscript(taskId, transcript);
+
         foreach (var observed in normalized.Events)
             sink.Publish(taskId, observed);
 

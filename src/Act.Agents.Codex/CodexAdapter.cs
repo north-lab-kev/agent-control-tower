@@ -173,13 +173,17 @@ public sealed class CodexAdapter(
             CodexHookConfig.ForwarderFileName,
             CodexHookConfig.ComposeForwarder());
 
-        var hooksFile = configFiles.WriteShared(
+        configFiles.WriteShared(
             CodexHookConfig.HooksFileName,
             CodexHookConfig.ComposeHooks(forwarder));
 
+        // The profile declares the handlers as `[[hooks.<Event>]]` tables. It used to write
+        // `hooks = "<path>"`, which this CLI rejects outright — *"invalid type: string … expected
+        // struct HooksToml"* — so every Codex launch died on exit code 1 with an empty terminal
+        // before the shape was re-measured. `CodexHookConfig.ComposeProfile` records how.
         configFiles.WriteExternal(
             CodexHookConfig.ProfilePath(CodexHookConfig.ResolveCodexHome()),
-            CodexHookConfig.ComposeProfile(hooksFile));
+            CodexHookConfig.ComposeProfile(forwarder));
 
         arguments.Add("--profile");
         arguments.Add(CodexHookConfig.ProfileName);

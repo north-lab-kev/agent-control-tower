@@ -26,7 +26,7 @@ public sealed class CodexHookNormalizer : IHookNormalizer
         var name = Text(payload, "hook_event_name");
 
         if (name is null)
-            return new HookNormalization(sessionId, []);
+            return new HookNormalization(sessionId, [], Text(payload, "transcript_path"));
 
         var id = sessionId ?? string.Empty;
 
@@ -57,7 +57,10 @@ public sealed class CodexHookNormalizer : IHookNormalizer
             _ => [],
         };
 
-        return new HookNormalization(sessionId, events);
+        // Reported for the same reason Claude Code's is, and dormant for the same reason as the rest
+        // of this class: the rollout tail that will use it is step 8's Codex work, and no payload
+        // carrying it has ever arrived.
+        return new HookNormalization(sessionId, events, Text(payload, "transcript_path"));
     }
 
     // Read-only and deliberately short: what the card shows is a statement that something is

@@ -19,7 +19,6 @@ public class CardTests
     [Theory]
     [InlineData(Badge.Running)]
     [InlineData(Badge.Compacting)]
-    [InlineData(Badge.Stale)]
     public void A_progressing_card_does_not_need_attention(Badge badge)
         => new Card { Badge = badge }.NeedsAttention.Should().BeFalse();
 

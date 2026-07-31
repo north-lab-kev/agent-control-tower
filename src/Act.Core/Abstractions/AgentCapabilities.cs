@@ -18,4 +18,15 @@ public sealed record AgentCapabilities(
         : Models.FirstOrDefault(model => model.Slug == slug);
 
     public IReadOnlyList<string> EffortsFor(string? slug) => Model(slug)?.Efforts ?? [];
+
+    // The model an *observed* id names. A transcript reports what the API answered with
+    // (`claude-opus-5`), not the alias the launch asked for (`opus`), so an exact match is tried
+    // first and a contained slug second.
+    public AgentModel? ModelFor(string? observed) => observed is null
+        ? null
+        : Model(observed)
+            ?? Models.FirstOrDefault(
+                model => observed.Contains(model.Slug, StringComparison.OrdinalIgnoreCase));
+
+    public int? ContextLimitFor(string? observed) => ModelFor(observed)?.ContextLimit;
 }

@@ -316,37 +316,156 @@ verifiable, and leaves something runnable.
       The two adapter regression guards were rewritten from "carries the preamble" to
       **"is the task text alone"**, which is the stronger assertion. 332 tests green; the
       task form and board verified in a real browser with no console errors.
-    - [ ] **4. Transcript source — the one missing ingestion source, and the biggest item.**
-      `SessionEnriched` has **no producer**, so `MetricsProjection.Merge` is unreachable and
-      every enrichment field is permanently empty: observed model, tokens in/out, context
-      used/limit, last message. Step 8's own "card shows live metrics" is not met without it.
-      Tail the session's JSONL transcript and emit `SessionEnriched` snapshots (null means
-      "no news", which the projection already handles). **Take `transcript_path` and `cwd`
-      off whichever hook payload arrives first, not off `SessionStart`** — that one was never
-      observed arriving (see the open question below), and every Claude payload carries both.
-    - [ ] **5. Idle watchdog — `NoActivityElapsed` has no producer.** `RulesEngine` already
-      routes it to `stale`; nothing raises it. Same shape as the `StartupPromptWaiting` timer
-      already in `PtyAgentSession`, but recurring and keyed off `Metrics.LastActivityAt`.
-      Decide the threshold and whether it re-arms after firing (it should: `stale` is a
-      heads-up, not a terminal state, and the card stays in Executing).
-    - [ ] **6. Codex session binding — `sessionId` is null forever today.** `CodexAdapter`
-      passes `sessionId: null` and **nothing ever calls `Bind`**, so every Codex event
-      publishes `SessionId ?? string.Empty` and resume is impossible. Watch for the rollout
-      file whose `cwd` and start time match the launch just made
-      (`~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<uuid>.jsonl`, indexed by
-      `session_index.jsonl`) and bind from it. This is the same tailer as item 4, which is
-      why they share a step.
-    - [ ] **7. Codex turn boundaries and activity from the rollout.** With hooks dormant the
-      transcript source does double duty for Codex: binding, activity, turn end, enrichment.
-      **Accept the gap explicitly** — until a CLI build fires hooks, a Codex card can show
-      `running` / metrics / `to review` / `error` / `stale`, but will **never** badge
-      `needs permission` or `needs answer`, because no file or process signal reports a
-      waiting prompt. Step 8's verify line has to say so rather than imply parity.
+    - [x] **4. Transcript source — the missing producer, and the biggest item.** ✅ Landed for
+      Claude Code, and `SessionEnriched` now has a producer, so `MetricsProjection.Merge` is
+      reachable and a card in Executing reports how it is doing rather than only that it is
+      alive. **Verified live:** a launched card walked trust-prompt → running → `to review`
+      and its strip finished on `claude-sonnet-5 · 55k/1000k ctx · 1 turns · 39k tokens`,
+      where every one of those numbers was permanently blank before.
+      - **Shape: a publisher, per item 1.** Core port `ITranscriptReader` (+`TranscriptRead`)
+        with `TranscriptReader` in `Act.Infrastructure/Transcripts`; core port
+        `ITranscriptNormalizer` implemented per adapter, so the line dialect sits beside the
+        hook dialect; `Act.Core/Agents/TranscriptTail` holds the offset and the running
+        snapshot; `Act.App/Sessions/TranscriptPump` owns one polling loop per live session and
+        publishes through `IAgentEventSink`. The path arrives as
+        `HookNormalization.TranscriptPath` → `IAgentEventSink.LocateTranscript` →
+        `SessionRegistry.LocateTranscript`, which raises once per session (`TryAdd` is the
+        whole guard) — mirroring how `SessionId` already reaches `Bind`.
+      - **Polled once a second, full read first, incremental after.** The first read takes the
+        whole file, so a restart or a resume does not report an hour-old session as new; every
+        read after it starts where the last stopped. The reader hands back that offset rather
+        than the file's length, because a line the agent is still writing has to be left for
+        the next read — and a file that *shrank* was replaced, so the read starts over.
+      - **Tokens and context answer different questions from the same usage block.** Tokens are
+        cumulative and count fresh work only (`input_tokens` + `cache_creation`); cache reads
+        are excluded, because a long session re-reads the same cached prefix every request and
+        summing those reaches tens of millions. Context is the *last* request's total with
+        cache reads included, and it overwrites rather than accumulates — which is what makes
+        it fall after a compaction.
+      - **The context window comes from `AgentModel.ContextLimit`**, matched against the
+        *observed* model (a transcript says `claude-opus-5`, a launch asked for `opus`), and an
+        unknown model shows no percentage rather than a wrong one. The numbers were **read out
+        of the CLI's own model table** in `claude.exe` 2.1.220: `context: { window }` is 1e6 for
+        `claude-opus-5` / `claude-sonnet-5` / `claude-fable-5` and 200000 for
+        `claude-haiku-4-5`. Two things shrink the CLI's *effective* window invisibly to ACT —
+        `CLAUDE_CODE_MAX_CONTEXT_TOKENS`, and a session whose 1M credits are blocked falling
+        back to 200k — and both make ACT read low, never high.
+      - **`cost` is gone from the model** (`CardMetrics.Cost`, the strip chip, one store
+        fixture): the transcript carries no cost, computing it needs a price table that drifts
+        silently, and it is notional on a subscription anyway. The chip it vacated now shows
+        **cumulative tokens**, which has a producer and is not a guess.
+      - **Publishing is change-gated.** `TranscriptTail.Advance` returns null unless the folded
+        snapshot differs, because `BoardState.UpdateAsync` re-reads every card — an identical
+        snapshot would re-render the whole board once a second for news that is not news.
+    - [x] **5. Idle watchdog — not built. `stale` is deleted and the chip states the gap.**
+      ✅ The watchdog was designed, then the premise was challenged and did not survive: every
+      block on the user already moves the card out of Executing, so what is left to detect is
+      unknowable from silence. Measured first — 2,729 within-turn gaps in real transcripts give
+      p50 1.3s, p99 45s, and **every** gap past three minutes was a session waiting on its
+      human. A model that stops answering is not something this repo has evidence for.
+      - **What shipped instead:** `Act.Core/Rules/QuietSession` (pure predicate, Executing only,
+        15-minute threshold ≈ 20× the p99) and a `quiet 22m` chip rendered **beside** the badge,
+        which keeps saying `running`. No event, no transition, no state — ACT states the gap and
+        claims nothing about its cause. The full enumeration of what silence can mean (Codex
+        having no prompt signal at all, a block *inside* a tool call, a mid-turn rate limit, auth
+        expiry, ACT having lost its own ingestion, the pty layer) is in the spec's *No stale badge
+        — the quiet chip instead*.
+      - **Deleted:** `NoActivityElapsed`, `Badge.Stale`, `TransitionReason.NoActivity`, three
+        resx entries per language, the `b-stale`/`r-stale` CSS across three components, and the
+        rules-engine rule. `--act-stale` became `--act-quiet`.
+      - **Two costs, both accepted.** *No history* — a watchdog would have written a transition,
+        so a morning-after timeline could say "went quiet at 03:12"; the chip only shows the
+        current gap. And *a refresh tick* — `BoardView` re-renders every 30s while any card is in
+        Executing, because a number derived from a stamp has nothing to push a render. It is
+        presentation only, and idle when nothing is running.
+      - **A retired badge had to stay loadable.** A real board had cards carrying `Stale`, so
+        `ActBsonMapper` now maps `Badge` the way it already maps `TransitionReason`: a name this
+        build does not know reads back as null instead of throwing. Verified against a card
+        rewritten to `"Stale"` in the raw document — and live, where the seeded `#1040` came back
+        badge-less and intact, with `quiet 52h` beside it.
+    - [~] **6 + 7. Codex binding, activity and enrichment from the rollout — code complete, live
+      verify blocked.** ✅ Written and unit-tested against **real rollout files**, ⚠️ but not proven
+      end to end, because Codex's TUI paints **nothing** under ACT's pseudo-terminal (see the
+      blocker below). What landed:
+      - **`CodexRolloutFinder`** (`ITranscriptFinder`, a new core port) infers the file ACT's launch
+        just made: newest few `rollout-*.jsonl` under `$CODEX_HOME/sessions`, oldest-first, matched
+        on the `session_meta` line's `cwd` and timestamp, skipping any path another live card holds.
+        **This is the answer to "how do we bind without hooks":** that first line carries
+        `session_id`, so the file that identifies the session also *is* the binding. The whole class
+        is marked to be **deleted when Codex hooks fire** — a payload would simply say where the
+        file is, as Claude Code's already does.
+      - **`CodexTranscriptNormalizer`** folds the dialect, measured 2026-07-31: `task_started` →
+        activity, `task_complete` → turn end (or `TurnFailed` when it carries an `error`),
+        `function_call` → activity with the tool name, `token_count` → tokens, context **and
+        `model_context_window`** — so Codex needs no per-model window table, unlike Claude Code.
+      - **`ITranscriptNormalizer` now returns events as well as enrichment**, because Codex's file
+        has to do the work its hooks would. `TranscriptTail` **drops the events of the catch-up
+        read** and keeps only its snapshot: replaying an hour of history would move the card on a
+        turn that ended long ago and count every turn twice.
+      - **New event `TurnFailed`** — the CLI reporting a failed turn while its process stays alive
+        and would exit zero (measured: an account rejecting `gpt-5.4`). `ProcessExited` cannot see
+        it, and a bare `TurnEnded` would offer an api error up for review as if it were work.
+      - ⚠️ **Blocker found, and it is the step's own open question: Codex's TUI does not paint under
+        ACT's pty.** The process launches with the right command line and stays alive, but produces
+        **zero bytes** — so its pre-session prompt cannot be answered, no session is ever created, no
+        rollout file appears, and there is nothing for any of the above to ingest. Claude Code paints
+        fine through the same `PtyHost`, so this is Codex-specific. Next thing to chase: `--no-alt-screen`
+        (already flagged in *Codex facts*), a resize nudge after spawn, and whether the TUI needs a
+        different startup handshake than ConPTY gives it.
+      - ✅ **And a launch-killing bug found and fixed on the way in — the hooks schema moved.** ACT's
+        generated `--profile` carried `hooks = "<path>"`, which this CLI **rejects outright**:
+        *"Error loading config.toml: invalid type: string … expected struct HooksToml"*. Every Codex
+        launch ever made died on exit code 1 with an empty terminal. That directly contradicts the
+        earlier finding below — a string path was what a `[[hooks.*]]` table was rejected *in favour
+        of* — under the same version string.
+        - **The real shape, measured rather than guessed:** the profile's `hooks` is a table keyed by
+          event name, each a list of matcher groups —
+          `[[hooks.<Event>]]` with `matcher`, then `[[hooks.<Event>.hooks]]` with
+          `type` + `command`. Handler types are `command`, `prompt`, `agent`. `hooks.state` is the
+          map Codex writes trust hashes into.
+        - **How it was pinned down, and the trap in doing so:** the parser **ignores unknown keys**,
+          so a wrong shape parses in silence and buys nothing. The way through is to give a candidate
+          key the wrong *type* and let serde name what it wanted: `hooks.state = 1` → "expected a
+          map"; `hooks.SessionStart = 1` → "expected a sequence"; `matcher = 1` → "expected a
+          string"; `type = "bogus"` → "unknown variant `bogus`, expected one of `command`, `prompt`,
+          `agent`". `hooks.hooks` / `files` / `path` / `description` were all ignored, so none exist.
+          The probe harness: write the candidate to `act.config.toml`, run `codex --profile act x`,
+          and read the first line — a config error means wrong, *"stdin is not a terminal"* means the
+          config parsed and the CLI got as far as wanting a terminal.
+        - **A second bug the same run exposed:** the composer escaped `\` but not `"`, and the command
+          value quotes the forwarder path so a path with spaces survives — so the generated file was
+          not valid TOML at all. `Toml()` now escapes both.
+        - **Verified three ways:** the schema type-probed against the CLI, the CLI accepting ACT's
+          *own generated bytes*, and a live ACT launch where the Codex process stays alive with
+          `--profile act` instead of dying on exit 1. Four tests pin the shape, including that the
+          profile and the json declare a byte-identical command — they are hashed for trust, so a
+          drift between them would cost a second review prompt.
+      - **Also needed to get this far: the task form can now set the agent executable.**
+        `LaunchConfig.AgentBinary` existed and nothing could ever set it, so a Store-installed Codex —
+        not on `PATH`, runnable only from the `CODEX_CLI_PATH` in `~/.codex/config.toml` — could not
+        be launched at all. One field under *Advanced*, both languages.
+    - [ ] **8. Make Codex's TUI paint under the pty — the only thing left in this step.** Until it
+      does, none of the code above can be exercised: no paint means no answered prompt, no session,
+      no rollout, nothing to ingest. Order to try: `--no-alt-screen`, a resize nudge right after
+      spawn, and a comparison of what ConPTY hands Claude Code (which paints) against what it hands
+      Codex (which does not). *Verify:* a launched Codex card shows its TUI, binds its session id
+      from the rollout, and reports live state and metrics.
+      - **The gap to accept when it does work.** Until a CLI build fires hooks, a Codex card can show
+        `running` / metrics / `to review` / `error`, but will **never** badge `needs permission` or
+        `needs answer`, because no file or process signal reports a waiting prompt. The quiet chip is
+        all a parked Codex card gets, which is the main reason that chip exists.
+      - **And a divergence to undo, not a design.** Claude Code leaves `TurnCount` and `ToolCalls`
+        null because its hooks count both first-hand; Codex takes them from the rollout only because
+        its hooks do not fire. **The moment a CLI build fires them, align Codex with Claude Code** —
+        hooks own the counts, the transcript owns enrichment. The note is on `ITranscriptNormalizer`
+        too, where whoever revisits the fold will see it.
   - **Verify (revised):** for **Claude Code** — live state and metrics update, and a
     permission prompt in the terminal raises the badge without ACT touching the prompt
-    (both already observed live). For **Codex** — the card binds its session id from the
-    rollout file, and shows live state and metrics; no permission/question badge, by
-    measured CLI limitation.
+    (**all observed live**, and since item 4 the strip carries the observed model, context
+    against the real window, turns and tokens). For **Codex** — the card binds its session id
+    from the rollout file, and shows live state and metrics; no permission/question badge, by
+    measured CLI limitation. **Codex's half is written but unverified**, blocked on its TUI not
+    painting under the pty (item 8).
   - **Open questions for this step** (each decides a fallback, so settle them first):
     - ✅ **`--settings` accepts `type: "http"` hooks, and they carry a custom header —
       verified live.** The token rides `x-act-hook-token`; posts authorized. So Claude needs
@@ -389,10 +508,10 @@ verifiable, and leaves something runnable.
       later upgrade. It also removes `PermissionRequest` as a usable signal, so Codex has
       *no* event-based permission report either — for now both agents depend on what the
       files and the process can tell ACT.
-- [ ] **9. Rules engine** — agent-agnostic: normalized events → column/badge
+- [x] **9. Rules engine** — agent-agnostic: normalized events → column/badge
   transitions; a turn end (`Stop`) routes Executing → Your turn with `to review`;
-  `error`/`stale` from
-  process signals; **observed** permission/question in, and **observed activity**
+  `error` from a
+  process signal; **observed** permission/question in, and **observed activity**
   (`UserPromptSubmit`) as the one way out of Your turn — the recovery and the
   send-back are the same event, since the user acts in the terminal and ACT only
   ever learns about it.
@@ -408,13 +527,13 @@ verifiable, and leaves something runnable.
     moved by any event.
     Verified live: a launched card walked Ready → Executing (`running`) → Your turn
     (`to review`) on its own, with the turn count landing on the strip.
-  - **Still step 9's to finish:** `stale`, which needs step 8's idle watchdog to have a
-    producer for `NoActivityElapsed`. **That is now the only one** — the
-    `ready_for_review` / `needs_input` outcomes were deleted with the status file (see the
-    spec's *There is no completion signal*), and the `Notification` classification below
-    landed with step 8.
+  - **Nothing left to finish — closed 2026-07-31.** The last open item was `stale`, and it was
+    deleted rather than built (step 8 item 5): silence is not a state the engine can rule on.
+    The `ready_for_review` / `needs_input` outcomes went with the status file (see the spec's
+    *There is no completion signal*), and the `Notification` classification landed with step 8.
+    So the engine's table is now complete as specified, and every rule in it has a producer.
 - [ ] **10. Session view + card actions — both adapters** — the full session view
-  (terminal + right rail: identity, cwd, agent/model, context %, cost, turns;
+  (terminal + right rail: identity, cwd, agent/model, context %, tokens, turns;
   back-to-board) and the drawer's **read-only** blocked-card presentation with
   "Answer in terminal ›". Actions: Open terminal, **Open in Desktop**
   (`claude://resume?session=`), Kill, Retry, Send back, Complete. Explicitly **no
@@ -473,6 +592,10 @@ verifiable, and leaves something runnable.
     there is no approval prompt; Codex via `mcp_servers` layered through ACT's `--profile`.
   - [ ] **Dependency: the C# MCP SDK** — expected MIT, so check the license and add it to
     `THIRD-PARTY-NOTICES.md` before it lands (same discipline as `Porta.Pty` / xterm).
+    **Consider `ModelContextProtocol` v2.0 (in preview as of 2026-07-30)** rather than the
+    1.x line: check what it changes for the streamable-HTTP server host and per-tool
+    registration before committing, and note that taking a preview package means pinning an
+    exact version and accepting API churn until it ships stable.
   - [ ] **Dead code to remove:** the `FollowUpsWritten` event, which has neither a producer
     nor a consumer and described the file mechanism.
   - **Open questions — each decides a fallback, settle before building:**
@@ -507,6 +630,16 @@ verifiable, and leaves something runnable.
   `dependsOn` ordering, rate-limit backpressure (`waiting-reset`), keep-awake,
   and the global **auto-execution pause switch**. *Verify:* a queue of Ready
   tasks processes unattended across a window reset; pause halts all auto-launch.
+  - **Keep-awake must become task-aware.** It ships unconditional — the hold is
+    taken at startup for the life of the process whenever the setting is on. Here
+    it must hold sleep **only while a Ready or Running task exists**, and release
+    otherwise: an idle board is safe to sleep, since nothing can auto-launch from
+    it. Scheduled work (*specific date & time*, *next window*, `waiting-reset`)
+    sits in Ready, so a Ready/Running predicate still covers the overnight queue.
+    This is what the spec's *Keep-awake* section already asks for ("only inhibit
+    sleep when there's pending/active auto-work"); the Settings section's
+    "as long as ACT runs" wording describes the interim behaviour and must be
+    corrected when this lands.
 
 ## Phase 6 — Breadth & polish
 
@@ -561,11 +694,25 @@ verifiable, and leaves something runnable.
   desktop app's own `app.asar` (v1.24012.9.0): it validates a canonical UUID and
   calls `importCliSession`. Parameter is `session`, not `sessionId`; no `cwd` is
   read. Named failure modes: `transcript_missing`, `auth_expired`, `network`.
-- `/usage` scriptability + reset-time detection; clean mid-task resume after a
-  rate-limit interruption.
+- ✅ **`/usage` scriptability + reset-time detection — resolved 2026-07-31, and the
+  answer is that scripting it is unnecessary.** Neither CLI prints usage
+  non-interactively, but **both expose a live HTTP endpoint** carrying percentages and
+  reset times: `api.anthropic.com/api/oauth/usage` and
+  `chatgpt.com/backend-api/wham/usage`, each on a bearer token read from the CLI's own
+  credential file. ACT polls both and renders them in the top bar. Endpoints, response
+  shapes, the three unit/encoding traps, and the rejected alternatives (statusline hook,
+  pty scrape, transcript derivation, Codex rollout `rate_limits`) are in
+  **`docs/agent-usage-findings.md`** — read it before touching usage code.
+  - **Still open for step 14:** clean mid-task resume after a rate-limit interruption.
+    The backpressure signals now have a source, though — Codex's `limit_reached` /
+    `rate_limit_reached_type` and the window `resets_at` are what `waiting-reset` needs.
+- ⚠️ **Codex's TUI does not paint under ConPTY — measured 2026-07-31, and now step 8's
+  last blocker.** The process spawns with the right command line and stays alive, but writes
+  **zero bytes** to the pty, so its pre-session prompt cannot be answered and no session is
+  ever created. Claude Code paints through the same `PtyHost`, so it is Codex-specific. Its
+  submit key for `SubmitAsync` is still unknown for the same reason.
 - ✅ **Codex equivalents — resolved** against the installed CLI (`codex-cli
-  0.146.0-alpha.3.1`) and the official docs; see *Codex facts* below. Still open for
-  Codex: how its TUI behaves under a pty, and its submit key for `SubmitAsync`.
+  0.146.0-alpha.3.1`) and the official docs; see *Codex facts* below.
 - ✅ **`Porta.Pty` and `xterm.js` licenses — checked.** Both **MIT**, both recorded in
   `THIRD-PARTY-NOTICES.md`. The xterm files are vendored rather than package-referenced,
   and were verified byte-exact against the published `@xterm/xterm` **5.5.0** and
@@ -608,6 +755,21 @@ here because three of them contradict assumptions the spec made for Claude Code.
   bullets above and the `--profile` claim were written from the docs and are wrong about
   where hooks live; the `--profile` mechanism itself is unaffected and still how
   `model_reasoning_effort` and the rest are layered.
+- ⚠️ **The `hooks` key's schema moved, and it was killing every launch — now fixed.** Measured
+  2026-07-31 on the *same* version string: a profile containing `hooks = "<path>"` makes the CLI
+  refuse to start — *"Error loading config.toml: invalid type: string … expected struct
+  HooksToml"* — the exact opposite of what the findings below recorded. The shape it wants now:
+
+      [[hooks.<Event>]]
+      matcher = "*"
+
+      [[hooks.<Event>.hooks]]
+      type = "command"          # or `prompt` / `agent`
+      command = "…"             # one string; escape `\` and `"` for TOML
+
+  `hooks.state` is the map Codex writes trust hashes into. **The parser ignores unknown keys**, so a
+  wrong shape parses silently and does nothing — type-probe it (give a key the wrong type and read
+  which type serde says it wanted) rather than trusting a clean start.
 - **Config injection is `--profile`.** `-p <name>` layers
   `$CODEX_HOME/<name>.config.toml` over the user's config, and the user's
   `~/.codex/config.toml` is never edited *by ACT* (Codex itself writes hook-trust state
@@ -665,6 +827,19 @@ hooks on this build.** What was established:
 
 - **Escape hatch exists:** `--dangerously-bypass-hook-trust` / `-c bypass_hook_trust=true`
   ("Enabled hooks may run without review for this invocation"). Skips the review screen.
+- ⚠️ **Re-tested 2026-07-31 with the corrected schema — still no execution.** The fix to ACT's
+  profile raised a fair doubt about the finding below: it was measured with `hooks = "<path>"`, a
+  config this CLI *rejects outright*, so "hooks never fire" could have been an artifact of a config
+  that never loaded. It is not. With the **now-measured** `[[hooks.<Event>]]` shape, plus the
+  auto-discovered `$CODEX_HOME/hooks.json` as a second independent route, plus
+  `-c bypass_hook_trust=true` so the trust gate cannot silently skip a new definition, and on runs
+  that genuinely completed a turn (`codex exec`, real model reply, tokens billed): the handler — a
+  single-token `.cmd` that only appends to a file — **never ran**. Not once, either route.
+  - **What that leaves untested:** the *interactive* path. `codex exec` was already suspected of
+    skipping hooks entirely, and the TUI cannot be driven under ACT's pty because it paints nothing
+    (see the pty blocker), so nothing there can be answered or observed. So the precise claim is:
+    **no hook execution in `codex exec` on this build, via either config route, with trust
+    bypassed** — and the interactive path is blocked rather than clean.
 - ⚠️ **Hooks never executed, under any combination tried.** Discovered and parsed, yes;
   run, no. Tried: `SessionStart` with `matcher` `"*"` and `"startup"`, plus
   `UserPromptSubmit`; untrusted, trusted (approved via the review screen), and

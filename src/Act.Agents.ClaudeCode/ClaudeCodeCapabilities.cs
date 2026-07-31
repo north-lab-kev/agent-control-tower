@@ -16,12 +16,24 @@ public static class ClaudeCodeCapabilities
 {
     private static readonly IReadOnlyList<string> Efforts = ["low", "medium", "high", "xhigh", "max"];
 
+    // The windows are **read out of the CLI's own model table** (`claude.exe`, 2.1.220): each model
+    // entry carries `context: { window }`, and it says 1e6 for `claude-opus-5`, `claude-sonnet-5` and
+    // `claude-fable-5`, 200000 for `claude-haiku-4-5`. So this is a measured fact rather than a
+    // guess, and the same thing to re-check on a bump as the model list itself. A model this list
+    // does not know shows no percentage at all, which is the intended failure — the alternative is a
+    // bar measured against the wrong window.
+    //
+    // Two ways the CLI's *effective* window ends up smaller than the model's, neither of which ACT
+    // can observe: `CLAUDE_CODE_MAX_CONTEXT_TOKENS` overrides it, and a session whose 1M credits are
+    // blocked falls back to 200k. Both make ACT's percentage read low, never high.
+    private const int Million = 1_000_000;
+
     public static AgentCapabilities Current { get; } = new(
         [
-            new AgentModel("opus", "Opus 5", Efforts, "high"),
-            new AgentModel("sonnet", "Sonnet 5", Efforts, "medium"),
-            new AgentModel("fable", "Fable 5", Efforts, "medium"),
-            new AgentModel("haiku", "Haiku 4.5", Efforts, "low"),
+            new AgentModel("opus", "Opus 5", Efforts, "high", Million),
+            new AgentModel("sonnet", "Sonnet 5", Efforts, "medium", Million),
+            new AgentModel("fable", "Fable 5", Efforts, "medium", Million),
+            new AgentModel("haiku", "Haiku 4.5", Efforts, "low", 200_000),
         ],
         "sonnet",
         new HashSet<PermissionMode>(Enum.GetValues<PermissionMode>()),

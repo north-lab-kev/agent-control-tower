@@ -33,9 +33,9 @@ public enum TransitionReason
     PermissionRequested,
     QuestionAsked,
     TurnEnded,
+    TurnFailed,
     AgentExited,
     SessionKilled,
-    NoActivity,
 
     // The CLI is parked on its directory-trust prompt, which blocks before the session exists and
     // so reaches ACT as no hook at all. Its own reason rather than `PermissionRequested`: nothing

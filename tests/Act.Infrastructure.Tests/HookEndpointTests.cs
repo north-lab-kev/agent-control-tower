@@ -151,6 +151,10 @@ public class HookEndpointRegistrationTests
         public void Bind(Guid taskId, string sessionId)
         {
         }
+
+        public void LocateTranscript(Guid taskId, string path)
+        {
+        }
     }
 
     private sealed class NullNormalizer : IHookNormalizer
@@ -324,6 +328,35 @@ public class HookRequestHandlerTests
         sink.Bound.Should().ContainSingle().Which.Should().Be((TaskId, "abc"));
     }
 
+    // The transcript is learned the same way the binding is, from whichever payload arrives first —
+    // `SessionStart`, the one payload designed to carry it, was never observed firing.
+    [Fact]
+    public void A_payload_that_names_a_transcript_locates_it()
+    {
+        var sink = new RecordingSink();
+        var handler = Build(sink, out var endpoint);
+
+        handler.Handle(
+            AgentType.ClaudeCode,
+            endpoint.Register(TaskId),
+            JsonDocument.Parse("""
+                { "hook_event_name": "PostToolUse", "session_id": "abc", "transcript_path": "C:/t/abc.jsonl" }
+                """).RootElement);
+
+        sink.Located.Should().ContainSingle().Which.Should().Be((TaskId, "C:/t/abc.jsonl"));
+    }
+
+    [Fact]
+    public void A_payload_with_no_transcript_locates_nothing()
+    {
+        var sink = new RecordingSink();
+        var handler = Build(sink, out var endpoint);
+
+        handler.Handle(AgentType.ClaudeCode, endpoint.Register(TaskId), Payload());
+
+        sink.Located.Should().BeEmpty();
+    }
+
     // An agent ACT has no normalizer for is still acked: a hook that fails is a hook that can
     // wedge the session, and ACT never blocks one.
     [Fact]
@@ -370,7 +403,10 @@ public class HookRequestHandlerTests
 
             var id = session.GetString()!;
 
-            return new HookNormalization(id, [new ActivityObserved(id, at)]);
+            return new HookNormalization(
+                id,
+                [new ActivityObserved(id, at)],
+                payload.TryGetProperty("transcript_path", out var transcript) ? transcript.GetString() : null);
         }
     }
 
@@ -380,10 +416,14 @@ public class HookRequestHandlerTests
 
         public List<(Guid TaskId, string SessionId)> Bound { get; } = [];
 
+        public List<(Guid TaskId, string Path)> Located { get; } = [];
+
         public void Publish(Guid taskId, AgentEvent agentEvent)
             => Published.Add((taskId, agentEvent.SessionId));
 
         public void Bind(Guid taskId, string sessionId) => Bound.Add((taskId, sessionId));
+
+        public void LocateTranscript(Guid taskId, string path) => Located.Add((taskId, path));
     }
 
     private sealed class FixedClock : IClock

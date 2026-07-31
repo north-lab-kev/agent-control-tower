@@ -12,4 +12,9 @@ public interface IAgentEventSink
     // For an agent that mints its own id: the first payload naming the session is what binds it
     // to the card, so the sink has to be able to complete the binding as well as feed it.
     void Bind(Guid taskId, string sessionId);
+
+    // Where the session's transcript is, which is the other thing a payload carries that is not an
+    // event. Learned from whichever hook arrives first, because every Claude Code payload names it
+    // and `SessionStart` — the one designed to — was never observed firing.
+    void LocateTranscript(Guid taskId, string path);
 }

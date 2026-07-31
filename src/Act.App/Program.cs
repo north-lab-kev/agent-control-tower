@@ -3,6 +3,7 @@ using Act.App.Cards;
 using Act.App.Desktop;
 using Act.App.Sessions;
 using Act.App.Settings;
+using Act.App.Usage;
 using Act.App.Hooks;
 using ElectronNET.API;
 using AppRoot = Act.App.Components.App;
@@ -40,6 +41,8 @@ await app.Services.GetRequiredService<BoardState>().LoadAsync();
 // Started before anything can launch an agent, and explicitly rather than on first resolve: a pump
 // that attaches late has already missed the events it exists to read.
 app.Services.GetRequiredService<SessionEventPump>().Start();
+app.Services.GetRequiredService<TranscriptPump>().Start();
+app.Services.GetRequiredService<UsagePump>().Start();
 
 // The terminals that died with the previous run come back here, and only once the host is actually
 // listening: a resumed agent posts its first hook within moments of starting, and the endpoint that

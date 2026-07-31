@@ -42,6 +42,11 @@
                               Disabled="IsLaunching" Click="@LaunchAsync" @onclick:stopPropagation="true" />
             }
 
+            @if (QuietText is { } quiet)
+            {
+                <RadzenText TextStyle="TextStyle.Caption" Text="@quiet" class="quiet" />
+            }
+
             @if (Card.Metrics is { } m)
             {
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="0.6rem" Wrap="FlexWrap.Wrap" class="metrics">

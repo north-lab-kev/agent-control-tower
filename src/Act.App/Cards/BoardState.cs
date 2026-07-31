@@ -34,8 +34,9 @@ public sealed class BoardState(ICardStore store, IClock clock)
     // to find one. Callers that care ask `IsDeleted`.
     public Card? Card(Guid id) => cards.FirstOrDefault(card => card.Id == id);
 
-    // The cards whose terminal died while their binding survived — see `SessionRestore`.
-    public IReadOnlyList<Card> Resumable => [.. cards.Where(SessionRestore.IsResumable)];
+    // The mid-flight cards whose terminal died while their binding survived — see `SessionRestore`.
+    public IReadOnlyList<Card> RestorableUnattended
+        => [.. cards.Where(SessionRestore.RestoresUnattended)];
 
     public IReadOnlyList<Card> ChildrenOf(Card card)
         => [.. card.Children.Select(Card).OfType<Card>()];

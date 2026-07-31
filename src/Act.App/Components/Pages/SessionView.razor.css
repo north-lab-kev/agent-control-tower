@@ -56,7 +56,6 @@
 .bar .b-wait { --tint: var(--act-wait); }
 .bar .b-err { --tint: var(--act-err); }
 .bar .b-review { --tint: var(--act-review); }
-.bar .b-stale { --tint: var(--act-stale); }
 
 .body {
     display: flex;

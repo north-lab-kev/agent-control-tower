@@ -147,8 +147,9 @@ public partial class SessionView(
         BindSession();
 
         // Attach only, never on a later registry change: a card that lost its process — to a kill,
-        // to the CLI's own exit, to a restart the startup restore did not cover — gets its terminal
-        // back by being opened, but a kill from this very view has to stay killed.
+        // to the CLI's own exit, to a restart the startup restore did not cover, to the sign-off that
+        // ended it — gets its terminal back by being opened, but a kill from this very view has to
+        // stay killed.
         if (session is null)
             await RestoreAsync();
 

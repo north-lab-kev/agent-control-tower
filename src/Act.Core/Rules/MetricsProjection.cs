@@ -24,9 +24,11 @@ public static class MetricsProjection
 
                 return true;
 
-            case TurnEnded turn:
+            // A failed turn is still a turn: it was attempted, it is over, and hiding it from the count
+            // would make a card that failed four times look untouched.
+            case TurnEnded or TurnFailed:
                 metrics.TurnCount++;
-                metrics.LastActivityAt = turn.At;
+                metrics.LastActivityAt = observed.At;
 
                 return true;
 
