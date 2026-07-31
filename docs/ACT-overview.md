@@ -73,9 +73,12 @@ Standards to build against — not optional polish. Specifics named for the
   (Blazor) and the agents (CLIs). The core speaks only in **normalized events**
   and interfaces; it must not reference Blazor, a specific CLI, or the file
   system directly.
-- **Ports as interfaces.** The agent adapter and each ingestion source are ports
-  behind interfaces; concrete adapters (Claude Code, Codex, …) and the store
-  (LiteDB) are plug-ins. Adding an agent must not touch core logic.
+- **Ports as interfaces.** The agent adapter, the pseudo-terminal, the event sink
+  every observer pushes into, and the store are ports behind interfaces; concrete
+  adapters (Claude Code, Codex, …) and the store (LiteDB) are plug-ins. Adding an
+  agent must not touch core logic.
+  - **Ingestion is push, not a port of its own** — see *Pluggable, multi-source
+    ingestion*.
 - **Dependency injection** via the built-in .NET DI container; nothing news-up
   its own dependencies across a layer boundary.
 - **Nullable reference types on**, warnings-as-errors on the core projects,
@@ -425,8 +428,12 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
   window-after-next | datetime`. Set at **creation** (new-task modal, default
   `manual`) and editable in Ready; only *displayed* as a badge in the Ready column
   (see Scheduling & queue policy).
-*(There is deliberately no `autoComplete` and no in-session `autoGit` — see
-No auto-completion below.)*
+- `autoGit` — optional, set at creation: the git actions
+  (`commit` / `push` / `pr` + `draft`) the agent should do **in-session**, appended to the
+  prompt as one sentence at launch. Independent of completion — the card still stops in
+  Your turn for sign-off.
+
+*(There is deliberately no `autoComplete` — see No auto-completion below.)*
 
 ### Lineage
 
@@ -577,6 +584,13 @@ an event arrived, only its normalized type — so adding a transport is adding a
 source, with no downstream change.
 
 Flow: `sources (per adapter) → normalize → event bus → rules engine + store`.
+
+**A source is a publisher, not a port.** Each one normalizes on its own side and
+**pushes** into `IAgentEventSink`, which the session registry resolves to the live
+session; the session hands the stream on to the rules engine. There is no
+`IIngestionSource` interface to implement — that port was deleted on 2026-07-30 with
+no implementations, because nothing about a hook post, a file change or a dying
+process is something ACT pulls from.
 
 **Source types:**
 
@@ -849,6 +863,9 @@ Executing. Error kinds and what retry means:
   manual).
 - **Execution** — crash / non-zero exit / tool failure. Retriable (resume), may
   warrant investigation first.
+- **In-session git failure** (`autoGit`) — not a distinct case: the agent's turn ends,
+  the card lands in Your turn like any other, and the user sees the failure on review.
+  ACT does not detect it, because nothing reports it.
 
 So the drawer's action set is state-specific — and, since ACT no longer answers
 anything, mostly a way *into* the terminal: permission / question → **Open
@@ -875,10 +892,14 @@ Completed.** There is no `autoComplete`, and no card ever signs itself off.
 - **Control arc stays human → machine → human**, with no opt-in that drops the
   final step.
 
-**In-session `autoGit` went with it** — its only defined trigger was "before the
-`ready_for_review` file on an auto-completing task", so it has no meaning once
-completion is always a human gesture. Git chosen at review time remains, as the
-spawned task described in *Git handoff on completion*.
+**`autoGit` survived, re-based on the prompt.** Its old trigger was "before the
+`ready_for_review` file on an auto-completing task", which no longer exists — so it was
+re-cut as a **prompt suffix** instead, independent of completion: pick a git action on the
+task form and ACT appends one sentence to the prompt at launch
+(`Once you are done: commit, push and create a draft pull request.`). The agent does the
+work in-session, the card still stops in Your turn for sign-off, and a failed git step is
+simply something the user sees on review. Git chosen at *review* time remains separate —
+that is the spawned task in *Git handoff on completion*.
 
 ### Agent ↔ ACT contract — one MCP tool, decided 2026-07-30
 
@@ -926,6 +947,20 @@ gone, `AgentPreamble` has no remaining job: the injected instruction block goes 
 and the opening prompt is the user's task text alone. `ActContract` and
 `AgentPreamble` are deleted with it, along with the largest and most quote-dense part
 of the launch argument.
+
+**One exception, and it proves the rule: `autoGit`.** When the task carries a git
+action, `AutoGitInstruction` appends a single sentence to the prompt at launch. That is
+not ACT teaching the agent an ACT convention — it is ACT phrasing *the user's own*
+instruction, chosen on the task form, which they would otherwise have typed into the
+prompt themselves. It is composed at launch and never stored, so `Card.InitialPrompt`
+stays verbatim for the life of the task as the form promises.
+
+**Text ACT sends to an agent is localised, like everything else it writes.** The agent is
+addressed in the language the user runs ACT in, not in English by default — so
+`Act.Core/Resources/CoreStrings` exists and the core owns resources of its own.
+`AppCulture` sets `DefaultThreadCurrentUICulture` process-wide, so a lookup in the core
+follows the UI language from any thread, including a launch that comes from the queue
+runner rather than a click.
 
 **ACT does not announce the tool, because the tool announces itself.** The obvious
 question is whether the agent needs to be *told* the MCP tool exists and when to use
@@ -1283,9 +1318,9 @@ only); "no git action" is always available.
   git work is its own tracked card that can land in Your turn on its own — just
   the general task-spawning mechanism applied to git. The completion modal also
   offers the spawned task's `schedule` (default **Now**).
-- **This is the only git mechanism.** In-session `autoGit` at creation time was
-  dropped with `autoComplete` (see *No auto-completion*), so git is always chosen at
-  **review time** and always its own spawned card.
+- **Contrast — `autoGit` tasks.** When git is known at **creation**, it rides the prompt
+  as a suffix and the agent does it in-session, so there is no spawned card. Spawning
+  applies to git chosen at **review time**, which was not known at launch.
 
 ---
 

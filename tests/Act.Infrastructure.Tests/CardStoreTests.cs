@@ -50,6 +50,7 @@ public class CardStoreTests
             },
             Schedule = TaskSchedule.SpecificDateTime,
             ScheduledFor = created.AddDays(1),
+            AutoGit = new AutoGitOptions { Action = GitAction.PullRequest, Draft = true },
             Origin = TaskOrigin.Spawned,
             ParentId = parentId,
             Children = [Guid.NewGuid(), Guid.NewGuid()],
@@ -118,6 +119,46 @@ public class CardStoreTests
         stored["AgentType"].AsString.Should().Be(nameof(AgentType.Codex));
         stored["Schedule"].AsString.Should().Be(nameof(TaskSchedule.NextWindow));
         stored["LaunchConfig"]["PermissionMode"].AsString.Should().Be(nameof(PermissionMode.DontAsk));
+    }
+
+    [Fact]
+    public async Task A_transition_reason_this_build_no_longer_has_reads_back_as_null()
+    {
+        using var temp = new TempDirectory();
+        var card = new Card
+        {
+            Title = "Retired reason",
+            Column = BoardColumn.YourTurn,
+            Transitions =
+            [
+                new Transition
+                {
+                    At = DateTimeOffset.UtcNow,
+                    Column = BoardColumn.YourTurn,
+                    Reason = TransitionReason.TurnEnded,
+                    Note = "written by an older build",
+                },
+            ],
+        };
+
+        using (var provider = Provider(temp.Path))
+            await provider.GetRequiredService<ICardStore>().AddAsync(card);
+
+        using (var database = new LiteDatabase(Path.Combine(temp.Path, "act.db")))
+        {
+            var cards = database.GetCollection("cards");
+            var stored = cards.FindById(card.Id);
+
+            stored["Transitions"].AsArray[0].AsDocument["Reason"] = "TurnWithoutStatusFile";
+            cards.Update(stored);
+        }
+
+        using var reading = Provider(temp.Path);
+
+        var reloaded = await reading.GetRequiredService<ICardStore>().GetAsync(card.Id);
+
+        reloaded!.Transitions[0].Reason.Should().BeNull();
+        reloaded.Transitions[0].Note.Should().Be("written by an older build");
     }
 
     [Fact]

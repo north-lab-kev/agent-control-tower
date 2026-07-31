@@ -23,7 +23,7 @@ public sealed class MockAgentAdapter(
 
     public AgentCapabilities Capabilities { get; } = capabilities ?? DefaultCapabilities();
 
-    public AgentScript Script { get; set; } = AgentScript.Start().EndsTurn(TurnOutcome.ReadyForReview);
+    public AgentScript Script { get; set; } = AgentScript.Start().EndsTurn();
 
     public List<AgentLaunchRequest> Launches { get; } = [];
 

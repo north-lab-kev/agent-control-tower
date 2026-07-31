@@ -31,7 +31,7 @@ public class MetricsProjectionTests
         foreach (var observed in new AgentEvent[]
         {
             new ActivityObserved(SessionId, later),
-            new TurnEnded(SessionId, later, TurnOutcome.ReadyForReview),
+            new TurnEnded(SessionId, later),
             new CompactingStarted(SessionId, later),
             new CompactingFinished(SessionId, later),
             new PermissionRequested(SessionId, later, "req", "summary"),
@@ -66,8 +66,8 @@ public class MetricsProjectionTests
     {
         var card = new Card();
 
-        MetricsProjection.Apply(card, new TurnEnded(SessionId, At, TurnOutcome.ReadyForReview));
-        MetricsProjection.Apply(card, new TurnEnded(SessionId, At, TurnOutcome.NeedsInput));
+        MetricsProjection.Apply(card, new TurnEnded(SessionId, At));
+        MetricsProjection.Apply(card, new TurnEnded(SessionId, At));
         MetricsProjection.Apply(card, new CompactingStarted(SessionId, At));
 
         card.Metrics!.TurnCount.Should().Be(2);
@@ -134,7 +134,7 @@ public class MetricsProjectionTests
         {
             var card = new Card { Column = column, Badge = Badge.Running };
 
-            MetricsProjection.Apply(card, new TurnEnded(SessionId, At, TurnOutcome.NeedsInput));
+            MetricsProjection.Apply(card, new TurnEnded(SessionId, At));
 
             card.Column.Should().Be(column);
             card.Badge.Should().Be(Badge.Running);

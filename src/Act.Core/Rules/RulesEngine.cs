@@ -80,7 +80,14 @@ public static class RulesEngine
                 TransitionReason.QuestionAsked,
                 Message: question.Question),
 
-            TurnEnded turn => ForTurn(turn),
+            // A turn end is a turn end: nothing separates finished from blocked, so it always offers
+            // the work up for review. A turn that ends while the card is blocked ends *because* that
+            // block is over — the prompt was denied and the agent stopped — so review is right there
+            // too, and the alternative is a card waiting on a prompt nobody will answer.
+            TurnEnded => new BoardMove(
+                BoardColumn.YourTurn,
+                Badge.ReadyForReview,
+                TransitionReason.TurnEnded),
 
             // ACT owns the process, so this is the one failure it can report first-hand. A clean
             // exit is not a card state: the turn events already said where the work stands, and the
@@ -111,30 +118,6 @@ public static class RulesEngine
             _ => null,
         };
     }
-
-    // The status file the preamble asks for is what separates "finished" from "blocked" — a bare
-    // `Stop` cannot. Both outcomes now land in the same column, so the badge is what carries the
-    // difference. `Unknown` is the missing-or-malformed case and gets the review badge on purpose:
-    // the spec's rule is never to trap a finished task in limbo, so the fallback favours work the
-    // user can sign off over a card waiting for an answer nobody was asked for.
-    private static BoardMove ForTurn(TurnEnded turn) => turn.Outcome switch
-    {
-        TurnOutcome.NeedsInput => new BoardMove(
-            BoardColumn.YourTurn,
-            Badge.NeedsAnswer,
-            TransitionReason.TurnNeedsInput,
-            Message: turn.Question),
-
-        TurnOutcome.ReadyForReview => new BoardMove(
-            BoardColumn.YourTurn,
-            Badge.ReadyForReview,
-            TransitionReason.TurnReadyForReview),
-
-        _ => new BoardMove(
-            BoardColumn.YourTurn,
-            Badge.ReadyForReview,
-            TransitionReason.TurnWithoutStatusFile),
-    };
 }
 
 // `Reason` is a code the UI translates, never a sentence — nothing here may produce display text,

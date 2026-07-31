@@ -53,7 +53,7 @@ public sealed class CodexHookNormalizer : IHookNormalizer
             ],
             "PreCompact" => [new CompactingStarted(id, at)],
             "PostCompact" => [new CompactingFinished(id, at)],
-            "Stop" => [new TurnEnded(id, at, TurnOutcome.Unknown)],
+            "Stop" => [new TurnEnded(id, at)],
             _ => [],
         };
 

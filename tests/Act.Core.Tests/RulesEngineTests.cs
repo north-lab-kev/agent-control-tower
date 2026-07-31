@@ -125,35 +125,27 @@ public class RulesEngineTests
                 new ActivityObserved(SessionId, At, "AskUserQuestion"))!
             .Badge.Should().Be(Badge.Running);
 
-    // Every outcome lands in the same column now, so the badge is the whole answer: the status file
-    // decides what the card says it needs, not where it goes.
-    [Theory]
-    [InlineData(TurnOutcome.ReadyForReview, Badge.ReadyForReview)]
-    [InlineData(TurnOutcome.NeedsInput, Badge.NeedsAnswer)]
-    [InlineData(TurnOutcome.Unknown, Badge.ReadyForReview)]
-    public void A_turn_ending_routes_on_the_status_file(TurnOutcome outcome, Badge badge)
+    // There is nothing left for a turn end to route on: no signal separates finished from blocked,
+    // so it always offers the work up for review.
+    [Fact]
+    public void A_turn_ending_lands_on_review()
     {
-        var move = RulesEngine.Decide(
-            CardIn(BoardColumn.Executing),
-            new TurnEnded(SessionId, At, outcome));
+        var move = RulesEngine.Decide(CardIn(BoardColumn.Executing), new TurnEnded(SessionId, At));
 
         move!.Column.Should().Be(BoardColumn.YourTurn);
-        move.Badge.Should().Be(badge);
+        move.Badge.Should().Be(Badge.ReadyForReview);
+        move.Reason.Should().Be(TransitionReason.TurnEnded);
     }
 
-    // The fallback exists so a finished task is never trapped waiting for an answer nobody asked
-    // for. It is also, today, the *only* outcome the hooks alone can produce.
-    [Fact]
-    public void A_turn_with_no_status_file_says_so_in_its_reason()
-        => RulesEngine.Decide(CardIn(BoardColumn.Executing), new TurnEnded(SessionId, At, TurnOutcome.Unknown))!
-            .Reason.Should().Be(TransitionReason.TurnWithoutStatusFile);
-
-    [Fact]
-    public void A_needs_input_turn_carries_the_question()
-        => RulesEngine.Decide(
-                CardIn(BoardColumn.Executing),
-                new TurnEnded(SessionId, At, TurnOutcome.NeedsInput, "which database?"))!
-            .Message.Should().Be("which database?");
+    // A turn that ends while the card is blocked ends for a reason — the prompt was denied and the
+    // agent stopped — so it must still be offered for review rather than left waiting on a prompt
+    // nobody is answering any more.
+    [Theory]
+    [InlineData(Badge.NeedsAnswer)]
+    [InlineData(Badge.NeedsPermission)]
+    public void A_turn_ending_supersedes_a_block_that_is_over(Badge badge)
+        => RulesEngine.Decide(CardIn(BoardColumn.YourTurn, badge), new TurnEnded(SessionId, At))!
+            .Badge.Should().Be(Badge.ReadyForReview);
 
     [Fact]
     public void A_non_zero_exit_is_an_error_the_user_can_retry()
@@ -289,9 +281,7 @@ public class RulesEngineTests
         new CompactingFinished(SessionId, At),
         new PermissionRequested(SessionId, At, "req", "summary"),
         new QuestionAsked(SessionId, At, "req", "question"),
-        new TurnEnded(SessionId, At, TurnOutcome.ReadyForReview),
-        new TurnEnded(SessionId, At, TurnOutcome.NeedsInput, "q"),
-        new TurnEnded(SessionId, At, TurnOutcome.Unknown),
+        new TurnEnded(SessionId, At),
         new ProcessExited(SessionId, At, 0),
         new ProcessExited(SessionId, At, 3),
         new SessionKilled(SessionId, At),

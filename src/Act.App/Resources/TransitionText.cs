@@ -7,7 +7,7 @@ namespace Act.App.Resources;
 // precisely so this can happen late: a card that moved while the UI was in English explains itself
 // in French the moment the user switches, which a translated-on-write note could never do.
 //
-// The resource key is the enum name — `Transition_TurnNeedsInput` — rather than a switch, so adding
+// The resource key is the enum name — `Transition_TurnEnded` — rather than a switch, so adding
 // a reason cannot silently drift from its wording. `TransitionTextTests` asserts every value
 // resolves in every shipped language, which is what makes the convention safe.
 public static class TransitionText

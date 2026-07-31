@@ -26,7 +26,7 @@ public class MockAgentSessionTests
                 .Paints("Do you want to proceed?\r\n\u276f 1. Yes\r\n")
                 .AwaitsKeystroke()
                 .Activity("Bash")
-                .EndsTurn(TurnOutcome.ReadyForReview)
+                .EndsTurn()
                 .SessionEnds(),
         };
 
@@ -62,22 +62,6 @@ public class MockAgentSessionTests
     }
 
     [Fact]
-    public async Task A_turn_that_ends_needing_input_carries_the_question()
-    {
-        var adapter = new MockAgentAdapter
-        {
-            Script = AgentScript.Start().EndsTurn(TurnOutcome.NeedsInput, "which branch should I push?"),
-        };
-
-        await using var session = await LaunchAsync(adapter);
-
-        var turn = await LastAsync<TurnEnded>(session);
-
-        turn.Outcome.Should().Be(TurnOutcome.NeedsInput);
-        turn.Question.Should().Be("which branch should I push?");
-    }
-
-    [Fact]
     public async Task Terminal_output_accumulates_into_a_backlog_a_reattaching_view_can_replay()
     {
         var adapter = new MockAgentAdapter
@@ -85,7 +69,7 @@ public class MockAgentSessionTests
             Script = AgentScript.Start()
                 .Paints("Claude Code v2\r\n")
                 .Paints("\u276f ")
-                .EndsTurn(TurnOutcome.ReadyForReview),
+                .EndsTurn(),
         };
 
         await using var session = await LaunchAsync(adapter);
@@ -103,7 +87,7 @@ public class MockAgentSessionTests
             Script = AgentScript.Start()
                 .AwaitsSubmit()
                 .Paints("working\u2026")
-                .EndsTurn(TurnOutcome.ReadyForReview),
+                .EndsTurn(),
         };
 
         await using var session = await LaunchAsync(adapter);
@@ -128,7 +112,7 @@ public class MockAgentSessionTests
     {
         var adapter = new MockAgentAdapter
         {
-            Script = AgentScript.Start().AwaitsSubmit().EndsTurn(TurnOutcome.ReadyForReview),
+            Script = AgentScript.Start().AwaitsSubmit().EndsTurn(),
         };
 
         await using var session = await LaunchAsync(adapter);
@@ -149,7 +133,7 @@ public class MockAgentSessionTests
     {
         var adapter = new MockAgentAdapter
         {
-            Script = AgentScript.Start().Activity().AwaitsSubmit().EndsTurn(TurnOutcome.ReadyForReview),
+            Script = AgentScript.Start().Activity().AwaitsSubmit().EndsTurn(),
         };
 
         await using var session = await LaunchAsync(adapter);
@@ -173,7 +157,7 @@ public class MockAgentSessionTests
     {
         var adapter = new MockAgentAdapter
         {
-            Script = AgentScript.Start().AwaitsSubmit().EndsTurn(TurnOutcome.ReadyForReview),
+            Script = AgentScript.Start().AwaitsSubmit().EndsTurn(),
         };
 
         var session = await LaunchAsync(adapter);

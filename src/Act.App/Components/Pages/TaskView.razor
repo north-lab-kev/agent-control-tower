@@ -155,6 +155,25 @@ else
                             </div>
                             <RadzenRequiredValidator Component="ScheduledFor" Text="@Strings.NewTask_Required" />
                         }
+
+                        <div class="row">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AutoGit" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_AutoGit_Hint" class="hint" />
+                            </RadzenStack>
+                            <RadzenDropDown TValue="GitAction?" Value="form.SelectedGitAction" ValueChanged="OnGitActionChanged"
+                                            Data="GitChoices" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="true" Placeholder="@Strings.NewTask_NoGitAction"
+                                            class="control" />
+                        </div>
+
+                        @if (form.SelectedGitAction is GitAction.PullRequest)
+                        {
+                            <div class="row">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Draft" />
+                                <RadzenSwitch @bind-Value="form.Draft" />
+                            </div>
+                        }
                     </RadzenStack>
                 </RadzenFieldset>
 

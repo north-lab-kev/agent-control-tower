@@ -84,6 +84,18 @@
   <data name="NewTask_DateFormat" xml:space="preserve">
     <value>yyyy-MM-dd HH:mm</value>
   </data>
+  <data name="NewTask_AutoGit" xml:space="preserve">
+    <value>Git when done</value>
+  </data>
+  <data name="NewTask_AutoGit_Hint" xml:space="preserve">
+    <value>Added to the prompt, so the agent does it in-session.</value>
+  </data>
+  <data name="NewTask_NoGitAction" xml:space="preserve">
+    <value>none</value>
+  </data>
+  <data name="NewTask_Draft" xml:space="preserve">
+    <value>Draft pull request</value>
+  </data>
   <data name="NewTask_AllowedTools" xml:space="preserve">
     <value>Allowed tools</value>
   </data>
@@ -161,6 +173,15 @@
   </data>
   <data name="ScheduleOption_DateTime" xml:space="preserve">
     <value>specific date &amp; time</value>
+  </data>
+  <data name="GitAction_Commit" xml:space="preserve">
+    <value>commit</value>
+  </data>
+  <data name="GitAction_Push" xml:space="preserve">
+    <value>commit + push</value>
+  </data>
+  <data name="GitAction_PullRequest" xml:space="preserve">
+    <value>commit + push + PR</value>
   </data>
   <data name="Column_Preparing" xml:space="preserve">
     <value>Preparing</value>
@@ -543,14 +564,8 @@
   <data name="Transition_QuestionAsked" xml:space="preserve">
     <value>Question asked in the terminal</value>
   </data>
-  <data name="Transition_TurnReadyForReview" xml:space="preserve">
+  <data name="Transition_TurnEnded" xml:space="preserve">
     <value>Turn ended, ready for review</value>
-  </data>
-  <data name="Transition_TurnNeedsInput" xml:space="preserve">
-    <value>Turn ended needing input</value>
-  </data>
-  <data name="Transition_TurnWithoutStatusFile" xml:space="preserve">
-    <value>Turn ended with no status file</value>
   </data>
   <data name="Transition_AgentExited" xml:space="preserve">
     <value>Agent exited with code {0}</value>

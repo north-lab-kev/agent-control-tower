@@ -49,12 +49,7 @@ public sealed class ClaudeCodeHookNormalizer : IHookNormalizer
             "PostToolUse" => [new ActivityObserved(id, at, Text(payload, "tool_name"))],
             "PreCompact" => [new CompactingStarted(id, at)],
             "Notification" => Notification(payload, id, at),
-
-            // The turn's *outcome* is not in this payload — it comes from the status file the
-            // preamble asks the agent to write, which the file source reads. `Stop` only says the
-            // turn ended, so `Unknown` here is the honest value and the rules engine treats it as
-            // ready-for-review when no status file contradicts it.
-            "Stop" => [new TurnEnded(id, at, TurnOutcome.Unknown)],
+            "Stop" => [new TurnEnded(id, at)],
             _ => [],
         };
 

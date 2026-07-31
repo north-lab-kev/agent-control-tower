@@ -266,21 +266,37 @@ verifiable, and leaves something runnable.
       hashes — a per-task path would mean a trust prompt for every card ever created.
   - **To finalize step 8 — seven items, in this order.** Two of them are decisions that
     change where later code lives, so they come first.
-    - [ ] **1. Decide what `IIngestionSource` is for, or delete it.** The port has **zero
-      implementations**: hook events arrive by *push* through `IAgentEventSink` →
-      `SessionEventSink` → `PtyAgentSession.Publish`, and the process signals are raised by
-      the session itself. Meanwhile `PtyAgentSession`'s own comment says the adapter decides
-      "which ingestion sources to compose" and hands them in — and its constructor takes
-      none. That drift has to be settled before the transcript tailer is written, because it
-      decides whether the tailer is a composed `IIngestionSource` (pull) or another publisher
-      (push). Recommendation: make the transcript source the first real implementation and
-      have the adapter hand it in, which is what the design says and what a second one
-      (Codex's rollout tail) will want anyway.
-    - [ ] **2. Collapse `TurnOutcome`.** `TurnEnded` carries `Outcome` and `Question` fed by
-      the status file that no longer exists, and `TurnOutcome.Unknown`'s comment describes
-      reading it. Delete the enum and both fields: a `Stop` is a turn end, full stop, and the
-      question case is already its own `QuestionAsked` event carrying text no status file ever
-      had.
+    - [x] **1. `IIngestionSource` is deleted — ingestion is push.** ✅ Decided the other way
+      from the recommendation that stood here: the port had zero implementations because
+      nothing about ingestion is a *pull*. A hook post, a file change and a dying process are
+      all things that happen *to* ACT, and each already had a way in — `IAgentEventSink` →
+      `SessionEventSink` → `PtyAgentSession.Publish`. Making the transcript tailer implement a
+      second seam would have bought an interface, an owner for its lifetime, and a drain loop
+      per source, to deliver events the existing sink already carries. **So the transcript
+      tailer (item 4) and the Codex rollout tail (items 6–7) are publishers**: they normalize
+      what they read and push, exactly as the hook endpoint does. The stale comments that
+      claimed the adapter "composes ingestion sources" and hands them in are gone from
+      `IAgentAdapter` and `PtyAgentSession`, and the spec's *Pluggable, multi-source
+      ingestion* now says a source is a publisher, not a port.
+    - [x] **2. `TurnOutcome` is collapsed.** ✅ The enum and both `TurnEnded` fields
+      (`Outcome`, `Question`) are gone — `TurnEnded` is now just session + timestamp, and a
+      `Stop` always routes Executing → Your turn with `to review`. `TransitionReason` lost
+      `TurnNeedsInput` and `TurnWithoutStatusFile` and `TurnReadyForReview` became
+      **`TurnEnded`**, one reason for the one thing that can happen, with its two resx entries
+      per language deleted. The two tests that asserted the outcome routing were replaced by
+      one that asserts review, plus a new one pinning the case worth being explicit about: a
+      turn that ends while the card is blocked **still** goes to review, because the block is
+      over (the prompt was denied and the agent stopped) and the alternative is a card waiting
+      on a prompt nobody will answer.
+      - **Retiring a stored code needed the mapper to tolerate one.** `TransitionReason` is
+        persisted by name, and LiteDB's enum deserializer throws on a name this build no
+        longer has — so deleting two reasons would have made every existing card that carried
+        one unreadable, on a real `act.db`. `ActBsonMapper` now registers a custom
+        `TransitionReason` converter that reads an unknown name back as **null**, which
+        `TransitionText.For` already renders as the transition's verbatim note. Regression
+        test in `CardStoreTests` writes `TurnWithoutStatusFile` into the raw document and
+        reads the card back. Cost: timeline rows written by an older build show their note
+        instead of a sentence.
     - [x] **3. Delete the preamble and the `.act/` contract.** ✅ Landed. `AgentPreamble`,
       `ActContract` and their two test classes are gone, `Preamble` is off both launch
       requests, and each adapter passes `request.InitialPrompt` verbatim — so **the opening
@@ -288,6 +304,15 @@ verifiable, and leaves something runnable.
       part of the launch argument. `autoComplete` / `AutoGitOptions` / `GitAction` went with
       it (card model, `CardDuplicate`, `NewTaskForm`, the task page's Automation fieldset,
       the flight-strip chip, ten resx entries across both languages, one store fixture).
+      **`autoGit` was then brought back on its own**, re-cut as a prompt suffix
+      (`Act.Core/Agents/AutoGitInstruction`) with no dependency on completion: the task form
+      offers the git action ungated, `SessionLauncher` appends one sentence at launch, and
+      `Card.InitialPrompt` still stores the user's text verbatim.
+      - **And it established that the core owns resources.** Text ACT sends to an *agent* is
+        localised too — the agent is addressed in the user's UI language — so
+        `Act.Core/Resources/CoreStrings.resx` (+ `.fr`) exists, generated by the same
+        source generator the app uses. Verified: the French wording resolves in tests, and
+        `Act.Core.resources.dll` lands in the app's output beside the app's own.
       The two adapter regression guards were rewritten from "carries the preamble" to
       **"is the task text alone"**, which is the stronger assertion. 332 tests green; the
       task form and board verified in a real browser with no console errors.
@@ -400,10 +425,11 @@ verifiable, and leaves something runnable.
 
 - [ ] **11. Complete + reopen** — Your turn → Completed and reopen. *Verify:* a
   signed-off task lands in Completed; reopen resumes.
-  - **Auto-complete and in-session `autoGit` were cut on 2026-07-30** — see the
-    spec's *No auto-completion*. Completion is always the user's drag, so this step
-    is now just the two manual transitions, and nothing in ACT needs the agent to
-    assert that it finished.
+  - **Auto-complete was cut on 2026-07-30** — see the spec's *No auto-completion*.
+    Completion is always the user's drag, so this step is now just the two manual
+    transitions, and nothing in ACT needs the agent to assert that it finished.
+    **`autoGit` survived** and left this step entirely: it is a prompt suffix
+    (`AutoGitInstruction`), applied at launch and unrelated to completion.
   - [x] **Your turn → Completed, brought forward.** `Act.Core/Rules/CardCompletion` is the
     predicate (its own rule, because reaching Completed stamps the sign-off and ends the session,
     which `BoardState.MoveAsync` neither does nor should — and because no event may decide it),

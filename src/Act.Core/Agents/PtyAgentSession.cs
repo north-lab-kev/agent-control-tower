@@ -5,9 +5,10 @@ using Act.Core.Events;
 namespace Act.Core.Agents;
 
 // A session hosted in a pseudo-terminal. Agent-agnostic on purpose: everything agent-shaped
-// (the command line, the submit profile, which ingestion sources to compose) is decided by
-// the adapter and handed in, so both adapters share this rather than each growing their own.
-// It depends on ports only, which is why it can live in the core at all.
+// (the command line, the submit profile) is decided by the adapter and handed in, so both
+// adapters share this rather than each growing their own. Observed events reach it by push
+// through `Publish`, whoever saw them. It depends on ports only, which is why it can live in
+// the core at all.
 public sealed class PtyAgentSession : IAgentSession
 {
     // How long a launch may stay silent before ACT calls it parked. Measured against `claude-code`

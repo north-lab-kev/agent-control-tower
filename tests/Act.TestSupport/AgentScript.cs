@@ -54,8 +54,8 @@ public sealed class AgentScript
     public AgentScript WritesFollowUps(params string[] files)
         => Emit((session, at) => new FollowUpsWritten(session, at, files));
 
-    public AgentScript EndsTurn(TurnOutcome outcome, string? question = null)
-        => Emit((session, at) => new TurnEnded(session, at, outcome, question));
+    public AgentScript EndsTurn()
+        => Emit((session, at) => new TurnEnded(session, at));
 
     public AgentScript GoesQuiet(TimeSpan idle)
         => Emit((session, at) => new NoActivityElapsed(session, at, idle));

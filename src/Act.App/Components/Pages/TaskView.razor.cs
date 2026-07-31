@@ -94,6 +94,13 @@ public partial class TaskView(
         new(TaskSchedule.SpecificDateTime, Strings.ScheduleOption_DateTime),
     ];
 
+    private static SettingChoice<GitAction?>[] GitChoices =>
+    [
+        new(GitAction.Commit, Strings.GitAction_Commit),
+        new(GitAction.Push, Strings.GitAction_Push),
+        new(GitAction.PullRequest, Strings.GitAction_PullRequest),
+    ];
+
 
     // Keeps a stored model visible even when the agent no longer offers it — otherwise editing
     // a card would show an empty dropdown for a value it is still carrying.
@@ -433,6 +440,14 @@ public partial class TaskView(
 
         if (!form.WantsDateTime)
             form.ScheduledFor = null;
+    }
+
+    private void OnGitActionChanged(GitAction? action)
+    {
+        form.SelectedGitAction = action;
+
+        if (action is not GitAction.PullRequest)
+            form.Draft = false;
     }
 
     private async Task OnSubmitAsync(NewTaskForm _)
