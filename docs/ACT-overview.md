@@ -210,7 +210,7 @@ be human- or machine-controlled; **badges are always automatic.**
 | 1 | Preparing | Human | user creates task (initial) | Ready |
 | 2 | Ready | Human | manual from Preparing, **or spawned** from a completing task | Executing (launch) · Preparing (back) |
 | 3 | Executing | Machine | auto, on launch | Your turn |
-| 4 | Your turn | Machine | auto: permission / question / error / `Stop` | Completed (drag) · Executing (after input or send-back) |
+| 4 | Your turn | Machine | auto: permission / question / error / `Stop` | Completed (drag) · Executing (observed input, or Retry) |
 | 5 | Completed | Human | **dragged** from Your turn | Your turn (reopen) |
 
 **Control arc:** human → machine → human. Control starts with the user
@@ -409,8 +409,8 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
 - `initialPrompt` — the **immutable** opening instruction, set in Preparing.
   Preserved verbatim across all later turns (enables re-run-from-scratch and
   auditing what was originally asked). Subsequent inputs — answers, permission
-  grants, send-back feedback — are part of the interaction history, **not**
-  overwrites of this field.
+  grants, follow-up instructions — are typed in the terminal and belong to the
+  interaction history, **not** to this field.
 
 ### State
 
@@ -460,7 +460,11 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
 
 ### Enrichment & metrics (read-only, observed — kept fresh from the JSONL/file source)
 
-- `lastMessage` — the agent's most recent message (for the card preview).
+- **No `lastMessage`.** Dropped on 2026-08-01 with the read-only blocked statement
+  it was going to feed (see *Interaction*): it had two writers meaning different
+  things — the rules engine writing what the user was being asked, the transcript
+  writing what the agent last said — and never a single reader. Nothing on the
+  board needs to repeat what is on the terminal's own screen.
 - `observedModel` — the model the session **actually** ran (may differ from the
   requested `launchConfig.model` due to fallback or a mid-session `/model`
   switch). Stored alongside the requested one to avoid confusion.
@@ -498,6 +502,58 @@ adapter maps it** to that agent's real CLI flags / settings, defines valid
 values, and defines behavior for unsupported values (map to nearest equivalent
 *or* reject at launch with a clear message — never silently drop).
 
+**Two owners, joined at launch — decided 2026-08-01.** A *task* owns `workingDir`,
+`model`, `effort` and `permissionMode`, because those describe the work. The
+*machine* owns the **executable path, the extra flags and the environment**, because
+those describe the install: where `codex.exe` lives does not change because the work
+does, and a proxy variable one task needs, every task on this machine needs. They were
+per-task fields under *Advanced* on the form, which meant retyping the same path on
+every card and no way to fix it in one place when it moved — so they became **per-agent
+settings** (*Settings → Agents*, one section per registered adapter). `LaunchComposition`
+joins the two on the way to the adapter and is the only place they meet.
+
+- **The machine half always wins, and is applied even when it is empty.** Cards written
+  before the settings existed still carry their own copy, and reading one back would
+  resurrect a path the user has since corrected — so the composition clears those fields
+  first and no card's stale copy can reach a CLI.
+- **Startup finds the CLIs so the common case needs no configuration** (`AgentInstallDiscovery`).
+  The adapter owns *where to look* — that is agent knowledge — and the `IExecutableProbe` port owns
+  the filesystem access, which keeps discovery testable without installing anything. Three
+  outcomes, each doing something different: **on `PATH`** changes nothing, because an empty setting
+  *means* "resolve by name" and keeps working when the install upgrades itself; **off `PATH` but
+  installed** records the path, since a pty spawns with an explicit image and would otherwise fail
+  for a CLI sitting right there; **not installed** leaves the path empty and, on the first pass
+  only, switches the agent off in the task form. A path the user typed is never touched.
+  - Candidates were measured, not guessed: Claude Code installs to `~/.local/bin` (and npm global),
+    while Codex declares its own location as `CODEX_CLI_PATH` in `~/.codex/config.toml` — asked
+    first, because it is the machine's answer rather than ACT's — then the Store layout under a
+    build-hash folder, newest first.
+- **The executable box is validated and browsable**, by the same rules the launch resolves with: a
+  value with no separator is a name to look up on `PATH`, anything else is a path that must exist.
+  It is a **warning, not a block** — settings apply as you type and a path you are about to install
+  to is reasonable to enter.
+  - **The empty case has three answers, not two, and conflating them was a real bug.** Empty means
+    "resolve the bare name", so the only reassuring answer is that the name genuinely resolves.
+    Asking the adapter whether the CLI was found *anywhere* reported "Found on PATH" for a Codex
+    that is installed and **not** on `PATH` — praise for a box whose launch fails with "not found"
+    for a binary sitting on the disk. So: on `PATH` → quiet confirmation; installed **off** `PATH` →
+    a warning naming the path, with a **Use it** button that fills the box, because the fix is one
+    click and retyping what ACT just found would be perverse; nothing found → "may not be
+    installed". **Browse** opens the same picker the task
+  form uses, in **file mode**: the walk is identical, files are listed alongside folders, and
+  clicking one *is* the choice, so there is no confirm button. Its `FolderPicker` name went with the
+  second mode — it is `PathPicker`, and `IWorkingDirectories.List` takes `includeFiles`, off by
+  default because listing 40,000 files to choose a working directory would be felt.
+- **Each agent has an `enabled` switch**, and the task form offers only the ones that are on — plus,
+  always, the agent a card already carries, so turning one off never leaves an existing card facing
+  an empty dropdown for a value it still holds. Discovery sets it once for an agent it cannot find;
+  after that it is the user's, so re-enabling sticks.
+- **A one-time migration lifts what a real board already had** (`AgentDefaultsMigration`,
+  at startup, newest card wins, skipped once an agent has settings). Without it the loss
+  is silent and specific: a Store-packaged Codex is on no `PATH`, so every existing Codex
+  card would fail at spawn for a path the user had already supplied and could no longer
+  see anywhere.
+
 - `workingDir` — the task's cwd. **Stored as the user typed it and resolved at launch:** a
   leading `~` is expanded (nothing below a shell does it, so `~/dev/act` would otherwise
   reach `CreateProcess` verbatim and fail), separators are normalized, and the directory
@@ -519,9 +575,9 @@ values, and defines behavior for unsupported values (map to nearest equivalent
   which would otherwise resolve against wherever ACT happens to be running) from merely
   **missing** (a warning plus *Create it*, and the task still saves, because a directory
   you are about to make is a reasonable thing to plan against).
-- `agentBinary` — path to the executable (global default per `agentType`). Resolved
-  against `PATH` at launch, since a pty spawns with an explicit image path and does not
-  search for one.
+- `agentBinary` — path to the executable, **per agent in settings, not per task**.
+  Resolved against `PATH` at launch, since a pty spawns with an explicit image path and
+  does not search for one.
 - `model` — per-task; **agent-specific** values (e.g. current Claude Code:
   Sonnet 5 / Opus 4.8 / Fable 5).
 - `effort` — per-task reasoning effort; **agent + model-specific**. Not a flat list
@@ -588,8 +644,14 @@ values, and defines behavior for unsupported values (map to nearest equivalent
   - `plan` (read-only, no mutations) is the natural fit for a **planning task**
     that emits follow-ups without touching anything — pairs directly with the
     spawn/plan-decomposition pattern.
-- `allowedTools` / `disallowedTools` — optional tool allow/deny.
-- `extraFlags` / `env` — escape hatch for anything not modeled.
+- ~~`allowedTools` / `disallowedTools`~~ — **removed 2026-08-01.** Claude Code mapped them
+  to `--allowed-tools` / `--disallowed-tools`; **Codex ignored them entirely**, with no
+  rejection and no adjustment — the one outcome the never-silently-drop rule above exists to
+  forbid. Making the drop honest was the alternative; deleting them was chosen because
+  `permissionMode` is the guardrail that works on both agents, and a half-honoured allow-list
+  is worse than none. Anyone who wants Claude's flags back has `extraFlags`.
+- `extraFlags` / `env` — escape hatch for anything not modeled. **Per agent, in settings,
+  not per task** (see below).
 
 *Precedence caveat:* ACT's per-task flags layer **on top of** the project's and
 user's existing `settings.json` (CLI flags > project > user > built-in
@@ -973,9 +1035,9 @@ Executing. Error kinds and what retry means:
 
 So the drawer's action set is state-specific — and, since ACT no longer answers
 anything, mostly a way *into* the terminal: permission / question → **Open
-terminal** (with a read-only statement of what is being asked); **error → Retry
-(± edit launch config)**; review → send-back / complete / kill. Open terminal,
-Open in Desktop and Kill are available on any active card.
+terminal**; **error → Retry (± edit launch config)**; review → complete / kill, or
+Open terminal to tell it what to do next. Open terminal, Open in Desktop and Kill
+are available on any active card.
 
 ### No auto-completion — decided 2026-07-30
 
@@ -1145,22 +1207,30 @@ string on the screen. See *The one prompt no hook reports*.
 
 ### The input channel is the human at the keyboard
 
-ACT types exactly one thing into a session: a **send-back message**, if the user
-chooses to seed one from the UI into a session that is alive and parked at its
-prompt. It goes in as bracketed paste followed by the agent's submit key — an
-adapter detail, since the submit key is agent-shaped.
+**ACT types nothing into a session at all.** Every byte reaching a live agent is a
+keystroke the user made in the terminal ACT is showing them; ACT's only writes to
+the pty are the resize and the kill.
+
+*(Until 2026-08-01 there was one exception — a **send-back message**, seeded from
+the UI into a session parked at its prompt, going in as bracketed paste followed by
+the agent's submit key. It is cut. Send-back only ever meant "reply to a finished
+card without opening its terminal", and in an app where the terminal is a tab on the
+card, that is a worse text box a click away from a better one that is already open.
+It was also the last thing keeping ACT in the business of guessing when a TUI is
+ready to be typed into — a guess step 7 paid for once. `IAgentTerminal.SubmitAsync`,
+`TerminalSubmitProfile` and the paint/settle waits behind them are deleted, and the
+rule is now absolute rather than "exactly one thing".)*
 
 The **initial prompt is not typed**: it is a positional argument on the launch
 command line for both agents (and a resume message likewise). Typing it looked
 equivalent and is not — measured at step 7, a CLI that has painted its banner is
 not yet listening to its prompt line, so the prompt landed nowhere and the card sat
 at an empty composer while the board said it was executing. On the command line it
-is in place before the TUI paints, and there is no race to lose. This is also why
-the send-back case is *not* the same problem: there the TUI has been up and idle
-for as long as the user took to decide.
+is in place before the TUI paints, and there is no race to lose.
 
 Everything else — answering a permission prompt, answering a question, approving a
-plan, `/`-commands — the user types themselves, in the terminal ACT is showing them.
+plan, replying to finished work, `/`-commands — the user types themselves, in the
+terminal ACT is showing them.
 
 Consequently ACT has **no approve/deny surface at all**. See *Hooks are
 observability, not control*.
@@ -1390,7 +1460,7 @@ history.
 
 ### Session lifecycle — resumability rides the transcript
 
-Resumability does **not** depend on ACT keeping anything alive. Send-back
+Resumability does **not** depend on ACT keeping anything alive. Retry
 (Your turn → Executing) and reopen (Completed → Your turn) work via `--resume
 <sessionId>` against the agent's **on-disk transcript**, which persists
 independently of ACT.
@@ -1405,9 +1475,9 @@ independently of ACT.
 - **Caveat:** the transcript is outside ACT's control, subject to the agent's
   retention or user deletion — so a very old Completed task may no longer be
   resumable.
-- **Fallback:** reopen/send-back attempts `--resume`; **on failure, offer to
-  start a fresh session seeded with the stored `initialPrompt`** (and possibly
-  `lastMessage`) rather than failing silently. Record which path was taken.
+- **Fallback:** reopen/retry attempts `--resume`; **on failure, offer to
+  start a fresh session seeded with the stored `initialPrompt`** rather than
+  failing silently. Record which path was taken.
 
 ### Where the data lives
 
@@ -1551,11 +1621,23 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
 - **Interaction — two surfaces, one rule.** The **drawer** is where you *read* a
   card; the **session view** is where you *talk* to it.
   - **Contextual right-side drawer** over a dimmed board, action set by state.
-    Since ACT answers nothing, a blocked card shows a brief **read-only** statement
-    of what is being asked (no command dump, no scope radios) plus a prominent
-    **"Answer in terminal ›"**. Remaining actions: Open terminal, Open in Desktop,
-    Kill, **Retry** (± edit launch config, on `error`), Send back, Complete. Open
-    terminal / Open in Desktop / Kill on any active card.
+    Actions: Open terminal, Open in Desktop, Kill, **Retry** (± edit launch config,
+    on `error`), Complete. Open terminal / Open in Desktop / Kill on any active card.
+    - **No Send back — decided 2026-08-01.** Replying to finished work is typing into
+      the session, and the session is a tab on the card. A compose box in the drawer or
+      the rail is a worse text input inches from a better one, and it was the last thing
+      ACT would have typed on the user's behalf; see *The input channel is the human at
+      the keyboard*, which is now absolute.
+    - **The badge is the whole report — decided 2026-08-01.** An earlier design had a
+      blocked card carry a brief read-only statement of what was being asked, fed by
+      a `lastMessage` field. It is cut, and the field with it. `needs permission` /
+      `needs answer` already says the one thing the board is for — that this card
+      wants you — and the answer is typed one click away, on the screen the question
+      is actually rendered on. Repeating a truncated copy of it on a flight strip
+      costs the space the strip does not have, and buys a second place for the same
+      sentence to go stale in: nothing reports a permission being *approved*, so the
+      copy would outlive the prompt (the same staleness the `needs permission` badge
+      already accepts, but in prose and far more conspicuous).
   - **Session view — a full-screen route per card.** The xterm terminal takes the
     window, with a right rail carrying identity (`#1042`, cwd, agent/model) and the
     live metrics (context %, cost, turns), the same action set, and back-to-board in
@@ -1569,11 +1651,20 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     the `error` badge and the transition note, which persist. Anything that must survive
     a dismissal belongs on the card, not in a toast.
 - **New task / edit task:** a **page**, not a modal — `/card/new` and
-  `/card/{id}/edit`, matching the session view. Same control set (title, prompt, dir,
-  agent, model, effort, permission mode, schedule; tools /
-  env / flags behind **Advanced**) and a **single Save** → lands in Preparing; the
-  user drags it onward. The fields sit in a centred column so a wide window does not
-  stretch them.
+  `/card/{id}/edit`, matching the session view. The control set is what the *task* owns —
+  title, prompt, dir, agent, model, effort, permission mode, schedule, git-when-done — and
+  a **single Save** → lands in Preparing; the user drags it onward. The fields sit in a
+  centred column so a wide window does not stretch them.
+  - **There is no *Advanced* section any more.** It held five fields: the tool allow/deny
+    pair, deleted for being silently dropped by one of the two agents, and the executable /
+    flags / environment, which moved to *Settings → Agents* because they describe the
+    install rather than the work. Nothing was left to collapse.
+  - **Past the launch boundary the form gates itself** (`TaskEditing`): prompt, dir, agent,
+    schedule and git-when-done freeze — they describe the run that already started — while
+    the title and the launch config stay editable, since those are what the *next* launch
+    uses. Enforced in the code that writes the card, not only in the markup, so the
+    immutable-`initialPrompt` rule holds however the form is rendered. One notice at the
+    top says why, once.
   - **Why a page:** a card is then always somewhere you can land, link to, and come
     back from, and its two faces — the form before launch, the terminal after — are
     the same kind of thing rather than one modal and one route. Clicking a card opens
@@ -1631,7 +1722,17 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   dump you on the board; now you stay on settings.
   Shipped: **language**, **theme** (follow-OS / light / dark override),
   **display mode** (compact / spacious — settings-only; there is no top-bar
-  density toggle), **blink in Your turn**, **keep-awake** and **close-to-tray**. Still to land:
+  density toggle), **blink in Your turn**, **keep-awake**, **close-to-tray**,
+  **Agents** — one section per registered adapter carrying that CLI's **enabled** switch,
+  executable, extra flags and environment (see *Launch config*; these are properties of
+  the install, which is why they are here and not on the task form) — and
+  **New task defaults**, the template a new card starts from. Still to land:
+  - **New task defaults** covers everything the task form asks for **except the title and the
+    prompt**: working directory, agent, model, effort, permission mode, schedule and
+    git-when-done. Those two are the task itself, and pre-filling them would mean creating the
+    same task twice by accident. Changing the default agent clears a model or effort the new one
+    does not offer, and moves the permission mode to one it does, rather than storing a default
+    that would be rejected at launch.
   the notification matrix, `maxConcurrent`, weekly-reset time, and the auto-archive window /
   auto-execution pause.
   - **Blink cards in Your turn** (*Appearance*, on by default) governs the attention pulse only.

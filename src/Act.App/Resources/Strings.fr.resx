@@ -39,8 +39,8 @@
   <data name="NewTask_Group_Automation" xml:space="preserve">
     <value>Automatisation</value>
   </data>
-  <data name="NewTask_Group_Advanced" xml:space="preserve">
-    <value>Avancé</value>
+  <data name="NewTask_Locked" xml:space="preserve">
+    <value>Cette tâche est lancée. Sa consigne, son répertoire, son agent et son automatisation sont figés — ils décrivent l'exécution déjà commencée. Le titre et les réglages de l'agent restent modifiables et s'appliqueront au prochain lancement.</value>
   </data>
   <data name="NewTask_Title" xml:space="preserve">
     <value>Titre</value>
@@ -95,30 +95,6 @@
   </data>
   <data name="NewTask_Draft" xml:space="preserve">
     <value>Pull request brouillon</value>
-  </data>
-  <data name="NewTask_AllowedTools" xml:space="preserve">
-    <value>Outils autorisés</value>
-  </data>
-  <data name="NewTask_DisallowedTools" xml:space="preserve">
-    <value>Outils interdits</value>
-  </data>
-  <data name="NewTask_Tools_Hint" xml:space="preserve">
-    <value>Un par ligne, ou séparés par des virgules. Exemple : Bash(git *)</value>
-  </data>
-  <data name="NewTask_ExtraFlags" xml:space="preserve">
-    <value>Options CLI supplémentaires</value>
-  </data>
-  <data name="NewTask_AgentBinary" xml:space="preserve">
-    <value>Exécutable de l&apos;agent</value>
-  </data>
-  <data name="NewTask_AgentBinary_Hint" xml:space="preserve">
-    <value>Laisser vide pour chercher l&apos;agent dans le PATH. Indiquer un chemin complet s&apos;il n&apos;y est pas — un Codex installé depuis le Store, par exemple.</value>
-  </data>
-  <data name="NewTask_Env" xml:space="preserve">
-    <value>Variables d'environnement</value>
-  </data>
-  <data name="NewTask_Env_Hint" xml:space="preserve">
-    <value>Une paire CLÉ=valeur par ligne.</value>
   </data>
   <data name="NewTask_Required" xml:space="preserve">
     <value>Obligatoire</value>
@@ -284,6 +260,57 @@
   </data>
   <data name="Settings_Group_System" xml:space="preserve">
     <value>Système</value>
+  </data>
+  <data name="Settings_Group_Agents" xml:space="preserve">
+    <value>Agents</value>
+  </data>
+  <data name="Settings_AgentEnabled_Hint" xml:space="preserve">
+    <value>Proposer cet agent à la création d&apos;une tâche.</value>
+  </data>
+  <data name="Settings_AgentBinary_NotFound" xml:space="preserve">
+    <value>Rien à cet endroit. Le lancement échouera tant que ce chemin ne pointe pas sur l&apos;exécutable.</value>
+  </data>
+  <data name="Settings_AgentBinary_NotInstalled" xml:space="preserve">
+    <value>Introuvable dans le PATH et aux endroits connus d&apos;ACT — cet agent n&apos;est peut-être pas installé.</value>
+  </data>
+  <data name="Settings_AgentBinary_NotOnPath" xml:space="preserve">
+    <value>Absent du PATH. Installé à {0}.</value>
+  </data>
+  <data name="Settings_AgentBinary_UseFound" xml:space="preserve">
+    <value>Utiliser</value>
+  </data>
+  <data name="Settings_AgentBinary_OnPath" xml:space="preserve">
+    <value>Trouvé dans le PATH.</value>
+  </data>
+  <data name="Settings_AgentBinary_Found" xml:space="preserve">
+    <value>Trouvé.</value>
+  </data>
+  <data name="Settings_Group_TaskDefaults" xml:space="preserve">
+    <value>Valeurs par défaut des tâches</value>
+  </data>
+  <data name="Settings_TaskDefaults_Hint" xml:space="preserve">
+    <value>Ce qu&apos;une nouvelle tâche contient au départ. Le titre et la consigne restent à écrire.</value>
+  </data>
+  <data name="Settings_Agents_Hint" xml:space="preserve">
+    <value>Comment chaque CLI est installé sur cette machine. Ces réglages s&apos;appliquent à toutes les tâches de cet agent, au prochain lancement.</value>
+  </data>
+  <data name="Settings_AgentBinary" xml:space="preserve">
+    <value>Exécutable</value>
+  </data>
+  <data name="Settings_AgentBinary_Hint" xml:space="preserve">
+    <value>Laisser vide pour le chercher dans le PATH. Indiquer un chemin complet si l&apos;installation n&apos;y est pas.</value>
+  </data>
+  <data name="Settings_ExtraFlags" xml:space="preserve">
+    <value>Options CLI supplémentaires</value>
+  </data>
+  <data name="Settings_ExtraFlags_Hint" xml:space="preserve">
+    <value>Une par ligne. Ajoutées à chaque lancement — une option qu&apos;ACT définit déjà, comme l&apos;identifiant de session ou le fichier de réglages, cassera sa propre liaison.</value>
+  </data>
+  <data name="Settings_Env" xml:space="preserve">
+    <value>Variables d&apos;environnement</value>
+  </data>
+  <data name="Settings_Env_Hint" xml:space="preserve">
+    <value>Une paire CLÉ=valeur par ligne.</value>
   </data>
   <data name="Settings_KeepAwake" xml:space="preserve">
     <value>Garder l'ordinateur éveillé</value>
@@ -453,7 +480,7 @@
   <data name="NewTask_DirMissingResolved" xml:space="preserve">
     <value>Ce répertoire n'existe pas encore ({0}).</value>
   </data>
-  <data name="NewTask_Browse" xml:space="preserve">
+  <data name="Picker_Browse" xml:space="preserve">
     <value>Parcourir</value>
   </data>
   <data name="NewTask_DirNotAbsolute" xml:space="preserve">
@@ -580,7 +607,7 @@
     <value>Tour terminé, prêt pour révision</value>
   </data>
   <data name="Transition_TurnFailed" xml:space="preserve">
-    <value>L&apos;agent signale un tour en échec</value>
+    <value>L&apos;agent signale un tour en échec : {0}</value>
   </data>
   <data name="Transition_AgentExited" xml:space="preserve">
     <value>L&apos;agent s&apos;est arrêté avec le code {0}</value>

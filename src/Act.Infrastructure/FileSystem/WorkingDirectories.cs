@@ -42,7 +42,7 @@ public sealed class WorkingDirectories : IWorkingDirectories
         return Directory.Exists(resolved) ? PathCheck.Found(resolved) : PathCheck.Missing(resolved);
     }
 
-    public DirectoryListing List(string? path)
+    public DirectoryListing List(string? path, bool includeFiles = false)
     {
         if (string.IsNullOrWhiteSpace(path))
             return new DirectoryListing(null, null, Roots());
@@ -70,7 +70,15 @@ public sealed class WorkingDirectories : IWorkingDirectories
                 .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            return new DirectoryListing(resolved, Parent(resolved), directories);
+            var files = includeFiles
+                ? Directory.EnumerateFiles(resolved)
+                    .Select(child => new DirectoryEntry(Path.GetFileName(child), child))
+                    .Where(entry => !string.IsNullOrEmpty(entry.Name))
+                    .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
+                    .ToList()
+                : [];
+
+            return new DirectoryListing(resolved, Parent(resolved), directories, Files: files);
         }
         catch (Exception error) when (error is UnauthorizedAccessException or IOException)
         {

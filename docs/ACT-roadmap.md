@@ -133,7 +133,8 @@ verifiable, and leaves something runnable.
     `AnswerAsync`, `SendAsync` and `InterruptAsync` (and `PermissionDecision` was
     deleted outright — ACT decides nothing), and **gained** `IAgentTerminal`
     (raw read/write, resize, bounded scrollback replay, and `SubmitAsync` for the
-    only text ACT types itself — step 7 cut that down to the send-back message alone).
+    only text ACT types itself — step 7 cut that down to the send-back message alone,
+    and **step 10 deleted `SubmitAsync` outright** when send-back itself was cut).
     New port `IPtyHost` keeps the pseudo-terminal
     primitive in `Act.Core/Abstractions` and its `Porta.Pty` implementation in
     `Act.Infrastructure`, so adapters never depend sideways on infrastructure.
@@ -214,8 +215,8 @@ verifiable, and leaves something runnable.
       screen, which ACT does not do. **Fixed by deleting the guess:** Claude Code takes
       the prompt positionally (`claude [prompt]`) exactly as Codex already did, so it is
       in place before the TUI paints. `PtyAgentSession.Open` is gone with it;
-      `IAgentTerminal.SubmitAsync` stays for step 11's send-back, where the TUI has been
-      idle for as long as the user took to decide. Regression-guarded in
+      `IAgentTerminal.SubmitAsync` stayed for the send-back — and was deleted with it at
+      step 10, so ACT now types nothing at all. Regression-guarded in
       `ClaudeCodeAdapterTests` — prompt positional, and nothing written at launch.
 - [x] **8. Ingestion — observability only** — normalized event stream fed per
   adapter (Claude: http hooks + transcript + process; **Codex: hooks + rollout + process** —
@@ -658,9 +659,9 @@ verifiable, and leaves something runnable.
   transitions; a turn end (`Stop`) routes Executing → Your turn with `to review`;
   `error` from a
   process signal; **observed** permission/question in, and **observed activity**
-  (`UserPromptSubmit`) as the one way out of Your turn — the recovery and the
-  send-back are the same event, since the user acts in the terminal and ACT only
-  ever learns about it.
+  (`UserPromptSubmit`) as the one way out of Your turn — whatever the user's reason for
+  typing, recovery is the same event, since they act in the terminal and ACT only ever
+  learns about it.
   *Verify:* a task walks the machine-region states correctly.
   - [x] **The engine itself, brought forward with step 8's pump.** `Act.Core/Rules/RulesEngine`
     is the spec's transition table as pure logic, `MetricsProjection` is the numbers half, and
@@ -680,11 +681,158 @@ verifiable, and leaves something runnable.
     So the engine's table is now complete as specified, and every rule in it has a producer.
 - [ ] **10. Session view + card actions — both adapters** — the full session view
   (terminal + right rail: identity, cwd, agent/model, context %, tokens, turns;
-  back-to-board) and the drawer's **read-only** blocked-card presentation with
-  "Answer in terminal ›". Actions: Open terminal, **Open in Desktop**
-  (`claude://resume?session=`), Kill, Retry, Send back, Complete. Explicitly **no
+  back-to-board). Actions: Open terminal, **Open in Desktop**
+  (`claude://resume?session=`), Kill, Retry, Complete. Explicitly **no
   approve/deny anywhere**. *Verify:* a task goes full-circle by hand on both agents,
   answering every prompt in the embedded terminal.
+  - [x] **The blocked-card read-only statement is cut, and `lastMessage` with it —
+    2026-08-01.** The badge is the whole report: a strip has no room for the sentence,
+    the terminal that renders the prompt is one click away, and a copy on the card
+    would go stale, since nothing reports a permission being approved. The field was
+    the one thing feeding it and had **two writers and no readers** — the rules engine
+    writing the block summary, transcript enrichment writing the agent's last message,
+    each overwriting the other. Deleted: `Card.LastMessage`, `EnrichmentSnapshot.LastMessage`,
+    both normalizers' extraction, and `BoardMove.Message`, which had no other consumer.
+    - **One thing was worth saving out of it: the api-error text.** `TurnFailed`'s reason
+      went through `Message` into that invisible field, so an `error` card explained itself
+      nowhere. It now rides `Detail` into the transition `Note`, and `Transition_TurnFailed`
+      gained a `{0}` in both languages — so the timeline reads *"The agent reported a failed
+      turn: the model is not supported on this account"*.
+    - **A design guard had to be re-cut rather than deleted.** `No_move_ever_carries_display_text`
+      asserted `Detail` contains no space, which was the exit code's shape standing in for the
+      real rule. The rule is about *provenance* — ACT's own wording is a `TransitionReason`
+      resolved at display time, while a detail is verbatim data from the agent or the OS, and
+      `Transition.Note` always named "a CLI error message" as exactly that. The test now pins
+      each detail to the value its event carried.
+  - [x] **Send back is cut too, and ACT now types nothing at all — 2026-08-01.** It only ever
+    meant "reply to finished work without opening the terminal", and the terminal is a tab on
+    the card: the compose box would have sat in the rail, inches from the real one. It was also
+    the last caller-to-be of the paste-and-submit path, which is ACT guessing when a TUI is
+    ready to be typed into — the guess step 7 paid for once and deleted from the launch path.
+    Deleted: `IAgentTerminal.SubmitAsync`, `PtyAgentTerminal`'s paint/settle waits,
+    `TerminalSubmitProfile` and its plumbing through `PtyAgentSession` and both adapters, and
+    `AgentInputKind.Submit` / `AgentScript.AwaitsSubmit` in the test support. The contract
+    suite's scripts pause on `AwaitsKeystroke` instead, which is what actually happens, and
+    `ACT_types_only_what_it_submits_itself` became
+    `Nothing_but_the_users_keystrokes_reaches_the_session` — the stronger assertion, and the
+    one the spec's *input channel* rule now makes absolute.
+    - **Left in place, and worth a decision at step 11:** `AgentResumeRequest.Message` — a
+      resume's opening prompt, which rides the **command line** rather than the terminal, so
+      it is not the same mechanism. Nothing in production sets it any more (both call sites
+      pass null); reopen is the only feature that could want it, and reopen is undesigned.
+  - [x] **Column gating on the task form — the debt step 5 deferred here. Landed 2026-08-01.**
+    Every field used to be editable in every column, which broke the immutable-`initialPrompt`
+    rule the moment a card launched. `Act.Core/Rules/TaskEditing.CanEditLaunchInputs` is the
+    boundary — Preparing and Ready open, everything past the launch frozen — read off the
+    **column**, like every other rule in `Rules/`, so a card whose pty died is still a card
+    that ran.
+    - **The split is what the run *was* versus what the next one *will be*.** Frozen: prompt,
+      working dir, agent, schedule and the git action — the first three define the work that was
+      asked for, and the last two are launch-time decisions on a card that has already launched,
+      so editing them would change nothing while implying otherwise. Open: the **title**, which
+      names the card rather than the work, and all of `launchConfig` — a model or permission mode
+      does not touch the running turn, but it is what the next launch uses, which is exactly the
+      "switch model, then Retry" path the spec asks for.
+    - **Enforced in `NewTaskForm.ApplyTo`, not only in the markup.** A disabled input is a
+      courtesy; the rule is that a launched card's prompt cannot change, and only the code that
+      writes the card can promise it. The frozen assignments now sit behind the gate, so a save
+      on a launched card writes the title and the launch config and nothing else.
+    - **Presentation:** prompt and working dir are `ReadOnly` rather than disabled — a launched
+      card's prompt is the thing you most come back to read, and a disabled textarea is neither
+      legible nor selectable — Browse disappears, the three frozen dropdowns are disabled, and one
+      `RadzenAlert` at the top of the form says why, once, instead of a note beside each control.
+    - **Verified live** (both faces of the boundary): on launched #1038 the alert shows, prompt and
+      dir are readonly, agent / schedule / git are disabled, model / effort / permission mode stay
+      live, Browse is gone, and a save leaves title, prompt, dir and agent intact; on Preparing
+      #1051 nothing is locked at all. `TaskEditingTests` covers every column and `NewTaskFormTests`
+      the save path.
+  - [x] **And the *Advanced* section is gone entirely — 2026-08-01, five fields, three fates.**
+    The question that started it was whether those fields should be gated too, and the better
+    answer was that most of them did not belong on a task at all.
+    - **Deleted: `allowedTools` / `disallowedTools`.** Claude Code mapped them; **Codex ignored
+      them outright** — no flag, no rejection, no adjustment — so a user could type a deny list on
+      a Codex card, save it, launch, and never learn it was discarded. That is precisely the third
+      outcome `LaunchConfigResolution` was built to make impossible. Making the drop honest was the
+      alternative; deleting won because `permissionMode` is the guardrail that works on both, and
+      `extraFlags` still reaches Claude's own flags for anyone who wants them.
+    - **Moved to *Settings → Agents*: the executable, the extra flags and the environment.** They
+      describe the **install**, not the work — where `codex.exe` lives does not change because the
+      task does. New `AgentDefaults` (per agent, a list on `UserSettings` so adding an adapter does
+      not touch the settings model), a collapsed fieldset per registered adapter, and
+      `Act.Core/Agents/LaunchComposition` joining task-owned and machine-owned config on the way to
+      the adapter — the single place they meet, used by launch, resume and preview alike.
+    - **The composition clears before it applies**, so a card's own stale copy can never reach a
+      CLI. That is what makes the move safe rather than a second source of truth.
+    - **A one-time migration was mandatory, not a nicety.** A real board had the Store-packaged
+      Codex path on its cards, and that install is on no `PATH` — dropping it would have failed
+      every existing Codex card at spawn, for a value the user had already supplied and could no
+      longer see. `AgentDefaultsMigration` lifts it at startup, newest card wins, **filling gaps
+      only** so a value already in settings is never overwritten. Verified on a board that had the
+      path: it logged the lift and the path appeared in the new settings section.
+      - ⚠️ **Its first version inferred "already done" from whether a settings row existed, and that
+        was wrong.** Any row written by an earlier build — or by the user touching one field — made
+        the lift look complete, so the value it existed to rescue stayed lost with no way back but
+        retyping it. Found on a real board where exactly that had happened. Now an explicit
+        `UserSettings.AgentDefaultsLifted` marker says whether it ran, and the lift fills gaps
+        instead of skipping populated agents, so a half-populated document repairs itself on the
+        next start. `AgentDefaultsTests` pins the gap rules, including that whitespace counts as a
+        gap and that a user's own value always wins.
+      - ⚠️ **And a caution for verifying any of this from a sandboxed agent session.** Claude Code's
+        desktop app runs under an MSIX container that redirects `%LOCALAPPDATA%`, so an app instance
+        launched from inside a session writes to
+        `…\Packages\Claude_…\LocalCache\Local\ACT\act.db` — a private copy — while the developer's
+        own run uses the real one. Both answer to the same path, and a probe file written from
+        inside appears at *both* locations, which makes the redirection look like proof of a shared
+        file. It is not: they diverge, and "verified live" from a session says nothing about the
+        real board. Check a card number that only exists on one side before believing either.
+    - ⚠️ **It also lifted something to look at:** the newest Claude Code card carried an `env` block
+      neutralising nested-session detection (`CLAUDECODE=0`, `CLAUDE_CODE_ENTRYPOINT=cli`, and four
+      empty `CLAUDE_*` session variables), so that is now the **global** Claude Code default. It was
+      one card's workaround for ACT being launched from inside a Claude Code session; whether it
+      belongs on every launch — or belongs in ACT's own spawn code rather than in a user setting —
+      is undecided.
+  - [x] **Three settings features that came out of pruning the form — 2026-08-01.**
+    - **Startup install discovery** (`AgentInstallDiscovery`, core port `IExecutableProbe`,
+      `IAgentAdapter.Locate`). On `PATH` → change nothing; off `PATH` but installed → record the
+      path; not installed → leave it empty and, first pass only, disable the agent. A path the user
+      typed always wins. Candidates measured on a real machine: Claude Code at `~/.local/bin` or npm
+      global; Codex via `CODEX_CLI_PATH` in `~/.codex/config.toml`, then the Store's build-hash
+      folder newest-first. **Verified live:** *"ClaudeCode: found on PATH"* and
+      *"Codex: found at …\OpenAI\Codex\bin\…\codex.exe"*.
+    - **An `enabled` switch per agent.** The task form offers only enabled agents, plus always the
+      one the card already carries — same rule a retired model follows. Verified live: switching
+      Codex off left the new-task agent dropdown offering `claude` alone.
+    - **The executable box validates and browses.** `AgentBinaryCheck` answers by the launch's own
+      resolution rules — no separator means a `PATH` name, anything else a path that must exist — so
+      the box cannot look fine while the launch fails with "not found". A warning rather than a
+      block.
+      - ⚠️ **The empty case shipped wrong and was fixed the same day.** It asked the adapter whether
+        the CLI was found *anywhere* and rendered that as "Found on PATH" — so an emptied Codex box
+        was reassuring about a launch that resolves the bare name and fails, for a binary sitting on
+        the disk. Empty means "resolve the name", so the only honest answers are on-`PATH`,
+        installed-**off**-`PATH` (a warning naming the path, plus a **Use it** button that fills the
+        box) and not-installed. `AgentBinaryCheck` returns an `AgentBinaryState` carrying the
+        discovered path, and `AgentBinaryCheckTests` pins all three so the distinction cannot
+        collapse again. `FolderPicker`
+      became **`PathPicker`** with a file mode to serve the Browse button: same walk, files listed
+      after folders, and clicking a file *is* the pick, so the confirm button is hidden.
+      `IWorkingDirectories.List` gained `includeFiles`, off by default — enumerating files on every
+      rung of a directory walk is a cost the working-directory picker should not pay. Verified live:
+      a bogus path warns, Browse opens at the nearest existing folder, clicking a file fills the box
+      and closes the picker, and the task form's directory picker still lists no files and keeps
+      *Use this folder*.
+    - **A new-task template** (`TaskDefaults`): working dir, agent, model, effort, permission mode,
+      schedule, git-when-done — everything but title and prompt. Changing the default agent clears a
+      model or effort it does not offer and moves the permission mode into range, so the template can
+      never hold a value that would be rejected at launch. Verified live: a default working directory
+      appeared on `/card/new` with title and prompt still empty.
+  - **What is actually left**, measured against the built app rather than the original
+    wording: **Retry** (new —
+    a `CardRetry` predicate plus an action beside `SessionLauncher`/`CardCompleter`, resuming
+    the session id and reseeding from `initialPrompt` only when the transcript is gone), and the
+    rail's **context % and tokens** (`CardMetrics.ContextPercent` exists and the flight strip uses
+    it; the rail still shows `k/k` and no tokens). Open terminal, Open in Desktop and Kill
+    are done; Complete landed early with step 11.
 
 ## Phase 4 — Completion & lineage
 
@@ -816,9 +964,10 @@ verifiable, and leaves something runnable.
   `Notification` fires for. They each decide a fallback in that step's design, so they are
   listed there rather than duplicated here. The prototype's `PrototypeHookSettings` wrote
   both an `http` and a `command`/`curl` variant precisely because the first is unconfirmed.
-- **ConPTY behaviour** — resize while the TUI is mid-render. Bracketed paste is no
-  longer load-bearing at launch (the prompt is a launch argument); it matters for
-  step 11's send-back into a live session.
+- **ConPTY behaviour** — resize while the TUI is mid-render. ~~Bracketed paste~~ is no
+  longer load-bearing anywhere: the prompt is a launch argument, and with send-back cut at
+  step 10 ACT never pastes into a live session at all. The xterm sends the user's own
+  keystrokes, paste included, and the TUI handles them as it would in any terminal.
 - ✅ **Both TUIs run under ConPTY — verified** by launching each through
   `PtyHost` and answering its prompt with a written keystroke. Two findings came out
   of it:

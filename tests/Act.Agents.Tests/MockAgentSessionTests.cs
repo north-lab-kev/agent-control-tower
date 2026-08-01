@@ -85,7 +85,7 @@ public class MockAgentSessionTests
         var adapter = new MockAgentAdapter
         {
             Script = AgentScript.Start()
-                .AwaitsSubmit()
+                .AwaitsKeystroke()
                 .Paints("working\u2026")
                 .EndsTurn(),
         };
@@ -101,30 +101,33 @@ public class MockAgentSessionTests
             return Task.CompletedTask;
         };
 
-        await session.Terminal.SubmitAsync("do the thing");
+        await session.Terminal.WriteAsync("do the thing\r");
         await Drain(session);
 
         painted.Should().Equal("working\u2026");
     }
 
+    // The whole input surface, and the point of asserting it exhaustively: everything that reaches
+    // a session is either the user's own keystrokes on their way through or ACT resizing the pty.
+    // ACT composes nothing \u2014 no prompt answer, no send-back, no approval.
     [Fact]
-    public async Task ACT_types_only_what_it_submits_itself()
+    public async Task Nothing_but_the_users_keystrokes_reaches_the_session()
     {
         var adapter = new MockAgentAdapter
         {
-            Script = AgentScript.Start().AwaitsSubmit().EndsTurn(),
+            Script = AgentScript.Start().AwaitsKeystroke().EndsTurn(),
         };
 
         await using var session = await LaunchAsync(adapter);
 
         session.Terminal.Resize(100, 40);
-        await session.Terminal.SubmitAsync("do the thing");
+        await session.Terminal.WriteAsync("do the thing\r");
         await Drain(session);
 
         session.Received.Should().BeEquivalentTo(
         [
             new AgentInput(AgentInputKind.Resize, Size: new TerminalSize(100, 40)),
-            new AgentInput(AgentInputKind.Submit, "do the thing"),
+            new AgentInput(AgentInputKind.Write, "do the thing\r"),
         ]);
     }
 
@@ -133,7 +136,7 @@ public class MockAgentSessionTests
     {
         var adapter = new MockAgentAdapter
         {
-            Script = AgentScript.Start().Activity().AwaitsSubmit().EndsTurn(),
+            Script = AgentScript.Start().Activity().AwaitsKeystroke().EndsTurn(),
         };
 
         await using var session = await LaunchAsync(adapter);
@@ -157,7 +160,7 @@ public class MockAgentSessionTests
     {
         var adapter = new MockAgentAdapter
         {
-            Script = AgentScript.Start().AwaitsSubmit().EndsTurn(),
+            Script = AgentScript.Start().AwaitsKeystroke().EndsTurn(),
         };
 
         var session = await LaunchAsync(adapter);

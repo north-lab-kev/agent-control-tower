@@ -5,6 +5,8 @@
 
 <PageTitle>@PageHeading</PageTitle>
 
+<EscapeKey OnEscape="OnEscape" />
+
 @if (missing)
 {
     <div class="taskview empty">
@@ -36,6 +38,14 @@ else
             <div class="body">
             <RadzenStack Gap="1.1rem" class="sheet">
 
+                @* Said once, at the top, rather than repeated beside every frozen control: the
+                   reason is one fact about the card, not a property of each field. *@
+                @if (Locked)
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter"
+                                 AllowClose="false" Icon="lock" Text="@Strings.NewTask_Locked" />
+                }
+
                 <RadzenFieldset Text="@Strings.NewTask_Group_Task">
                     <RadzenStack Gap="0.9rem">
                         <RadzenStack Gap="0.3rem">
@@ -47,7 +57,11 @@ else
                         <RadzenStack Gap="0.3rem">
                             <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Prompt" />
                             <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Prompt_Hint" class="hint" />
-                            <RadzenTextArea Name="Prompt" @bind-Value="form.Prompt" Rows="8" class="wide" />
+                            @* Read-only rather than disabled: a launched card's prompt is the thing
+                               you most often come back to read, and a disabled textarea is neither
+                               selectable nor legible. *@
+                            <RadzenTextArea Name="Prompt" @bind-Value="form.Prompt" Rows="8" class="wide"
+                                            ReadOnly="Locked" />
                             <RadzenRequiredValidator Component="Prompt" Text="@Strings.NewTask_Required" />
                         </RadzenStack>
 
@@ -60,11 +74,14 @@ else
                             <div class="dirrow">
                                 <RadzenTextBox Name="WorkingDir" @bind-Value="form.WorkingDir"
                                                Placeholder="@Strings.NewTask_WorkingDir_Placeholder"
-                                               class="wide" />
-                                <RadzenButton Icon="folder_open" Text="@Strings.NewTask_Browse"
-                                              Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
-                                              Variant="Variant.Outlined" ButtonType="ButtonType.Button"
-                                              Click="@(() => picking = !picking)" />
+                                               ReadOnly="Locked" class="wide" />
+                                @if (!Locked)
+                                {
+                                    <RadzenButton Icon="folder_open" Text="@Strings.Picker_Browse"
+                                                  Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                                  Variant="Variant.Outlined" ButtonType="ButtonType.Button"
+                                                  Click="@(() => picking = !picking)" />
+                                }
                             </div>
                             <RadzenRequiredValidator Component="WorkingDir" Text="@Strings.NewTask_Required" />
                             <RadzenCustomValidator Component="WorkingDir" Validator="@(() => WorkingDirValid)"
@@ -72,8 +89,8 @@ else
 
                             @if (picking)
                             {
-                                <FolderPicker StartAt="@form.WorkingDir" OnPick="OnFolderPicked"
-                                              OnCancel="@(() => picking = false)" />
+                                <PathPicker StartAt="@form.WorkingDir" OnPick="OnFolderPicked"
+                                            OnCancel="@(() => picking = false)" />
                             }
 
                             @* Found here rather than at launch: a directory that does not exist is
@@ -101,7 +118,7 @@ else
                             <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Agent" />
                             <RadzenDropDown TValue="AgentType" Value="form.Agent" ValueChanged="OnAgentChanged"
                                             Data="AgentChoices" TextProperty="Text" ValueProperty="Value"
-                                            AllowClear="false" class="control" />
+                                            AllowClear="false" Disabled="Locked" class="control" />
                         </div>
 
                         <div class="row">
@@ -142,7 +159,7 @@ else
                             </RadzenStack>
                             <RadzenDropDown TValue="TaskSchedule" Value="form.Schedule" ValueChanged="OnScheduleChanged"
                                             Data="ScheduleChoices" TextProperty="Text" ValueProperty="Value"
-                                            AllowClear="false" class="control" />
+                                            AllowClear="false" Disabled="Locked" class="control" />
                         </div>
 
                         @if (form.WantsDateTime)
@@ -151,7 +168,7 @@ else
                                 <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_ScheduledFor" />
                                 <RadzenDatePicker Name="ScheduledFor" @bind-Value="form.ScheduledFor"
                                                   ShowTime="true" DateFormat="@Strings.NewTask_DateFormat"
-                                                  class="control" />
+                                                  Disabled="Locked" class="control" />
                             </div>
                             <RadzenRequiredValidator Component="ScheduledFor" Text="@Strings.NewTask_Required" />
                         }
@@ -164,48 +181,16 @@ else
                             <RadzenDropDown TValue="GitAction?" Value="form.SelectedGitAction" ValueChanged="OnGitActionChanged"
                                             Data="GitChoices" TextProperty="Text" ValueProperty="Value"
                                             AllowClear="true" Placeholder="@Strings.NewTask_NoGitAction"
-                                            class="control" />
+                                            Disabled="Locked" class="control" />
                         </div>
 
                         @if (form.SelectedGitAction is GitAction.PullRequest)
                         {
                             <div class="row">
                                 <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Draft" />
-                                <RadzenSwitch @bind-Value="form.Draft" />
+                                <RadzenSwitch @bind-Value="form.Draft" Disabled="Locked" />
                             </div>
                         }
-                    </RadzenStack>
-                </RadzenFieldset>
-
-                <RadzenFieldset Text="@Strings.NewTask_Group_Advanced" AllowCollapse="true" Collapsed="true">
-                    <RadzenStack Gap="0.9rem">
-                        <RadzenStack Gap="0.3rem">
-                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AgentBinary" />
-                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_AgentBinary_Hint" class="hint" />
-                            <RadzenTextBox @bind-Value="form.AgentBinary" class="wide" />
-                        </RadzenStack>
-
-                        <RadzenStack Gap="0.3rem">
-                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AllowedTools" />
-                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Tools_Hint" class="hint" />
-                            <RadzenTextArea @bind-Value="form.AllowedTools" Rows="2" class="wide" />
-                        </RadzenStack>
-
-                        <RadzenStack Gap="0.3rem">
-                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_DisallowedTools" />
-                            <RadzenTextArea @bind-Value="form.DisallowedTools" Rows="2" class="wide" />
-                        </RadzenStack>
-
-                        <RadzenStack Gap="0.3rem">
-                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_ExtraFlags" />
-                            <RadzenTextArea @bind-Value="form.ExtraFlags" Rows="2" class="wide" />
-                        </RadzenStack>
-
-                        <RadzenStack Gap="0.3rem">
-                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Env" />
-                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Env_Hint" class="hint" />
-                            <RadzenTextArea @bind-Value="form.Env" Rows="3" class="wide" />
-                        </RadzenStack>
                     </RadzenStack>
                 </RadzenFieldset>
 

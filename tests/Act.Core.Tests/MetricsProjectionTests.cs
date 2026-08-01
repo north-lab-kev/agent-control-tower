@@ -89,13 +89,11 @@ public class MetricsProjectionTests
             ContextUsed = 142_000,
             ContextLimit = 200_000,
             ObservedModel = "sonnet-5",
-            LastMessage = "done",
         }));
 
         card.Metrics!.TokensTotal.Should().Be(1_500);
         card.Metrics.ContextPercent.Should().Be(71);
         card.ObservedModel.Should().Be("sonnet-5");
-        card.LastMessage.Should().Be("done");
     }
 
     // Null means "no news", not zero: a transcript line may carry only a token count, and a naive

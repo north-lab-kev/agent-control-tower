@@ -133,10 +133,6 @@ public class CodexTranscriptTests
         => Fold(Meta, TurnStarted).ContextLimit.Should().Be(258_400);
 
     [Fact]
-    public void The_last_agent_message_is_what_the_card_previews()
-        => Fold(Meta, TurnDone).LastMessage.Should().Be("Read the file and stopped.");
-
-    [Fact]
     public void An_unparseable_line_is_skipped_without_losing_the_rest()
         => Fold(Meta, "{ not json", Tokens).ContextUsed.Should().Be(13_330);
 

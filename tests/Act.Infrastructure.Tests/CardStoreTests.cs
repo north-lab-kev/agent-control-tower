@@ -43,8 +43,6 @@ public class CardStoreTests
                 Model = "opus",
                 Effort = "xhigh",
                 PermissionMode = PermissionMode.Bypass,
-                AllowedTools = ["Read", "Edit"],
-                DisallowedTools = ["Bash"],
                 ExtraFlags = ["--verbose"],
                 Env = new Dictionary<string, string> { ["ACT_TEST"] = "1" },
             },
@@ -65,7 +63,6 @@ public class CardStoreTests
                 new Transition { At = created, Column = BoardColumn.Ready, Note = "queued" },
                 new Transition { At = created.AddMinutes(3), Column = BoardColumn.Executing, Badge = Badge.Running },
             ],
-            LastMessage = "Waiting on permission to delete src/Api/V1.",
             ObservedModel = "opus 4.8",
             Metrics = new CardMetrics
             {
@@ -158,6 +155,36 @@ public class CardStoreTests
 
         reloaded!.Transitions[0].Reason.Should().BeNull();
         reloaded.Transitions[0].Note.Should().Be("written by an older build");
+    }
+
+    // `LastMessage` was dropped on 2026-08-01, and every card on a real board carries one. A retired
+    // *field* is the easier half of the retired-`Reason` problem — no converter needed, the mapper
+    // simply has nothing to bind it to — but this repo has been surprised once by what a stored value
+    // does to a read, so it is pinned rather than assumed.
+    [Fact]
+    public async Task A_field_this_build_no_longer_has_does_not_stop_the_card_loading()
+    {
+        using var temp = new TempDirectory();
+        var card = new Card { Title = "Retired field", Column = BoardColumn.YourTurn };
+
+        using (var provider = Provider(temp.Path))
+            await provider.GetRequiredService<ICardStore>().AddAsync(card);
+
+        using (var database = new LiteDatabase(Path.Combine(temp.Path, "act.db")))
+        {
+            var cards = database.GetCollection("cards");
+            var stored = cards.FindById(card.Id);
+
+            stored["LastMessage"] = "Waiting on permission to delete src/Api/V1.";
+            cards.Update(stored);
+        }
+
+        using var reading = Provider(temp.Path);
+
+        var reloaded = await reading.GetRequiredService<ICardStore>().GetAsync(card.Id);
+
+        reloaded!.Title.Should().Be("Retired field");
+        reloaded.Column.Should().Be(BoardColumn.YourTurn);
     }
 
     // `stale` was retired with its watchdog, and a real board had cards carrying it. Losing the badge

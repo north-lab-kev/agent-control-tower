@@ -37,7 +37,6 @@ public sealed class PtyAgentSession : IAgentSession
         Guid taskId,
         string? sessionId,
         IPtyProcess process,
-        TerminalSubmitProfile submitProfile,
         IClock clock,
         TimeSpan? startupGrace = null)
     {
@@ -45,7 +44,7 @@ public sealed class PtyAgentSession : IAgentSession
         SessionId = sessionId;
         this.process = process;
         this.clock = clock;
-        terminal = new PtyAgentTerminal(process, submitProfile);
+        terminal = new PtyAgentTerminal(process);
 
         process.Output += terminal.OnProcessOutputAsync;
         process.Exited += OnProcessExited;

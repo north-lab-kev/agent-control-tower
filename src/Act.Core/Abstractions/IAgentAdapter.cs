@@ -14,6 +14,10 @@ public interface IAgentAdapter
 
     LaunchConfigResolution Resolve(LaunchConfig config);
 
+    // Where this CLI is on the machine, asked once at startup. The adapter owns the knowledge of
+    // its own install shapes; the probe owns the filesystem access.
+    AgentInstall Locate(IExecutableProbe probe);
+
     // Null for an agent with no desktop app, which is what keeps `claude://resume?session=`
     // knowledge inside the Claude adapter instead of leaking into the UI.
     string? DesktopHandoffUrl(string sessionId, string workingDir);

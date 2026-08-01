@@ -22,8 +22,6 @@ public sealed class CodexAdapter(
 {
     public const string DefaultBinary = "codex";
 
-    private static readonly TerminalSubmitProfile Submit = TerminalSubmitProfile.Default;
-
     public AgentType Agent => AgentType.Codex;
 
     public AgentCapabilities Capabilities => CodexCapabilities.Current;
@@ -39,6 +37,80 @@ public sealed class CodexAdapter(
     // instead of quietly running as a different mode.
     public LaunchConfigResolution Resolve(LaunchConfig config)
         => LaunchConfigResolver.Resolve(Agent, Capabilities, config);
+
+    // Codex is the reason install discovery exists: the Store-packaged build is on no `PATH` at
+    // all, so a user who has it installed still gets "not found" at spawn unless ACT goes looking.
+    // Order is authority first — the CLI writes `CODEX_CLI_PATH` into its own config, which is the
+    // machine's answer rather than ACT's guess — then the Store layout, then a global npm install.
+    public AgentInstall Locate(IExecutableProbe probe)
+    {
+        if (probe.OnPath(DefaultBinary) is not null)
+            return AgentInstall.OnPath;
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+        if (ConfiguredPath(probe, Path.Combine(home, ".codex", "config.toml")) is { } declared)
+            return AgentInstall.At(declared);
+
+        // The Store build lives under a build-hash directory that changes with every upgrade, so
+        // the newest one is the one to take.
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var storeRoot = Path.Combine(localAppData, "OpenAI", "Codex", "bin");
+
+        foreach (var build in probe.DirectoriesNewestFirst(storeRoot))
+        {
+            if (probe.FirstExisting([Path.Combine(build, "codex.exe")]) is { } store)
+                return AgentInstall.At(store);
+        }
+
+        var npm = Environment.GetEnvironmentVariable("APPDATA");
+
+        List<string> candidates =
+        [
+            Path.Combine(home, ".local", "bin", "codex.exe"),
+            Path.Combine(home, ".local", "bin", "codex"),
+        ];
+
+        if (npm is { Length: > 0 })
+        {
+            candidates.Add(Path.Combine(npm, "npm", "codex.cmd"));
+            candidates.Add(Path.Combine(npm, "npm", "codex"));
+        }
+
+        candidates.Add("/usr/local/bin/codex");
+
+        return probe.FirstExisting(candidates) is { } found
+            ? AgentInstall.At(found)
+            : AgentInstall.Missing;
+    }
+
+    // `CODEX_CLI_PATH = 'C:\…\codex.exe'` — one key, quoted, in the CLI's own `config.toml`. Parsed
+    // narrowly on purpose: a full TOML reader here would be a dependency and a schema to track, for
+    // a line whose shape is fixed by the installer that writes it.
+    private static string? ConfiguredPath(IExecutableProbe probe, string configPath)
+    {
+        if (probe.ReadText(configPath) is not { } config)
+            return null;
+
+        foreach (var line in config.Split('\n'))
+        {
+            var trimmed = line.Trim();
+
+            if (!trimmed.StartsWith("CODEX_CLI_PATH", StringComparison.Ordinal))
+                continue;
+
+            var separator = trimmed.IndexOf('=');
+            if (separator < 0)
+                continue;
+
+            var value = trimmed[(separator + 1)..].Trim().Trim('\'', '"');
+
+            if (probe.FirstExisting([value]) is { } exists)
+                return exists;
+        }
+
+        return null;
+    }
 
     public Task<IAgentSession> LaunchAsync(
         AgentLaunchRequest request,
@@ -132,7 +204,7 @@ public sealed class CodexAdapter(
                 size),
             cancellationToken);
 
-        return new PtyAgentSession(taskId, sessionId, process, Submit, clock);
+        return new PtyAgentSession(taskId, sessionId, process, clock);
     }
 
     // Two files: the forwarder ACT's hook definitions point at, and the profile that declares them.

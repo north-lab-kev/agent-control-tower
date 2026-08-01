@@ -28,6 +28,10 @@ public sealed class BoardState(ICardStore store, IClock clock)
     public IReadOnlyList<Card> Archived
         => [.. cards.Where(card => card.IsDeleted).OrderByDescending(card => card.DeletedAt)];
 
+    // Unfiltered, deleted included — for the one caller that is not a view: the settings migration,
+    // which is looking for what a user once typed and does not care where the card ended up.
+    public IReadOnlyList<Card> All => cards;
+
     public bool HasArchived => cards.Any(card => card.IsDeleted);
 
     // Deleted cards are still addressable: the archive links to them, and a restore has to be able

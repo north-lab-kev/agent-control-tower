@@ -4,6 +4,8 @@
 
 <PageTitle>@(card is null ? "ACT" : $"#{card.Number} — {card.Title}")</PageTitle>
 
+<EscapeKey OnEscape="BackToBoard" />
+
 @if (card is null)
 {
     <div class="timeline missing">

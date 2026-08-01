@@ -60,7 +60,7 @@ public class StartupPromptTests
     }
 
     private static PtyAgentSession Session(StubPtyProcess process)
-        => new(Guid.NewGuid(), "s", process, TerminalSubmitProfile.Default, new TestClock(), Grace);
+        => new(Guid.NewGuid(), "s", process, new TestClock(), Grace);
 
     // Null means "nothing arrived in time", which is an assertion of its own here — so the wait is
     // bounded on both paths rather than left to hang the run.

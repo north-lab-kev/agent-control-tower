@@ -47,6 +47,12 @@ public sealed class MockAgentAdapter(
     public LaunchConfigResolution Resolve(LaunchConfig config)
         => LaunchConfigResolver.Resolve(Agent, Capabilities, config);
 
+    // Whatever a test needs discovery to have found. On PATH by default, which is the shape that
+    // makes ACT change nothing.
+    public AgentInstall Install { get; set; } = AgentInstall.OnPath;
+
+    public AgentInstall Locate(IExecutableProbe probe) => Install;
+
     public Task<IAgentSession> LaunchAsync(
         AgentLaunchRequest request,
         CancellationToken cancellationToken = default)

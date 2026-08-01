@@ -54,8 +54,6 @@ public sealed class Card
 
     public IList<Transition> Transitions { get; set; } = [];
 
-    public string? LastMessage { get; set; }
-
     public string? ObservedModel { get; set; }
 
     public CardMetrics? Metrics { get; set; }

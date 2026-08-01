@@ -3,6 +3,8 @@
 
 <PageTitle>@Strings.Settings_Title</PageTitle>
 
+<EscapeKey OnEscape="BackToBoard" />
+
 <div class="settingsview">
     <header class="bar">
         <RadzenButton Icon="arrow_back" Text="@Strings.Nav_BackToBoard" Size="ButtonSize.Small"
@@ -82,6 +84,172 @@
                                 <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_CloseToTray_Hint" class="hint" />
                             </RadzenStack>
                             <RadzenSwitch Value="CloseToTray" ValueChanged="@((bool value) => OnCloseToTrayChanged(value))" />
+                        </RadzenStack>
+                    }
+                </RadzenStack>
+            </RadzenFieldset>
+
+            @* Everything the new-task form asks for except the title and the prompt — those are the
+               task itself, and pre-filling them would mean creating the same task twice by
+               accident. *@
+            <RadzenFieldset Text="@Strings.Settings_Group_TaskDefaults">
+                <RadzenStack Gap="1rem">
+                    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_TaskDefaults_Hint" class="hint" />
+
+                    <RadzenStack Gap="0.3rem">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_WorkingDir" />
+
+                        <div class="dirrow">
+                            <RadzenTextBox Value="@defaults.WorkingDir" class="wide"
+                                           Placeholder="@Strings.NewTask_WorkingDir_Placeholder"
+                                           Change="@(value => OnDefaultWorkingDirChanged(value))" />
+                            <RadzenButton Icon="folder_open" Text="@Strings.Picker_Browse"
+                                          Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                          Variant="Variant.Outlined" ButtonType="ButtonType.Button"
+                                          Click="@(() => browsingDefaultDir = !browsingDefaultDir)" />
+                        </div>
+
+                        @if (browsingDefaultDir)
+                        {
+                            <PathPicker StartAt="@defaults.WorkingDir" OnPick="OnDefaultWorkingDirPicked"
+                                        OnCancel="@(() => browsingDefaultDir = false)" />
+                        }
+                    </RadzenStack>
+
+                    <div class="row">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Agent" />
+                        <RadzenDropDown TValue="AgentType" Value="defaults.Agent" ValueChanged="OnDefaultAgentChanged"
+                                        Data="DefaultAgentChoices" TextProperty="Text" ValueProperty="Value"
+                                        AllowClear="false" class="control" />
+                    </div>
+
+                    <div class="row">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Model" />
+                        <RadzenDropDown TValue="string" Value="defaults.Model" ValueChanged="OnDefaultModelChanged"
+                                        Data="DefaultModels" AllowClear="true"
+                                        Placeholder="@Strings.NewTask_AgentDefault" class="control" />
+                    </div>
+
+                    <div class="row">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Effort" />
+                        <RadzenDropDown TValue="string" Value="defaults.Effort" ValueChanged="OnDefaultEffortChanged"
+                                        Data="DefaultEfforts" AllowClear="true"
+                                        Placeholder="@Strings.NewTask_AgentDefault" class="control" />
+                    </div>
+
+                    <div class="row">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Permission" />
+                        <RadzenDropDown TValue="PermissionMode" Value="defaults.PermissionMode"
+                                        ValueChanged="OnDefaultPermissionChanged" Data="DefaultPermissionChoices"
+                                        TextProperty="Text" ValueProperty="Value" AllowClear="false" class="control" />
+                    </div>
+
+                    <div class="row">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Schedule" />
+                        <RadzenDropDown TValue="TaskSchedule" Value="defaults.Schedule"
+                                        ValueChanged="OnDefaultScheduleChanged" Data="DefaultScheduleChoices"
+                                        TextProperty="Text" ValueProperty="Value" AllowClear="false" class="control" />
+                    </div>
+
+                    <div class="row">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AutoGit" />
+                        <RadzenDropDown TValue="GitAction?" Value="defaults.GitAction"
+                                        ValueChanged="OnDefaultGitActionChanged" Data="DefaultGitChoices"
+                                        TextProperty="Text" ValueProperty="Value" AllowClear="true"
+                                        Placeholder="@Strings.NewTask_NoGitAction" class="control" />
+                    </div>
+                </RadzenStack>
+            </RadzenFieldset>
+
+            @* One section per agent, because the two CLIs are installed separately and only one of
+               them is ever the odd one out. Expanded, like every other group: an executable path
+               that is set but out of sight is the one setting you most need to see when a launch
+               fails with "not found". *@
+            <RadzenFieldset Text="@Strings.Settings_Group_Agents" AllowCollapse="true" Collapsed="false">
+                <RadzenStack Gap="1.4rem">
+                    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Agents_Hint" class="hint" />
+
+                    @foreach (var agent in AgentForms)
+                    {
+                        <RadzenStack Gap="0.9rem">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                         JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                                <RadzenStack Gap="0.1rem">
+                                    <RadzenText TextStyle="TextStyle.Subtitle2" Text="@AgentName(agent.Agent)" />
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_AgentEnabled_Hint"
+                                                class="hint" />
+                                </RadzenStack>
+                                <RadzenSwitch Value="agent.Enabled"
+                                              ValueChanged="@((bool value) => OnEnabledChanged(agent, value))" />
+                            </RadzenStack>
+
+                            <RadzenStack Gap="0.3rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_AgentBinary" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_AgentBinary_Hint" class="hint" />
+                                @* Type or pick, the same pairing the task form's working directory
+                                   uses: pasting a known path beats browsing to it, and browsing is
+                                   the only way to find a Store install nobody can recite. *@
+                                <div class="dirrow">
+                                    <RadzenTextBox Value="@agent.Binary" class="wide"
+                                                   Change="@(value => OnBinaryChanged(agent, value))" />
+                                    <RadzenButton Icon="folder_open" Text="@Strings.Picker_Browse"
+                                                  Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                                  Variant="Variant.Outlined" ButtonType="ButtonType.Button"
+                                                  Click="@(() => Browse(agent))" />
+                                </div>
+
+                                @if (browsing == agent.Agent)
+                                {
+                                    <PathPicker Mode="PathPickerMode.File" StartAt="@PickerStart(agent)"
+                                                OnPick="@(path => OnBinaryPicked(agent, path))"
+                                                OnCancel="@(() => browsing = null)" />
+                                }
+
+                                @* A warning, not a block: settings apply as you type them and a
+                                   path you are about to create is a reasonable thing to enter —
+                                   the same rule the task form's working directory follows. *@
+                                @if (BinaryWarning(agent) is { } warning)
+                                {
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                                 Gap="0.5rem" class="binwarn">
+                                        <RadzenIcon Icon="error_outline" />
+                                        <RadzenText TextStyle="TextStyle.Caption" Text="@warning" />
+
+                                        @* Only when ACT has a path to offer: the fix is one click,
+                                           and asking the user to retype what was just found for
+                                           them would be perverse. *@
+                                        @if (agent.State.DiscoveredPath is not null)
+                                        {
+                                            <RadzenButton Text="@Strings.Settings_AgentBinary_UseFound" Icon="check"
+                                                          Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                                          Variant="Variant.Outlined" ButtonType="ButtonType.Button"
+                                                          Click="@(() => UseDiscovered(agent))" />
+                                        }
+                                    </RadzenStack>
+                                }
+                                else if (BinaryNote(agent) is { } note)
+                                {
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                                 Gap="0.5rem" class="binok">
+                                        <RadzenIcon Icon="check" />
+                                        <RadzenText TextStyle="TextStyle.Caption" Text="@note" />
+                                    </RadzenStack>
+                                }
+                            </RadzenStack>
+
+                            <RadzenStack Gap="0.3rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_ExtraFlags" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_ExtraFlags_Hint" class="hint" />
+                                <RadzenTextArea Value="@agent.ExtraFlags" Rows="2" class="wide"
+                                                Change="@(value => OnExtraFlagsChanged(agent, value))" />
+                            </RadzenStack>
+
+                            <RadzenStack Gap="0.3rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Env" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Env_Hint" class="hint" />
+                                <RadzenTextArea Value="@agent.Env" Rows="3" class="wide"
+                                                Change="@(value => OnEnvChanged(agent, value))" />
+                            </RadzenStack>
                         </RadzenStack>
                     }
                 </RadzenStack>

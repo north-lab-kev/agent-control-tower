@@ -22,10 +22,6 @@ public class ClaudeCodeTranscriptTests
     public void An_assistant_line_reports_the_model_it_actually_ran()
         => Fold(Answered).ObservedModel.Should().Be("claude-opus-5");
 
-    [Fact]
-    public void An_assistant_line_reports_what_the_agent_last_said()
-        => Fold(Answered).LastMessage.Should().Be("Done.");
-
     // Fresh work only. A long session re-reads the same cached prefix on every request, so summing
     // cache reads would report tens of millions of tokens for an hour of work.
     [Fact]
@@ -99,45 +95,6 @@ public class ClaudeCodeTranscriptTests
 
         snapshot.TokensIn.Should().Be(2056);
         snapshot.ObservedModel.Should().Be("claude-opus-5");
-    }
-
-    // A turn that ends by calling a tool has no text block, and must not blank the preview.
-    [Fact]
-    public void A_message_with_no_text_keeps_the_last_thing_that_was_said()
-    {
-        var toolOnly = """
-            { "type": "assistant", "message": { "model": "claude-opus-5",
-              "content": [ { "type": "tool_use", "name": "Bash" } ],
-              "usage": { "input_tokens": 5, "output_tokens": 10 } } }
-            """;
-
-        Fold(Answered, toolOnly).LastMessage.Should().Be("Done.");
-    }
-
-    [Fact]
-    public void The_last_text_block_is_the_message()
-    {
-        var twoBlocks = """
-            { "type": "assistant", "message": { "model": "claude-opus-5",
-              "content": [ { "type": "text", "text": "First" }, { "type": "text", "text": "Second" } ],
-              "usage": { "input_tokens": 5, "output_tokens": 10 } } }
-            """;
-
-        Fold(twoBlocks).LastMessage.Should().Be("Second");
-    }
-
-    // The snapshot is persisted on every enrichment, and an agent can end a turn with several
-    // screens of prose.
-    [Fact]
-    public void A_long_message_is_bounded()
-    {
-        var line = $$"""
-            { "type": "assistant", "message": { "model": "claude-opus-5",
-              "content": [ { "type": "text", "text": "{{new string('x', 900)}}" } ],
-              "usage": { "input_tokens": 5, "output_tokens": 10 } } }
-            """;
-
-        Fold(line).LastMessage.Should().HaveLength(400);
     }
 
     [Fact]

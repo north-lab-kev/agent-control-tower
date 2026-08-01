@@ -68,9 +68,6 @@ public sealed class SessionEventPump(
             card.Column = move.Column;
             card.Badge = move.Badge;
 
-            if (move.Message is { Length: > 0 } message)
-                card.LastMessage = message;
-
             card.Transitions.Add(new Transition
             {
                 At = clock.Now,

@@ -73,14 +73,14 @@ public static class RulesEngine
             // until the user answers in the terminal, and that answer comes back as activity.
             PermissionRequested when card.Badge is Badge.NeedsAnswer => null,
 
-            // Observed, never answered: the card reports that the TUI is waiting and shows a
-            // read-only summary. Allowed from any machine column — a session that asks is a session
-            // that is alive and blocked, wherever the board currently has it.
-            PermissionRequested permission => new BoardMove(
+            // Observed, never answered: the card reports only that the TUI is waiting, and the badge
+            // is the whole report — what is being asked stays on the screen it is being asked on.
+            // Allowed from any machine column — a session that asks is a session that is alive and
+            // blocked, wherever the board currently has it.
+            PermissionRequested => new BoardMove(
                 BoardColumn.YourTurn,
                 Badge.NeedsPermission,
-                TransitionReason.PermissionRequested,
-                Message: permission.Summary),
+                TransitionReason.PermissionRequested),
 
             // The pre-session prompt, and the only rule that fires on something *not* happening: a
             // CLI parked on its directory-trust screen has produced no hook to report it. Executing
@@ -93,11 +93,10 @@ public static class RulesEngine
                 Badge.NeedsPermission,
                 TransitionReason.StartupPrompt),
 
-            QuestionAsked question => new BoardMove(
+            QuestionAsked => new BoardMove(
                 BoardColumn.YourTurn,
                 Badge.NeedsAnswer,
-                TransitionReason.QuestionAsked,
-                Message: question.Question),
+                TransitionReason.QuestionAsked),
 
             // A turn end is a turn end: nothing separates finished from blocked, so it always offers
             // the work up for review. A turn that ends while the card is blocked ends *because* that
@@ -116,7 +115,7 @@ public static class RulesEngine
                 BoardColumn.YourTurn,
                 Badge.Error,
                 TransitionReason.TurnFailed,
-                Message: failure.Reason),
+                Detail: failure.Reason),
 
             // ACT owns the process, so this is the one failure it can report first-hand. A clean
             // exit is not a card state: the turn events already said where the work stands, and the
@@ -153,8 +152,7 @@ public sealed record BoardMove(
     BoardColumn Column,
     Badge Badge,
     TransitionReason Reason,
-    string? Detail = null,
-    string? Message = null)
+    string? Detail = null)
 {
     public bool ChangesAnything(Card card) => card.Column != Column || card.Badge != Badge;
 }

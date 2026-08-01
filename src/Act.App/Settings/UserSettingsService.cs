@@ -23,6 +23,45 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
 
     public bool CloseToTray => current.CloseToTray;
 
+    // A copy, always: the caller is a form binding its own fields, and handing out the stored object
+    // would let it edit the settings in place and skip the save.
+    public AgentDefaults Defaults(AgentType agent)
+        => Stored(agent)?.Copy() ?? new AgentDefaults { Agent = agent };
+
+    public void SetDefaults(AgentDefaults defaults)
+    {
+        Update(settings =>
+        {
+            var existing = settings.Agents.FirstOrDefault(entry => entry.Agent == defaults.Agent);
+
+            if (existing is not null)
+                settings.Agents.Remove(existing);
+
+            settings.Agents.Add(defaults.Copy());
+        });
+    }
+
+    // Only the agents whose switch is on, in registration order — what the task form offers.
+    public IReadOnlyList<AgentType> EnabledAgents
+        => [.. current.Agents.Where(entry => entry.Enabled).Select(entry => entry.Agent)];
+
+    public TaskDefaults TaskDefaults => current.TaskDefaults.Copy();
+
+    public void SetTaskDefaults(TaskDefaults defaults)
+        => Update(settings => settings.TaskDefaults = defaults.Copy());
+
+    // Startup only, for the one-time lift of what used to live on each card.
+    public bool AgentDefaultsLifted => current.AgentDefaultsLifted;
+
+    public void MarkAgentDefaultsLifted() => Update(settings => settings.AgentDefaultsLifted = true);
+
+    public bool AgentInstallsProbed => current.AgentInstallsProbed;
+
+    public void MarkAgentInstallsProbed() => Update(settings => settings.AgentInstallsProbed = true);
+
+    private AgentDefaults? Stored(AgentType agent)
+        => current.Agents.FirstOrDefault(entry => entry.Agent == agent);
+
     public void ApplyLanguage() => culture.Apply(current.Language);
 
     // Called at startup as well as on every change, because a setting that only takes effect when

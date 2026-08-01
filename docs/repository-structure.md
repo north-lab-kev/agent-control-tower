@@ -68,7 +68,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │  │                          #       BoardView "/", TaskView, SessionView,
 │  │  │  │                          #       ArchiveView, SettingsView, Error, NotFound
 │  │  │  ├─ Board/                  #     non-routable board parts (FlightStrip)
-│  │  │  ├─ Shared/                 #     CardTabs (Task|Terminal|Timeline) + FolderPicker
+│  │  │  ├─ Shared/                 #     CardTabs (Task|Terminal|Timeline), FolderPicker,
+│  │  │  │                         #       EscapeKey (renders nothing; binds Escape for a page)
 │  │  │  └─ Layout/                 #     MainLayout, top bar, theme stylesheets
 │  │  ├─ Desktop/                   #   DesktopShell: the Electron window + tray icon and the
 │  │  │                            #     close/exit rules (Electron-only; registered when enabled)
@@ -89,7 +90,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ wwwroot/                   #   CSS (flight-strip look), assets
 │  │  │  ├─ lib/xterm/              #     xterm.js + fit addon (vendored UMD) + VENDOR.md
 │  │  │  │                         #       pinning version + SHA-256 of each file
-│  │  │  └─ js/act-terminal.js      #     attach / write / resize / dispose interop module
+│  │  │  └─ js/                     #     interop modules: act-terminal (attach / write / resize /
+│  │  │                            #       dispose), act-unsaved (the window-close guard),
+│  │  │                            #       act-escape (Escape leaves the page it is bound on)
 │  │  ├─ Properties/                #   launchSettings + electron-builder.json (packaging)
 │  │  ├─ ServiceCollectionExtensions.cs
 │  │  │                            #   AddActApp: every Act.App registration (agents, board,

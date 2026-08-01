@@ -3,6 +3,9 @@
 
 <PageTitle>@(card is null ? "ACT" : $"#{card.Number} — {card.Title}")</PageTitle>
 
+@* Not while the terminal has the focus: Escape typed at an agent is meant for the agent. *@
+<EscapeKey OnEscape="BackToBoard" Ignore=".xterm" />
+
 @if (card is null)
 {
     <div class="session missing">

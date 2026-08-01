@@ -46,8 +46,6 @@ public sealed class AgentScript
 
     public AgentScript AwaitsKeystroke() => Await(AgentInputKind.Write);
 
-    public AgentScript AwaitsSubmit() => Await(AgentInputKind.Submit);
-
     public AgentScript Enriches(EnrichmentSnapshot snapshot)
         => Emit((session, at) => new SessionEnriched(session, at, snapshot));
 

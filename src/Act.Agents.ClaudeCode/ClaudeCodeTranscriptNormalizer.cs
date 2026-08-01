@@ -14,10 +14,6 @@ namespace Act.Agents.ClaudeCode;
 // someone else's format and ACT only ever reads it.
 public sealed class ClaudeCodeTranscriptNormalizer : ITranscriptNormalizer
 {
-    // Enough for a card preview, and a bound rather than a nicety: this string is persisted on every
-    // enrichment, and an agent can end a turn with several screens of prose.
-    private const int LastMessageLimit = 400;
-
     public AgentType Agent => AgentType.ClaudeCode;
 
     // Enrichment only, and no events: everything about *liveness* — activity, turn ends, prompts — is
@@ -69,28 +65,7 @@ public sealed class ClaudeCodeTranscriptNormalizer : ITranscriptNormalizer
             TokensIn = (snapshot.TokensIn ?? 0) + fresh,
             TokensOut = (snapshot.TokensOut ?? 0) + Number(usage, "output_tokens"),
             ContextUsed = context > 0 ? (int)context : snapshot.ContextUsed,
-            LastMessage = LastText(message) ?? snapshot.LastMessage,
         };
-    }
-
-    // The last text block of the message, so a turn that ended by calling a tool does not replace
-    // what the agent actually said with nothing.
-    private static string? LastText(JsonElement message)
-    {
-        if (!message.TryGetProperty("content", out var content) || content.ValueKind is not JsonValueKind.Array)
-            return null;
-
-        var said = content.EnumerateArray()
-            .Where(block => block.ValueKind is JsonValueKind.Object && Text(block, "type") == "text")
-            .Select(block => Text(block, "text"))
-            .LastOrDefault(text => !string.IsNullOrWhiteSpace(text));
-
-        if (said is null)
-            return null;
-
-        said = said.Trim();
-
-        return said.Length > LastMessageLimit ? said[..LastMessageLimit] : said;
     }
 
     private static JsonElement? Parse(string line)

@@ -15,8 +15,9 @@ public interface IWorkingDirectories
     PathCheck Check(string workingDir);
 
     // `path` null lists the roots — drives on Windows, `/` elsewhere — so the picker has a place
-    // to start on either OS without asking which one it is on.
-    DirectoryListing List(string? path);
+    // to start on either OS without asking which one it is on. `includeFiles` is off by default:
+    // the directory walk is the common case and listing files costs real time in a big tree.
+    DirectoryListing List(string? path, bool includeFiles = false);
 
     string Home { get; }
 }

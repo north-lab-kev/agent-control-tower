@@ -38,6 +38,14 @@ settings.ApplyKeepAwake();
 
 await app.Services.GetRequiredService<BoardState>().LoadAsync();
 
+// After the board is loaded and before anything can launch: it reads the cards to find what the
+// per-agent settings should start as, and a launch that beat it would use an empty binary.
+app.Services.GetRequiredService<AgentDefaultsMigration>().Run();
+
+// Then discovery, which only fills what the lift did not: a path the user typed, or one carried
+// over from a card, is the answer — probing is for the machine nobody has configured yet.
+app.Services.GetRequiredService<AgentInstallDiscovery>().Run();
+
 // Started before anything can launch an agent, and explicitly rather than on first resolve: a pump
 // that attaches late has already missed the events it exists to read.
 app.Services.GetRequiredService<SessionEventPump>().Start();

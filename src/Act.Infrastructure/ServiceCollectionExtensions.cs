@@ -17,6 +17,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IWorkingDirectories, WorkingDirectories>();
         services.AddSingleton<IPtyHost, PtyHost>();
+        services.AddSingleton<IExecutableProbe, ExecutableProbe>();
         services.AddSingleton<ISleepInhibitor, SleepInhibitor>();
         services.AddSingleton<ILiteDatabase>(_ => ActDatabase.Open(dataDirectory));
         services.AddSingleton<ISettingsStore, LiteDbSettingsStore>();

@@ -1,4 +1,5 @@
 using Act.App.Cards;
+using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Core.Agents;
 using Act.Core.Model;
@@ -12,6 +13,7 @@ public sealed class SessionLauncher(
     IEnumerable<IAgentAdapter> adapters,
     SessionRegistry registry,
     BoardState board,
+    UserSettingsService settings,
     IClock clock)
 {
     private readonly IReadOnlyDictionary<AgentType, IAgentAdapter> byAgent =
@@ -28,8 +30,13 @@ public sealed class SessionLauncher(
 
     public LaunchConfigResolution? Preview(Card card)
         => byAgent.TryGetValue(card.AgentType, out var adapter)
-            ? adapter.Resolve(card.LaunchConfig)
+            ? adapter.Resolve(Config(card))
             : null;
+
+    // The card says what to run; this machine's settings say where the CLI is and what it always
+    // gets. Every path to an adapter goes through here, so there is one place the two are joined.
+    private LaunchConfig Config(Card card)
+        => LaunchComposition.Compose(card.LaunchConfig, settings.Defaults(card.AgentType));
 
     public async Task<LaunchResult> LaunchAsync(
         Card card,
@@ -45,7 +52,8 @@ public sealed class SessionLauncher(
         if (!byAgent.TryGetValue(card.AgentType, out var adapter))
             return LaunchResult.Refused($"No adapter is registered for {card.AgentType}.");
 
-        var resolution = adapter.Resolve(card.LaunchConfig);
+        var config = Config(card);
+        var resolution = adapter.Resolve(config);
         if (!resolution.CanLaunch)
             return LaunchResult.Refused(string.Join(" ", resolution.Rejections));
 
@@ -64,7 +72,7 @@ public sealed class SessionLauncher(
                         sessionId,
                         card.WorkingDir,
                         AutoGitInstruction.Append(card.InitialPrompt, card.AutoGit),
-                        card.LaunchConfig,
+                        config,
                         size),
                     cancellationToken)
                 : await adapter.ResumeAsync(
@@ -74,7 +82,7 @@ public sealed class SessionLauncher(
                         card.WorkingDir,
                         AutoGitInstruction.Append(card.InitialPrompt, card.AutoGit),
                         null,
-                        card.LaunchConfig,
+                        config,
                         size),
                     cancellationToken);
         }
@@ -140,7 +148,8 @@ public sealed class SessionLauncher(
         if (!byAgent.TryGetValue(card.AgentType, out var adapter))
             return LaunchResult.Refused($"No adapter is registered for {card.AgentType}.");
 
-        var resolution = adapter.Resolve(card.LaunchConfig);
+        var config = Config(card);
+        var resolution = adapter.Resolve(config);
         if (!resolution.CanLaunch)
             return LaunchResult.Refused(string.Join(" ", resolution.Rejections));
 
@@ -155,7 +164,7 @@ public sealed class SessionLauncher(
                     card.WorkingDir,
                     AutoGitInstruction.Append(card.InitialPrompt, card.AutoGit),
                     null,
-                    card.LaunchConfig,
+                    config,
                     size),
                 cancellationToken);
         }

@@ -39,8 +39,8 @@
   <data name="NewTask_Group_Automation" xml:space="preserve">
     <value>Automation</value>
   </data>
-  <data name="NewTask_Group_Advanced" xml:space="preserve">
-    <value>Advanced</value>
+  <data name="NewTask_Locked" xml:space="preserve">
+    <value>This task has launched. Its prompt, directory, agent and automation are fixed — they describe the run that already started. The title and the agent settings can still change, and apply the next time it launches.</value>
   </data>
   <data name="NewTask_Title" xml:space="preserve">
     <value>Title</value>
@@ -95,30 +95,6 @@
   </data>
   <data name="NewTask_Draft" xml:space="preserve">
     <value>Draft pull request</value>
-  </data>
-  <data name="NewTask_AllowedTools" xml:space="preserve">
-    <value>Allowed tools</value>
-  </data>
-  <data name="NewTask_DisallowedTools" xml:space="preserve">
-    <value>Disallowed tools</value>
-  </data>
-  <data name="NewTask_Tools_Hint" xml:space="preserve">
-    <value>One per line, or comma-separated. Example: Bash(git *)</value>
-  </data>
-  <data name="NewTask_ExtraFlags" xml:space="preserve">
-    <value>Extra CLI flags</value>
-  </data>
-  <data name="NewTask_AgentBinary" xml:space="preserve">
-    <value>Agent executable</value>
-  </data>
-  <data name="NewTask_AgentBinary_Hint" xml:space="preserve">
-    <value>Leave empty to find the agent on PATH. Set a full path when it is not there — a Store-installed Codex, for one.</value>
-  </data>
-  <data name="NewTask_Env" xml:space="preserve">
-    <value>Environment variables</value>
-  </data>
-  <data name="NewTask_Env_Hint" xml:space="preserve">
-    <value>One KEY=value per line.</value>
   </data>
   <data name="NewTask_Required" xml:space="preserve">
     <value>Required</value>
@@ -284,6 +260,57 @@
   </data>
   <data name="Settings_Group_System" xml:space="preserve">
     <value>System</value>
+  </data>
+  <data name="Settings_Group_Agents" xml:space="preserve">
+    <value>Agents</value>
+  </data>
+  <data name="Settings_AgentEnabled_Hint" xml:space="preserve">
+    <value>Offer this agent when creating a task.</value>
+  </data>
+  <data name="Settings_AgentBinary_NotFound" xml:space="preserve">
+    <value>Nothing is there. A launch will fail until this points at the real executable.</value>
+  </data>
+  <data name="Settings_AgentBinary_NotInstalled" xml:space="preserve">
+    <value>Not found on PATH or anywhere ACT knows to look — this agent may not be installed.</value>
+  </data>
+  <data name="Settings_AgentBinary_NotOnPath" xml:space="preserve">
+    <value>Not on PATH. It is installed at {0}.</value>
+  </data>
+  <data name="Settings_AgentBinary_UseFound" xml:space="preserve">
+    <value>Use it</value>
+  </data>
+  <data name="Settings_AgentBinary_OnPath" xml:space="preserve">
+    <value>Found on PATH.</value>
+  </data>
+  <data name="Settings_AgentBinary_Found" xml:space="preserve">
+    <value>Found.</value>
+  </data>
+  <data name="Settings_Group_TaskDefaults" xml:space="preserve">
+    <value>New task defaults</value>
+  </data>
+  <data name="Settings_TaskDefaults_Hint" xml:space="preserve">
+    <value>What a new task starts as. The title and the prompt are always yours to write.</value>
+  </data>
+  <data name="Settings_Agents_Hint" xml:space="preserve">
+    <value>How each CLI is installed on this machine. These apply to every task using that agent, and take effect on its next launch.</value>
+  </data>
+  <data name="Settings_AgentBinary" xml:space="preserve">
+    <value>Executable</value>
+  </data>
+  <data name="Settings_AgentBinary_Hint" xml:space="preserve">
+    <value>Leave empty to find it on PATH. Set a full path when the install is not there.</value>
+  </data>
+  <data name="Settings_ExtraFlags" xml:space="preserve">
+    <value>Extra CLI flags</value>
+  </data>
+  <data name="Settings_ExtraFlags_Hint" xml:space="preserve">
+    <value>One per line. Added to every launch — a flag ACT already sets, such as the session id or the settings file, will break its own binding.</value>
+  </data>
+  <data name="Settings_Env" xml:space="preserve">
+    <value>Environment variables</value>
+  </data>
+  <data name="Settings_Env_Hint" xml:space="preserve">
+    <value>One KEY=value per line.</value>
   </data>
   <data name="Settings_KeepAwake" xml:space="preserve">
     <value>Keep the computer awake</value>
@@ -453,7 +480,7 @@
   <data name="NewTask_DirMissingResolved" xml:space="preserve">
     <value>This directory does not exist yet ({0}).</value>
   </data>
-  <data name="NewTask_Browse" xml:space="preserve">
+  <data name="Picker_Browse" xml:space="preserve">
     <value>Browse</value>
   </data>
   <data name="NewTask_DirNotAbsolute" xml:space="preserve">
@@ -580,7 +607,7 @@
     <value>Turn ended, ready for review</value>
   </data>
   <data name="Transition_TurnFailed" xml:space="preserve">
-    <value>The agent reported a failed turn</value>
+    <value>The agent reported a failed turn: {0}</value>
   </data>
   <data name="Transition_AgentExited" xml:space="preserve">
     <value>Agent exited with code {0}</value>

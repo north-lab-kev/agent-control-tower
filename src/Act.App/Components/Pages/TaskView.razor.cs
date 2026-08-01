@@ -6,6 +6,7 @@ using Act.App.Sessions;
 using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Core.Model;
+using Act.Core.Rules;
 using Act.Infrastructure.FileSystem;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
@@ -22,6 +23,7 @@ public partial class TaskView(
     BoardState board,
     SessionRegistry registry,
     IAgentCapabilityCatalog agents,
+    UserSettingsService settings,
     IWorkingDirectories directories,
     IClock clock,
     DialogService dialogService,
@@ -67,13 +69,33 @@ public partial class TaskView(
 
     private bool IsDirty => !missing && form != baseline;
 
+    // Past the launch boundary the form describes a run that already happened, so what defines that
+    // run stops being editable — `TaskEditing` owns the split, and `NewTaskForm.ApplyTo` enforces it
+    // whatever the markup does. A card that does not exist yet is never locked.
+    private bool Locked => card is { } existing && !TaskEditing.CanEditLaunchInputs(existing);
+
     private string PageHeading => card is { } existing ? existing.Title : Strings.TaskView_NewTitle;
 
-    private static SettingChoice<AgentType>[] AgentChoices =>
-    [
-        new(AgentType.ClaudeCode, Strings.Agent_ClaudeCode),
-        new(AgentType.Codex, Strings.Agent_Codex),
-    ];
+    // Only the agents whose switch is on — plus, always, the one this card already carries. An
+    // agent turned off after a card was made must not leave that card showing an empty dropdown for
+    // a value it is still holding, the same rule a retired model follows.
+    private IReadOnlyList<SettingChoice<AgentType>> AgentChoices
+    {
+        get
+        {
+            var enabled = settings.EnabledAgents;
+
+            var offered = enabled.Contains(form.Agent) ? enabled : [.. enabled, form.Agent];
+
+            return [.. offered.Select(agent => new SettingChoice<AgentType>(agent, AgentLabel(agent)))];
+        }
+    }
+
+    private static string AgentLabel(AgentType agent) => agent switch
+    {
+        AgentType.Codex => Strings.Agent_Codex,
+        _ => Strings.Agent_ClaudeCode,
+    };
 
     // Whatever the chosen agent declares, in its order — the same rule the model and effort lists
     // follow. Codex offers five and Claude Code six, and neither the form nor this list knows why.
@@ -332,7 +354,9 @@ public partial class TaskView(
         {
             card = null;
             missing = false;
-            form = new NewTaskForm();
+            form = NewTaskForm.From(settings.TaskDefaults);
+            baseline = form with { };
+            discarded = false;
 
             return;
         }
@@ -347,7 +371,7 @@ public partial class TaskView(
         }
 
         missing = card is null;
-        form = card is { } existing ? NewTaskForm.From(existing) : new NewTaskForm();
+        form = card is { } existing ? NewTaskForm.From(existing) : NewTaskForm.From(settings.TaskDefaults);
         baseline = form with { };
         discarded = false;
     }
@@ -505,4 +529,19 @@ public partial class TaskView(
     }
 
     private void BackToBoard() => navigation.NavigateTo("/");
+
+    // The folder picker is part of this page rather than a popup of its own, so Escape has to close
+    // it here — leaving the page out from under an open picker is not what the key was pressed for.
+    // Unsaved edits still get their question, because leaving is a navigation like any other.
+    private void OnEscape()
+    {
+        if (picking)
+        {
+            picking = false;
+
+            return;
+        }
+
+        BackToBoard();
+    }
 }

@@ -17,14 +17,42 @@ public sealed class ClaudeCodeAdapter(
 {
     public const string DefaultBinary = "claude";
 
-    private static readonly TerminalSubmitProfile Submit = TerminalSubmitProfile.Default;
-
     public AgentType Agent => AgentType.ClaudeCode;
 
     public AgentCapabilities Capabilities => ClaudeCodeCapabilities.Current;
 
     public LaunchConfigResolution Resolve(LaunchConfig config)
         => LaunchConfigResolver.Resolve(Agent, Capabilities, config);
+
+    // `PATH` first, because that is the install the CLI's own installer produces and the one that
+    // survives an upgrade. The fallbacks are the two shapes that are not on `PATH` on a fresh
+    // machine: the installer's own `~/.local/bin`, and a global npm install.
+    public AgentInstall Locate(IExecutableProbe probe)
+    {
+        if (probe.OnPath(DefaultBinary) is not null)
+            return AgentInstall.OnPath;
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var npm = Environment.GetEnvironmentVariable("APPDATA");
+
+        List<string> candidates =
+        [
+            Path.Combine(home, ".local", "bin", "claude.exe"),
+            Path.Combine(home, ".local", "bin", "claude"),
+        ];
+
+        if (npm is { Length: > 0 })
+        {
+            candidates.Add(Path.Combine(npm, "npm", "claude.cmd"));
+            candidates.Add(Path.Combine(npm, "npm", "claude"));
+        }
+
+        candidates.Add("/usr/local/bin/claude");
+
+        return probe.FirstExisting(candidates) is { } found
+            ? AgentInstall.At(found)
+            : AgentInstall.Missing;
+    }
 
     // Confirmed against the desktop app's own bundle: the parameter is `session`, not
     // `sessionId`, and the route locates the transcript itself, so no working directory.
@@ -91,18 +119,6 @@ public sealed class ClaudeCodeAdapter(
 
         var hookToken = InjectHooks(taskId, arguments);
 
-        foreach (var tool in resolved.AllowedTools)
-        {
-            arguments.Add("--allowed-tools");
-            arguments.Add(tool);
-        }
-
-        foreach (var tool in resolved.DisallowedTools)
-        {
-            arguments.Add("--disallowed-tools");
-            arguments.Add(tool);
-        }
-
         arguments.AddRange(resolved.ExtraFlags);
 
         // Positional, and last: everything after it would be read as part of the prompt.
@@ -122,7 +138,7 @@ public sealed class ClaudeCodeAdapter(
                 size),
             cancellationToken);
 
-        return new PtyAgentSession(taskId, sessionId, process, Submit, clock);
+        return new PtyAgentSession(taskId, sessionId, process, clock);
     }
 
     // No endpoint means no hooks and a launch that still happens: ingestion is observability, and

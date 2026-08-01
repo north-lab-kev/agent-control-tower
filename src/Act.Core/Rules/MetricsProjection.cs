@@ -57,9 +57,6 @@ public static class MetricsProjection
     {
         var snapshot = enriched.Snapshot;
 
-        if (snapshot.LastMessage is { Length: > 0 } message)
-            card.LastMessage = message;
-
         if (snapshot.ObservedModel is { Length: > 0 } model)
             card.ObservedModel = model;
 

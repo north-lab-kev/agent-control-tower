@@ -77,8 +77,10 @@ public class RulesEngineTests
             .Badge.Should().Be(Badge.Running);
     }
 
+    // The badge is the whole report. What is being asked stays on the screen it is being asked on —
+    // ACT neither answers it nor repeats it, so nothing carries the text onto the card.
     [Fact]
-    public void A_permission_request_blocks_the_card_and_carries_a_read_only_summary()
+    public void A_permission_request_blocks_the_card()
     {
         var move = RulesEngine.Decide(
             CardIn(BoardColumn.Executing),
@@ -86,11 +88,10 @@ public class RulesEngineTests
 
         move!.Column.Should().Be(BoardColumn.YourTurn);
         move.Badge.Should().Be(Badge.NeedsPermission);
-        move.Message.Should().Be("run a shell command");
     }
 
     [Fact]
-    public void A_question_blocks_the_card_and_carries_the_question()
+    public void A_question_blocks_the_card()
     {
         var move = RulesEngine.Decide(
             CardIn(BoardColumn.Executing),
@@ -98,7 +99,6 @@ public class RulesEngineTests
 
         move!.Column.Should().Be(BoardColumn.YourTurn);
         move.Badge.Should().Be(Badge.NeedsAnswer);
-        move.Message.Should().Be("which database?");
     }
 
     // Claude Code prompts for its question tool the way it prompts for any other, so the generic
@@ -190,7 +190,7 @@ public class RulesEngineTests
         move!.Column.Should().Be(BoardColumn.YourTurn);
         move.Badge.Should().Be(Badge.Error);
         move.Reason.Should().Be(TransitionReason.TurnFailed);
-        move.Message.Should().Be("the model is not supported on this account");
+        move.Detail.Should().Be("the model is not supported on this account");
     }
 
     // A turn that ends while the card is blocked ends for a reason — the prompt was denied and the
@@ -303,6 +303,10 @@ public class RulesEngineTests
     // The rule the whole `TransitionReason` design exists for: a transition is stored, so nothing
     // here may produce display text. A localized sentence written into the store would be frozen in
     // whatever language was active at the time, and would still be in it after the user switches.
+    //
+    // A detail may be verbatim data of any length — an exit code, or the api error a CLI reported —
+    // so the guard is on where the words came from, not on how many there are. Everything ACT itself
+    // authors is a `TransitionReason` code, resolved to wording at display time.
     [Fact]
     public void No_move_ever_carries_display_text()
     {
@@ -313,11 +317,23 @@ public class RulesEngineTests
                 if (RulesEngine.Decide(CardIn(column), observed) is not { } move)
                     continue;
 
-                // A detail is verbatim data — an exit code, a duration — never a sentence.
-                move.Detail.Should().NotContain(" ");
+                if (move.Detail is not { } detail)
+                    continue;
+
+                detail.Should().Be(Verbatim(observed));
             }
         }
     }
+
+    // The only two events carrying a detail, and in both cases it is a value the *agent* or the OS
+    // produced. Written out rather than derived, so a rule that started composing its own sentence
+    // out of an event would fail here instead of passing by construction.
+    private static string? Verbatim(AgentEvent observed) => observed switch
+    {
+        ProcessExited exit => exit.ExitCode.ToString(),
+        TurnFailed failure => failure.Reason,
+        _ => null,
+    };
 
     private static IEnumerable<AgentEvent> EveryEvent() =>
     [

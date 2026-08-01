@@ -10,9 +10,8 @@ namespace Act.Agents.Codex;
 // kinds that matter are:
 //
 //   * `event_msg/task_started`   — `model_context_window`
-//   * `event_msg/task_complete`  — `last_agent_message`, and an `error` when the turn failed
+//   * `event_msg/task_complete`  — an `error` when the turn failed
 //   * `event_msg/token_count`    — `total_token_usage`, `last_token_usage`, `model_context_window`
-//   * `event_msg/agent_message`  — what the agent said
 //
 // **This class used to report liveness too** — activity, turn ends and the turn/tool counts — because
 // Codex's hooks were believed not to fire. They do (the failures were ACT quoting the hook command),
@@ -26,7 +25,7 @@ namespace Act.Agents.Codex;
 // assumed: drop this only after watching a real failed turn's `Stop` payload.
 public sealed class CodexTranscriptNormalizer : ITranscriptNormalizer
 {
-    private const int LastMessageLimit = 400;
+    private const int FailureLimit = 400;
 
     public AgentType Agent => AgentType.Codex;
 
@@ -61,15 +60,8 @@ public sealed class CodexTranscriptNormalizer : ITranscriptNormalizer
                         // A plain turn end is the `Stop` hook's to report. Only the failure is raised
                         // here, because nothing else can see it.
                         case "task_complete":
-                            snapshot = snapshot with { LastMessage = Bounded(Text(message, "last_agent_message")) ?? snapshot.LastMessage };
-
                             if (Failure(message) is { } failure)
                                 events.Add(new TurnFailed(session, at, failure));
-
-                            break;
-
-                        case "agent_message":
-                            snapshot = snapshot with { LastMessage = Bounded(Text(message, "message")) ?? snapshot.LastMessage };
 
                             break;
 
@@ -154,7 +146,7 @@ public sealed class CodexTranscriptNormalizer : ITranscriptNormalizer
 
         text = text.Trim();
 
-        return text.Length > LastMessageLimit ? text[..LastMessageLimit] : text;
+        return text.Length > FailureLimit ? text[..FailureLimit] : text;
     }
 
     private static JsonElement? Payload(JsonElement entry)

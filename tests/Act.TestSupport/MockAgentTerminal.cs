@@ -31,13 +31,6 @@ public sealed class MockAgentTerminal(Action<AgentInput> record) : IAgentTermina
         return Task.CompletedTask;
     }
 
-    public Task SubmitAsync(string text, CancellationToken cancellationToken = default)
-    {
-        record(new AgentInput(AgentInputKind.Submit, text));
-
-        return Task.CompletedTask;
-    }
-
     public void Resize(int cols, int rows)
         => record(new AgentInput(AgentInputKind.Resize, Size: new TerminalSize(cols, rows)));
 
