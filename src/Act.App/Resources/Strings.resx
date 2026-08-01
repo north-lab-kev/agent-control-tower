@@ -480,6 +480,12 @@
   <data name="Session_Turns" xml:space="preserve">
     <value>Turns</value>
   </data>
+  <data name="Session_Tokens" xml:space="preserve">
+    <value>Tokens</value>
+  </data>
+  <data name="Session_Compactions" xml:space="preserve">
+    <value>Compactions</value>
+  </data>
   <data name="Session_OpenInDesktop" xml:space="preserve">
     <value>Open in desktop app</value>
   </data>
@@ -491,6 +497,9 @@
   </data>
   <data name="Board_Launch" xml:space="preserve">
     <value>Launch now</value>
+  </data>
+  <data name="Board_Retry" xml:space="preserve">
+    <value>Retry</value>
   </data>
   <data name="Session_Complete" xml:space="preserve">
     <value>Mark completed</value>
@@ -515,6 +524,9 @@
   </data>
   <data name="Session_LaunchFailed" xml:space="preserve">
     <value>Launch failed</value>
+  </data>
+  <data name="Session_RetryFailed" xml:space="preserve">
+    <value>Retry failed</value>
   </data>
   <data name="Session_RestoreFailed" xml:space="preserve">
     <value>Terminal not restored</value>
@@ -635,6 +647,12 @@
   </data>
   <data name="Transition_LaunchedWithAdjustments" xml:space="preserve">
     <value>Launched with adjustments: {0}</value>
+  </data>
+  <data name="Transition_Retried" xml:space="preserve">
+    <value>Retried — the session was resumed and asked to continue</value>
+  </data>
+  <data name="Transition_RetriedWithAdjustments" xml:space="preserve">
+    <value>Retried with adjustments: {0}</value>
   </data>
   <data name="Transition_LaunchFailed" xml:space="preserve">
     <value>Launch failed: {0}</value>

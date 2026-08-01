@@ -26,6 +26,26 @@ Companion reading: *Usage indicator* in `ACT-overview.md`, and the usage rows in
 Neither endpoint is documented or promised. Both are read-only, and every failure
 path in ACT degrades to *usage unavailable* rather than to a wrong number.
 
+### Overriding either of them
+
+Both are discovered, so **`appsettings.json` ships no `Usage:Agents` section at all** —
+an empty placeholder configures nothing and only suggests that the discovered default
+needs help. Add the section when discovery is wrong on a machine, or when a vendor moves
+a URL:
+
+```json
+"Usage": {
+  "Agents": {
+    "Codex": { "CredentialsPath": "D:\\codex\\auth.json", "Endpoint": "" }
+  }
+}
+```
+
+One agent, one key, or neither — anything absent or blank falls back to what the dialect
+discovered. This is deployment plumbing for a broken install, not a preference: what the
+*user* chooses (whether an agent is watched at all) lives in the store, on the *Agents*
+settings section.
+
 ### How they were found
 
 Neither CLI will print usage non-interactively — `claude -p "/usage"` treats it as a
@@ -110,11 +130,11 @@ The response also carries `email`, `user_id` and `account_id`. **ACT lifts the
 
 ## Rules ACT holds itself to
 
-- **One request per agent every 5 minutes, and never faster than one a minute.**
-  `Usage:PollSeconds` defaults to **300** and is clamped to **[60, 3600]** — the floor
+- **One request per agent every 3 minutes, and never faster than one a minute.**
+  `Usage:PollSeconds` defaults to **180** and is clamped to **[60, 3600]** — the floor
   is part of the contract, not a sanity check, because neither endpoint is documented
   or promised and nothing ACT ships or lets a user configure may hammer them. A 5-hour
-  window moves about a third of a percent a minute, so five-minute granularity loses
+  window moves about a third of a percent a minute, so three-minute granularity loses
   nothing a reader could act on. The gap is measured **from the end of one request to
   the start of the next** (a delay loop, not a `PeriodicTimer`), so a slow endpoint is
   never asked again the moment it answers. A disabled agent is not polled at all, and

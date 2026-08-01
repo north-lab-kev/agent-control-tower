@@ -12,7 +12,7 @@ public sealed class UsageOptions
 
     public bool Enabled { get; init; } = true;
 
-    public int PollSeconds { get; init; } = 300;
+    public int PollSeconds { get; init; } = 180;
 
     public Dictionary<string, UsageAgentOptions> Agents { get; init; } = [];
 
@@ -33,8 +33,6 @@ public sealed class UsageOptions
 
 public sealed class UsageAgentOptions
 {
-    public bool Enabled { get; init; } = true;
-
     public string? CredentialsPath { get; init; }
 
     public string? Endpoint { get; init; }

@@ -38,9 +38,31 @@ public sealed class SessionLauncher(
     private LaunchConfig Config(Card card)
         => LaunchComposition.Compose(card.LaunchConfig, settings.Defaults(card.AgentType));
 
-    public async Task<LaunchResult> LaunchAsync(
+    // A failed card is only retriable while its process is gone: a CLI that is still alive is one
+    // the user can type into, and ACT types nothing into a live agent.
+    public bool CanRetry(Card card) => CardRetry.CanRetry(card, registry.IsLive(card.Id));
+
+    // Retry is a launch that carries a message. Not the initial prompt — a session forty turns deep
+    // would be told to start over — but a short "you were interrupted, continue", which rides the
+    // resume command line exactly as the opening prompt rides the launch one.
+    public Task<LaunchResult> RetryAsync(
         Card card,
         TerminalSize size,
+        CancellationToken cancellationToken = default)
+        => CanRetry(card)
+            ? StartAsync(card, size, RetryInstruction.Message, cancellationToken)
+            : Task.FromResult(LaunchResult.Refused($"A card in {card.Column} cannot be retried."));
+
+    public Task<LaunchResult> LaunchAsync(
+        Card card,
+        TerminalSize size,
+        CancellationToken cancellationToken = default)
+        => StartAsync(card, size, resumeMessage: null, cancellationToken);
+
+    private async Task<LaunchResult> StartAsync(
+        Card card,
+        TerminalSize size,
+        string? resumeMessage,
         CancellationToken cancellationToken = default)
     {
         if (registry.IsLive(card.Id))
@@ -81,7 +103,7 @@ public sealed class SessionLauncher(
                         card.SessionId,
                         card.WorkingDir,
                         AutoGitInstruction.Append(card.InitialPrompt, card.AutoGit),
-                        null,
+                        resumeMessage,
                         config,
                         size),
                     cancellationToken);
@@ -117,9 +139,13 @@ public sealed class SessionLauncher(
             At = clock.Now,
             Column = BoardColumn.Executing,
             Badge = Badge.Running,
-            Reason = resolution.Adjustments.Count == 0
-                ? TransitionReason.Launched
-                : TransitionReason.LaunchedWithAdjustments,
+            Reason = (resumeMessage is null, resolution.Adjustments.Count == 0) switch
+            {
+                (true, true) => TransitionReason.Launched,
+                (true, false) => TransitionReason.LaunchedWithAdjustments,
+                (false, true) => TransitionReason.Retried,
+                _ => TransitionReason.RetriedWithAdjustments,
+            },
             Note = Adjustments(resolution),
         });
 

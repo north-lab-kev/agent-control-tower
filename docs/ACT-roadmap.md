@@ -679,12 +679,30 @@ verifiable, and leaves something runnable.
     The `ready_for_review` / `needs_input` outcomes went with the status file (see the spec's
     *There is no completion signal*), and the `Notification` classification landed with step 8.
     So the engine's table is now complete as specified, and every rule in it has a producer.
-- [ ] **10. Session view + card actions — both adapters** — the full session view
+- [x] **10. Session view + card actions — both adapters** — the full session view
   (terminal + right rail: identity, cwd, agent/model, context %, tokens, turns;
   back-to-board). Actions: Open terminal, **Open in Desktop**
   (`claude://resume?session=`), Kill, Retry, Complete. Explicitly **no
   approve/deny anywhere**. *Verify:* a task goes full-circle by hand on both agents,
   answering every prompt in the embedded terminal.
+  ✅ **Closed 2026-08-01.** The board is now manually drivable end to end on both agents — the
+  milestone's "plausible v1".
+  - ✅ **Full circle, both agents, observed today.** Claude Code **#1100**: created, dragged to
+    Ready, launched, walked to `to review` on its own reporting `claude-sonnet-5 · 46k/1000k ctx ·
+    1 turns · 11k tokens`, then dragged to Completed → badge `done`. Codex **#1101**: the same
+    walk, `14k/258k ctx · 1 turns · 4k tokens` → Completed → `done`. No server errors either run.
+  - ⚠️ **One half of the verify was not re-done today: answering a prompt by typing in the embedded
+    terminal.** It needs a *visible* window — the preview pane reports `document.hidden`, so xterm
+    neither paints nor receives input, and no Chrome was connected to drive instead. It is not
+    unevidenced: earlier live runs recorded in step 8 cover it on both agents — a Claude write gate
+    answered in ACT's terminal (2026-07-30), and on Codex an `apply_patch` approval (#1092) plus
+    `/plan` typed in by hand (#1097). What has not happened is one uninterrupted pass through the
+    whole circle *including* the keystroke, in one sitting.
+  - **A pre-session finding from the same run, worth keeping:** a Claude card pointed at a directory
+    Claude Code has never seen (**#1099**) parks on its directory-trust prompt and ACT reports it as
+    `needs permission` through the startup grace — the path the spec describes, seen here by
+    accident rather than by design, and the reason the first attempt at this circle could not finish
+    without a keyboard.
   - [x] **The blocked-card read-only statement is cut, and `lastMessage` with it —
     2026-08-01.** The badge is the whole report: a strip has no room for the sentence,
     the terminal that renders the prompt is one click away, and a copy on the card
@@ -831,13 +849,65 @@ verifiable, and leaves something runnable.
       model or effort it does not offer and moves the permission mode into range, so the template can
       never hold a value that would be rejected at launch. Verified live: a default working directory
       appeared on `/card/new` with title and prompt still empty.
-  - **What is actually left**, measured against the built app rather than the original
-    wording: **Retry** (new —
-    a `CardRetry` predicate plus an action beside `SessionLauncher`/`CardCompleter`, resuming
-    the session id and reseeding from `initialPrompt` only when the transcript is gone), and the
-    rail's **context % and tokens** (`CardMetrics.ContextPercent` exists and the flight strip uses
-    it; the rail still shows `k/k` and no tokens). Open terminal, Open in Desktop and Kill
-    are done; Complete landed early with step 11.
+  - [x] **Retry — built 2026-08-01, and three of the spec's assumptions were dropped on the way.**
+    `Act.Core/Rules/CardRetry` is the predicate; `SessionLauncher.RetryAsync` the action, sharing the
+    launch path so there is one place a session is started. The button lives on the **flight strip**,
+    not the session rail: opening a failed card's terminal already resumes it, so by the time you are
+    at the rail the process is live again and typing into it is your job.
+    - **It does not re-send `initialPrompt`.** A session forty turns deep would be told to start the
+      work over — by then the opening instruction describes a beginning that no longer exists, and
+      the transcript the resume just reopened is the real context. `Act.Core/Agents/RetryInstruction`
+      says only that the session was interrupted and to continue, localised like `AutoGitInstruction`
+      because ACT addresses the agent in the user's language. It rides the resume command line, so
+      ACT still types nothing.
+    - **It is offered only when the process is gone.** A live CLI is one the user can type into, and
+      the terminal is a click away; retrying it would mean killing a usable session. This makes Retry
+      the case the user genuinely cannot do themselves, and it needs no kill, no interrupt and no new
+      input path.
+    - **No fresh-seed fallback.** The spec promised one when the transcript is gone; **Duplicate**
+      already makes a new card with the same config, so the fallback would be a second way to do an
+      existing thing, with its own dialog and its own "which path was taken" bookkeeping.
+    - ✅ **Verified live at the predicate:** the Retry button appears on exactly one card — `#1038`,
+      `error` with a dead session — and on no other card in any column or badge, including the other
+      `error` card whose session is live.
+    - ⚠️ **Not yet verified: that the continue-message reaches the agent.** This is the assertion step
+      7 learned to make — the prompt-truncation bug survived two steps because every check asked
+      "did events arrive, did the card move", both true of a session that only greets you — so the
+      real proof is finding the message in the transcript, not watching the badge. Pinned at the unit
+      level (`Resuming_passes_the_session_id_and_the_message_positionally`) but not end to end.
+    - ✅ **An invalid model is a *pre-session exit*, not a failed turn — measured 2026-08-01, card
+      #1098.** Launched with `--model gpt-not-a-real-model` through the per-agent extra flags, Codex
+      **exits with code 2 before any session exists**: the timeline reads Launched → Executing →
+      *"Agent exited with code 2"* → Your turn, eight seconds end to end. So the CLI validates the
+      model itself rather than starting a session and letting the api reject it. Two things this
+      confirms: the `ProcessExited` → `error` path works end to end, and **`CardRetry` correctly
+      refuses the card** — no session was ever bound, so there is nothing to resume and Duplicate is
+      the right answer. The Retry button was absent on #1098 and present on #1038, which is the
+      predicate discriminating on real data.
+    - ⚠️ **So `TurnFailed` still has not been reproduced, and now it is clearer why.** It needs a model
+      the **CLI accepts but the account cannot use** — the original measurement's `gpt-5.4` — so that
+      a session starts and the *request* is rejected. Client-side-invalid names exit early instead.
+      Also measured and worth recording: **`OPENAI_BASE_URL` is ignored under ChatGPT auth**, so
+      pointing it at an unreachable host does not fail a turn; the run went to the real endpoint and
+      succeeded. Whether a Codex TUI still accepts input after `task_complete` carries an `error`
+      remains unmeasured — **which does not block the feature**: refusing Retry to a live session is
+      the conservative answer under either outcome, and the measurement could only show the restraint
+      to be unnecessary.
+  - [x] **The rail's context % and tokens — 2026-08-01, the last of the step's own list.** The
+    session rail knew *less* about a run than the board strip did, which is backwards: the terminal
+    is the surface you sit on while it works. It now carries the percentage and the same 3px context
+    bar the strip uses, cumulative tokens, and compactions when there have been any — all from
+    `CardMetrics`, which already had `ContextPercent` and `TokensTotal`, so nothing new is ingested
+    or computed. A model whose window ACT does not know still shows no percentage rather than a
+    wrong one. `Text.Thousands` moved out of `FlightStrip` so both surfaces round the same number
+    the same way; a card disagreeing with its own terminal would read as a bug.
+    - **Launch moved in with the other actions.** It sat alone at the top of the rail while Complete,
+      Open in Desktop and Kill sat at the bottom — one place to act and one place to read is the
+      rule, so the button joined the group (first, and the only Primary when it shows) and the
+      *"no session is running"* line stayed with the facts, where a status belongs.
+    - **Verified live:** #1042 reads `142k / 200k 71%`, 18 turns, 356k tokens, no compactions row;
+      #1040 reads `88k / 200k 44%`, 7 turns, 223k tokens, 2 compactions, with the bar measured at
+      105.6 of 240px — 44%, matching its own number.
 
 ## Phase 4 — Completion & lineage
 
@@ -957,9 +1027,9 @@ verifiable, and leaves something runnable.
 
 ## Milestones
 
-- **After step 10** — usable, manually-driven, **multi-agent** ACT (a plausible
-  v1): every session runs in its own embedded terminal, the board tells you which
-  one needs you, and you answer it there.
+- ✅ **After step 10 — reached 2026-08-01.** Usable, manually-driven, **multi-agent** ACT (a
+  plausible v1): every session runs in its own embedded terminal, the board tells you which one
+  needs you, and you answer it there.
 - **After step 14** — the overnight unattended batch vision.
 - **After step 16** — the full, polished product.
 

@@ -217,9 +217,21 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   one and windows out of the other are facts about that CLI exactly like its hook payload.
   Each dialect resolves its own default path from the environment (`CLAUDE_CONFIG_DIR` /
   `CODEX_HOME`, else the CLI's folder under the user profile), because ACT ships to machines
-  whose home directory it cannot know; `appsettings.json` → `Usage:Agents:<agent>` overrides
-  the path and the endpoint per agent, and an empty value means *use the discovered default*.
-  The measured endpoints, response shapes and traps are in `docs/agent-usage-findings.md`.
+  whose home directory it cannot know. `appsettings.json` → `Usage:Agents:<agent>` can override
+  the path and the endpoint per agent, but **ships absent rather than blank**: an empty string
+  configures nothing, and a file full of empty keys reads as "fill these in" for values that are
+  supposed to be found. The measured endpoints, response shapes and traps are in
+  `docs/agent-usage-findings.md`.
+  - **`appsettings` holds facts about the machine and the vendor; the store holds the user's
+    choices.** That is the whole line, and it decides where a knob goes. A credential path
+    and an endpoint are there for when discovery is wrong on *this* machine or a vendor moves
+    a URL — nobody chooses them, and a user who needs one is unblocking a broken install, not
+    setting a preference. `Usage:Enabled` is the same kind of thing: a deployment with no
+    outbound network turns the feature off, and it is not a switch the UI should offer.
+    **Whether to watch an agent at all is a preference, so it lives in the store** — the
+    *Agents* section's enabled switch, read by `UsagePump` on every pass. A per-agent
+    `Usage:Agents:<agent>:Enabled` existed alongside it briefly and was removed: two flags
+    spelled the same way, one of them invisible, deciding the same thing.
   - **A window is named by the length the server declares, not by a fixed caption pair.**
     A paid Codex plan reports 5-hour plus weekly; a free one reports a single 30-day window
     and no secondary. Hardcoding two bars would mislabel a real account, so

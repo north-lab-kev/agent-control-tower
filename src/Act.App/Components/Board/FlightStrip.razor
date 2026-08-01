@@ -42,6 +42,15 @@
                               Disabled="IsLaunching" Click="@LaunchAsync" @onclick:stopPropagation="true" />
             }
 
+            @* Only for a card whose process is gone — see `CardRetry`. A live session is one the
+               user types into, and the terminal is a click away. *@
+            @if (CanRetry)
+            {
+                <RadzenButton Text="@Strings.Board_Retry" Icon="refresh" Size="ButtonSize.ExtraSmall"
+                              ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" class="launch"
+                              Disabled="IsLaunching" Click="@RetryAsync" @onclick:stopPropagation="true" />
+            }
+
             @if (QuietText is { } quiet)
             {
                 <RadzenText TextStyle="TextStyle.Caption" Text="@quiet" class="quiet" />

@@ -28,6 +28,14 @@ public partial class FlightStrip
     public EventCallback<Card> OnLaunch { get; set; }
 
     [Parameter]
+    public EventCallback<Card> OnRetry { get; set; }
+
+    // Whether this card can be retried, decided by the board — the answer depends on whether a
+    // session is live, which is registry state the strip has no business reaching for.
+    [Parameter]
+    public bool Retriable { get; set; }
+
+    [Parameter]
     public EventCallback<Card> OnDragStart { get; set; }
 
     [Parameter]
@@ -93,7 +101,11 @@ public partial class FlightStrip
     // badge is the signal the density exists to preserve.
     private bool CanLaunch => Card.Column is BoardColumn.Ready && !IsCompact;
 
+    private bool CanRetry => Retriable && !IsCompact;
+
     private Task LaunchAsync() => OnLaunch.InvokeAsync(Card);
+
+    private Task RetryAsync() => OnRetry.InvokeAsync(Card);
 
     // The shared mapping, plus the one thing that is about this surface rather than the signal: a
     // Completed card shows `done` where it carries no badge.
@@ -141,7 +153,10 @@ public partial class FlightStrip
     private static IEnumerable<string> Metrics(CardMetrics m)
     {
         if (m.ContextPercent is not null)
-            yield return Text.Format(Strings.Metrics_Context, Thousands(m.ContextUsed), Thousands(m.ContextLimit));
+            yield return Text.Format(
+                Strings.Metrics_Context,
+                Text.Thousands(m.ContextUsed),
+                Text.Thousands(m.ContextLimit));
 
         if (m.TurnCount > 0)
             yield return Text.Format(Strings.Metrics_Turns, m.TurnCount);
@@ -150,9 +165,6 @@ public partial class FlightStrip
             yield return Text.Format(Strings.Metrics_Compactions, m.Compactions);
 
         if (m.TokensTotal > 0)
-            yield return Text.Format(Strings.Metrics_Tokens, Thousands(m.TokensTotal));
+            yield return Text.Format(Strings.Metrics_Tokens, Text.Thousands(m.TokensTotal));
     }
-
-    private static string Thousands(long value)
-        => value >= 1000 ? $"{value / 1000}k" : value.ToString(Culture);
 }

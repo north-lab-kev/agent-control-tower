@@ -29,6 +29,7 @@
                         {
                             <FlightStrip Card="card" Density="Density" Blink="BlinkYourTurn"
                                          OnOpen="OpenAsync" OnLaunch="LaunchAsync"
+                                         OnRetry="RetryAsync" Retriable="CanRetry(card)"
                                          OnDragStart="OnDragStartAsync" OnDragEnd="OnDragEndAsync"
                                          IsDragging="dragging?.Id == card.Id" IsLaunching="IsLaunching(card)" />
                         }

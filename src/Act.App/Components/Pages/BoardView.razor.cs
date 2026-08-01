@@ -152,6 +152,37 @@ public partial class BoardView(
         }
     }
 
+    private bool CanRetry(Card card) => launcher.CanRetry(card);
+
+    // The board is the right home for Retry, not the session view: opening a failed card's terminal
+    // already resumes it, so by the time you are looking at the rail the process is live again and
+    // typing into it is your job, not ACT's.
+    private async Task RetryAsync(Card card)
+    {
+        if (!launching.Add(card.Id))
+            return;
+
+        try
+        {
+            var result = await launcher.RetryAsync(card, TerminalSize.Default);
+
+            if (result.Message is { } message)
+            {
+                notifications.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = Strings.Session_RetryFailed,
+                    Detail = message,
+                    Duration = 20000,
+                });
+            }
+        }
+        finally
+        {
+            launching.Remove(card.Id);
+        }
+    }
+
     // Your turn → Completed, the other transition the user drives by hand across the launch boundary.
     // Guarded like the launch is, because ending the card's session is not something to do twice.
     private async Task CompleteAsync(Card card)

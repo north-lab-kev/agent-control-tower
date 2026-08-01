@@ -34,16 +34,13 @@ else
             <div class="terminal" id="@terminalId"></div>
 
             <aside class="rail">
+                @* A status, not an action — so it sits with the facts, and the button it used to
+                   carry moved down to join the other three. One place to act, one place to read. *@
                 @if (!live)
                 {
                     <div class="idle">
                         <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Session_NoLiveSession" />
-                        @if (CanLaunch)
-                        {
-                            <RadzenButton Text="@Strings.Session_Launch" Icon="play_arrow" Size="ButtonSize.Small"
-                                          ButtonStyle="ButtonStyle.Primary" Disabled="launching" Click="LaunchAsync" />
-                        }
-                        else
+                        @if (!CanLaunch)
                         {
                             <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Session_NotLaunchable"
                                         class="hint" />
@@ -67,20 +64,54 @@ else
                     <dt>@Strings.Session_SessionId</dt>
                     <dd class="path">@(card.SessionId ?? Strings.Session_SessionPending)</dd>
 
+                    @* The rail used to know less about a session than the board strip did, which is
+                       backwards: this is the surface you sit on while the work runs. *@
                     @if (card.Metrics is { } metrics)
                     {
                         @if (metrics.ContextLimit > 0)
                         {
                             <dt>@Strings.Session_Context</dt>
-                            <dd>@(metrics.ContextUsed / 1000)k / @(metrics.ContextLimit / 1000)k</dd>
+                            <dd>
+                                @(metrics.ContextUsed / 1000)k / @(metrics.ContextLimit / 1000)k
+                                @* Null for a model whose window ACT does not know — no percentage
+                                   rather than a wrong one. *@
+                                @if (metrics.ContextPercent is { } percent)
+                                {
+                                    <span class="pct">@percent%</span>
+                                    <RadzenProgressBar Value="percent" Mode="ProgressBarMode.Determinate"
+                                                       ShowValue="false" class="ctxbar" />
+                                }
+                            </dd>
                         }
 
                         <dt>@Strings.Session_Turns</dt>
                         <dd>@metrics.TurnCount</dd>
+
+                        @if (metrics.TokensTotal > 0)
+                        {
+                            <dt>@Strings.Session_Tokens</dt>
+                            <dd>@Text.Thousands(metrics.TokensTotal)</dd>
+                        }
+
+                        @* Only when it has happened: a zero here would be noise on every card, and
+                           a non-zero one is a thrash signal worth seeing while you watch. *@
+                        @if (metrics.Compactions > 0)
+                        {
+                            <dt>@Strings.Session_Compactions</dt>
+                            <dd>@metrics.Compactions</dd>
+                        }
                     }
                 </dl>
 
                 <div class="actions">
+                    @* First, and the only one that is Primary when it shows: with no live session
+                       there is nothing else worth doing here. *@
+                    @if (!live && CanLaunch)
+                    {
+                        <RadzenButton Text="@Strings.Session_Launch" Icon="play_arrow" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat"
+                                      Disabled="launching" Click="LaunchAsync" />
+                    }
                     @if (CanComplete)
                     {
                         <RadzenButton Text="@Strings.Session_Complete" Icon="check" Size="ButtonSize.Small"

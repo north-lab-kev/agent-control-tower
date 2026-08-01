@@ -1020,17 +1020,34 @@ up, this becomes a badge again — with evidence behind it.
 
 ### Error handling & retry
 
-Any `error` in Your turn is **manually retriable** — a **Retry** action in
-the drawer re-attempts the task (via `--resume <sessionId>` to continue where it
-failed; fresh-seeded from `initialPrompt` if the transcript is gone) → back to
-Executing. Error kinds and what retry means:
+An `error` in Your turn is **manually retriable** — **Retry** resumes the session
+(`--resume <sessionId>`) and asks it to continue → back to Executing. Three
+constraints, all decided while building it on 2026-08-01:
+
+- **It sends a continue-message, not `initialPrompt`.** Re-sending the opening
+  instruction to a session forty turns deep tells it to start the work over; by then
+  that instruction describes a beginning that no longer exists, and the transcript the
+  resume just reopened is the real context. So the message says only that the session
+  was interrupted (`RetryInstruction`, localised like `AutoGitInstruction`), and it
+  rides the resume command line — ACT still types nothing into a terminal.
+- **It is offered only when the process is gone.** A CLI that is still alive is one the
+  user can type into, and its terminal is a click away; offering Retry there would mean
+  killing a usable session. So Retry is the case the user cannot handle themselves, and
+  it needs no kill and no new input path. Its home is the **board strip** rather than
+  the session rail, because opening a failed card's terminal already resumes it.
+- **There is no fresh-seed fallback.** Duplicating the task already makes a new card
+  with the same configuration, so a "start over from `initialPrompt`" path would be a
+  second way to do an existing thing.
+
+Error kinds and what retry means:
 
 - **Transient / environmental** — *model not available*, *out of tokens /
-  rate-limited* mid-run, network. Retriable once the cause clears. For these the
-  drawer lets the user **edit `launchConfig` first** (e.g. switch `model`) then
-  Retry; for a limit hit, Retry becomes available once the window resets
-  (optionally auto-retry — ties to scheduling backpressure, but default is
-  manual).
+  rate-limited* mid-run, network. Retriable once the cause clears. For these the user
+  **edits `launchConfig` first** (e.g. switch `model`) then retries — which works
+  because the task form freezes the prompt past the launch boundary but deliberately
+  leaves the launch config editable (see *Interaction*). For a limit hit, Retry becomes
+  available once the window resets (optionally auto-retry — ties to scheduling
+  backpressure, but default is manual).
 - **Execution** — crash / non-zero exit / tool failure. Retriable (resume), may
   warrant investigation first.
 - **In-session git failure** (`autoGit`) — not a distinct case: the agent's turn ends,
@@ -1379,7 +1396,7 @@ long until it resets, and the local time it resets at. It is the same data
 `schedule` and backpressure reason about, made visible.
 
 **Source: a live HTTP endpoint per agent**, authenticated with a bearer token read
-from that CLI's own credential file, polled **once every 5 minutes and never faster
+from that CLI's own credential file, polled **once every 3 minutes and never faster
 than once a minute**. Endpoints, response
 shapes and the alternatives that were rejected (Claude Code's `statusLine` payload,
 scraping `/usage` from a pty, deriving from transcripts, Codex's rollout
@@ -1401,7 +1418,7 @@ Five rules the design turns on:
   because refresh tokens rotate and racing the CLI could invalidate the user's login.
   The token is never logged, never persisted, and goes nowhere but the vendor.
 - **The poll rate is a budget, not a preference.** Neither endpoint is documented or
-  promised, so `Usage:PollSeconds` defaults to 300 and is *clamped* to [60, 3600] — the
+  promised, so `Usage:PollSeconds` defaults to 180 and is *clamped* to [60, 3600] — the
   floor is not configurable away. The gap is measured from the end of one request to the
   start of the next, so a slow endpoint is never asked again the instant it answers, and
   a failure that reached the network doubles the wait up to a 15-minute ceiling

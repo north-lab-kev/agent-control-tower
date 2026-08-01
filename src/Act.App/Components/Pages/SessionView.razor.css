@@ -117,6 +117,24 @@
     color: var(--act-ink);
 }
 
+/* The share, set apart from the raw pair beside it: the numbers answer "how much", the percentage
+   answers "how close to full", and only the second one is read at a glance. */
+.facts dd .pct {
+    color: var(--act-dim);
+    margin-left: 0.3rem;
+}
+
+/* Same 3px rule the flight strip uses, so a card and its own terminal read as one thing. */
+.facts ::deep .ctxbar {
+    height: 3px;
+    margin-top: 0.25rem;
+    background: var(--act-track);
+}
+
+.facts ::deep .ctxbar .rz-progressbar-value {
+    background: var(--act-run);
+}
+
 .facts dd.path {
     font-family: var(--act-mono);
     font-size: 0.68rem;

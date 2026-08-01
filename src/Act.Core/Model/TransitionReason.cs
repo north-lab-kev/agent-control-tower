@@ -14,6 +14,8 @@ public enum TransitionReason
 {
     Launched,
     LaunchedWithAdjustments,
+    Retried,
+    RetriedWithAdjustments,
     LaunchFailed,
     MovedByHand,
 

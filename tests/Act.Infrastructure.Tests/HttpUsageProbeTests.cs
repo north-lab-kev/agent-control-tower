@@ -78,7 +78,7 @@ public class HttpUsageProbeTests
             .Availability.Should().Be(UsageAvailability.Unreachable);
 
     [Fact]
-    public async Task A_probe_switched_off_in_configuration_reports_off()
+    public async Task Usage_switched_off_in_configuration_reports_off()
     {
         var handler = new Handler(HttpStatusCode.OK, "{}");
         var options = new UsageOptions { Enabled = false };

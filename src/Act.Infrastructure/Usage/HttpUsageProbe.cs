@@ -20,11 +20,10 @@ public sealed class HttpUsageProbe(
 
     public async Task<UsageProbeResult> ReadAsync(CancellationToken cancellationToken = default)
     {
-        var configured = options.For(Agent);
-
-        if (!options.Enabled || !configured.Enabled)
+        if (!options.Enabled)
             return Unavailable(UsageAvailability.Off);
 
+        var configured = options.For(Agent);
         var path = Fallback(configured.CredentialsPath, dialect.DefaultCredentialsPath());
 
         if (files.Read(path) is not { } credentials)
