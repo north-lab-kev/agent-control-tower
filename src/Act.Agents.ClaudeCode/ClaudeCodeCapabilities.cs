@@ -28,6 +28,18 @@ public static class ClaudeCodeCapabilities
     // blocked falls back to 200k. Both make ACT's percentage read low, never high.
     private const int Million = 1_000_000;
 
+    // All six, and each maps to a distinct `--permission-mode` value the CLI names itself, so there is
+    // nothing approximate here — unlike Codex, which offers five.
+    private static readonly IReadOnlyList<PermissionMode> Modes =
+    [
+        PermissionMode.Default,
+        PermissionMode.Plan,
+        PermissionMode.AcceptEdits,
+        PermissionMode.Auto,
+        PermissionMode.DontAsk,
+        PermissionMode.Bypass,
+    ];
+
     public static AgentCapabilities Current { get; } = new(
         [
             new AgentModel("opus", "Opus 5", Efforts, "high", Million),
@@ -36,6 +48,6 @@ public static class ClaudeCodeCapabilities
             new AgentModel("haiku", "Haiku 4.5", Efforts, "low", 200_000),
         ],
         "sonnet",
-        new HashSet<PermissionMode>(Enum.GetValues<PermissionMode>()),
+        Modes,
         DesktopHandoff: true);
 }

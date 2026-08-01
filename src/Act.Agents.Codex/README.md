@@ -9,9 +9,14 @@ Responsibilities:
 - **Launch** — spawn `codex` under the pseudo-terminal with the task text as its
   positional prompt and ACT's `--profile` layered over the user's config. No
   input channel: the user types in the embedded terminal.
-- **Observers** — process signals today; the session rollout tail (binding,
-  activity, turn end, enrichment) is **not written yet** — step 8 items 6–7. Its
-  hooks do not fire on the pinned CLI, so the command-hook forwarder is generated
-  but dormant — see `docs/codex-hooks-findings.md`.
+- **Observers** — command hooks forwarded to ACT's loopback endpoint (lifecycle,
+  activity, `PermissionRequest`), the session rollout tail (enrichment: tokens,
+  context, the last message), and process signals. Verified end to end on
+  2026-07-31; the long detour to get there — the hooks fire, but ACT was quoting
+  the program token, so every one failed — is in
+  `docs/codex-hooks-findings.md`, which is worth reading before touching the
+  hook config.
 - **Normalized mappings** — `model` / `effort` / `permissionMode` → Codex's real
-  settings; raw events → normalized events.
+  settings; raw events → normalized events. Note the adapter declares **five**
+  permission modes rather than six: Codex has no classifier tier, so `auto` is
+  not offered.

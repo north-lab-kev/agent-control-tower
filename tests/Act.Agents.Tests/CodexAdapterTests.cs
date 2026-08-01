@@ -98,18 +98,32 @@ public class CodexAdapterTests
         pty.Last.Arguments.Should().NotContain("--ask-for-approval");
     }
 
-    // Codex has no classifier tier, so `auto` genuinely lands on `acceptEdits`'s flags. The
-    // never-silently-drop rule says say so rather than let the user believe otherwise.
+    // Codex has no classifier tier. It used to be *substituted* with `on-request` and an adjustment,
+    // which only existed because the form offered every mode to every agent; now that
+    // `CodexCapabilities` does not offer it, the honest outcome is a rejection carrying a message —
+    // and never both, which is the never-silently-drop rule's whole shape.
     [Fact]
-    public void Auto_is_recorded_as_an_adjustment_because_Codex_has_no_classifier()
+    public void Auto_is_rejected_because_Codex_does_not_offer_it()
     {
         var adapter = new CodexAdapter(new StubPtyHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
 
         var resolution = adapter.Resolve(new LaunchConfig { PermissionMode = PermissionMode.Auto });
 
-        resolution.CanLaunch.Should().BeTrue();
-        resolution.Adjustments.Should().ContainSingle(
+        resolution.CanLaunch.Should().BeFalse();
+        resolution.Rejections.Should().ContainSingle().Which.Should().Contain("Auto");
+        resolution.Adjustments.Should().NotContain(
             adjustment => adjustment.Field == nameof(LaunchConfig.PermissionMode));
+    }
+
+    // The five it does offer all launch untouched — the other half of the same contract.
+    [Fact]
+    public void Every_mode_codex_offers_resolves_cleanly()
+    {
+        var adapter = new CodexAdapter(new StubPtyHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
+
+        foreach (var mode in adapter.Capabilities.PermissionModes)
+            adapter.Resolve(new LaunchConfig { PermissionMode = mode })
+                .CanLaunch.Should().BeTrue($"Codex offers {mode}");
     }
 
     [Fact]

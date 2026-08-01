@@ -151,7 +151,7 @@ public class TranscriptTailTests
             new AgentModel("haiku", "Haiku 4.5", ["low"], "low", 200_000),
         ],
         "opus",
-        new HashSet<PermissionMode>());
+        []);
 
     private static TranscriptTail Tail(FakeReader reader)
         => new(reader, new ModelLineNormalizer(), Capabilities, Path);

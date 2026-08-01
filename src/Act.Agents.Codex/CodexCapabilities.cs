@@ -24,6 +24,21 @@ public static class CodexCapabilities
     private static readonly IReadOnlyList<string> ThroughUltra =
         ["low", "medium", "high", "xhigh", "max", "ultra"];
 
+    // Five, not six — `Auto` is deliberately absent. Codex has no classifier tier, so
+    // `CodexPermissions` resolves it to the *same* `on-request` + `workspace-write` pair as
+    // `AcceptEdits`, and `IsApproximate` has always admitted that by recording an adjustment at
+    // launch. Offering both put two identical choices in the form, one of them described as
+    // "a model classifier approves or denies, never asks" — which Codex does not do and which is the
+    // opposite of what `on-request` means. Not offering it is the honest version of the same fact.
+    private static readonly IReadOnlyList<PermissionMode> Modes =
+    [
+        PermissionMode.Default,
+        PermissionMode.Plan,
+        PermissionMode.AcceptEdits,
+        PermissionMode.DontAsk,
+        PermissionMode.Bypass,
+    ];
+
     public static AgentCapabilities Current { get; } = new(
         [
             new AgentModel("gpt-5.6-terra", "GPT-5.6 Terra", ThroughUltra, "medium"),
@@ -32,6 +47,6 @@ public static class CodexCapabilities
             new AgentModel("gpt-5.4-mini", "GPT-5.4 Mini", ThroughXHigh, "medium"),
         ],
         "gpt-5.6-terra",
-        new HashSet<PermissionMode>(Enum.GetValues<PermissionMode>()),
+        Modes,
         DesktopHandoff: false);
 }

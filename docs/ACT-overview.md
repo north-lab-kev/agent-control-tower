@@ -531,7 +531,10 @@ values, and defines behavior for unsupported values (map to nearest equivalent
   new-task modal narrows the effort list when the model changes. Some models ignore
   effort entirely, so it may still be a no-op.
 - `permissionMode` — **first-class normalized field**, fixed set ACT understands:
-  `default | plan | acceptEdits | auto | dontAsk | bypass`. Adapter-mapped
+  `default | plan | acceptEdits | auto | dontAsk | bypass`. The *set* is shared and the
+  stored value is normalized — so a card keeps its meaning if it is retargeted at the other
+  agent — but **which of them a given agent offers is that adapter's capability**, and the
+  form lists only those. Adapter-mapped
   (Claude Code: `--permission-mode …`; ACT's `bypass` maps to that CLI's
   `bypassPermissions`). Verified against the installed CLI, whose own choices are
   `acceptEdits | auto | bypassPermissions | default | dontAsk | plan`, resolving
@@ -555,13 +558,24 @@ values, and defines behavior for unsupported values (map to nearest equivalent
   | `default` | `-a untrusted -s workspace-write` |
   | `plan` | `-a never -s read-only` (no mutations possible) |
   | `acceptEdits` | `-a on-request -s workspace-write` |
-  | `auto` | `-a on-request -s workspace-write` *(the model decides when to ask — Codex's closest analogue to a classifier)* |
   | `dontAsk` | `-a never -s workspace-write` (failures returned to the model, never prompts) |
   | `bypass` | `--dangerously-bypass-approvals-and-sandbox` |
 
-  `auto` and `acceptEdits` land on the same flags, so the Codex adapter records an
-  **adjustment** for `auto` rather than pretending it honoured a distinct mode —
-  the never-silently-drop rule applied to a genuine overlap.
+  **`auto` is absent from that table on purpose: Codex does not offer it.** It has no
+  classifier tier, so the mode could only land on `acceptEdits`'s own flags — and
+  `-a on-request` means *the model* decides when to ask, which is the opposite of the
+  "never prompts" the mode promises. It was briefly offered anyway and substituted with a
+  recorded adjustment; that only made sense while the form showed every mode to every
+  agent. Since **the set of modes is a per-agent capability** — `AgentCapabilities.PermissionModes`,
+  declared by each adapter in the order the form should show it, exactly as models are — Codex
+  now offers five and Claude Code six, and a stored `auto` on a Codex card is *rejected* at
+  launch with a message rather than quietly run as something else. Substituted or rejected,
+  never both.
+
+  - **Beware one name collision.** ACT's `plan` is the read-only/never-ask pair above. It is
+    **not** Codex's *Plan collaboration mode* (`/plan` in the TUI), which makes the model propose
+    a plan instead of doing the work and is what gates its `request_user_input` tool. Different
+    axis, same word; see *Codex hook findings*.
 
   - **This is a state-machine knob, not just config.** It governs how often a card
     enters Your turn blocked: `default` ⇒ often; `acceptEdits` ⇒ less; `auto`,
@@ -570,7 +584,7 @@ values, and defines behavior for unsupported values (map to nearest equivalent
     silently allows, while `dontAsk` silently **denies** — a `dontAsk` task never
     stalls overnight but may finish having been blocked from work it needed, so it
     trades a stalled card for a possibly incomplete one. `auto` sits between
-    them, delegating the call to a classifier.
+    them, delegating the call to a classifier — on Claude Code only.
   - `plan` (read-only, no mutations) is the natural fit for a **planning task**
     that emits follow-ups without touching anything — pairs directly with the
     spawn/plan-decomposition pattern.
@@ -633,8 +647,9 @@ process is something ACT pulls from.
      Claude Code (`~/.claude/projects/<cwd-slug>/<sessionId>.jsonl`) and was rejected:
      it would hardcode undocumented slug rules that break silently.
    - **What owns which number:** the hooks count turns and tool calls first-hand, so
-     the transcript leaves both null for Claude Code and the two never fight over a
-     field. Codex takes them from its rollout only because its hooks are dormant.
+     the transcript leaves both null and the two never fight over a field. True of both
+     agents since 2026-07-31 — Codex counted from its rollout for as long as its hooks
+     were believed dead, and stopped when they were fixed.
 4. **Process source** — ACT's own process supervision of the PTY (always
    ACT-internal, not agent-provided): non-zero exit → `error`; **no hook at all
    within the startup grace → the pre-session prompt** (see *The one prompt no
@@ -646,9 +661,11 @@ process is something ACT pulls from.
 **Example compositions** (adapter's choice, freely mixable):
 - *Claude Code:* HTTP hooks (lifecycle) + transcript source (enrichment) + process
   source.
-- *Codex:* transcript source (binding, turn boundaries, enrichment) + process source
-  — its hooks do not fire on the pinned CLI, so the command-hook forwarder is wired
-  but dormant (see *Codex hook findings* in the roadmap).
+- *Codex:* command hooks via a forwarder script (lifecycle, activity, and
+  `PermissionRequest` — the waiting-prompt event Claude Code has to infer) + transcript
+  source (enrichment, plus `TurnFailed`) + process source. So the two compositions differ
+  only in hook *transport*: http for Claude Code, a forwarder for Codex, which supports
+  command hooks only.
 
 Note what is **not** a source: the terminal itself. ACT pipes the PTY's bytes to
 xterm.js and never reads them for meaning (see *ACT never parses terminal output*).
@@ -881,8 +898,14 @@ not a thing this codebase has evidence for.
 
 What silence in Executing actually means, honestly enumerated:
 
-- **Codex, entirely** — its hooks do not fire, so *no* waiting prompt moves a Codex
-  card. Silence is the only signal such a card can give.
+- ~~**Codex, entirely**~~ — **no longer true, and it was the lead justification.** This said
+  Codex's hooks do not fire, so silence was the only signal such a card could give. They do
+  fire (ACT was quoting the hook command); a Codex card now reports a waiting prompt through
+  `PermissionRequest` like any other. The chip keeps the reasons below, which never depended
+  on it.
+- **A Codex card whose hooks the user declined to trust** — answering the hook-review screen
+  with *"Continue without trusting"* means no payloads at all, and nothing else names the
+  rollout either, so such a card really can only be read through silence.
 - **Blocked *inside* a tool call** — permission was already granted and the command
   itself is waiting (an interactive CLI reading stdin, an install stuck on a private
   registry). The agent is not asking, so no hook fires.

@@ -1,4 +1,4 @@
-# Codex hooks — findings, and how to re-test the blind implementation
+# Codex hooks — how they actually work, and the wrong turns taken to find out
 
 **Status as of 2026-07-31: hooks fire, and ACT's ingestion through them works.** Verified
 live on `codex-cli 0.146.0-alpha.3.1` (card #1091): `SessionStarted`, `ActivityObserved` ×3
@@ -31,21 +31,39 @@ Companion reading: the *Codex facts* and *Codex hook findings* sections of
 
 ## What is established (verified, not assumed)
 
-### Hooks live in a JSON file — not in `config.toml` tables
+### Where hooks are declared: `[[hooks.*]]` tables in ACT's `--profile` layer
 
-The roadmap originally said ACT would write `[[hooks.*]]` TOML tables into a
-`--profile` layer. That is wrong.
+**ACT writes TOML tables, and this is the shape that works** — measured 2026-07-31 and
+pinned by `CodexHookTests`:
 
-- `hooks` in `config.toml` is a **string** holding an absolute path to a JSON file:
-  `hooks = "C:\\path\\to\\hooks.json"`. Writing a `[[hooks.SessionStart]]` table fails
-  with `Error loading config.toml: invalid type: sequence, expected a string in `hooks``.
-- **`$CODEX_HOME/hooks.json` is auto-discovered** with no config key at all. Proven by
-  corrupting the file: every session start then prints
-  `warning: failed to parse hooks config <path>: …`. That warning is the cheapest
-  available probe that the file is being read.
-- The file **must be BOM-free**. PowerShell's `Out-File -Encoding utf8` writes a BOM and
-  the parser dies with `expected value at line 1 column 1`. Use
-  `UTF8Encoding($false)` / .NET defaults without BOM.
+```toml
+[[hooks.SessionStart]]
+matcher = "*"
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = "C:\\WINDOWS\\system32\\cmd.exe /c \"C:\\…\\act-hook-forward.cmd\" SessionStart"
+```
+
+> ⚠️ **This section said the exact opposite until 2026-07-31**, under a heading claiming it was
+> verified: that `hooks` is a *string* path to a json file and that a `[[hooks.*]]` table is
+> rejected. On this CLI it is the string form that is rejected — *"invalid type: string …
+> expected struct HooksToml"* — and every Codex launch died on exit code 1 with an empty
+> terminal until the shape was re-measured. Same version string, opposite result, so an alpha
+> rebuild moved it under the original measurement. **Type-probe the parser before trusting any
+> claim in this file** (see the trap below); the two shapes are one keystroke apart in effect
+> and total in consequence.
+
+`$CODEX_HOME/hooks.json` **is** auto-discovered with no config key, so a json file is a real
+second way in — but not one ACT uses: that path is the user's file, and ACT will not write it.
+ACT briefly wrote the same json into its own directory, where Codex never looks; that file is
+deleted. Two facts from mapping it are still worth keeping:
+
+- A hooks json **must be BOM-free**. PowerShell's `Out-File -Encoding utf8` writes a BOM and
+  the parser dies with `expected value at line 1 column 1`. Use `UTF8Encoding($false)` /
+  .NET defaults without BOM. (ACT's `AgentConfigFiles` does, for every file it writes.)
+- The **handler shape is the same in both dialects**, which is why the json schema below still
+  describes what the profile declares.
 
 Schema (as accepted by the strict serde parser — unknown fields are rejected, which is
 how it was mapped):
@@ -281,114 +299,99 @@ Managed hooks (system/MDM/`requirements.toml`) are trusted by policy.
 run without review for this invocation."* Skips the review screen. Useful for testing;
 **ACT must not ship it on** (it would silently opt the user out of a security gate).
 
-### …and yet nothing ever executed
+---
 
-Discovered and parsed: yes. Executed: never. Everything below was tried:
+## How ACT implements it
+
+`Act.Agents.Codex/CodexHookConfig.cs` generates the config, `CodexHookNormalizer.cs` folds
+payloads into ACT's events, and `CodexAdapter.InjectHooks` wires both. Two files are written
+per launch — the forwarder and the profile — and `CodexHookTests` pins their shape.
+
+- **Declared in ACT's own `--profile` layer** (`$CODEX_HOME/act.config.toml`), never in the
+  user's `config.toml` and never in `$CODEX_HOME/hooks.json`. The profile is the one thing ACT
+  writes outside its own directory, because Codex reads profile layers only from there — and it
+  is written **preserving any `[hooks.state]` tail**, because Codex appends its trust hashes to
+  that same file.
+- **One hook command, identical for every session, every launch and every card**, so the
+  trust hash is stable and the review screen appears at most once per definition change:
+
+      <system32>\cmd.exe /c "<act-data>\agent-config\act-hook-forward.cmd" <EventName>
+
+  Everything variable — endpoint url, per-session token, task id — is supplied through the
+  PTY process environment (`ACT_HOOK_ENDPOINT`, `ACT_HOOK_TOKEN`, `ACT_TASK_ID`). The
+  forwarder is **shared, not per task**: its path is inside the hashed definition, so a
+  per-task path would mean a fresh trust prompt for every card the user ever creates. There is
+  a test for exactly that (`The_hook_definition_is_byte_identical_across_launches_and_carries_no_secret`)
+  — it caught the mistake when the paths *were* per task.
+- **Unquoted program, quoted path.** The single most expensive fact in this file; see *The exec
+  failure* above.
+- **A script, not an inline `curl`.** Inside a shell the environment variables resolve however
+  Codex passes them, and the definition never changes when the endpoint does.
+- **Observability only.** The forwarder always exits `0`, never emits
+  `permissionDecision: "deny"` / `decision: "block"`, never exit code 2. A hook that can
+  block is a hook that can wedge the user's session, and ACT decides nothing.
+- **Never `bypass_hook_trust`.** The review screen is the user's call. (`-c
+  bypass_hook_trust=true` also proved useless for testing: with it set, hooks did not run at
+  all in `exec` mode.)
+- **Hooks are the primary path.** They carry `session_id` and `transcript_path`, so they own
+  binding, liveness and the turn/tool counts; the rollout file is read for enrichment only.
+
+---
+
+## History: the two months this file spent being wrong
+
+Kept because the *methods* are reusable and because it shows how confidently a wrong
+measurement can be written down. Nothing below is current guidance.
+
+**2026-07-29 — "hooks do not fire at all."** Discovered and parsed, never executed. Tried:
 
 | Variable | Values tried |
 |---|---|
 | Event | `SessionStart`, `UserPromptSubmit` |
 | `matcher` | `"*"`, `"startup"` |
 | Trust | untrusted; trusted via the review screen; `bypass_hook_trust=true` |
-| Mode | `codex exec` (several runs, incl. a full successful turn); interactive TUI in a real console with a real tty |
+| Mode | `codex exec`; interactive TUI in a real console with a real tty |
 | Config location | `$CODEX_HOME/hooks.json`; `-c hooks.…` overrides; a `--profile` layer; `codex_hooks.…` key |
 | Working directory | fresh temp dir; a directory already `trust_level = "trusted"` |
-| Hook command | `cmd /c echo … >> file`; and finally a **single-token `.bat` path** with no args, quoting, or redirection, so shell parsing could not be at fault |
+| Hook command | `cmd /c echo … >> file`; a single-token `.bat` path with no args |
 
-No output file was ever written, and the session rollout `.jsonl` contains no hook
-entries. `codex exec` additionally appears to skip hooks entirely — even trust-bypassed.
+That conclusion sent ACT down the file-inference path — `CodexRolloutFinder`, rollout-derived
+events and counts, ~200 lines — all of it since deleted. **What it got wrong:** the last row.
+A single-token `.bat` path *does* run; a **quoted** one does not, and ACT's generated command
+was quoted. Upstream <https://github.com/openai/codex/issues/17532> was blamed and was never
+the problem.
 
-**The original question ACT needed answered is therefore still open:** whether a
-`command` hook interpolates `$VAR` itself, or execs without a shell so the command must
-be `cmd /c …` to read the inherited environment. Nothing ran, so nothing could be
-measured. ACT's implementation hedges (below).
+**The lesson worth keeping.** Every check asked "did anything arrive?", and no arrived means the
+same thing whether the CLI is broken or ACT's own command is malformed. What separated them was
+a probe that could only fail one way: a differently-named script per candidate shape, logging its
+own name. Prefer a measurement whose failure modes are distinguishable over one that merely
+answers yes or no.
 
----
+## Probing a newer CLI
 
-## How ACT implements it, blind
+Still-useful mechanics, none of them hook-specific:
 
-Shipped in `Act.Agents.Codex/CodexHookConfig.cs` (config generation) and
-`CodexHookNormalizer.cs` (payload → ACT events), wired from `CodexAdapter.InjectHooks`.
-Both files carry a **PENDING — WRITTEN BLIND** header. Tests in
-`tests/Act.Agents.Tests/CodexHookTests.cs` pin what ACT *writes*, which is all that can be
-checked while nothing fires — **a green suite there is not evidence that ingestion works.**
-
-Design choices and *why*, so a later session can tell a deliberate decision from a bug:
-
-- **Write `hooks.json` into ACT's own data directory and point at it** with
-  `hooks = "<abs path>"` from the `--profile` layer (`$CODEX_HOME/act.config.toml`), rather
-  than dropping a file into `$CODEX_HOME/hooks.json`. Auto-discovery works, but that path is
-  the *user's* file — ACT must never own or overwrite it. The profile file is the one thing
-  ACT writes outside its own directory, because Codex reads profile layers only from there.
-- **One hook command, identical for every session, every launch and every card**, so the
-  trust hash is stable and the review screen appears at most once:
-
-      "<act-data>/agent-config/act-hook-forward.cmd" <EventName>
-
-  Everything variable — endpoint url, per-session token, task id — is supplied through the
-  PTY process environment (`ACT_HOOK_ENDPOINT`, `ACT_HOOK_TOKEN`, `ACT_TASK_ID`). Note the
-  forwarder and the hooks json are **shared, not per task**: the forwarder's path appears
-  inside the hashed definition, so a per-task path would mean a fresh trust prompt for every
-  card the user ever creates. There is a test for exactly that
-  (`The_hook_definition_is_byte_identical_across_launches_and_carries_no_secret`) — it caught
-  the mistake when the paths *were* per task.
-- **A script, not an inline `curl`.** It is the hedge for the unanswered expansion question:
-  read inside a shell, `$VAR` / `%VAR%` resolve from the inherited environment whether or not
-  Codex interpolates first. It also means the definition never changes when the endpoint does.
-- **Observability only.** The forwarder always exits `0`, never emits
-  `permissionDecision: "deny"` / `decision: "block"`, never exit code 2. A hook that can
-  block is a hook that can wedge the user's session, and ACT decides nothing.
-- **Never `bypass_hook_trust`.** The review screen is the user's call.
-- **Files and process signals are the primary path, not the fallback.** Session binding
-  comes from the rollout file (`~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<uuid>.jsonl`,
-  indexed by `~/.codex/session_index.jsonl`), because `SessionStart` — the intended source
-  of `session_id` — does not arrive. Hooks are an *upgrade* that switches on if and when
-  they fire.
-
----
-
-## Re-test checklist (for a future session)
-
-Run this against a newer `codex-cli` before trusting any of the above.
-
-1. **Find a runnable CLI.** The Store-packaged `codex.exe` under `C:\Program Files\
-   WindowsApps\OpenAI.Codex_*\app\resources\` is readable but **cannot be executed** by a
-   normal process (access denied), and `codex` is **not on `PATH`** on a desktop-app-only
-   install. The runnable copy is the `CODEX_CLI_PATH` recorded in
-   `~/.codex/config.toml` — `%LOCALAPPDATA%\OpenAI\Codex\bin\<hash>\codex.exe`.
-   *(This also matters for `ExecutableResolver`: resolving `codex` by name fails on such
-   an install.)*
-2. **Confirm the version moved** and check whether the issue above shipped:
-   `codex --version`.
-3. **Smoke-test discovery.** Write deliberately invalid JSON to `$CODEX_HOME/hooks.json`
-   and start a session; expect `warning: failed to parse hooks config …`. If that warning
-   is absent, discovery itself changed — re-map the schema before anything else.
-4. **Smoke-test execution with the simplest possible hook.** BOM-free file, a
-   `SessionStart` / `matcher: "startup"` handler whose `command` is a single-token
-   absolute `.bat` path that appends one line to a file, plus
-   `-c bypass_hook_trust=true` so no keypress is needed:
-
-   ```json
-   { "hooks": { "SessionStart": [ { "matcher": "startup",
-       "hooks": [ { "type": "command", "command": "C:\\tmp\\probe.bat" } ] } ] } }
-   ```
-
-   Start the **interactive TUI** (not `exec` — it appears not to run hooks) in a real
-   console. If the file appears, hooks are back.
-5. **Then answer the deferred question:** give the probe arguments
-   `probe.bat $ACT_HOOK_ENDPOINT %ACT_HOOK_ENDPOINT%` and have it log `%1`, `%2` and
-   `%ACT_HOOK_ENDPOINT%`. That distinguishes *Codex interpolates `$VAR`* from *the child
-   inherits the environment and a shell expands it* — and tells us whether the
-   shell-script hedge can be dropped for a direct `curl`.
-   *(Contrast with Claude Code, where this is settled: `--settings` accepts
-   `type: "http"` hooks with a custom header, verified live, so no forwarder is involved.)*
-6. **Verify the payload.** Confirm each event carries `session_id`, `cwd`,
-   `hook_event_name`, `model`, `permission_mode`, `turn_id`, `transcript_path`, and that
-   `PermissionRequest` fires for a real approval prompt. If so, Codex regains the
-   event-based permission signal ACT currently lacks for both agents.
-7. **Confirm the trust story end to end:** that ACT's stable command template triggers the
-   review screen exactly once, and that relaunching (and restarting ACT) does not
-   re-trigger it. That is the whole reason the URL and token live in the environment.
+- **Find a runnable CLI.** The Store-packaged `codex.exe` under `C:\Program Files\
+  WindowsApps\OpenAI.Codex_*\app\resources\` is readable but **cannot be executed** by a
+  normal process (access denied), and `codex` is **not on `PATH`** on a desktop-app-only
+  install. The runnable copy is the `CODEX_CLI_PATH` recorded in
+  `~/.codex/config.toml` — `%LOCALAPPDATA%\OpenAI\Codex\bin\<hash>\codex.exe`.
+  *(This also matters for `ExecutableResolver`: resolving `codex` by name fails on such
+  an install — and for ACT's task form, whose *Advanced* → agent binary field exists for it.)*
+- **Type-probe the config parser.** It **ignores unknown keys**, so a wrong shape parses in
+  silence and buys nothing; giving a candidate key the wrong *type* makes serde name what it
+  wanted (`hooks.state = 1` → "expected a map", `matcher = 1` → "expected a string",
+  `type = "bogus"` → "unknown variant, expected one of `command`, `prompt`, `agent`"). Absence
+  of an error therefore means the key does not exist, which is how Plan mode was ruled out as a
+  config key.
+- **Probe hook *execution* with distinct per-candidate scripts**, one per event, each logging its
+  own name — one trust prompt measures the whole matrix, because the review screen counts only
+  the definitions that changed.
+- **A zero-token probe:** `-m <unsupported-model> exec …` initialises the session (so config
+  and hooks load, and warnings print) and then fails at the model request without spending
+  anything. Good for schema iteration; **not** for testing hook execution, since it aborts early.
+- **`warning: failed to parse hooks config <path>`** — write deliberately invalid json to
+  `$CODEX_HOME/hooks.json` to confirm a file is being read at all.
 
 ### Other tripwires hit while testing, worth not re-discovering
 
@@ -396,11 +399,9 @@ Run this against a newer `codex-cli` before trusting any of the above.
   listed now), and the ChatGPT-account entitlement is narrower than the catalog:
   `gpt-5.4`, `gpt-5.6-sol` and `gpt-5.4-mini` were all rejected with *"not supported when
   using Codex with a ChatGPT account"*; `gpt-5.5` worked. Resolve models at runtime rather
-  than pinning a table.
-- A zero-token probe: `-m <unsupported-model> exec …` initialises the session (so config
-  and hooks load, and warnings print) and then fails at the model request without spending
-  anything. Good for schema iteration; **not** good for testing hook *execution*, since it
-  aborts early.
+  than pinning a table. **`gpt-5.4` is still `~/.codex/config.toml`'s default**, so a Codex card
+  that leaves the model blank inherits one this account cannot use — the task form's default
+  covers ACT's own launches, but a hand-run `codex` will hit it.
 - There is an app-server JSON-RPC method **`hooks/list`** (observed in
   `~/.codex/logs_2.sqlite`) which would be the clean, non-interactive way to inspect hook
   registration and trust status. The `initialize` handshake shape was not worked out —

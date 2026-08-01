@@ -517,11 +517,9 @@ verifiable, and leaves something runnable.
         would never badge `needs permission`, because no file or process signal reports a waiting
         prompt. True until the hooks ran: `PermissionRequest` now delivers exactly that (item 9). The
         quiet chip keeps its other justifications; this is no longer one of them.
-      - **And a divergence to undo, not a design.** Claude Code leaves `TurnCount` and `ToolCalls`
-        null because its hooks count both first-hand; Codex takes them from the rollout only because
-        its hooks do not fire. **The moment a CLI build fires them, align Codex with Claude Code** —
-        hooks own the counts, the transcript owns enrichment. The note is on `ITranscriptNormalizer`
-        too, where whoever revisits the fold will see it.
+      - ✅ **A divergence to undo, and it was undone.** Codex took `TurnCount` and `ToolCalls` from the
+        rollout only because its hooks were believed dead; both agents now leave them to the hooks,
+        which count first-hand. Landed with item 9, and the note is off `ITranscriptNormalizer`.
     - [x] **9. The hook exec failure — chased and fixed 2026-07-31. Codex is no longer the
       lesser-instrumented agent.** The rule, measured across two probe rounds of five candidate shapes
       each (tables in *Codex hook findings*): **the program token must be unquoted, and everything
@@ -878,13 +876,15 @@ here because three of them contradict assumptions the spec made for Claude Code.
 
 - **No `--session-id`. ACT cannot pre-mint the binding.** Codex mints its own id;
   `codex resume <SESSION_ID|name>` and `codex fork <SESSION_ID>` take a UUID
-  afterwards. The plan was to learn the id from the **`SessionStart` hook payload**, but
-  hooks do not fire on the current CLI (see *Codex hook findings*), so **the fallback is
-  now the primary path**: sessions land in
-  `~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<uuid>.jsonl`, indexed by
-  `~/.codex/session_index.jsonl` (`{id, thread_name, updated_at}`). ACT binds by watching
-  for the rollout file whose `cwd` and start time match the launch it just made, so
-  `Card.sessionId` stays null from launch until that file appears.
+  afterwards. ✅ **The id comes from the hook payload, as originally planned** — every one
+  carries `session_id` *and* `transcript_path`, and `SessionEventSink.Bind` persists it onto
+  the card. Verified live 2026-07-31.
+  - **The detour, kept because the rollout layout is still worth knowing.** While the hooks
+    were believed dead, ACT bound by *inferring* the file: sessions land in
+    `~/.codex/sessions/YYYY/MM/DD/rollout-<ts>-<uuid>.jsonl`, indexed by
+    `~/.codex/session_index.jsonl` (`{id, thread_name, updated_at}`), and `CodexRolloutFinder`
+    matched the newest whose `cwd` and start time fit the launch. That class is **deleted**;
+    the rollout is still read, but only for enrichment, and only once a payload names it.
 - **Hooks are a close cousin of Claude Code's**, and `PermissionRequest` is an
   **explicit event** rather than something to infer from `Notification`.
   Events: `SessionStart`, `SessionEnd`, `SubagentStart` (session-scoped);

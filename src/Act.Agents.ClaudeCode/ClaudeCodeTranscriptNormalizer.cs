@@ -22,8 +22,9 @@ public sealed class ClaudeCodeTranscriptNormalizer : ITranscriptNormalizer
 
     // Enrichment only, and no events: everything about *liveness* — activity, turn ends, prompts — is
     // reported first-hand by hooks, which are neither a poll behind nor dependent on a file being
-    // flushed. Codex has to emit events here because its hooks are dormant; this is the shape both
-    // adapters should end up with.
+    // flushed. Both adapters have this shape since 2026-07-31; Codex raises one event here, `TurnFailed`,
+    // because a turn failing while the process stays alive is the one thing no hook has been seen to
+    // report.
     public TranscriptFold Fold(EnrichmentSnapshot snapshot, IReadOnlyList<string> lines)
     {
         foreach (var line in lines)

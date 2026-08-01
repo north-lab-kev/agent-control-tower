@@ -24,15 +24,13 @@ internal sealed record CodexPermissions(string Approval, string Sandbox, bool By
         PermissionMode.Plan => new(Never, ReadOnly),
         PermissionMode.AcceptEdits => new(OnRequest, WorkspaceWrite),
 
-        // Codex has no classifier tier, and `on-request` — the model choosing when to ask — is
-        // its nearest neighbour. It is the same pair `acceptEdits` resolves to, so the adapter
-        // records an adjustment rather than pretending the two modes stayed distinct.
-        PermissionMode.Auto => new(OnRequest, WorkspaceWrite),
-
         PermissionMode.DontAsk => new(Never, WorkspaceWrite),
         PermissionMode.Bypass => new(Never, WorkspaceWrite, Bypass: true),
+
+        // `Auto` lands here, and that is the point: Codex has no classifier tier, so
+        // `CodexCapabilities` does not offer the mode and `Resolve` rejects it before a launch can ask
+        // this map for a translation. The arm stays total rather than throwing, because a stored card
+        // may still carry a mode this build no longer offers.
         _ => new(Untrusted, WorkspaceWrite),
     };
-
-    public static bool IsApproximate(PermissionMode mode) => mode is PermissionMode.Auto;
 }

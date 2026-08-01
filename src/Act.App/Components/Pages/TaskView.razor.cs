@@ -75,15 +75,34 @@ public partial class TaskView(
         new(AgentType.Codex, Strings.Agent_Codex),
     ];
 
-    private static SettingChoice<PermissionMode>[] PermissionChoices =>
-    [
-        new(PermissionMode.Default, Strings.Permission_Default),
-        new(PermissionMode.Plan, Strings.Permission_Plan),
-        new(PermissionMode.AcceptEdits, Strings.Permission_AcceptEdits),
-        new(PermissionMode.Auto, Strings.Permission_Auto),
-        new(PermissionMode.DontAsk, Strings.Permission_DontAsk),
-        new(PermissionMode.Bypass, Strings.Permission_Bypass),
-    ];
+    // Whatever the chosen agent declares, in its order — the same rule the model and effort lists
+    // follow. Codex offers five and Claude Code six, and neither the form nor this list knows why.
+    // A stored mode the agent no longer offers is kept visible for the same reason a stored model is:
+    // an editing card must not show an empty dropdown for a value it is still carrying.
+    private IReadOnlyList<SettingChoice<PermissionMode>> PermissionChoices
+    {
+        get
+        {
+            var offered = agents.For(form.Agent).PermissionModes;
+
+            var modes = offered.Contains(form.Permission)
+                ? offered
+                : [.. offered, form.Permission];
+
+            return [.. modes.Select(mode => new SettingChoice<PermissionMode>(mode, Label(mode)))];
+        }
+    }
+
+    private static string Label(PermissionMode mode) => mode switch
+    {
+        PermissionMode.Default => Strings.Permission_Default,
+        PermissionMode.Plan => Strings.Permission_Plan,
+        PermissionMode.AcceptEdits => Strings.Permission_AcceptEdits,
+        PermissionMode.Auto => Strings.Permission_Auto,
+        PermissionMode.DontAsk => Strings.Permission_DontAsk,
+        PermissionMode.Bypass => Strings.Permission_Bypass,
+        _ => mode.ToString(),
+    };
 
     private static SettingChoice<TaskSchedule>[] ScheduleChoices =>
     [
@@ -432,6 +451,12 @@ public partial class TaskView(
 
         if (!Models.Contains(form.Model))
             form.Model = null;
+
+        // Unlike a model, a permission mode has no "agent default" to fall back to — the field is
+        // required and every agent honours `Default`, so switching to an agent that does not offer the
+        // chosen mode lands there rather than leaving a value the launch would reject.
+        if (!agents.For(agent).Supports(form.Permission))
+            form.Permission = PermissionMode.Default;
     }
 
     private void OnScheduleChanged(TaskSchedule schedule)

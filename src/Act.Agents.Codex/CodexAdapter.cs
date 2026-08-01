@@ -32,28 +32,13 @@ public sealed class CodexAdapter(
     // the way `claude://resume?session=` does, so ACT does not pretend to offer one.
     public string? DesktopHandoffUrl(string sessionId, string workingDir) => null;
 
+    // No substitution left to make. `Auto` used to launch as `on-request` with a recorded adjustment,
+    // because the form offered every mode to every agent and Codex had to do *something* with a
+    // classifier tier it does not have. `CodexCapabilities` no longer offers it, so the honest outcome
+    // is the resolver's rejection — and a card still carrying `Auto` from before says so at launch
+    // instead of quietly running as a different mode.
     public LaunchConfigResolution Resolve(LaunchConfig config)
-    {
-        var resolution = LaunchConfigResolver.Resolve(Agent, Capabilities, config);
-        if (!CodexPermissions.IsApproximate(config.PermissionMode))
-            return resolution;
-
-        var mapped = CodexPermissions.For(config.PermissionMode);
-
-        return resolution with
-        {
-            Adjustments =
-            [
-                .. resolution.Adjustments,
-                new LaunchConfigAdjustment(
-                    nameof(LaunchConfig.PermissionMode),
-                    config.PermissionMode.ToString(),
-                    $"--ask-for-approval {mapped.Approval}",
-                    "Codex has no classifier tier, so 'auto' runs as 'on-request' — the model "
-                        + "decides when to ask rather than a classifier deciding for it."),
-            ],
-        };
-    }
+        => LaunchConfigResolver.Resolve(Agent, Capabilities, config);
 
     public Task<IAgentSession> LaunchAsync(
         AgentLaunchRequest request,
@@ -150,15 +135,16 @@ public sealed class CodexAdapter(
         return new PtyAgentSession(taskId, sessionId, process, Submit, clock);
     }
 
-    // PENDING — the hooks this writes have never been seen to fire; see `CodexHookConfig` and
-    // `docs/codex-hooks-findings.md`. It is wired anyway because the cost is one file and one
-    // flag, and because a CLI fix is expected: when hooks start firing, Codex ingestion and its
-    // `PermissionRequest` signal come online without further work here.
+    // Two files: the forwarder ACT's hook definitions point at, and the profile that declares them.
+    // Both are written on every launch and are byte-identical every time, which is what keeps Codex's
+    // hook-trust hash stable — the token and the endpoint url ride the process environment instead.
+    // ACT never passes `bypass_hook_trust`: the review screen is the user's call, and the card will
+    // park on it the first time.
     //
-    // The three files are written on every launch and are byte-identical every time, which is what
-    // keeps Codex's hook-trust hash stable — the token and the endpoint url ride the process
-    // environment instead. ACT never passes `bypass_hook_trust`: the review screen is the user's
-    // call, and the card will park on it the first time.
+    // There was a third file, an `act-hooks.json` in ACT's own directory, from when the profile shape
+    // was thought to be a path to one. Codex only auto-discovers that json at `$CODEX_HOME/hooks.json`
+    // — the user's file, which ACT will not write — so ACT's copy was read by nobody. Deleted
+    // 2026-07-31 with the rest of the blind-era scaffolding.
     private string? InjectHooks(Guid taskId, List<string> arguments)
     {
         if (hooks.UrlFor(Agent) is null)
@@ -172,10 +158,6 @@ public sealed class CodexAdapter(
         var forwarder = configFiles.WriteShared(
             CodexHookConfig.ForwarderFileName,
             CodexHookConfig.ComposeForwarder());
-
-        configFiles.WriteShared(
-            CodexHookConfig.HooksFileName,
-            CodexHookConfig.ComposeHooks(forwarder));
 
         // The profile declares the handlers as `[[hooks.<Event>]]` tables. It used to write
         // `hooks = "<path>"`, which this CLI rejects outright — *"invalid type: string … expected

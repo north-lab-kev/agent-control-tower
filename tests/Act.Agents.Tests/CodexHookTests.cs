@@ -50,21 +50,30 @@ public class CodexHookInjectionTests
     }
 
     // Every event ACT observes has to be declared, or the ones left out are simply never reported.
-    [Fact]
-    public async Task The_profile_declares_every_event_the_hooks_file_does()
+    // Spelled out here rather than compared against another generated file: this list is the actual
+    // requirement, and asserting it against a second thing ACT writes only proves the two agree.
+    [Theory]
+    [InlineData("SessionStart")]
+    [InlineData("SessionEnd")]
+    [InlineData("UserPromptSubmit")]
+    [InlineData("PreToolUse")]
+    [InlineData("PermissionRequest")]
+    [InlineData("PostToolUse")]
+    [InlineData("PreCompact")]
+    [InlineData("PostCompact")]
+    [InlineData("Stop")]
+    public async Task The_profile_declares_every_event_act_observes(string name)
     {
         var files = new StubAgentConfigFiles();
 
         await using var session = await LaunchAsync(new StubPtyHost(), new StubHookEndpoint(), files);
 
         var profile = files.External.Single().Value;
-        var declared = JsonDocument.Parse(files.Content(CodexHookConfig.HooksFileName)!)
-            .RootElement.GetProperty("hooks")
-            .EnumerateObject()
-            .Select(property => property.Name);
 
-        foreach (var name in declared)
-            profile.Should().Contain($"[[hooks.{name}]]");
+        profile.Should().Contain($"[[hooks.{name}]]")
+            .And.Contain($"[[hooks.{name}.hooks]]");
+
+        CommandFor(profile, name).Should().EndWith($" {name}");
     }
 
     // The command value wraps the forwarder path in quotes so a path with spaces survives, and TOML
@@ -99,12 +108,7 @@ public class CodexHookInjectionTests
 
         await using var session = await LaunchAsync(new StubPtyHost(), new StubHookEndpoint(), files);
 
-        var command = JsonDocument.Parse(files.Content(CodexHookConfig.HooksFileName)!)
-            .RootElement.GetProperty("hooks")
-            .GetProperty("SessionStart")[0]
-            .GetProperty("hooks")[0]
-            .GetProperty("command")
-            .GetString()!;
+        var command = CommandFor(files.External.Single().Value, "SessionStart");
 
         command.Should().NotStartWith("\"");
 
@@ -127,12 +131,7 @@ public class CodexHookInjectionTests
 
         await using var session = await LaunchAsync(new StubPtyHost(), new StubHookEndpoint(), files);
 
-        var command = JsonDocument.Parse(files.Content(CodexHookConfig.HooksFileName)!)
-            .RootElement.GetProperty("hooks")
-            .GetProperty("Stop")[0]
-            .GetProperty("hooks")[0]
-            .GetProperty("command")
-            .GetString()!;
+        var command = CommandFor(files.External.Single().Value, "Stop");
 
         var quoted = command.IndexOf('"');
 
@@ -175,59 +174,26 @@ public class CodexHookInjectionTests
         files.Preserved.Should().Contain(path);
     }
 
-    // The definition is hashed for trust, so the profile and the json must not drift: two spellings
-    // of the same handler would be two hashes and a second review prompt.
+    // Only `command` handlers, because they are the only type Codex actually runs — `prompt` and
+    // `agent` parse and are skipped. `PermissionRequest` is the one Codex has and Claude Code does not:
+    // an explicit event for a waiting prompt rather than a notification message to classify.
     [Fact]
-    public async Task The_profile_and_the_hooks_file_declare_the_same_command()
+    public async Task Every_handler_is_a_command_handler()
     {
         var files = new StubAgentConfigFiles();
 
         await using var session = await LaunchAsync(new StubPtyHost(), new StubHookEndpoint(), files);
 
-        var command = JsonDocument.Parse(files.Content(CodexHookConfig.HooksFileName)!)
-            .RootElement.GetProperty("hooks")
-            .GetProperty("SessionStart")[0]
-            .GetProperty("hooks")[0]
-            .GetProperty("command")
-            .GetString()!;
+        var profile = files.External.Single().Value;
 
-        // The same command, spelled for TOML: separators and quotes both escaped.
-        var escaped = command.Replace("\\", "\\\\").Replace("\"", "\\\"");
-
-        files.External.Single().Value.Should().Contain(escaped);
-    }
-
-    [Fact]
-    public async Task The_hooks_file_declares_command_handlers_per_event()
-    {
-        var files = new StubAgentConfigFiles();
-
-        await using var session = await LaunchAsync(new StubPtyHost(), new StubHookEndpoint(), files);
-
-        var document = JsonDocument.Parse(files.Content(CodexHookConfig.HooksFileName)!);
-        var events = document.RootElement.GetProperty("hooks");
-
-        var handler = events.GetProperty("PermissionRequest")[0].GetProperty("hooks")[0];
-
-        handler.GetProperty("type").GetString().Should().Be("command");
-        handler.GetProperty("command").GetString().Should().Contain("PermissionRequest");
-    }
-
-    // The one Codex has and Claude Code does not: an explicit event for a waiting prompt, rather
-    // than a notification message to guess from.
-    [Fact]
-    public async Task The_hooks_file_subscribes_to_permission_request()
-    {
-        var files = new StubAgentConfigFiles();
-
-        await using var session = await LaunchAsync(new StubPtyHost(), new StubHookEndpoint(), files);
-
-        files.Content(CodexHookConfig.HooksFileName).Should().Contain("PermissionRequest");
+        profile.Should().Contain("type = \"command\"");
+        profile.Should().NotContain("type = \"prompt\"").And.NotContain("type = \"agent\"");
+        CommandFor(profile, "PermissionRequest").Should().EndWith(" PermissionRequest");
     }
 
     // The load-bearing property of the whole design: Codex hashes each handler definition and
     // re-prompts for trust when it changes. Two launches of the same card — and of a different one
-    // — must produce byte-identical hook json, which is only possible while the token and the
+    // — must produce byte-identical declarations, which is only possible while the token and the
     // endpoint url stay in the environment.
     [Fact]
     public async Task The_hook_definition_is_byte_identical_across_launches_and_carries_no_secret()
@@ -244,8 +210,8 @@ public class CodexHookInjectionTests
         {
         }
 
-        var a = first.Content(CodexHookConfig.HooksFileName)!;
-        var b = second.Content(CodexHookConfig.HooksFileName)!;
+        var a = first.External.Single().Value;
+        var b = second.External.Single().Value;
 
         a.Should().Be(b);
         a.Should().NotContain(endpoint.Register(TaskId));
@@ -307,6 +273,36 @@ public class CodexHookInjectionTests
         files.External.Should().BeEmpty();
     }
 
+    // The profile is the only place ACT declares its hooks, so the assertions read it — which means
+    // reading TOML back. Each event's command ends with that event's name, which is what makes one
+    // line findable without parsing the whole document.
+    private static string CommandFor(string profile, string eventName)
+    {
+        var line = profile.ReplaceLineEndings("\n").Split('\n')
+            .Single(text => text.StartsWith("command = \"", StringComparison.Ordinal)
+                && text.TrimEnd().EndsWith($" {eventName}\"", StringComparison.Ordinal));
+
+        return Unescape(line["command = \"".Length..].TrimEnd()[..^1]);
+    }
+
+    // A TOML basic string, undone: a backslash escapes whatever follows it, so the pair collapses to
+    // that character. Written out rather than chained `Replace` calls, which get the overlapping
+    // `\\"` case wrong.
+    private static string Unescape(string value)
+    {
+        var text = new System.Text.StringBuilder(value.Length);
+
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (value[index] is '\\' && index + 1 < value.Length)
+                index++;
+
+            text.Append(value[index]);
+        }
+
+        return text.ToString();
+    }
+
     private static Task<IAgentSession> LaunchAsync(
         StubPtyHost pty,
         IHookEndpoint endpoint,
@@ -321,8 +317,9 @@ public class CodexHookInjectionTests
             TerminalSize.Default));
 }
 
-// PENDING SUBJECT — no real Codex payload has ever been captured; these encode the documented
-// contract so a future session can compare them against a live one.
+// Written against the documented contract and since **confirmed against real payloads** (2026-07-31):
+// `SessionStart`, `UserPromptSubmit`, the tool events, `PermissionRequest`, `Stop` and
+// `request_user_input` all normalized correctly from live runs.
 public class CodexHookNormalizerTests
 {
     private static readonly DateTimeOffset At = new(2026, 7, 29, 22, 0, 0, TimeSpan.Zero);
@@ -360,11 +357,11 @@ public class CodexHookNormalizerTests
     // has stopped, so classifying it as activity would leave a blocked card sitting in Executing
     // reporting `running` — the same defect `AskUserQuestion` caused for Claude Code.
     //
-    // ⚠️ NOT LIVE-VERIFIED, and it cannot be yet: `request_user_input` is only offered in Codex's
-    // **Plan collaboration mode**, which is not a config key (`collaboration_mode`, `mode` and
-    // `collaboration` were all type-probed on 2026-07-31 and none exist) and so cannot be set at
-    // launch. Asked to use it in Default mode the CLI answers *"I can't use request_user_input in the
-    // current Default mode"* and asks in prose instead, which correctly ends the turn as `to review`.
+    // ✅ Verified live on card #1097 by typing `/plan` into ACT's own terminal — the only way in, since
+    // `request_user_input` is offered solely in Codex's **Plan collaboration mode**, which is a TUI
+    // slash command and not a config key (`collaboration_mode`, `mode` and `collaboration` were all
+    // type-probed and none exist). The real payload put its text in a **`questions` array**, each entry
+    // carrying a `question`; `prompt` and `question` stay as fallbacks.
     [Fact]
     public void A_request_for_user_input_is_a_question_rather_than_activity()
     {

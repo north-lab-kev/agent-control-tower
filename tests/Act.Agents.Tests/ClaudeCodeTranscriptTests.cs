@@ -65,8 +65,9 @@ public class ClaudeCodeTranscriptTests
         Fold(Answered, compacted).ContextUsed.Should().Be(8012);
     }
 
-    // Claude Code's hooks count both first-hand, and a second producer would fight the first for the
-    // same field. Codex has to take them from its rollout file only because its hooks do not fire.
+    // The hooks count both first-hand, and a second producer would fight the first for the same field.
+    // True of Codex too since its hooks were fixed — `CodexTranscriptNormalizer` leaves them null for
+    // exactly this reason.
     [Fact]
     public void Turns_and_tool_calls_are_left_to_the_hooks()
     {

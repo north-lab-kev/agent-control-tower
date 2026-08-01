@@ -14,17 +14,16 @@ namespace Act.Agents.Codex;
 //     groups — `[[hooks.<Event>]]` with `matcher`, then `[[hooks.<Event>.hooks]]` with a handler.
 //     It is **not** a string path to a json file; that shape is what the CLI now rejects.
 //   * A handler's `type` is one of `command`, `prompt`, `agent`, and `command` is a single string.
-//   * `$CODEX_HOME/hooks.json` is auto-discovered on its own — `{ "hooks": { "<Event>": [ … ] } }`,
-//     BOM-free — so the json and the profile are two independent ways in. ACT writes the json into
-//     its own data directory (never over the user's) and declares the same handlers in its profile.
+//   * `$CODEX_HOME/hooks.json` is auto-discovered on its own, so it is a second way in — but ACT
+//     does not use it. That path is the *user's* file, and ACT writing over it is out of the
+//     question; writing the same json into ACT's own directory instead, as this class did while the
+//     hooks were believed dead, produced a file Codex never looks at. The profile is the one way in.
 //   * Codex hashes each handler definition and re-prompts for trust when it changes — so the
 //     command below must be byte-identical on every launch, which is why the endpoint url and
 //     the token are read from the process environment instead of appearing in it.
 public static class CodexHookConfig
 {
     public const string ProfileName = "act";
-
-    public const string HooksFileName = "act-hooks.json";
 
     // Where Codex records the trust hashes, inside the profile ACT generates. ACT never writes this
     // section and never reads its values — it only has to avoid destroying it.
@@ -54,35 +53,7 @@ public static class CodexHookConfig
     // a tool-name pattern and ACT observes them all. Both were accepted by the parser.
     private const string AllSources = "*";
 
-    public static string ComposeHooks(string forwarderPath)
-    {
-        var events = new JsonObject();
-
-        foreach (var name in Events)
-        {
-            events[name] = new JsonArray(
-                new JsonObject
-                {
-                    ["matcher"] = AllSources,
-                    ["hooks"] = new JsonArray(
-                        new JsonObject
-                        {
-                            ["type"] = "command",
-                            ["command"] = Command(forwarderPath, name),
-                        }),
-                });
-        }
-
-        var document = new JsonObject
-        {
-            ["description"] = "ACT — observability only. Reports to ACT; never blocks a turn.",
-            ["hooks"] = events,
-        };
-
-        return document.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-    }
-
-    // ACT's profile layer, declaring the same handlers the json file does. Only what ACT owns goes in
+    // ACT's profile layer — the only place ACT declares its hooks. Only what ACT owns goes in
     // it — the user's `~/.codex/config.toml` is never edited by ACT (Codex itself writes hook-trust
     // state there, under `[hooks.state.…]`, which ACT cannot prevent).
     //

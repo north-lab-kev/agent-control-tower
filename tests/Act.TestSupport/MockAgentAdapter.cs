@@ -38,7 +38,7 @@ public sealed class MockAgentAdapter(
             new AgentModel(DeepModel, "Mock Deep", ["low", "high", "max"], "high"),
         ],
         FastModel,
-        new HashSet<PermissionMode>(Enum.GetValues<PermissionMode>()),
+        Enum.GetValues<PermissionMode>(),
         DesktopHandoff: true);
 
     public string? DesktopHandoffUrl(string sessionId, string workingDir)

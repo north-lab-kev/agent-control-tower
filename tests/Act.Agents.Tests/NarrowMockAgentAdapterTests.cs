@@ -15,5 +15,5 @@ public class NarrowMockAgentAdapterTests : AgentAdapterContract
         new AgentCapabilities(
             [new AgentModel("narrow-model", "Narrow", [])],
             "narrow-model",
-            new HashSet<PermissionMode> { PermissionMode.Default, PermissionMode.Bypass }));
+            [PermissionMode.Default, PermissionMode.Bypass]));
 }
