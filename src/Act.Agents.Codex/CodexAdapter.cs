@@ -181,9 +181,15 @@ public sealed class CodexAdapter(
         // `hooks = "<path>"`, which this CLI rejects outright — *"invalid type: string … expected
         // struct HooksToml"* — so every Codex launch died on exit code 1 with an empty terminal
         // before the shape was re-measured. `CodexHookConfig.ComposeProfile` records how.
-        configFiles.WriteExternal(
+        // Carrying the tail across, because Codex appends `[hooks.state]` — the trust hashes — to this
+        // very file. Rewriting it wholesale threw away the review the user had just answered, so the
+        // nine-hook gate came back on every launch. Comparing the file with ACT's own bytes is not
+        // enough: Codex rewrites the whole thing in its own formatting when it saves, so the block ACT
+        // wrote does not come back byte-identical. Measured 2026-07-31.
+        configFiles.WriteExternalPreservingTail(
             CodexHookConfig.ProfilePath(CodexHookConfig.ResolveCodexHome()),
-            CodexHookConfig.ComposeProfile(forwarder));
+            CodexHookConfig.ComposeProfile(forwarder),
+            CodexHookConfig.TrustStateKey);
 
         arguments.Add("--profile");
         arguments.Add(CodexHookConfig.ProfileName);

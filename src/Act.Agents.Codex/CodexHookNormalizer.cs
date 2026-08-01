@@ -5,12 +5,13 @@ using Act.Core.Model;
 
 namespace Act.Agents.Codex;
 
-// PENDING — WRITTEN BLIND, like `CodexHookConfig`. No Codex hook payload has ever been observed
-// arriving, because hooks do not fire on the pinned CLI; the field names below come from the
-// documented payload contract, not from a captured request. See `docs/codex-hooks-findings.md`.
+// Written blind against the documented payload contract, and **proven against real payloads on
+// 2026-07-31**: `SessionStart`, `UserPromptSubmit`, the tool events, `Stop` and `PermissionRequest`
+// all normalized correctly on the first live run. See `docs/codex-hooks-findings.md`.
 //
 // The one place Codex is richer than Claude Code: `PermissionRequest` is an explicit event, so a
-// waiting prompt is reported rather than inferred from a notification message.
+// waiting prompt is reported rather than inferred from a notification message. Measured live as
+// `apply_patch` on a write approval, raising `needs permission` from a prompt ACT never touched.
 public sealed class CodexHookNormalizer : IHookNormalizer
 {
     public AgentType Agent => AgentType.Codex;

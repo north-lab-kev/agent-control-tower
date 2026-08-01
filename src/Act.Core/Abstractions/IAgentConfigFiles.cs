@@ -19,6 +19,12 @@ public interface IAgentConfigFiles
     // from `$CODEX_HOME`. ACT writes its own file there and never edits the user's.
     void WriteExternal(string absolutePath, string content);
 
+    // The same, for a file the CLI writes back into. Codex appends its hook-trust state to the very
+    // profile ACT generates, so an unconditional rewrite destroys the trust the user just granted and
+    // the review screen returns on every launch. Everything from the first line beginning with
+    // `tailMarker` is carried across verbatim. Measured 2026-07-31.
+    void WriteExternalPreservingTail(string absolutePath, string content, string tailMarker);
+
     void DeleteExternal(string absolutePath);
 
     void Clear(Guid taskId);

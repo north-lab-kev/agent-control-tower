@@ -14,8 +14,9 @@ namespace Act.App.Sessions;
 // debounce and reports late anyway; a read from a stored offset once a second is a few kilobytes.
 //
 // Two ways a session's file becomes known, and the second one is a workaround. Claude Code *tells* ACT
-// in every hook payload (`SessionRegistry.TranscriptLocated`). Codex fires no hooks, so its file has to
-// be found by convention — see `ITranscriptFinder`, and **delete that path once Codex hooks fire**.
+// in every hook payload (`SessionRegistry.TranscriptLocated`). Codex's hooks do fire as of
+// 2026-07-31, but no payload has yet been seen to arrive, so its file is still found by convention —
+// see `ITranscriptFinder`, and **delete that path once a payload names the file**.
 public sealed class TranscriptPump(
     SessionRegistry sessions,
     BoardState board,
@@ -28,11 +29,6 @@ public sealed class TranscriptPump(
     ILogger<TranscriptPump> log) : IAsyncDisposable
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(1);
-
-    // How long to keep looking for a file the launch should have created. A rollout appears within a
-    // second or two; a minute of trying covers a slow start, and giving up leaves a card that still
-    // works — it simply reports nothing but what its process can say.
-    private static readonly TimeSpan SearchWindow = TimeSpan.FromMinutes(1);
 
     private readonly Dictionary<AgentType, ITranscriptNormalizer> byAgent =
         normalizers.ToDictionary(normalizer => normalizer.Agent);
@@ -73,13 +69,16 @@ public sealed class TranscriptPump(
             sessions.ClaimedTranscripts,
             session.SessionId);
 
-        var deadline = clock.Now + SearchWindow;
-
         using var timer = new PeriodicTimer(PollInterval);
 
         try
         {
-            while (sessions.IsLive(session.TaskId) && clock.Now < deadline)
+            // For as long as the session lives, with no deadline. A rollout normally appears within a
+            // second or two, but it is written when the *session* starts — and Codex parks on its
+            // pre-session gates first, so the wait is however long the user takes to answer them. A
+            // one-minute window expired while a hook-review screen was still up, and the card then
+            // ran a whole turn unbound and reported nothing. Measured 2026-07-31.
+            while (sessions.IsLive(session.TaskId))
             {
                 // The id can arrive while the search is running — a restore binds it late — and an
                 // exact-id match beats the guessing, so it is re-read on every tick.
@@ -94,7 +93,11 @@ public sealed class TranscriptPump(
                     // The binding and the file arrive together for Codex, and this is the only place
                     // either can come from: there is no id to pre-mint and no payload to read.
                     if (found.SessionId is { Length: > 0 } sessionId)
+                    {
                         sink.Bind(session.TaskId, sessionId);
+
+                        await PersistSessionIdAsync(session.TaskId, sessionId);
+                    }
 
                     sessions.LocateTranscript(session.TaskId, found.Path);
 
@@ -105,7 +108,7 @@ public sealed class TranscriptPump(
             }
 
             log.LogInformation(
-                "No transcript found for task {TaskId} within the search window.",
+                "Task {TaskId} ended without a transcript ever being found.",
                 session.TaskId);
         }
         catch (OperationCanceledException)
@@ -115,6 +118,20 @@ public sealed class TranscriptPump(
         {
             log.LogError(error, "Transcript search for task {TaskId} stopped.", session.TaskId);
         }
+    }
+
+    // `sink.Bind` reaches the live session only, and a session object dies with the process. For an
+    // agent whose id ACT cannot pre-mint, the card is the only place the binding can survive — without
+    // this the rail reads "reported at session start" for the whole session, and a restore can never
+    // match its rollout by identity.
+    private async Task PersistSessionIdAsync(Guid taskId, string sessionId)
+    {
+        if (board.Card(taskId) is not { } card || card.SessionId == sessionId)
+            return;
+
+        card.SessionId = sessionId;
+
+        await board.UpdateAsync(card);
     }
 
     // An agent with no transcript normalizer is not an error: it simply reports what its hooks and its

@@ -38,6 +38,36 @@ public sealed class AgentConfigFiles(string dataDirectory) : IAgentConfigFiles
         File.WriteAllText(absolutePath, content, Utf8);
     }
 
+    public void WriteExternalPreservingTail(string absolutePath, string content, string tailMarker)
+    {
+        var tail = Tail(absolutePath, tailMarker);
+
+        WriteExternal(absolutePath, tail is null ? content : content + Environment.NewLine + tail);
+    }
+
+    private static string? Tail(string absolutePath, string tailMarker)
+    {
+        try
+        {
+            if (!File.Exists(absolutePath))
+                return null;
+
+            var lines = File.ReadAllLines(absolutePath, Utf8);
+            var start = Array.FindIndex(
+                lines,
+                line => line.TrimStart().StartsWith(tailMarker, StringComparison.Ordinal));
+
+            if (start < 0)
+                return null;
+
+            return string.Join(Environment.NewLine, lines[start..]);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
     public void DeleteExternal(string absolutePath)
     {
         try

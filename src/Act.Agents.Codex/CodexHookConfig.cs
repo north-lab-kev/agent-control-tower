@@ -5,11 +5,9 @@ using Act.Core.Agents;
 
 namespace Act.Agents.Codex;
 
-// PENDING — WRITTEN BLIND. Codex hooks do not fire at all on `codex-cli 0.146.0-alpha.3.1`:
-// discovered and parsed, never executed. Everything here is shaped to what the measurements say
-// *should* work and has never been observed working. Do not treat a silent Codex card as proof
-// this file is correct — read `docs/codex-hooks-findings.md` first, then run its re-test
-// checklist against a newer CLI. Upstream: https://github.com/openai/codex/issues/17532
+// Codex's hooks fire and ACT ingests them, verified live 2026-07-31 on `codex-cli
+// 0.146.0-alpha.3.1` — which reverses the finding this file was written blind under. The
+// `exited with code 1` that made them look dead was ACT quoting the program token; see `Command`.
 //
 // Facts this file depends on, each measured against the CLI rather than read from docs:
 //   * The profile's `hooks` is a **table whose keys are event names**, each a list of matcher
@@ -27,6 +25,10 @@ public static class CodexHookConfig
     public const string ProfileName = "act";
 
     public const string HooksFileName = "act-hooks.json";
+
+    // Where Codex records the trust hashes, inside the profile ACT generates. ACT never writes this
+    // section and never reads its values — it only has to avoid destroying it.
+    public const string TrustStateKey = "[hooks.state";
 
     public static string ForwarderFileName
         => OperatingSystem.IsWindows() ? "act-hook-forward.cmd" : "act-hook-forward.sh";
@@ -110,10 +112,22 @@ public static class CodexHookConfig
         return builder.ToString();
     }
 
-    // One string, quoted so a path with spaces survives, and identical to what the json file
-    // declares — the definition is hashed for trust, so the two must not drift.
+    // One string, identical to what the json file declares — the definition is hashed for trust, so
+    // the two must not drift.
+    //
+    // **The program token must not be quoted, and everything after it may be.** Measured
+    // 2026-07-31 by giving five events five candidate shapes and reading which ones ran: Codex takes
+    // quotes literally when it resolves the program, so `"<path>" <Event>` is a program named
+    // `"<path>"`, which does not exist — `hook exited with code 1`, with the script never reached.
+    // ACT quoted the path from the first launch it ever made, which is why no Codex hook had ever
+    // arrived. An *unquoted* path runs, and so does an unquoted shell with a quoted argument after
+    // it — including a path containing a space, because at that point `cmd` is doing the parsing.
     private static string Command(string forwarderPath, string eventName)
-        => $"\"{forwarderPath}\" {eventName}";
+        => OperatingSystem.IsWindows()
+            ? $"{WindowsShell} /c \"{forwarderPath}\" {eventName}"
+            : $"/bin/sh \"{forwarderPath}\" {eventName}";
+
+    private static string WindowsShell => Path.Combine(Environment.SystemDirectory, "cmd.exe");
 
     // A script rather than an inline `curl`, for the hash: the definition names the forwarder and
     // an event, both stable, while everything per-session stays in the environment. A script is

@@ -217,9 +217,10 @@ verifiable, and leaves something runnable.
       `IAgentTerminal.SubmitAsync` stays for step 11's send-back, where the TUI has been
       idle for as long as the user took to decide. Regression-guarded in
       `ClaudeCodeAdapterTests` — prompt positional, and nothing written at launch.
-- [ ] **8. Ingestion — observability only** — normalized event stream fed per
-  adapter (Claude: http hooks + transcript + process; **Codex: transcript + process only**
-  — its hooks do not fire on the current CLI, see *Codex hook findings*), over a localhost
+- [x] **8. Ingestion — observability only** — normalized event stream fed per
+  adapter (Claude: http hooks + transcript + process; **Codex: hooks + rollout + process** —
+  its hooks were thought dead and turned out to be ACT's own quoting bug, fixed and verified
+  2026-07-31, see *Codex hook findings*), over a localhost
   hook endpoint with a **per-session token**.
   **Includes the hook config injection itself** — Claude's `--settings` file and Codex's
   `--profile` layer — which step 7 deliberately left out: a settings file pointing at a
@@ -420,11 +421,9 @@ verifiable, and leaves something runnable.
         *"Hooks need review / 9 hooks are new or changed / 1. Review hooks · 2. Trust all and
         continue · 3. Continue without trusting"* — **before** the session exists, so no rollout, no
         binding, nothing to ingest. And **`-c bypass_hook_trust=true` does not skip it** on this
-        build, though it is the documented escape hatch. Two ways out, and it is a decision rather
-        than a fix: answer the review once so Codex stores its `trusted_hash` (a one-time cost, like
-        directory trust — but it grants ACT's hooks permission to run outside the sandbox), or write
-        the profile **without** hook declarations until hooks actually fire, keeping the measured
-        composer ready for that day.
+        build, though it is the documented escape hatch. It was a decision rather than a fix, and it
+        was taken on 2026-07-31 — **answer the review once and keep the declarations**; see item 8
+        below for the price and the alternative that was rejected.
       - ✅ **A real mis-binding bug, found by the live run and fixed.** Card #1082 bound itself to a
         session from 30 minutes earlier and reported *its* tokens and turns. Cause:
         `SessionLauncher` does `card.LaunchedAt ??= clock.Now`, so on a relaunch that stamp is
@@ -464,30 +463,92 @@ verifiable, and leaves something runnable.
         `LaunchConfig.AgentBinary` existed and nothing could ever set it, so a Store-installed Codex —
         not on `PATH`, runnable only from the `CODEX_CLI_PATH` in `~/.codex/config.toml` — could not
         be launched at all. One field under *Advanced*, both languages.
-    - [ ] **8. Decide what ACT declares in the Codex profile — the only thing left in this step.**
-      The pty is fine and the ingestion code is written; what stops a Codex card is the hook-review
-      gate ACT's own declarations raise, which the documented bypass does not skip. Either the review
-      is answered once (Codex then remembers the hash, and launches are clean — at the price of
-      trusting ACT's hooks to run outside the sandbox), or ACT writes the profile without hook
-      declarations until hooks fire. *Verify:* a launched Codex card reaches its TUI, binds its
-      session id from the rollout, and reports live state and metrics — **in a real window**, since
-      the preview pane neither renders nor accepts terminal input.
-      - **The gap to accept when it does work.** Until a CLI build fires hooks, a Codex card can show
-        `running` / metrics / `to review` / `error`, but will **never** badge `needs permission` or
-        `needs answer`, because no file or process signal reports a waiting prompt. The quiet chip is
-        all a parked Codex card gets, which is the main reason that chip exists.
+    - [x] **8. What ACT declares in the Codex profile — decided 2026-07-31: it keeps declaring them,
+      and the review is answered once.** The pty is fine and the ingestion code is written; what stops
+      a Codex card is the hook-review gate ACT's own declarations raise, which the documented bypass
+      does not skip. The alternative considered and rejected was writing the profile *without* hook
+      declarations until hooks fire — cheaper today, but it trades away the day-one readiness that
+      `PermissionRequest` (the only real permission signal either agent could ever have) is worth.
+      **So there is no code change here: `CodexHookConfig.ComposeProfile` stays as it is, all nine
+      handlers declared, and the gate is answered in the terminal like every other prompt.**
+      - **What answering it costs, so it is a known price and not a surprise.** Pressing *2. Trust all
+        and continue* makes Codex write nine `trusted_hash` entries into the **user's own**
+        `~/.codex/config.toml` under `[hooks.state.…]`, and grants ACT's forwarder permission to run
+        outside Codex's sandbox. The hash is keyed on file path + event + handler index, so it is
+        *once per definition change*, not once ever — changing the event list or moving the forwarder
+        re-raises the review. That is why the endpoint url and the per-session token ride the process
+        environment and never the command string.
+      - **And the card must not read the gate as a hang.** It is a second pre-session gate stacked on
+        directory trust, and the startup-grace path (`StartupPromptWaiting` → Your turn,
+        `needs permission`) is what has to cover it.
+      - ✅ **Verified live 2026-07-31 in a real Edge window, cards #1083–#1088.** A Codex card reaches
+        its TUI, **binds its session id from the rollout** (`019fbac2-…` on the rail), and reports
+        live state and metrics — `to review` on `task_complete`, `13k/258k` context, 1 turn. A
+        relaunch reaches the TUI with **no gate at all**. Three bugs had to be fixed to get there,
+        all found by this run and none visible to the unit suite:
+        - **Codex writes its trust hashes into ACT's own generated profile**, not the user's
+          `config.toml` as the findings doc claimed — so ACT's unconditional rewrite destroyed the
+          review the user had just answered and the nine-hook gate came back every launch. Now
+          `IAgentConfigFiles.WriteExternalPreservingTail` carries everything from the first
+          `[hooks.state` line across. **Comparing the file with ACT's own bytes is not enough** and
+          that first attempt failed live: Codex reformats ACT's block when it saves.
+        - **The transcript search window expired while the gate was still up.** It ran one minute
+          from spawn, and the rollout only appears when the *session* starts — 2m43s later on the
+          measured run — so a card ran a whole turn unbound and reported nothing. The search now runs
+          for as long as the session is live, with no deadline.
+        - **`sink.Bind` never reached the card.** It set the id on the live session object only, so
+          `card.SessionId` stayed null: the rail read "reported at session start" forever and
+          `CodexRolloutFinder.ByIdentity` — the restore path — could never fire. `TranscriptPump`
+          now persists it. Not unit-tested: nothing covers the pump, which is the stateful app-level
+          loop the testing standard deliberately leaves to live verification.
+      - ✅ **And the run reversed the premise of this whole item: Codex hooks fire, and ACT's
+        ingestion through them now works.** They fire on the same `0.146.0-alpha.3.1` the findings doc
+        measured as never running them. Every one failed at first with `hook exited with code 1` — and
+        the cause was **ACT's own quoting**, not the CLI: Codex does not strip quotes when it resolves
+        the program, so `"<forwarder>" <Event>` named a program called `"C:\…"`. ACT had emitted that
+        since its first Codex launch, which is why no payload had ever arrived. Fixed to
+        `<cmd.exe unquoted> /c "<forwarder>" <Event>` and verified live on card #1091:
+        `SessionStarted`, `ActivityObserved` ×3, `TurnEnded` normalized from real payloads, no red
+        blocks in the terminal, and the timeline carrying **one** turn-end row even though the rollout
+        reports it too. Details and the measurement tables are in *Codex hook findings*.
+      - ~~**The gap to accept when it does work.**~~ **Closed 2026-07-31** — this said a Codex card
+        would never badge `needs permission`, because no file or process signal reports a waiting
+        prompt. True until the hooks ran: `PermissionRequest` now delivers exactly that (item 9). The
+        quiet chip keeps its other justifications; this is no longer one of them.
       - **And a divergence to undo, not a design.** Claude Code leaves `TurnCount` and `ToolCalls`
         null because its hooks count both first-hand; Codex takes them from the rollout only because
         its hooks do not fire. **The moment a CLI build fires them, align Codex with Claude Code** —
         hooks own the counts, the transcript owns enrichment. The note is on `ITranscriptNormalizer`
         too, where whoever revisits the fold will see it.
+    - [x] **9. The hook exec failure — chased and fixed 2026-07-31. Codex is no longer the
+      lesser-instrumented agent.** The rule, measured across two probe rounds of five candidate shapes
+      each (tables in *Codex hook findings*): **the program token must be unquoted, and everything
+      after it may be quoted.** Not the `.cmd` extension, not arguments, not the shell, not the
+      sandbox — only the quotes. Shipped as `<cmd.exe unquoted> /c "<forwarder>" <Event>`, which also
+      survives a space in the path because `cmd` parses that part.
+      - ✅ **`PermissionRequest` works, so the "gap to accept" above is closed.** Card #1092: an
+        `apply_patch` approval raised `PermissionRequested` → **`needs permission`**, from a prompt ACT
+        never touched. Codex now has the one signal Claude Code has to infer from a notification
+        message — and it arrives as an explicit event rather than a string to classify.
+      - **Two follow-ups this opens, neither urgent and neither done.** Payloads carry `session_id`
+        *and* `transcript_path`, so `CodexRolloutFinder` — written explicitly to stand in for a hook
+        that never fired, and marked for deletion when one did — can be retired; and the
+        `TurnCount`/`ToolCalls` divergence noted above is now the thing to align, since hooks can own
+        the counts and the transcript the enrichment. Both need their own live verify, so they are
+        left as work rather than folded into a verified step.
+      - **The probe technique, worth reusing.** Codex prints no detail beyond the exit code and logs
+        no hook records anywhere, so there is nothing to read — only experiments. Giving each event a
+        differently-named probe that logs its own name turns a yes/no into a table for the price of
+        one trust prompt (the review screen counts only the definitions that changed).
   - **Verify (revised):** for **Claude Code** — live state and metrics update, and a
     permission prompt in the terminal raises the badge without ACT touching the prompt
     (**all observed live**, and since item 4 the strip carries the observed model, context
     against the real window, turns and tokens). For **Codex** — the card binds its session id
     from the rollout file, and shows live state and metrics; no permission/question badge, by
-    measured CLI limitation. **Codex's half is written but unverified**, blocked on its TUI not
-    painting under the pty (item 8).
+    measured CLI limitation. ✅ **Codex's half is now verified live too** — 2026-07-31, card #1088:
+    session id bound from the rollout, `to review`, context and turns on the rail, no gate on
+    relaunch. What remains open is not ingestion but item 9: whether ACT keeps declaring hooks that
+    fire and then fail.
   - **Open questions for this step** (each decides a fallback, so settle them first):
     - ✅ **`--settings` accepts `type: "http"` hooks, and they carry a custom header —
       verified live.** The token rides `x-act-hook-token`; posts authorized. So Claude needs
@@ -523,13 +584,12 @@ verifiable, and leaves something runnable.
       permission notice that follows, since it describes the same block and says less. Verified
       live: an `AskUserQuestion` card lands on `needs answer`, a `Bash` approval on
       `needs permission`.
-    - ✅ **Codex hooks — tested, and they do not fire at all** on `0.146.0-alpha.3.1`; see
-      *Codex hook findings*. This answers the two Codex questions that were here (env
-      expansion, `--profile` layering) by making them moot for now, and **changes this
-      step's plan: Codex ingestion starts from files + process signals**, with hooks as a
-      later upgrade. It also removes `PermissionRequest` as a usable signal, so Codex has
-      *no* event-based permission report either — for now both agents depend on what the
-      files and the process can tell ACT.
+    - ✅ **Codex hooks — they fire, and ACT ingests them.** The 2026-07-29 measurement said they
+      never ran at all; on 2026-07-31, on the same version string, they fire at the right moments,
+      and the `exited with code 1` that followed was ACT quoting the program token. Fixed and
+      verified live (items 8–9). So both agents now report through hooks, `PermissionRequest`
+      included — the file sources remain, but as enrichment rather than the only way in. See
+      *Codex hook findings*.
 - [x] **9. Rules engine** — agent-agnostic: normalized events → column/badge
   transitions; a turn end (`Stop`) routes Executing → Your turn with `to review`;
   `error` from a

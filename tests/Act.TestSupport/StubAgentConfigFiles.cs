@@ -33,6 +33,30 @@ public sealed class StubAgentConfigFiles : IAgentConfigFiles
 
     public void WriteExternal(string absolutePath, string content) => External[absolutePath] = content;
 
+    public void WriteExternalPreservingTail(string absolutePath, string content, string tailMarker)
+    {
+        var tail = External.TryGetValue(absolutePath, out var existing)
+            ? Tail(existing, tailMarker)
+            : null;
+
+        if (tail is not null)
+            Preserved.Add(absolutePath);
+
+        WriteExternal(absolutePath, tail is null ? content : content + Environment.NewLine + tail);
+    }
+
+    public List<string> Preserved { get; } = [];
+
+    private static string? Tail(string existing, string tailMarker)
+    {
+        var lines = existing.ReplaceLineEndings("\n").Split('\n');
+        var start = Array.FindIndex(
+            lines,
+            line => line.TrimStart().StartsWith(tailMarker, StringComparison.Ordinal));
+
+        return start < 0 ? null : string.Join(Environment.NewLine, lines[start..]);
+    }
+
     public void DeleteExternal(string absolutePath) => External.Remove(absolutePath);
 
     public void Clear(Guid taskId)

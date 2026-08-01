@@ -9,9 +9,9 @@ using AwesomeAssertions;
 
 namespace Act.Agents.Tests;
 
-// PENDING SUBJECT — these pin what ACT *writes*, which is all that can be tested while Codex
-// hooks do not fire at all (see `docs/codex-hooks-findings.md`). They will keep passing whether or
-// not the CLI ever runs the hooks, so a green suite here is not evidence that ingestion works.
+// These pin what ACT *writes*, which is where the bug that kept every Codex hook from ever running
+// lived — a quoted program token. Ingestion through them was verified live on 2026-07-31; see
+// `docs/codex-hooks-findings.md`.
 public class CodexHookInjectionTests
 {
     private static readonly Guid TaskId = Guid.Parse("6f0d5d5c-16b8-4a2c-9f4d-2f0a3f7c1e11");
@@ -82,8 +82,97 @@ public class CodexHookInjectionTests
             .First(line => line.StartsWith("command = ", StringComparison.Ordinal))
             .Trim();
 
-        value.Should().StartWith("command = \"\\\"").And.EndWith("\\\" SessionStart\"");
+        value.Should().StartWith("command = \"").And.EndWith("\\\" SessionStart\"");
+        value.Should().Contain("\\\"");
         value.Should().NotContain(@"\\\\\");
+    }
+
+    // The regression that made every Codex hook fail from the very first launch, and the whole reason
+    // no payload had ever arrived: **Codex takes quotes literally when it resolves the program.** A
+    // quoted first token is a program named `"C:\…"`, which does not exist — `hook exited with code
+    // 1`, script never reached. Measured 2026-07-31 across five candidate shapes; an unquoted program
+    // runs, and a quoted argument after it is fine because `cmd` parses that part.
+    [Fact]
+    public async Task The_commands_program_is_never_quoted_because_codex_reads_the_quotes_literally()
+    {
+        var files = new StubAgentConfigFiles();
+
+        await using var session = await LaunchAsync(new StubPtyHost(), new StubHookEndpoint(), files);
+
+        var command = JsonDocument.Parse(files.Content(CodexHookConfig.HooksFileName)!)
+            .RootElement.GetProperty("hooks")
+            .GetProperty("SessionStart")[0]
+            .GetProperty("hooks")[0]
+            .GetProperty("command")
+            .GetString()!;
+
+        command.Should().NotStartWith("\"");
+
+        if (OperatingSystem.IsWindows())
+            command.Should().Contain("cmd.exe /c \"");
+        else
+            command.Should().StartWith("/bin/sh \"");
+
+        command.Should().EndWith(" SessionStart");
+        command.Should().Contain(CodexHookConfig.ForwarderFileName);
+    }
+
+    // The forwarder lives under `%LOCALAPPDATA%`, so a username with a space puts a space in the path.
+    // Quoting it is safe *only* after an unquoted program token, which is what makes both halves of
+    // the rule above load-bearing at once.
+    [Fact]
+    public async Task A_forwarder_path_with_a_space_stays_quoted_after_the_unquoted_program()
+    {
+        var files = new StubAgentConfigFiles();
+
+        await using var session = await LaunchAsync(new StubPtyHost(), new StubHookEndpoint(), files);
+
+        var command = JsonDocument.Parse(files.Content(CodexHookConfig.HooksFileName)!)
+            .RootElement.GetProperty("hooks")
+            .GetProperty("Stop")[0]
+            .GetProperty("hooks")[0]
+            .GetProperty("command")
+            .GetString()!;
+
+        var quoted = command.IndexOf('"');
+
+        quoted.Should().BeGreaterThan(0);
+        command[..quoted].Should().NotContain("\"");
+        command.Should().Contain($"\"{Path.Combine(Path.GetTempPath(), "act-tests", CodexHookConfig.ForwarderFileName)}\"");
+    }
+
+    // Codex appends its trust hashes to ACT's own profile, so a relaunch has to carry them across.
+    // Rewriting the file threw the review away and the nine-hook gate came back on every launch — and
+    // comparing bytes is not enough, because Codex reformats ACT's block when it saves, which is
+    // exactly how the first attempt at this failed live.
+    [Fact]
+    public async Task A_relaunch_carries_codexs_trust_state_across_even_when_it_reformatted_the_file()
+    {
+        var files = new StubAgentConfigFiles();
+        var endpoint = new StubHookEndpoint();
+
+        await using (var one = await LaunchAsync(new StubPtyHost(), endpoint, files))
+        {
+        }
+
+        var path = files.External.Single().Key;
+
+        const string state = """
+            [hooks.state]
+
+            [hooks.state.'session_start:0:0']
+            trusted_hash = "sha256:deadbeef"
+            """;
+
+        files.External[path] = files.External[path].ReplaceLineEndings("\n") + "\n" + state;
+
+        await using (var two = await LaunchAsync(new StubPtyHost(), endpoint, files, Guid.NewGuid()))
+        {
+        }
+
+        files.External[path].Should().Contain("trusted_hash = \"sha256:deadbeef\"");
+        files.External[path].Should().Contain("[[hooks.SessionStart]]");
+        files.Preserved.Should().Contain(path);
     }
 
     // The definition is hashed for trust, so the profile and the json must not drift: two spellings

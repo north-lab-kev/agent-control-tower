@@ -1,14 +1,25 @@
 # Codex hooks — findings, and how to re-test the blind implementation
 
-**Status: Codex hooks do not fire on `codex-cli 0.146.0-alpha.3.1`.** Measured
-2026-07-29 against the real CLI. ACT's Codex hook wiring is therefore written
-**blind** — shaped to what the evidence says *should* work — and is expected to stay
-dormant until a CLI build actually runs hooks.
+**Status as of 2026-07-31: hooks fire, and ACT's ingestion through them works.** Verified
+live on `codex-cli 0.146.0-alpha.3.1` (card #1091): `SessionStarted`, `ActivityObserved` ×3
+and `TurnEnded` normalized from real payloads, plus `PermissionRequested` (`apply_patch`)
+raising a `needs permission` badge on card #1092 from a prompt ACT never touched.
 
-Upstream issue: <https://github.com/openai/codex/issues/17532> — *"codex_hooks do not
-fire in interactive sessions when configured via repo-local `.codex/config.toml`"*.
-A fix appears to be merged but unreleased as of this writing. **When a newer CLI ships,
-re-run the checklist at the bottom.**
+**The bug was ACT's, and it was one character class: quotes.** Codex takes quotes literally
+when it resolves the program, so the command ACT had emitted since its first launch —
+`"C:\…\act-hook-forward.cmd" SessionStart` — named a program called `"C:\…"`, which does not
+exist. Every hook died with `hook exited with code 1` and the script was never reached. The
+rule, measured rather than guessed: **the program token must be unquoted; everything after it
+may be quoted**, because from there `cmd` is doing the parsing. See *The exec failure*.
+
+That also reverses two conclusions this file used to carry: the 2026-07-29 status
+(*"discovered and parsed, never executed"* — they execute) and the claim that Codex can never
+report a waiting prompt (it can, via `PermissionRequest`). The upstream issue
+<https://github.com/openai/codex/issues/17532> is no longer what stands in the way.
+
+Payloads carry `session_id` **and `transcript_path`**, so `CodexRolloutFinder` — written to
+stand in for a hook that never fired — now has a real replacement available; retiring it is
+tracked on the roadmap, not done.
 
 Companion reading: the *Codex facts* and *Codex hook findings* sections of
 `ACT-roadmap.md`, and *Local-endpoint security* in `ACT-overview.md`.
@@ -63,6 +74,67 @@ how it was mapped):
 - Only `type: "command"` handlers run. `prompt` / `agent` handler types parse and are
   skipped.
 
+### The exec failure, and the rule that fixes it — measured 2026-07-31
+
+**A quoted program token is never executable.** Codex does not strip quotes when resolving
+the program, so `"C:\path\x.cmd" SessionStart` asks for a program literally named
+`"C:\path\x.cmd"`. Result: `hook exited with code 1`, the script never reached.
+
+Two rounds of measurement, each costing exactly one trust prompt by giving **five events five
+different candidate shapes at once** — the review screen says *"5 hooks are new or changed"*
+and one answer trusts them all. Round one:
+
+| Command shape | Ran? |
+|---|---|
+| `<path>\pexe.exe` — real exe, no args | ✅ |
+| `<path>\pexe.exe UserPromptSubmit` — real exe, with arg | ✅ |
+| `<path>\p1.cmd` — script, unquoted | ✅ |
+| `"<path>\p2.cmd"` — script, **quoted** | ❌ |
+| `cmd.exe /c <path>\p3.cmd` — via shell, all unquoted | ✅ |
+
+So it is not the `.cmd` extension, not arguments, and not the shell — only the quoting.
+Round two asked whether a quoted argument is safe, since ACT's forwarder lives under
+`%LOCALAPPDATA%` and a username with a space puts a space in the path:
+
+| Command shape | Ran? |
+|---|---|
+| `cmd.exe /c <no-space>\p1.cmd SessionStart` | ✅ |
+| `cmd.exe /c "<path with space>\p2.cmd" UserPromptSubmit` | ✅ |
+| `cmd.exe /c "<no-space>\p3.cmd" PreToolUse` | ✅ |
+
+**The shipped shape is therefore `<cmd.exe unquoted> /c "<forwarder>" <Event>`** — unquoted
+program so Codex can exec it, quoted path so `cmd` handles spaces. Pinned by two tests in
+`CodexHookTests`.
+
+Ruled out along the way, so nobody re-checks them:
+
+- **Not the sandbox.** `~/.codex/.sandbox/sandbox.<date>.log` records a `START:` line for
+  every sandboxed command, and it showed only the session's own tool calls — never a hook.
+- **Not the script's own exit code.** Run by hand, with and without
+  `ACT_HOOK_ENDPOINT` / `ACT_HOOK_TOKEN` set, through `cmd`, `sh -c`, direct exec and
+  PowerShell, the forwarder exits 0 on every path.
+- **Not the dialect.** Swapping the forwarder's contents for a POSIX-sh script (the hash
+  covers the command string, not the file, so this needs no re-trust) changed nothing.
+
+**The technique worth reusing:** Codex prints no detail beyond the exit code,
+`~/.codex/logs_2.sqlite` carries no hook records and the rollout `.jsonl` has none either —
+so there is nothing to read, only experiments to run. Distinct probe files that each log their
+own name, one per event, turn a yes/no into a table for the price of one trust prompt.
+
+### Trust is written into ACT's own profile, and ACT used to destroy it
+
+The 2026-07-29 note below says trust lands in the user's `~/.codex/config.toml`. **It does
+not.** Measured 2026-07-31: Codex writes `[hooks.state.…]` into the *file the hook was
+declared in* — which for ACT is `~/.codex/act.config.toml`, ACT's own generated profile,
+whose header reads *"Overwritten on every launch"*. So ACT threw away the review the user
+had just answered and the nine-hook gate returned every launch.
+
+Fixed by `IAgentConfigFiles.WriteExternalPreservingTail`, which carries everything from the
+first `[hooks.state` line across verbatim. **Comparing the file against ACT's own bytes is
+not enough** — that was the first attempt and it failed live, because Codex rewrites the
+whole file in its own formatting when it saves, so ACT's block does not come back
+byte-identical. Verified live: a relaunch reaches the TUI with no gate.
+
 ### Trust is a blocking, pre-session gate
 
 A new or changed hook definition produces a full-screen TUI prompt **before the session
@@ -83,8 +155,9 @@ until the user answers it *in the terminal* — which fits ACT's model (the user
 everything in the terminal), but the card must not read it as a hang. It is a **second**
 pre-session gate, stacked on the directory-trust prompt.
 
-Trust is persisted **into the user's own `~/.codex/config.toml`**, keyed by file path,
-event, group index and handler index, with a sha256 of the definition:
+Trust is persisted keyed by file path, event, group index and handler index, with a sha256
+of the definition. ⚠️ The path below is **wrong** — see *Trust is written into ACT's own
+profile* above; it goes into the file that declared the hook, not the user's `config.toml`:
 
 ```toml
 [hooks.state]
