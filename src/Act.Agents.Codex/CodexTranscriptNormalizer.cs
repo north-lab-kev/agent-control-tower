@@ -5,21 +5,25 @@ using Act.Core.Model;
 
 namespace Act.Agents.Codex;
 
-// Codex's rollout file, and for now the *only* thing that reports a Codex session at all: its hooks do
-// not fire on the pinned CLI, so this fold does the work Claude Code's hooks do. Measured against real
-// rollout files on 2026-07-31 (`codex-cli 0.146.0-alpha.3.1`), where the line kinds that matter are:
+// Codex's rollout file, read for enrichment — exactly the role `ClaudeCodeTranscriptNormalizer` has.
+// Measured against real rollout files on 2026-07-31 (`codex-cli 0.146.0-alpha.3.1`), where the line
+// kinds that matter are:
 //
-//   * `event_msg/task_started`   — a turn began (`turn_id`, `model_context_window`)
-//   * `event_msg/task_complete`  — a turn ended (`last_agent_message`, and an `error` when it failed)
+//   * `event_msg/task_started`   — `model_context_window`
+//   * `event_msg/task_complete`  — `last_agent_message`, and an `error` when the turn failed
 //   * `event_msg/token_count`    — `total_token_usage`, `last_token_usage`, `model_context_window`
 //   * `event_msg/agent_message`  — what the agent said
-//   * `response_item/function_call` — a tool call, with its name
 //
-// **When a CLI build fires Codex hooks, cut the events out of this class** and keep only enrichment,
-// the way `ClaudeCodeTranscriptNormalizer` already works — hooks report liveness first-hand and are
-// not a second or two behind a file. What cannot come from here either way is a *waiting prompt*:
-// nothing is written while the TUI blocks on one, which is why a Codex card never badges
-// `needs permission` or `needs answer` until the hooks work.
+// **This class used to report liveness too** — activity, turn ends and the turn/tool counts — because
+// Codex's hooks were believed not to fire. They do (the failures were ACT quoting the hook command),
+// so on 2026-07-31 all of that moved to the hooks, which report first-hand instead of a second behind
+// a file, and which count the same things Claude Code's do. The divergence the roadmap asked to undo
+// is undone: hooks own the counts, the transcript owns enrichment.
+//
+// The one event kept, and the reason it is an exception: `TurnFailed`. `task_complete` carrying an
+// `error` is the CLI saying the turn failed while its process stays alive and would exit zero — the
+// failure `ProcessExited` cannot see — and no hook has been *observed* reporting it. Measured, not
+// assumed: drop this only after watching a real failed turn's `Stop` payload.
 public sealed class CodexTranscriptNormalizer : ITranscriptNormalizer
 {
     private const int LastMessageLimit = 400;
@@ -29,8 +33,6 @@ public sealed class CodexTranscriptNormalizer : ITranscriptNormalizer
     public TranscriptFold Fold(EnrichmentSnapshot snapshot, IReadOnlyList<string> lines)
     {
         var events = new List<AgentEvent>();
-        var turns = snapshot.TurnCount ?? 0;
-        var tools = snapshot.ToolCalls ?? 0;
         var session = string.Empty;
 
         foreach (var line in lines)
@@ -52,20 +54,17 @@ public sealed class CodexTranscriptNormalizer : ITranscriptNormalizer
                     switch (Text(message, "type"))
                     {
                         case "task_started":
-                            events.Add(new ActivityObserved(session, at));
                             snapshot = snapshot with { ContextLimit = Count(message, "model_context_window") ?? snapshot.ContextLimit };
 
                             break;
 
-                        // The turn's own report of how it went. An `error` here is the CLI telling ACT
-                        // the turn failed while the process itself stays alive and exits zero — the one
-                        // failure `ProcessExited` cannot see.
+                        // A plain turn end is the `Stop` hook's to report. Only the failure is raised
+                        // here, because nothing else can see it.
                         case "task_complete":
-                            turns++;
                             snapshot = snapshot with { LastMessage = Bounded(Text(message, "last_agent_message")) ?? snapshot.LastMessage };
-                            events.Add(Failure(message) is { } failure
-                                ? new TurnFailed(session, at, failure)
-                                : new TurnEnded(session, at));
+
+                            if (Failure(message) is { } failure)
+                                events.Add(new TurnFailed(session, at, failure));
 
                             break;
 
@@ -82,19 +81,10 @@ public sealed class CodexTranscriptNormalizer : ITranscriptNormalizer
 
                     break;
 
-                case "response_item" when payload is { } item && Text(item, "type") is "function_call":
-                    tools++;
-                    events.Add(new ActivityObserved(session, at, Text(item, "name")));
-
-                    break;
             }
         }
 
-        // Absolute rather than incremented, so a catch-up read of a session already in progress lands
-        // on the right numbers instead of doubling what was stored.
-        return new TranscriptFold(
-            snapshot with { TurnCount = turns, ToolCalls = tools },
-            events);
+        return new TranscriptFold(snapshot, events);
     }
 
     // Codex reports usage in two shapes and ACT wants one of each: the cumulative totals for tokens,

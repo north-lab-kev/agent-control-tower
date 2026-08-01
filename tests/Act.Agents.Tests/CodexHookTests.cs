@@ -356,6 +356,47 @@ public class CodexHookNormalizerTests
         permission.Summary.Should().Be("run a shell command");
     }
 
+    // Codex's own ask-the-user tool. Every other tool means the session is working; this one means it
+    // has stopped, so classifying it as activity would leave a blocked card sitting in Executing
+    // reporting `running` — the same defect `AskUserQuestion` caused for Claude Code.
+    //
+    // ⚠️ NOT LIVE-VERIFIED, and it cannot be yet: `request_user_input` is only offered in Codex's
+    // **Plan collaboration mode**, which is not a config key (`collaboration_mode`, `mode` and
+    // `collaboration` were all type-probed on 2026-07-31 and none exist) and so cannot be set at
+    // launch. Asked to use it in Default mode the CLI answers *"I can't use request_user_input in the
+    // current Default mode"* and asks in prose instead, which correctly ends the turn as `to review`.
+    [Fact]
+    public void A_request_for_user_input_is_a_question_rather_than_activity()
+    {
+        var result = Normalize("""
+            {
+              "hook_event_name": "PreToolUse",
+              "session_id": "abc",
+              "tool_name": "request_user_input",
+              "tool_call_id": "call-3",
+              "tool_input": { "prompt": "English or French?" }
+            }
+            """);
+
+        var question = result.Events.Should().ContainSingle().Which.Should().BeOfType<QuestionAsked>().Which;
+
+        question.RequestId.Should().Be("call-3");
+        question.Question.Should().Be("English or French?");
+    }
+
+    [Fact]
+    public void Any_other_tool_stays_activity_carrying_its_name()
+        => Normalize("""
+            {
+              "hook_event_name": "PreToolUse",
+              "session_id": "abc",
+              "tool_name": "shell_command"
+            }
+            """)
+            .Events.Should().ContainSingle()
+            .Which.Should().BeOfType<ActivityObserved>()
+            .Which.ToolName.Should().Be("shell_command");
+
     [Fact]
     public void Compaction_is_reported_at_both_ends()
     {

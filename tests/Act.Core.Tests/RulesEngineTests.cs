@@ -28,6 +28,45 @@ public class RulesEngineTests
         move.Badge.Should().Be(badge);
     }
 
+    // A tool running is not the user approving. Found live on a Codex card that sat on `running` with a
+    // Bash approval still on screen, because a tool event arrived after the `PermissionRequested` and
+    // was indistinguishable from a keystroke. `UserPromptSubmit` carries no tool name; every tool event
+    // does, and that is the whole difference.
+    [Fact]
+    public void A_tool_event_does_not_clear_a_permission_block()
+        => RulesEngine.Decide(
+                CardIn(BoardColumn.YourTurn, Badge.NeedsPermission),
+                new ActivityObserved(SessionId, At, "Bash"))
+            .Should().BeNull();
+
+    // Inside Executing there is nothing to protect, and the stamp behind the quiet chip still has to
+    // move — so a tool event is ordinary activity there.
+    [Fact]
+    public void A_tool_event_is_still_activity_while_the_card_is_executing()
+    {
+        var move = RulesEngine.Decide(
+            CardIn(BoardColumn.Executing),
+            new ActivityObserved(SessionId, At, "Bash"));
+
+        move.Should().NotBeNull();
+        move!.Column.Should().Be(BoardColumn.Executing);
+        move.Badge.Should().Be(Badge.Running);
+    }
+
+    // The send-back and the answered prompt both come back as tool-less activity, so neither is caught
+    // by the guard above.
+    [Fact]
+    public void A_users_keystroke_still_recovers_a_blocked_card()
+    {
+        var move = RulesEngine.Decide(
+            CardIn(BoardColumn.YourTurn, Badge.NeedsPermission),
+            new ActivityObserved(SessionId, At));
+
+        move.Should().NotBeNull();
+        move!.Column.Should().Be(BoardColumn.Executing);
+        move.Badge.Should().Be(Badge.Running);
+    }
+
     [Fact]
     public void Compacting_shows_on_the_card_and_then_clears()
     {
@@ -116,8 +155,10 @@ public class RulesEngineTests
                 new ActivityObserved(SessionId, At))!
             .Column.Should().Be(BoardColumn.Executing);
 
-    // The recovery half of the pair: the tool finishing is the user having answered, and it has to
-    // move the card back out even though a permission request no longer can.
+    // The recovery half of the pair, and an asymmetry pinned so nobody "tidies" it into symmetry: a
+    // question is raised by its tool's `PreToolUse` and *answered* at its `PostToolUse`, so here the
+    // tool event really is the user acting. A permission has no event reporting the approval, which is
+    // why only `needs permission` is guarded against tool events.
     [Fact]
     public void Activity_still_recovers_a_card_holding_a_question()
         => RulesEngine.Decide(

@@ -56,9 +56,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IHookNormalizer, CodexHookNormalizer>();
         services.AddSingleton<ITranscriptNormalizer, ClaudeCodeTranscriptNormalizer>();
         services.AddSingleton<ITranscriptNormalizer, CodexTranscriptNormalizer>();
-
-        // Codex only, and only until its hooks fire: Claude Code is told where its transcript is.
-        services.AddSingleton<ITranscriptFinder, CodexRolloutFinder>();
         services.AddSingleton<IAgentCapabilityCatalog, AgentCapabilityCatalog>();
 
         return services;

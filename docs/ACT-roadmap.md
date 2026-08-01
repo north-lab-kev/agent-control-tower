@@ -384,11 +384,13 @@ verifiable, and leaves something runnable.
         build does not know reads back as null instead of throwing. Verified against a card
         rewritten to `"Stale"` in the raw document — and live, where the seeded `#1040` came back
         badge-less and intact, with `quiet 52h` beside it.
-    - [~] **6 + 7. Codex binding, activity and enrichment from the rollout — code complete, live
-      verify blocked.** ✅ Written and unit-tested against **real rollout files**, ⚠️ but not proven
-      end to end, because Codex's TUI paints **nothing** under ACT's pseudo-terminal (see the
-      blocker below). What landed:
-      - **`CodexRolloutFinder`** (`ITranscriptFinder`, a new core port) infers the file ACT's launch
+    - [x] **6 + 7. Codex binding, activity and enrichment from the rollout.** ✅ Written and unit-tested
+      against **real rollout files**, then verified live — and then **largely deleted again** at item 9,
+      once the hooks turned out to work: binding, activity and the counts all moved to payloads, and
+      only the enrichment fold survives. Read this as the history of how Codex was instrumented before
+      that, because two of its findings still hold (the rollout dialect, and `TurnFailed`):
+      - **`CodexRolloutFinder`** (`ITranscriptFinder`, a new core port) — **deleted 2026-07-31, see
+        item 9.** It inferred the file ACT's launch
         just made: newest few `rollout-*.jsonl` under `$CODEX_HOME/sessions`, oldest-first, matched
         on the `session_meta` line's `cwd` and timestamp, skipping any path another live card holds.
         **This is the answer to "how do we bind without hooks":** that first line carries
@@ -530,12 +532,76 @@ verifiable, and leaves something runnable.
         `apply_patch` approval raised `PermissionRequested` → **`needs permission`**, from a prompt ACT
         never touched. Codex now has the one signal Claude Code has to infer from a notification
         message — and it arrives as an explicit event rather than a string to classify.
-      - **Two follow-ups this opens, neither urgent and neither done.** Payloads carry `session_id`
-        *and* `transcript_path`, so `CodexRolloutFinder` — written explicitly to stand in for a hook
-        that never fired, and marked for deletion when one did — can be retired; and the
-        `TurnCount`/`ToolCalls` divergence noted above is now the thing to align, since hooks can own
-        the counts and the transcript the enrichment. Both need their own live verify, so they are
-        left as work rather than folded into a verified step.
+      - ✅ **`needs answer` works on Codex too — verified live 2026-07-31, card #1097.** Its
+        ask-the-user tool is **`request_user_input`**; `CodexHookNormalizer` keys `PreToolUse` on it and
+        raises `QuestionAsked`, mirroring `AskUserQuestion`. Verified by the one reachable path: `/plan`
+        typed into ACT's own terminal, then an ambiguous request — the card badged **`needs answer`**
+        carrying both questions, from a prompt ACT never touched. The text comes from a **`questions`
+        array**, each entry with a `question` field (`prompt`/`question` kept as fallbacks).
+        The tool is offered only in Codex's **Plan collaboration mode**: asked to use it in Default mode
+        the CLI answers *"I can't use request_user_input in the current Default mode"*, asks in prose and
+        ends the turn — which lands on `to review`, honestly. That mode is **not a config key**
+        (`collaboration_mode`, `mode`, `collaboration` all type-probed 2026-07-31; none exist), so ACT
+        cannot select it at launch. Note ACT's `PermissionMode.Plan` is a *different axis* — it maps to
+        `--ask-for-approval never --sandbox read-only`, not to the collaboration mode.
+        - **And ACT adds nothing for it — decided 2026-07-31.** Plan mode is the TUI's `/plan` command
+          (confirmed in `codex.exe`'s strings, alongside `<proposed_plan>` and *"Continue planning with
+          the model"*), so there is nothing a launch flag or a task-form field could set. Forcing it by
+          default was considered and rejected outright: Plan mode **proposes** work rather than doing
+          it, which would make every Codex card a plan and defeat the unattended queue of step 14. The
+          classification stays because it is cheap and not dead code — a user can type `/plan` in ACT's
+          own terminal, and the card then badges correctly. The badge is the weaker half anyway: a
+          prose question ends the turn, so the card is already in Your turn; `needs answer` versus
+          `to review` differs in the *reason*, not the action — the same argument that merged
+          "Needs feedback" into "To review".
+      - ✅ **A defect the same run exposed, found and fixed: a blocked card could flip back to
+        `running`.** Card #1097 showed `running` while a Bash approval was still on screen — arrival
+        order was `PermissionRequested` → `ActivityObserved`, and the activity moved the card out of Your
+        turn before anyone answered. Cause: **`UserPromptSubmit` and the tool events normalize to the
+        same `ActivityObserved`**, so the engine could not tell a user's keystroke from a tool running,
+        even though step 9's "one way out of Your turn" means the former. Either Codex emits
+        `PostToolUse` for the previous tool after the next one's `PermissionRequest`, or the posts race —
+        the forwarder spawns one `curl` per hook, so **ACT sees arrival order, not emission order**; the
+        rule holds for both. Fixed in `RulesEngine`: a tool-bearing `ActivityObserved` no longer clears
+        `needs permission` (`ToolName` is null exactly for `UserPromptSubmit`, so no new signal was
+        needed).
+        - **Cost accepted, deliberately:** approving fires no `UserPromptSubmit`, so an approved card
+          keeps saying `needs permission` until the turn ends. A stale "you are needed" costs a glance; a
+          stale `running` hides a session waiting on a human, which is what the board exists to prevent.
+        - **Permissions only, and the asymmetry is load-bearing.** A question is raised by its tool's
+          `PreToolUse` and *answered* at its `PostToolUse`, so for `needs answer` the tool event really is
+          the user acting — Claude Code's `AskUserQuestion` recovery depends on it, and an existing test
+          caught the over-broad first attempt. A permission has no paired event reporting the approval.
+        - **Rejected: watching the PTY for the user's Enter.** It cannot tell approve from deny (arrow +
+          Enter picks *"No, and tell Codex what to do differently"*), is not specific to the prompt, and
+          is the same class of guess step 7 already deleted once. The non-guessing version, if the stale
+          badge ever needs removing, is to **correlate the resolving event by id** — `PermissionRequested`
+          carries a `RequestId` and Codex payloads a `tool_call_id`; that would be proof rather than
+          inference, and immune to the ordering race. Needs one measurement: whether the two agree on an
+          id for the same call. Reasoning in full in *Codex hook findings*.
+      - ✅ **Both follow-ups this opened are done — 2026-07-31, card #1094.** They turned out to be one
+        change: *make Codex's transcript role identical to Claude Code's — enrichment only.*
+        - **`CodexRolloutFinder` is deleted**, with `ITranscriptFinder`, `ITranscriptDirectory`,
+          `TranscriptDirectory`, their registrations and `TranscriptPump.SearchAsync` — the whole
+          find-by-convention path, ~200 lines, gone. Payloads name `transcript_path`, so both agents
+          learn where their file is the same way. **Cost accepted deliberately:** a user who answers
+          the hook-review screen with *"Continue without trusting"* gets no payloads, so nothing names
+          the rollout and that card reports only what its process can say.
+        - **The counts moved to the hooks**, so `CodexTranscriptNormalizer` no longer emits activity or
+          turn ends and no longer sets `TurnCount`/`ToolCalls` — the divergence flagged above is
+          undone, and `ITranscriptNormalizer`'s note with it. **One event stays**: `TurnFailed`, since a
+          turn failing while the process stays alive and exits zero is invisible to `ProcessExited` and
+          has never been *observed* on a hook payload. Measured, not assumed — drop it only after
+          watching a real failed turn's `Stop`.
+        - **And a bug the refactor would have re-introduced.** `PersistSessionIdAsync` lived on the
+          finder's path; with hooks as the binding source, `SessionEventSink.Bind` only touched the live
+          session object, so `card.SessionId` would have gone null again — the exact defect fixed
+          earlier in this step. It now lives in `SessionEventSink`, guarded by an already-bound check
+          because every payload carries the id and several arrive a second.
+        - **Verified live:** session `019fbb34-…` bound from a hook payload and persisted to the card,
+          `13k/258k` context from the rollout the payload located, 1 turn counted by hooks, and a
+          timeline reading Launched → Executing → Turn ended → Your turn with **no** start-up-prompt
+          detour, because `SessionStart` now arrives inside the grace window. 441 tests green.
       - **The probe technique, worth reusing.** Codex prints no detail beyond the exit code and logs
         no hook records anywhere, so there is nothing to read — only experiments. Giving each event a
         differently-named probe that logs its own name turns a yes/no into a table for the price of

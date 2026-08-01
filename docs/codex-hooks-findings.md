@@ -18,8 +18,11 @@ report a waiting prompt (it can, via `PermissionRequest`). The upstream issue
 <https://github.com/openai/codex/issues/17532> is no longer what stands in the way.
 
 Payloads carry `session_id` **and `transcript_path`**, so `CodexRolloutFinder` — written to
-stand in for a hook that never fired — now has a real replacement available; retiring it is
-tracked on the roadmap, not done.
+stand in for a hook that never fired — **has been deleted**, along with `ITranscriptFinder`
+and `ITranscriptDirectory`. Both agents now learn where their transcript is the same way: the
+hooks say so. The accepted cost: answering the hook-review screen with *"Continue without
+trusting"* leaves a Codex card with no payloads, so nothing names its rollout and it reports
+only what its process can say.
 
 Companion reading: the *Codex facts* and *Codex hook findings* sections of
 `ACT-roadmap.md`, and *Local-endpoint security* in `ACT-overview.md`.
@@ -120,6 +123,102 @@ Ruled out along the way, so nobody re-checks them:
 `~/.codex/logs_2.sqlite` carries no hook records and the rollout `.jsonl` has none either —
 so there is nothing to read, only experiments to run. Distinct probe files that each log their
 own name, one per event, turn a yes/no into a table for the price of one trust prompt.
+
+### `needs answer` — verified live 2026-07-31, by typing `/plan` in ACT's own terminal
+
+Codex's ask-the-user tool is **`request_user_input`**, named in the base instructions the rollout
+records: *"Use the `request_user_input` tool only when it is listed in the available tools for this
+turn … In Default mode, strongly prefer making reasonable assumptions."*
+
+`CodexHookNormalizer` keys `PreToolUse` on that tool name and raises `QuestionAsked`, exactly as
+`ClaudeCodeHookNormalizer` does for `AskUserQuestion`. Without it a question would normalize to
+plain activity, so a card blocked on one would sit in Executing reporting `running`.
+
+✅ **Verified live on card #1097**, using the one path that is actually reachable: `/plan` typed into
+ACT's embedded terminal, then an ambiguous request. Codex called `request_user_input`, the payload
+normalized to `QuestionAsked` — *"What filename should the greeting file use? · What language/content
+style should the greeting use?"* — and the card badged **`needs answer`**. The ` · ` join shows the
+text came from the **`questions` array** branch, each entry carrying a `question` field, so that is
+the real shape; `prompt` and `question` remain as fallbacks.
+
+Measured 2026-07-31 about how it is reached:
+
+- Asked to call it in Default mode, the CLI replies *"I can't use `request_user_input` in the current
+  Default mode"*, asks the question in prose, and ends the turn — so the card lands on `to review`,
+  which is honest rather than wrong.
+- **Plan mode is a TUI slash command, `/plan` — not a flag and not a config key.** `--help` offers no
+  mode option; `collaboration_mode`, `mode` and `collaboration` were each given the wrong type and none
+  produced a serde error, which for a parser that *ignores unknown keys* means none of them exist. The
+  strings in `codex.exe` confirm the shape: `/plan`, *"Continue planning with the model"*,
+  `<proposed_plan>`, and *"If you try to use `update_plan` … in Plan mode, it will return an error"*.
+- ACT's `PermissionMode.Plan` is a different axis entirely — it resolves to
+  `--ask-for-approval never --sandbox read-only`, which does not change the collaboration mode.
+
+**Decided 2026-07-31: ACT adds nothing for this.** Not a Codex-only collaboration-mode field (there is
+nothing to set — `/plan` is typed into the TUI, and ACT does not drive the TUI), and certainly not Plan
+mode by default: Plan mode *proposes* work instead of doing it, which would make every Codex card a
+plan and defeat the unattended queue Phase 5 is built for. The classification stays because it is cheap
+and **not** dead code — a user can type `/plan` in ACT's embedded terminal themselves, and the card
+then badges correctly. And the badge is the weaker half of the argument anyway: a prose question ends
+the turn, so the card is already in Your turn where the user will see it. `needs answer` versus
+`to review` differs in the *reason*, not the action — the same reasoning that merged "Needs feedback"
+into "To review".
+
+### A blocked card could flip back to `running` — found and fixed on the same run
+
+On card #1097 the badge read **`running` while a Bash approval was still on screen**. The arrival order
+was `PermissionRequested (Bash)` → `ActivityObserved`, and the activity moved the card out of Your turn
+before anyone had answered anything.
+
+The cause is that **`UserPromptSubmit` and the tool events normalize to the same event**,
+`ActivityObserved`. Step 9's design says observed activity is "the one way out of Your turn" and means
+`UserPromptSubmit` by it — but the rules engine cannot tell the two apart, so a `PreToolUse` or
+`PostToolUse` arriving after a permission request clears the badge just as a user's keystroke would.
+
+Two candidate mechanisms, not yet separated:
+
+- Codex emits `PostToolUse` for the *previous* tool after the `PermissionRequest` for the next one.
+- Or the posts simply race: the forwarder spawns one `curl` per hook, so **ACT sees arrival order, not
+  emission order**, and two hooks firing milliseconds apart can invert.
+
+**Fixed** in `RulesEngine`: a tool-bearing `ActivityObserved` no longer clears a `needs permission`
+card. `ActivityObserved.ToolName` is null exactly for `UserPromptSubmit`, so no new signal was needed.
+
+**The cost was chosen, not overlooked.** Approving a prompt in the terminal fires no
+`UserPromptSubmit`, so an approved card keeps saying `needs permission` until the turn ends. That is
+the better of the two wrongs: a stale "you are needed" costs a glance, a stale `running` hides a
+session waiting on a human — the one thing the board exists to prevent.
+
+**And the guard covers permissions only.** A question is raised by its tool's `PreToolUse` and
+*answered* at its `PostToolUse`, so for `needs answer` the tool event really is the user acting —
+Claude Code's `AskUserQuestion` recovery depends on it, and an existing test caught the over-broad
+first attempt. A permission has no paired event reporting the approval, which is exactly why only that
+half needs guarding.
+
+#### Considered and rejected: watching the PTY for the user's Enter
+
+ACT does see the keystrokes the user types into xterm, so treating an Enter as "the prompt was
+answered" is technically available. It should not be done:
+
+- **Enter cannot say what was answered.** Arrow-down + Enter picks *"No, and tell Codex what to do
+  differently"* — a denial, after which the card is still the user's. Approve and deny would be one
+  signal.
+- **Enter is not specific to the prompt.** It submits composer text, dismisses notices, and inserts
+  newlines. An Enter aimed at anything else would clear a real block.
+- **It is the guess this repo has already deleted once.** Step 7 shipped a readiness heuristic (first
+  output = painted, 300 ms quiet = ready), it silently swallowed every opening prompt, and the fix was
+  *deleting the guess* — recorded there as "no better guess exists, because knowing when the prompt
+  line is live means reading the screen, which ACT does not do". Inferring an answer from a keypress is
+  the same move.
+- **The payoff is a few seconds.** The next real signal — the approved tool's own event, or `Stop` —
+  arrives on its own shortly after.
+
+The non-guessing version of the same idea, if the stale badge ever becomes worth removing:
+**correlate the resolving event by id.** `PermissionRequested` already carries a `RequestId`, and Codex
+payloads carry a `tool_call_id`; if the approved tool's `PostToolUse` reports the same call, that is
+proof the block ended rather than an inference — and being id-matched it is immune to the arrival-order
+race as well. It needs one measurement first: whether `PostToolUse` and `PermissionRequest` agree on an
+id for the same call.
 
 ### Trust is written into ACT's own profile, and ACT used to destroy it
 

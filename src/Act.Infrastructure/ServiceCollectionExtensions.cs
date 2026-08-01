@@ -22,7 +22,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISettingsStore, LiteDbSettingsStore>();
         services.AddSingleton<ICardStore, LiteDbCardStore>();
         services.AddSingleton<ITranscriptReader, TranscriptReader>();
-        services.AddSingleton<ITranscriptDirectory, TranscriptDirectory>();
         services.AddSingleton<ITextFileReader, TextFileReader>();
         services.AddActHookEndpoint(dataDirectory);
 

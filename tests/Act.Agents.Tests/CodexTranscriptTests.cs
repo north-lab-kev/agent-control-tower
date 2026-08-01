@@ -5,8 +5,13 @@ using AwesomeAssertions;
 namespace Act.Agents.Tests;
 
 // Line shapes measured from real rollout files on 2026-07-31 (`codex-cli 0.146.0-alpha.3.1`), not
-// taken from documentation — unlike `CodexHookTests`, which is still written blind because no hook has
-// ever fired. This is the only thing that reports a Codex session today.
+// taken from documentation.
+//
+// **Enrichment only, since 2026-07-31.** This class used to report activity, turn ends and the
+// turn/tool counts, because Codex's hooks were believed not to fire; they do, so those moved to the
+// hooks and these tests moved with them. What is asserted here now is the same surface
+// `ClaudeCodeTranscriptNormalizer` has — tokens, context, the window, the last message — plus the one
+// event a hook has never been seen to report, `TurnFailed`.
 public class CodexTranscriptTests
 {
     private const string Meta = """
@@ -41,51 +46,62 @@ public class CodexTranscriptTests
                        "last_agent_message": "Read the file and stopped.", "duration_ms": 1140 } }
         """;
 
+    private const string Failed = """
+        { "timestamp": "2026-07-30T02:38:42.756Z", "type": "event_msg",
+          "payload": { "type": "task_complete", "turn_id": "t1", "last_agent_message": null,
+            "error": { "message": "{\"type\":\"error\",\"status\":400,\"error\":{\"type\":\"invalid_request_error\",\"message\":\"The 'gpt-5.4' model is not supported when using Codex with a ChatGPT account.\"}}",
+                       "codex_error_info": "other" } } }
+        """;
+
     private readonly CodexTranscriptNormalizer normalizer = new();
 
-    // The whole reason this class emits events at all: with hooks dormant, a turn that ended is
-    // something only the rollout can report.
+    // The hooks own liveness now, and a second reporter would move the card and count the turn twice.
+    // These four line kinds are read for enrichment and must publish nothing at all.
     [Fact]
-    public void A_completed_task_ends_the_turn()
-        => Events(Meta, TurnStarted, TurnDone).Should().ContainItemsAssignableTo<AgentEvent>()
-            .And.ContainSingle(observed => observed is TurnEnded);
+    public void Liveness_is_left_to_the_hooks_so_the_file_publishes_no_events()
+        => Events(Meta, TurnStarted, ToolCall, Tokens, TurnDone).Should().BeEmpty();
+
+    // The counts go with the events: `PreToolUse` and `Stop` count first-hand, exactly as Claude
+    // Code's do, so leaving them null here is what stops two sources disagreeing.
+    [Fact]
+    public void Turn_and_tool_counts_are_left_to_the_hooks()
+    {
+        var snapshot = Fold(Meta, TurnStarted, ToolCall, ToolCall, TurnDone);
+
+        snapshot.TurnCount.Should().BeNull();
+        snapshot.ToolCalls.Should().BeNull();
+    }
+
+    // A count that arrived from a hook must survive a fold rather than being reset by it.
+    [Fact]
+    public void A_count_a_hook_already_reported_is_left_alone()
+    {
+        var counted = new EnrichmentSnapshot { TurnCount = 3, ToolCalls = 7 };
+
+        var snapshot = normalizer.Fold(counted, [Meta, TurnStarted, ToolCall, TurnDone]).Snapshot;
+
+        snapshot.TurnCount.Should().Be(3);
+        snapshot.ToolCalls.Should().Be(7);
+    }
 
     [Fact]
-    public void A_started_task_is_activity_so_the_card_goes_back_to_running()
-        => Events(Meta, TurnStarted).Should().ContainSingle()
-            .Which.Should().BeOfType<ActivityObserved>();
-
-    [Fact]
-    public void A_function_call_is_activity_carrying_the_tool_name()
-        => Events(Meta, ToolCall).Should().ContainSingle()
-            .Which.Should().BeOfType<ActivityObserved>()
-            .Which.ToolName.Should().Be("shell_command");
-
-    // Published events carry the session id the file itself names, which for Codex is the only place
-    // it exists — there is no `--session-id` to pre-mint.
-    [Fact]
-    public void Events_carry_the_session_id_out_of_the_meta_line()
-        => Events(Meta, TurnStarted).Should().ContainSingle()
+    public void A_failed_turn_carries_the_session_id_out_of_the_meta_line()
+        => Events(Meta, Failed).Should().ContainSingle()
             .Which.SessionId.Should().Be("019fb0e3-694f-7e30-afd5-ff1562e3a1d4");
 
     [Fact]
     public void Timestamps_come_from_the_line_rather_than_the_clock()
-        => Events(Meta, TurnDone).Should().ContainSingle()
+        => Events(Meta, Failed).Should().ContainSingle()
             .Which.At.Should().Be(DateTimeOffset.Parse("2026-07-30T02:38:42.756Z"));
 
-    // The CLI's own report that the turn failed while its process stays alive and would exit zero.
-    // Measured on a real rollout: an account rejecting a model produced exactly this.
+    // The one event this class still raises, and why it is the exception: the CLI reporting that the
+    // turn failed while its process stays alive and would exit zero — invisible to `ProcessExited`, and
+    // not yet observed on any hook payload. Measured on a real rollout: an account rejecting a model
+    // produced exactly this.
     [Fact]
     public void A_task_that_completed_with_an_error_fails_the_turn()
     {
-        var failed = """
-            { "timestamp": "2026-07-30T02:38:42.756Z", "type": "event_msg",
-              "payload": { "type": "task_complete", "turn_id": "t1", "last_agent_message": null,
-                "error": { "message": "{\"type\":\"error\",\"status\":400,\"error\":{\"type\":\"invalid_request_error\",\"message\":\"The 'gpt-5.4' model is not supported when using Codex with a ChatGPT account.\"}}",
-                           "codex_error_info": "other" } } }
-            """;
-
-        var turn = Events(Meta, failed).Should().ContainSingle()
+        var turn = Events(Meta, Failed).Should().ContainSingle()
             .Which.Should().BeOfType<TurnFailed>().Subject;
 
         // The envelope is json-in-json; what a card shows is the sentence, not the wrapper.
@@ -116,27 +132,6 @@ public class CodexTranscriptTests
     public void The_window_is_also_taken_off_a_started_task()
         => Fold(Meta, TurnStarted).ContextLimit.Should().Be(258_400);
 
-    // Absolute, not incremented: a catch-up read of a session already in progress has to land on the
-    // right numbers rather than doubling what was stored.
-    [Fact]
-    public void Turns_and_tool_calls_are_counted_absolutely()
-    {
-        var snapshot = Fold(Meta, TurnStarted, ToolCall, ToolCall, TurnDone, TurnStarted, TurnDone);
-
-        snapshot.TurnCount.Should().Be(2);
-        snapshot.ToolCalls.Should().Be(2);
-    }
-
-    [Fact]
-    public void A_second_fold_continues_the_counts_rather_than_restarting_them()
-    {
-        var first = Fold(Meta, ToolCall, TurnDone);
-        var second = normalizer.Fold(first, [ToolCall, TurnDone]).Snapshot;
-
-        second.TurnCount.Should().Be(2);
-        second.ToolCalls.Should().Be(2);
-    }
-
     [Fact]
     public void The_last_agent_message_is_what_the_card_previews()
         => Fold(Meta, TurnDone).LastMessage.Should().Be("Read the file and stopped.");
@@ -155,7 +150,7 @@ public class CodexTranscriptTests
         var fold = normalizer.Fold(new EnrichmentSnapshot(), [noise]);
 
         fold.Events.Should().BeEmpty();
-        fold.Snapshot.Should().Be(new EnrichmentSnapshot { TurnCount = 0, ToolCalls = 0 });
+        fold.Snapshot.Should().Be(new EnrichmentSnapshot());
     }
 
     private IReadOnlyList<AgentEvent> Events(params string[] lines)
