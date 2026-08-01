@@ -68,6 +68,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<AgentDefaultsMigration>();
         services.AddSingleton<AgentInstallDiscovery>();
         services.AddSingleton<BoardState>();
+        services.AddSingleton<RetentionPump>();
         services.AddSingleton<CardCompleter>();
 
         return services;

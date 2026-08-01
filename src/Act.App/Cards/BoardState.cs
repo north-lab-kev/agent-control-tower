@@ -5,9 +5,9 @@ using Act.Core.Rules;
 
 namespace Act.App.Cards;
 
-// Holds every card the store has, including the deleted ones, and decides which of them anything
-// is allowed to see. The board and the attention count are about *live* work, so they never look
-// at deleted cards; the archive looks at nothing else.
+// Holds every card the store has, including the ones off the board, and decides which of them
+// anything is allowed to see. The board and the attention count are about *live* work, so they never
+// look at a deleted or auto-archived card; the archive looks at nothing else.
 public sealed class BoardState(ICardStore store, IClock clock)
 {
     private IReadOnlyList<Card> cards = [];
@@ -18,7 +18,7 @@ public sealed class BoardState(ICardStore store, IClock clock)
     // how much the waiting costs rather than by insertion — see `AttentionOrder`.
     public IReadOnlyList<Card> In(BoardColumn column)
     {
-        var live = cards.Where(card => !card.IsDeleted && card.Column == column);
+        var live = cards.Where(card => card.IsOnBoard && card.Column == column);
 
         return column is BoardColumn.YourTurn
             ? [.. live.OrderBy(card => AttentionOrder.Rank(card.Badge))]
@@ -26,16 +26,17 @@ public sealed class BoardState(ICardStore store, IClock clock)
     }
 
     public IReadOnlyList<Card> Archived
-        => [.. cards.Where(card => card.IsDeleted).OrderByDescending(card => card.DeletedAt)];
+        => [.. cards.Where(card => !card.IsOnBoard).OrderByDescending(card => card.DeletedAt ?? card.ArchivedAt)];
 
-    // Unfiltered, deleted included — for the one caller that is not a view: the settings migration,
-    // which is looking for what a user once typed and does not care where the card ended up.
+    // Unfiltered, everything off the board included — for the one caller that is not a view: the
+    // settings migration, which is looking for what a user once typed and does not care where the
+    // card ended up.
     public IReadOnlyList<Card> All => cards;
 
-    public bool HasArchived => cards.Any(card => card.IsDeleted);
+    public bool HasArchived => cards.Any(card => !card.IsOnBoard);
 
-    // Deleted cards are still addressable: the archive links to them, and a restore has to be able
-    // to find one. Callers that care ask `IsDeleted`.
+    // Archived cards are still addressable: the archive links to them, and a restore has to be able
+    // to find one. Callers that care ask `IsOnBoard`.
     public Card? Card(Guid id) => cards.FirstOrDefault(card => card.Id == id);
 
     // The mid-flight cards whose terminal died while their binding survived — see `SessionRestore`.
@@ -100,9 +101,33 @@ public sealed class BoardState(ICardStore store, IClock clock)
     // restored the same way, so bringing a parent back never silently resurrects work.
     public async Task RestoreAsync(Card card, CancellationToken cancellationToken = default)
     {
+        if (card.IsAutoArchived)
+            card.KeepOnBoard = true;
+
         card.DeletedAt = null;
+        card.ArchivedAt = null;
 
         await store.UpdateAsync(card, cancellationToken);
+        await LoadAsync(cancellationToken);
+    }
+
+    public async Task ApplyRetentionAsync(TimeSpan? window, CancellationToken cancellationToken = default)
+    {
+        if (window is not { } age)
+            return;
+
+        var due = CompletedRetention.Due(cards, age, clock.Now);
+
+        if (due.Count == 0)
+            return;
+
+        foreach (var card in due)
+        {
+            card.ArchivedAt = clock.Now;
+
+            await store.UpdateAsync(card, cancellationToken);
+        }
+
         await LoadAsync(cancellationToken);
     }
 
@@ -111,7 +136,7 @@ public sealed class BoardState(ICardStore store, IClock clock)
     // skipped this would leave live cards pointing at rows that no longer exist.
     public async Task PurgeArchivedAsync(CancellationToken cancellationToken = default)
     {
-        foreach (var card in cards.Where(card => card.IsDeleted).ToList())
+        foreach (var card in cards.Where(card => !card.IsOnBoard).ToList())
         {
             if (Card(card.ParentId ?? Guid.Empty) is { } parent && parent.Children.Remove(card.Id))
                 await store.UpdateAsync(parent, cancellationToken);

@@ -44,7 +44,9 @@ internal static class ActBsonMapper
 
         mapper.Entity<Card>()
             .Ignore(card => card.NeedsAttention)
-            .Ignore(card => card.IsDeleted);
+            .Ignore(card => card.IsDeleted)
+            .Ignore(card => card.IsAutoArchived)
+            .Ignore(card => card.IsOnBoard);
 
         mapper.Entity<CardMetrics>()
             .Ignore(metrics => metrics.TokensTotal)

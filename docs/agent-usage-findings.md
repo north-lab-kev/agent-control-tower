@@ -103,10 +103,37 @@ The response also carries `email`, `user_id` and `account_id`. **ACT lifts the
    local clock that disagrees with the vendor's.
 3. **Codex's `auth.json` has no expiry field.** Claude's has a millisecond-epoch
    `expiresAt`; Codex buries expiry in the JWT. ACT does not decode the JWT — it
-   issues the call and treats 401 as unavailable, which it must handle anyway.
+   issues the call and treats 401 as unavailable, which it must handle anyway. So
+   Claude reports **`Expired`** without spending a request while Codex reaches the same
+   state as **`Unauthorized`**; the two read differently in the top bar on purpose,
+   because only one of them is a fact ACT actually knows.
 
 ## Rules ACT holds itself to
 
+- **One request per agent every 5 minutes, and never faster than one a minute.**
+  `Usage:PollSeconds` defaults to **300** and is clamped to **[60, 3600]** — the floor
+  is part of the contract, not a sanity check, because neither endpoint is documented
+  or promised and nothing ACT ships or lets a user configure may hammer them. A 5-hour
+  window moves about a third of a percent a minute, so five-minute granularity loses
+  nothing a reader could act on. The gap is measured **from the end of one request to
+  the start of the next** (a delay loop, not a `PeriodicTimer`), so a slow endpoint is
+  never asked again the moment it answers. A disabled agent is not polled at all, and
+  the check is re-read every pass so switching one off stops its traffic immediately.
+- **A failure that cost a request backs off; one that cost nothing does not.**
+  `UsageBackoff` doubles the wait per consecutive failure up to a **15-minute ceiling**
+  — and the ceiling is a floor for a slower poll, so an hourly setting is never
+  shortened by failing. It applies to `Unauthorized`, `Unreachable` and `Failed`, the
+  three outcomes that reached the network. `NotSignedIn` and `Expired` are decided
+  locally without a request, so they stay on the base interval and recover as soon as
+  the user signs in. One success clears the count.
+- **Unavailable is displayed, not swallowed.** Every failure path resolves to a
+  `UsageAvailability` — `NotSignedIn`, `Expired`, `Unauthorized`, `Unreachable`,
+  `Failed` — and the top bar renders an *unavailable* chip in place of that agent's
+  meters, naming the cause in one line with the full sentence and the last-checked time
+  in the tooltip. Dropping the bar silently, which is what the first version did, left
+  no way to tell "you have used nothing" from "ACT has been locked out since this
+  morning". `Off` (switched off in configuration) is the one outcome that shows
+  nothing, because the user asked for nothing.
 - **Read-only, and never refresh.** Each CLI owns its own credential file and
   refreshes it on use. ACT re-reads before each poll and picks up whatever is
   current. It never writes, and never attempts a refresh: OAuth refresh tokens

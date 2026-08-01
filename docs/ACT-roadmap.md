@@ -800,8 +800,13 @@ verifiable, and leaves something runnable.
       folder newest-first. **Verified live:** *"ClaudeCode: found on PATH"* and
       *"Codex: found at …\OpenAI\Codex\bin\…\codex.exe"*.
     - **An `enabled` switch per agent.** The task form offers only enabled agents, plus always the
-      one the card already carries — same rule a retired model follows. Verified live: switching
-      Codex off left the new-task agent dropdown offering `claude` alone.
+      one the card already carries — same rule a retired model follows. It also takes that agent off
+      the **usage indicator** and stops the pump polling for it: a quota you cannot spend is not a
+      number to act on. The pump tests the switch each tick rather than at startup, so it stops and
+      resumes with no restart, and `UsageIndicator` subscribes to `UserSettingsService.Changed` so
+      the meter leaves the bar on the click rather than at the next poll. Verified live: switching
+      Codex off left the new-task agent dropdown offering `claude` alone and emptied the usage bar
+      immediately; switching it back on restored the meter.
     - **The executable box validates and browses.** `AgentBinaryCheck` answers by the launch's own
       resolution rules — no separator means a `PATH` name, anything else a path that must exist — so
       the box cannot look fine while the launch fails with "not found". A warning rather than a
@@ -937,15 +942,16 @@ verifiable, and leaves something runnable.
 
 ## Phase 6 — Breadth & polish
 
-- [ ] **15. Persistence polish** — auto-archive (90-day default), search,
-  transitions timeline in the drawer. *Verify:* old Completed cards archive and
-  stay searchable.
+- [ ] **15. Persistence polish** — auto-archive (**landed**: 10-day default,
+  `archivedAt` its own marker, `CompletedRetention` + `RetentionPump`, the knob in
+  Settings → *Retention*), search, transitions timeline in the drawer. *Verify:* old
+  Completed cards archive and stay searchable.
 - [ ] **16. UI polish** — final spacing, type, Radzen theming pass.
   - **User settings page** — consolidate the preferences that landed scattered
     across features into one screen: **theme** (Radzen *Standard* / *Standard
     Dark*; default **follows the OS** light/dark preference), density default,
     notification matrix, keep-awake, `maxConcurrent`, weekly-reset time,
-    auto-archive window, auto-execution pause. (Each knob works from its own
+    auto-archive window (**landed**), auto-execution pause. (Each knob works from its own
     feature step; this just gives them a home. The theme override replaces the
     interim OS-only auto-switch wired at Radzen setup.)
 

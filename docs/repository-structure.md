@@ -32,7 +32,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     running snapshot) — all shared by both adapters
 │  │  ├─ Rules/                     #   the rules engine, manual-move validity, sign-off validity,
 │  │  │                            #     Your-turn ordering, which cards are resumable after their
-│  │  │                            #     process died, how long a running card has been quiet
+│  │  │                            #     process died, how long a running card has been quiet,
+│  │  │                            #     which Completed cards retention is due to archive
 │  │  │                            #     (pure logic)
 │  │  ├─ Scheduling/                #   queue runner, schedule, backpressure
 │  │  ├─ Resources/                 #   CoreStrings (+ .fr) — localised text the CORE writes,
@@ -76,15 +77,17 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     + IDesktopBridge and its two implementations — the only
 │  │  │                            #     shell surface a page may touch
 │  │  ├─ Cards/                     #   BoardState — owns every card incl. archived ones, and
-│  │  │                            #     decides what may see which; task form model; capability
+│  │  │                            #     decides what may see which; RetentionPump (the hourly
+│  │  │                            #     auto-archive sweep); task form model; capability
 │  │  │                            #     catalog built from the registered adapters
 │  │  ├─ Sessions/                  #   SessionRegistry (the live sessions), SessionLauncher
 │  │  │                            #     (launch + restore), SessionRestorer (startup re-attach),
 │  │  │                            #     SessionEventPump (drains events onto the board),
 │  │  │                            #     TranscriptPump (one polling tail per live session)
-│  │  ├─ Usage/                     #   UsageState (latest reading per agent) + UsagePump
-│  │  │                            #     (one poll loop per probe); UsageIndicator renders it
-│  │  │                            #     in the top bar
+│  │  ├─ Usage/                     #   UsageState (latest result per agent, reading or named
+│  │  │                            #     unavailability) + UsagePump (one poll loop per probe,
+│  │  │                            #     backing off on a failure that cost a request);
+│  │  │                            #     UsageIndicator renders both in the top bar
 │  │  ├─ Settings/                  #   user-settings service + culture
 │  │  ├─ Resources/                 #   .resx strings (en / fr)
 │  │  ├─ wwwroot/                   #   CSS (flight-strip look), assets
@@ -225,6 +228,11 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   - **A reading held past its own reset reports zero, not the number it was given.** ACT
     polls, so nothing ran in between — the stale percentage describes a window that no longer
     exists. It renders subdued, because it is inferred from this machine only.
+  - **The probe returns a named outcome, never a bare null.** `UsageProbeResult` carries a
+    `UsageAvailability` so the top bar can say *why* a quota is missing — not signed in, token
+    expired, token refused, unreachable, unreadable — and `UsageBackoff` (`Act.Core/Rules`)
+    decides how long to wait before asking again, doubling only for the failures that actually
+    reached the network.
 - **Anything stored is a code; wording is resolved at render time.** A `Transition` keeps a
   `TransitionReason` plus a verbatim `Note` (an exit code, a CLI error, the adjustments a
   launch made) — never a sentence. Two reasons: `Act.Core` has no resources and must not

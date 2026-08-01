@@ -15,15 +15,17 @@ public sealed class CodexUsageDialect : IUsageDialect
     public string DefaultCredentialsPath()
         => Path.Combine(CodexHookConfig.ResolveCodexHome(), FileName);
 
-    public string? Token(string credentials, DateTimeOffset now)
+    public UsageToken Token(string credentials, DateTimeOffset now)
     {
         if (Document(credentials) is not { } root)
-            return null;
+            return UsageToken.Missing;
 
         if (!root.TryGetProperty("tokens", out var tokens) || tokens.ValueKind is not JsonValueKind.Object)
-            return null;
+            return UsageToken.Missing;
 
-        return Text(tokens, "access_token");
+        return Text(tokens, "access_token") is { Length: > 0 } token
+            ? UsageToken.Present(token)
+            : UsageToken.Missing;
     }
 
     public AgentUsage? Parse(string response, DateTimeOffset takenAt)

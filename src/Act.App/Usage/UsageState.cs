@@ -4,29 +4,29 @@ namespace Act.App.Usage;
 
 public sealed class UsageState
 {
-    private readonly Dictionary<AgentType, AgentUsage> readings = [];
+    private readonly Dictionary<AgentType, UsageProbeResult> results = [];
 
     private readonly object gate = new();
 
     public event Action? Changed;
 
-    public IReadOnlyList<AgentUsage> Readings
+    public IReadOnlyList<UsageProbeResult> Results
     {
         get
         {
             lock (gate)
-                return [.. readings.Values.OrderBy(reading => reading.Agent)];
+                return [.. results.Values.OrderBy(result => result.Agent)];
         }
     }
 
-    public void Publish(AgentType agent, AgentUsage? usage)
+    public void Publish(UsageProbeResult result)
     {
         lock (gate)
         {
-            if (usage is null)
-                readings.Remove(agent);
+            if (result.Availability is UsageAvailability.Off)
+                results.Remove(result.Agent);
             else
-                readings[agent] = usage;
+                results[result.Agent] = result;
         }
 
         Changed?.Invoke();

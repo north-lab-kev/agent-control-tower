@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using Act.Core.Abstractions;
 using Act.Core.Model;
@@ -17,12 +18,12 @@ public sealed class HttpUsageProbe(
 
     public AgentType Agent => dialect.Agent;
 
-    public async Task<AgentUsage?> ReadAsync(CancellationToken cancellationToken = default)
+    public async Task<UsageProbeResult> ReadAsync(CancellationToken cancellationToken = default)
     {
         var configured = options.For(Agent);
 
         if (!options.Enabled || !configured.Enabled)
-            return null;
+            return Unavailable(UsageAvailability.Off);
 
         var path = Fallback(configured.CredentialsPath, dialect.DefaultCredentialsPath());
 
@@ -30,20 +31,32 @@ public sealed class HttpUsageProbe(
         {
             log.LogDebug("No {Agent} credentials at {Path}; usage unavailable.", Agent, path);
 
-            return null;
+            return Unavailable(UsageAvailability.NotSignedIn);
         }
 
-        if (dialect.Token(credentials, clock.Now) is not { Length: > 0 } token)
+        var token = dialect.Token(credentials, clock.Now);
+
+        if (token.State is UsageTokenState.Expired)
+        {
+            log.LogDebug("The {Agent} access token has expired; usage unavailable.", Agent);
+
+            return Unavailable(UsageAvailability.Expired);
+        }
+
+        if (token is not { State: UsageTokenState.Present, Value: { Length: > 0 } bearer })
         {
             log.LogDebug("No usable {Agent} access token; usage unavailable.", Agent);
 
-            return null;
+            return Unavailable(UsageAvailability.NotSignedIn);
         }
 
-        return await RequestAsync(Fallback(configured.Endpoint, dialect.DefaultEndpoint), token, cancellationToken);
+        return await RequestAsync(Fallback(configured.Endpoint, dialect.DefaultEndpoint), bearer, cancellationToken);
     }
 
-    private async Task<AgentUsage?> RequestAsync(string endpoint, string token, CancellationToken cancellationToken)
+    private async Task<UsageProbeResult> RequestAsync(
+        string endpoint,
+        string token,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -59,24 +72,39 @@ public sealed class HttpUsageProbe(
             {
                 log.LogDebug("{Agent} usage endpoint answered {Status}.", Agent, (int)response.StatusCode);
 
-                return null;
+                return Unavailable(Refused(response.StatusCode)
+                    ? UsageAvailability.Unauthorized
+                    : UsageAvailability.Failed);
             }
 
-            return dialect.Parse(await response.Content.ReadAsStringAsync(cancellationToken), clock.Now);
+            if (dialect.Parse(await response.Content.ReadAsStringAsync(cancellationToken), clock.Now) is not { } usage)
+            {
+                log.LogDebug("The {Agent} usage response carried no window ACT could read.", Agent);
+
+                return Unavailable(UsageAvailability.Failed);
+            }
+
+            return UsageProbeResult.Of(usage);
         }
         catch (HttpRequestException error)
         {
             log.LogDebug(error, "{Agent} usage request failed.", Agent);
 
-            return null;
+            return Unavailable(UsageAvailability.Unreachable);
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             log.LogDebug("{Agent} usage request timed out.", Agent);
 
-            return null;
+            return Unavailable(UsageAvailability.Unreachable);
         }
     }
+
+    private static bool Refused(HttpStatusCode status)
+        => status is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
+
+    private UsageProbeResult Unavailable(UsageAvailability availability)
+        => UsageProbeResult.Unavailable(Agent, availability, clock.Now);
 
     private static string Fallback(string? configured, string standard)
         => string.IsNullOrWhiteSpace(configured) ? standard : configured;

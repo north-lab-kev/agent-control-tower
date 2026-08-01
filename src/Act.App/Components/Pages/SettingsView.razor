@@ -27,6 +27,36 @@
                 </RadzenStack>
             </RadzenFieldset>
 
+            <RadzenFieldset Text="@Strings.Settings_Group_Retention">
+                <RadzenStack Gap="1.1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_AutoArchive" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_AutoArchive_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenSwitch Value="AutoArchiveCompleted"
+                                      ValueChanged="@((bool value) => OnAutoArchiveCompletedChanged(value))" />
+                    </RadzenStack>
+
+                    @if (AutoArchiveCompleted)
+                    {
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                     JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_AutoArchiveDays" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_AutoArchiveDays_Hint"
+                                            class="hint" />
+                            </RadzenStack>
+                            <RadzenNumeric TValue="int" Value="AutoArchiveCompletedAfterDays"
+                                           Min="MinimumRetentionDays" Max="MaximumRetentionDays" Step="1"
+                                           Change="@((int value) => OnAutoArchiveDaysChanged(value))"
+                                           class="control" />
+                        </RadzenStack>
+                    }
+                </RadzenStack>
+            </RadzenFieldset>
+
             <RadzenFieldset Text="@Strings.Settings_Group_Appearance">
                 <RadzenStack Gap="1.1rem">
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"

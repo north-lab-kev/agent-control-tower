@@ -51,6 +51,7 @@ app.Services.GetRequiredService<AgentInstallDiscovery>().Run();
 app.Services.GetRequiredService<SessionEventPump>().Start();
 app.Services.GetRequiredService<TranscriptPump>().Start();
 app.Services.GetRequiredService<UsagePump>().Start();
+app.Services.GetRequiredService<RetentionPump>().Start();
 
 // The terminals that died with the previous run come back here, and only once the host is actually
 // listening: a resumed agent posts its first hook within moments of starting, and the endpoint that

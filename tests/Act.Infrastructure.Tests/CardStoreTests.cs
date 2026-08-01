@@ -58,6 +58,8 @@ public class CardStoreTests
             LaunchedAt = created.AddMinutes(3),
             CompletedAt = created.AddMinutes(40),
             DeletedAt = created.AddMinutes(55),
+            ArchivedAt = created.AddMinutes(50),
+            KeepOnBoard = true,
             Transitions =
             [
                 new Transition { At = created, Column = BoardColumn.Ready, Note = "queued" },

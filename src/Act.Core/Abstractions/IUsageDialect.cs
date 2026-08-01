@@ -10,7 +10,7 @@ public interface IUsageDialect
 
     string DefaultEndpoint { get; }
 
-    string? Token(string credentials, DateTimeOffset now);
+    UsageToken Token(string credentials, DateTimeOffset now);
 
     AgentUsage? Parse(string response, DateTimeOffset takenAt);
 }

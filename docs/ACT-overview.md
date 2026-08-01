@@ -548,6 +548,10 @@ joins the two on the way to the adapter and is the only place they meet.
   always, the agent a card already carries, so turning one off never leaves an existing card facing
   an empty dropdown for a value it still holds. Discovery sets it once for an agent it cannot find;
   after that it is the user's, so re-enabling sticks.
+  - **The switch also takes that agent off the usage indicator, and stops polling for it.** A quota
+    you cannot spend is not a number to act on, and the top bar is the one surface with no room for
+    information that leads nowhere. The pump checks the switch each tick rather than at startup, so
+    it stops and resumes without a restart.
 - **A one-time migration lifts what a real board already had** (`AgentDefaultsMigration`,
   at startup, newest card wins, skipped once an agent has settings). Without it the loss
   is silent and specific: a Store-packaged Codex is on no `PATH`, so every existing Codex
@@ -1375,13 +1379,14 @@ long until it resets, and the local time it resets at. It is the same data
 `schedule` and backpressure reason about, made visible.
 
 **Source: a live HTTP endpoint per agent**, authenticated with a bearer token read
-from that CLI's own credential file, polled once a minute. Endpoints, response
+from that CLI's own credential file, polled **once every 5 minutes and never faster
+than once a minute**. Endpoints, response
 shapes and the alternatives that were rejected (Claude Code's `statusLine` payload,
 scraping `/usage` from a pty, deriving from transcripts, Codex's rollout
 `rate_limits`) are recorded in **`docs/agent-usage-findings.md`**. Read it before
 touching usage code.
 
-Three rules the design turns on:
+Five rules the design turns on:
 
 - **A window is named by the length the server declares.** A paid Codex plan reports
   5-hour plus weekly; a free one reports a single 30-day window. Two hardcoded
@@ -1395,9 +1400,25 @@ Three rules the design turns on:
   refreshes its own; ACT re-reads before each poll and never attempts a refresh,
   because refresh tokens rotate and racing the CLI could invalidate the user's login.
   The token is never logged, never persisted, and goes nowhere but the vendor.
+- **The poll rate is a budget, not a preference.** Neither endpoint is documented or
+  promised, so `Usage:PollSeconds` defaults to 300 and is *clamped* to [60, 3600] — the
+  floor is not configurable away. The gap is measured from the end of one request to the
+  start of the next, so a slow endpoint is never asked again the instant it answers, and
+  a failure that reached the network doubles the wait up to a 15-minute ceiling
+  (`UsageBackoff`). A failure decided locally — no credentials, an expired Claude token —
+  spends no request and so keeps the base interval, because backing off would only delay
+  the recovery. A disabled agent is not polled at all.
+- **Unavailable is a state the bar shows, not a silence.** Every failure path resolves to
+  a `UsageAvailability`, and the agent's meters are replaced by an **unavailable chip** —
+  the agent name, the word *unavailable* in the error colour, and the cause in one mono
+  line (*not signed in*, *token expired*, *token refused*, *no connection*, *unreadable
+  reply*), with the full sentence and the last-checked time in the tooltip. Dropping the
+  meters silently, which is what the first version did, left no way to tell "you have used
+  nothing" from "ACT has been locked out since this morning". The chip keeps the meter's
+  box and rules so the bar does not jump when a quota comes back.
 
-Everything degrades to *usage unavailable*: a missing file, an expired token, a 401,
-a timeout, a changed response shape. Nothing about the indicator can break the board.
+Nothing about the indicator can break the board: every path ends at a reading or at a
+named unavailability, never at an exception the UI has to handle.
 
 ---
 
@@ -1412,21 +1433,36 @@ history.
 
 - **Active board** shows all non-Completed cards plus Completed ones within a
   recent window.
-- **Auto-archive** Completed cards after a **configurable window (default 90
+- **Auto-archive** Completed cards after a **configurable window (default 10
   days)**: they leave the board but stay in LiteDB — fully searchable, with
   `transitions[]`, `metrics`, lineage, and `initialPrompt` intact (audit +
   analytics value, cheap to keep). **Not the same axis as `deletedAt`** — that marks
   what the *user* removed and expects to find in the archive; auto-archive is a
-  retention policy on cards nobody deleted, and step 15 gives it its own marker rather
-  than reusing this one. Sharing a field would make "restore" mean two different things.
+  retention policy on cards nobody deleted, so it has its own marker, `archivedAt`.
+  Sharing a field would make "restore" mean two different things.
+  - **The window is measured from the sign-off (`completedAt`), never from the last
+    thing that happened to the card.** The setting reads "archive after N days", and a
+    Completed card whose session is reopened and read must not silently earn itself
+    another N days. A Completed card with no `completedAt` has no age to measure and is
+    left alone rather than dated by guess.
+  - **Restoring by hand wins for good.** A card the user pulls back out of the archive
+    carries `keepOnBoard`, and retention never takes it again — a policy that keeps
+    undoing an explicit decision is a bug, not a policy. `CompletedRetention`
+    (`Act.Core/Rules`) is the whole rule; `BoardState.ApplyRetentionAsync` stamps the
+    cards it names, and `RetentionPump` runs it hourly, at startup, and on every
+    settings change so turning the policy on takes effect while the user is watching.
+  - **The archive page shows both axes in one list**, because they are the same thing to
+    look at — a card that is no longer live and can be brought back. The row says which
+    of the two put it there, and *Clear archive* empties exactly what the list shows.
 - **Delete is always soft.** The task page's footer carries an icon-only delete, left-
   aligned and deliberately far from Save, available in **any** column. It sets
   `deletedAt` and the card leaves the board — nothing is destroyed, so it asks nothing:
   **the archive is the undo**. The only irreversible act in the app is emptying that
   archive, and it lives there rather than on the card.
-  - **Archive page** (`/archive`, from the top bar): everything deleted, newest first,
-    each restorable with one click, plus **Clear archive** — the single permanent delete,
-    behind an inline confirm. Restore puts a card back in the column it left.
+  - **Archive page** (`/archive`, from the top bar): everything off the board — deleted or
+    auto-archived — newest first, each restorable with one click, plus **Clear archive** —
+    the single permanent delete, behind an inline confirm. Restore puts a card back in the
+    column it left.
   - **Kill before archiving.** A card with a live session tears the process down first.
     Archiving while its agent kept working would leave a process editing a directory with
     nothing on the board pointing at it — precisely the state ACT exists to prevent. The
@@ -1714,13 +1750,15 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     flat block over the end of a bar that is neither flat nor unruled. Only the glyph
     colour stays native — one grey chosen to read on both themes.
 - **Settings page** (`/settings`): the home for scattered preferences, opened from the
-  gear in the top bar and grouped by type (**General**, **Appearance**, more to come).
+  gear in the top bar and grouped by type (**General**, **Retention**, **Appearance**,
+  **System**, more to come).
   Every setting applies immediately and persists to LiteDB — no OK/Cancel, and no Close
   either: the only action is the back arrow. A page rather than a dialog for the same
   reason as the task form — see *Interaction*. It also fixes a wart the dialog had: a
   language change forces a reload, which used to dismiss the dialog as a side effect and
   dump you on the board; now you stay on settings.
-  Shipped: **language**, **theme** (follow-OS / light / dark override),
+  Shipped: **language**, **archive completed tasks automatically** with its window in days,
+  **theme** (follow-OS / light / dark override),
   **display mode** (compact / spacious — settings-only; there is no top-bar
   density toggle), **blink in Your turn**, **keep-awake**, **close-to-tray**,
   **Agents** — one section per registered adapter carrying that CLI's **enabled** switch,
@@ -1733,8 +1771,13 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     same task twice by accident. Changing the default agent clears a model or effort the new one
     does not offer, and moves the permission mode to one it does, rather than storing a default
     that would be rejected at launch.
-  the notification matrix, `maxConcurrent`, weekly-reset time, and the auto-archive window /
-  auto-execution pause.
+  the notification matrix, `maxConcurrent`, weekly-reset time, and the auto-execution pause.
+  - **Archive completed tasks automatically** (*Retention*, on by default, **10 days**) is the
+    retention policy's one knob, and the day count only appears while the switch is on — a number
+    that governs nothing is a question the user has already answered. The window is clamped to
+    1–365 days on the way in, because the store is written on every keystroke's `Change` and a
+    typed `0` must not mean "archive everything the moment it is signed off". See *Data
+    retention* for what the sweep does and what it refuses to touch.
   - **Blink cards in Your turn** (*Appearance*, on by default) governs the attention pulse only.
     Off keeps the rail colour, the glow and the border — the card still reads as needing you, it
     simply holds still, which is exactly what a reduced-motion user already gets. The state is

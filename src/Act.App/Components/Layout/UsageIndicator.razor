@@ -1,4 +1,4 @@
-@if (Meters.Count > 0)
+@if (Meters.Count > 0 || Notices.Count > 0)
 {
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.6rem" class="usage">
         @foreach (var meter in Meters)
@@ -14,6 +14,24 @@
                                    Mode="ProgressBarMode.Determinate" class="mbar" />
 
                 <RadzenText TextStyle="TextStyle.Caption" Text="@meter.Reset" class="mreset" />
+            </div>
+        }
+
+        @foreach (var notice in Notices)
+        {
+            <div class="meter warn" title="@notice.Tooltip">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                             JustifyContent="JustifyContent.SpaceBetween" Gap="0.4rem" class="mtop">
+                    <RadzenText TextStyle="TextStyle.Caption" Text="@notice.Label" class="mlabel" />
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.2rem">
+                        <RadzenIcon Icon="error_outline" class="nicon" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Usage_Unavailable" class="nvalue" />
+                    </RadzenStack>
+                </RadzenStack>
+
+                <div class="nrule"></div>
+
+                <RadzenText TextStyle="TextStyle.Caption" Text="@notice.Reason" class="mreset" />
             </div>
         }
     </RadzenStack>

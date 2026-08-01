@@ -258,6 +258,57 @@
   <data name="Settings_Group_Appearance" xml:space="preserve">
     <value>Apparence</value>
   </data>
+  <data name="Usage_Unavailable" xml:space="preserve">
+    <value>indisponible</value>
+  </data>
+  <data name="Usage_Unavailable_NotSignedIn" xml:space="preserve">
+    <value>non connecté</value>
+  </data>
+  <data name="Usage_Unavailable_Expired" xml:space="preserve">
+    <value>jeton expiré</value>
+  </data>
+  <data name="Usage_Unavailable_Unauthorized" xml:space="preserve">
+    <value>jeton refusé</value>
+  </data>
+  <data name="Usage_Unavailable_Unreachable" xml:space="preserve">
+    <value>aucune connexion</value>
+  </data>
+  <data name="Usage_Unavailable_Failed" xml:space="preserve">
+    <value>réponse illisible</value>
+  </data>
+  <data name="Usage_Unavailable_Tooltip" xml:space="preserve">
+    <value>La consommation {0} est indisponible pour le moment — {1}. Dernière vérification à {2} ; ACT continue d&apos;essayer, et les chiffres reviendront d&apos;eux-mêmes.</value>
+  </data>
+  <data name="Usage_Cause_NotSignedIn" xml:space="preserve">
+    <value>ACT n&apos;a trouvé aucun identifiant pour ce CLI ; lancez-le une fois pour vous connecter</value>
+  </data>
+  <data name="Usage_Cause_Expired" xml:space="preserve">
+    <value>le jeton d&apos;accès du CLI a expiré, et seul le CLI peut le renouveler</value>
+  </data>
+  <data name="Usage_Cause_Unauthorized" xml:space="preserve">
+    <value>le point d&apos;accès a refusé le jeton, ce qui signifie généralement qu&apos;il faut renouveler la connexion</value>
+  </data>
+  <data name="Usage_Cause_Unreachable" xml:space="preserve">
+    <value>le point d&apos;accès est injoignable</value>
+  </data>
+  <data name="Usage_Cause_Failed" xml:space="preserve">
+    <value>le point d&apos;accès a répondu quelque chose qu&apos;ACT n&apos;a pas su lire</value>
+  </data>
+  <data name="Settings_Group_Retention" xml:space="preserve">
+    <value>Conservation</value>
+  </data>
+  <data name="Settings_AutoArchive" xml:space="preserve">
+    <value>Archiver automatiquement les tâches terminées</value>
+  </data>
+  <data name="Settings_AutoArchive_Hint" xml:space="preserve">
+    <value>Une tâche validée quitte le tableau lorsqu&apos;elle est assez ancienne. Rien n&apos;est détruit — elle passe aux archives, où vous pouvez la restaurer.</value>
+  </data>
+  <data name="Settings_AutoArchiveDays" xml:space="preserve">
+    <value>Archiver après</value>
+  </data>
+  <data name="Settings_AutoArchiveDays_Hint" xml:space="preserve">
+    <value>Jours depuis la fin de la tâche. Une tâche restaurée à la main reste au tableau.</value>
+  </data>
   <data name="Settings_Group_System" xml:space="preserve">
     <value>Système</value>
   </data>
@@ -551,6 +602,9 @@
   </data>
   <data name="Archive_Restore" xml:space="preserve">
     <value>Restaurer au tableau</value>
+  </data>
+  <data name="Archive_AutoArchived" xml:space="preserve">
+    <value>archivée automatiquement</value>
   </data>
   <data name="Archive_Clear" xml:space="preserve">
     <value>Vider les archives</value>

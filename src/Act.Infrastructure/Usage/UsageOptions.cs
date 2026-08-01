@@ -6,13 +6,13 @@ public sealed class UsageOptions
 {
     public const string SectionName = "Usage";
 
-    private const int ShortestPollSeconds = 15;
+    private const int ShortestPollSeconds = 60;
 
     private const int LongestPollSeconds = 3600;
 
     public bool Enabled { get; init; } = true;
 
-    public int PollSeconds { get; init; } = 60;
+    public int PollSeconds { get; init; } = 300;
 
     public Dictionary<string, UsageAgentOptions> Agents { get; init; } = [];
 

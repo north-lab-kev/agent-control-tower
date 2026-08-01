@@ -3,6 +3,7 @@ using Act.App.Resources;
 using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Core.Model;
+using Act.Core.Rules;
 using Microsoft.AspNetCore.Components;
 
 namespace Act.App.Components.Pages;
@@ -50,6 +51,14 @@ public partial class SettingsView(
     private bool CloseToTray => settings.CloseToTray;
 
     private bool IsDesktop => desktop.IsDesktop;
+
+    private bool AutoArchiveCompleted => settings.AutoArchiveCompleted;
+
+    private int AutoArchiveCompletedAfterDays => settings.AutoArchiveCompletedAfterDays;
+
+    private static int MinimumRetentionDays => CompletedRetention.MinimumDays;
+
+    private static int MaximumRetentionDays => CompletedRetention.MaximumDays;
 
     // Every registered adapter gets a section, in the order they were registered — the settings
     // model holds a list rather than a property per agent for the same reason.
@@ -263,6 +272,10 @@ public partial class SettingsView(
     private void OnKeepAwakeChanged(bool keepAwake) => settings.SetKeepAwake(keepAwake);
 
     private void OnCloseToTrayChanged(bool closeToTray) => settings.SetCloseToTray(closeToTray);
+
+    private void OnAutoArchiveCompletedChanged(bool autoArchive) => settings.SetAutoArchiveCompleted(autoArchive);
+
+    private void OnAutoArchiveDaysChanged(int days) => settings.SetAutoArchiveCompletedAfterDays(days);
 
     private void BackToBoard() => navigation.NavigateTo("/");
 }

@@ -46,11 +46,19 @@ public sealed class Card
 
     // Soft delete. A deleted card leaves the board but stays in the store, restorable from the
     // archive until it is explicitly purged — so nothing a user removes is lost to a misclick.
-    // Distinct from the *auto*-archive of old Completed cards (step 15), which is a retention
-    // policy on cards nobody deleted; that will need its own marker rather than reusing this one.
+    // Distinct from `ArchivedAt` below, which is the retention policy on cards nobody deleted:
+    // sharing one field would make "restore" mean two different things.
     public DateTimeOffset? DeletedAt { get; set; }
 
     public bool IsDeleted => DeletedAt is not null;
+
+    public DateTimeOffset? ArchivedAt { get; set; }
+
+    public bool IsAutoArchived => ArchivedAt is not null;
+
+    public bool KeepOnBoard { get; set; }
+
+    public bool IsOnBoard => DeletedAt is null && ArchivedAt is null;
 
     public IList<Transition> Transitions { get; set; } = [];
 

@@ -76,23 +76,25 @@ public class ClaudeCodeUsageDialectTests
     {
         var credentials = Credentials(Now.AddHours(1).ToUnixTimeMilliseconds());
 
-        new ClaudeCodeUsageDialect().Token(credentials, Now).Should().Be("sk-ant-oat01-EXAMPLE");
+        new ClaudeCodeUsageDialect().Token(credentials, Now)
+            .Should().Be(UsageToken.Present("sk-ant-oat01-EXAMPLE"));
     }
 
-    // ACT never refreshes the token — Claude Code owns that file — so an expired one is reported as
-    // no token rather than spent on a request that can only 401.
+    // ACT never refreshes the token — Claude Code owns that file — so an expired one is never spent on
+    // a request that can only 401. It is reported as *expired* rather than as missing, because the top
+    // bar has to be able to say which of the two it is.
     [Fact]
-    public void An_expired_token_is_not_offered()
+    public void An_expired_token_is_not_offered_and_says_it_expired()
     {
         var credentials = Credentials(Now.AddMinutes(-1).ToUnixTimeMilliseconds());
 
-        new ClaudeCodeUsageDialect().Token(credentials, Now).Should().BeNull();
+        new ClaudeCodeUsageDialect().Token(credentials, Now).Should().Be(UsageToken.Expired);
     }
 
     [Fact]
     public void An_unreadable_credentials_file_yields_no_token()
     {
-        new ClaudeCodeUsageDialect().Token("not json", Now).Should().BeNull();
+        new ClaudeCodeUsageDialect().Token("not json", Now).Should().Be(UsageToken.Missing);
     }
 
     [Fact]
@@ -200,13 +202,13 @@ public class CodexUsageDialectTests
                        "account_id":"00000000-0000-0000-0000-000000000000"}}
             """;
 
-        new CodexUsageDialect().Token(credentials, Now).Should().Be("eyJACCESS");
+        new CodexUsageDialect().Token(credentials, Now).Should().Be(UsageToken.Present("eyJACCESS"));
     }
 
     [Fact]
     public void An_unreadable_credentials_file_yields_no_token()
     {
-        new CodexUsageDialect().Token("not json", Now).Should().BeNull();
+        new CodexUsageDialect().Token("not json", Now).Should().Be(UsageToken.Missing);
     }
 
     [Fact]

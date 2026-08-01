@@ -28,19 +28,21 @@ public sealed class ClaudeCodeUsageDialect : IUsageDialect
         return Path.Combine(home, FileName);
     }
 
-    public string? Token(string credentials, DateTimeOffset now)
+    public UsageToken Token(string credentials, DateTimeOffset now)
     {
         if (Document(credentials) is not { } root)
-            return null;
+            return UsageToken.Missing;
 
         if (!root.TryGetProperty("claudeAiOauth", out var oauth) || oauth.ValueKind is not JsonValueKind.Object)
-            return null;
+            return UsageToken.Missing;
 
         if (Number(oauth, "expiresAt") is { } expiresAt
             && DateTimeOffset.FromUnixTimeMilliseconds(expiresAt) <= now)
-            return null;
+            return UsageToken.Expired;
 
-        return Text(oauth, "accessToken");
+        return Text(oauth, "accessToken") is { Length: > 0 } token
+            ? UsageToken.Present(token)
+            : UsageToken.Missing;
     }
 
     public AgentUsage? Parse(string response, DateTimeOffset takenAt)

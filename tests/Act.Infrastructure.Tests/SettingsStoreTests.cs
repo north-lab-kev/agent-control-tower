@@ -18,6 +18,8 @@ public class SettingsStoreTests
         settings.Language.Should().Be(LanguagePreference.System);
         settings.Theme.Should().Be(ThemePreference.System);
         settings.Density.Should().Be(BoardDensity.Spacious);
+        settings.AutoArchiveCompleted.Should().BeTrue();
+        settings.AutoArchiveCompletedAfterDays.Should().Be(10);
     }
 
     [Fact]
@@ -32,6 +34,8 @@ public class SettingsStoreTests
                 Language = LanguagePreference.French,
                 Theme = ThemePreference.Light,
                 Density = BoardDensity.Compact,
+                AutoArchiveCompleted = false,
+                AutoArchiveCompletedAfterDays = 45,
             });
         }
 
@@ -42,6 +46,8 @@ public class SettingsStoreTests
         settings.Language.Should().Be(LanguagePreference.French);
         settings.Theme.Should().Be(ThemePreference.Light);
         settings.Density.Should().Be(BoardDensity.Compact);
+        settings.AutoArchiveCompleted.Should().BeFalse();
+        settings.AutoArchiveCompletedAfterDays.Should().Be(45);
     }
 
     [Fact]

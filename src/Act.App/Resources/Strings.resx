@@ -258,6 +258,57 @@
   <data name="Settings_Group_Appearance" xml:space="preserve">
     <value>Appearance</value>
   </data>
+  <data name="Usage_Unavailable" xml:space="preserve">
+    <value>unavailable</value>
+  </data>
+  <data name="Usage_Unavailable_NotSignedIn" xml:space="preserve">
+    <value>not signed in</value>
+  </data>
+  <data name="Usage_Unavailable_Expired" xml:space="preserve">
+    <value>token expired</value>
+  </data>
+  <data name="Usage_Unavailable_Unauthorized" xml:space="preserve">
+    <value>token refused</value>
+  </data>
+  <data name="Usage_Unavailable_Unreachable" xml:space="preserve">
+    <value>no connection</value>
+  </data>
+  <data name="Usage_Unavailable_Failed" xml:space="preserve">
+    <value>unreadable reply</value>
+  </data>
+  <data name="Usage_Unavailable_Tooltip" xml:space="preserve">
+    <value>{0} usage is unavailable right now — {1}. Last checked at {2}; ACT keeps trying, and the numbers come back on their own.</value>
+  </data>
+  <data name="Usage_Cause_NotSignedIn" xml:space="preserve">
+    <value>ACT found no credentials for this CLI, so sign in by running it once</value>
+  </data>
+  <data name="Usage_Cause_Expired" xml:space="preserve">
+    <value>the CLI's access token has expired, and only the CLI itself can renew it</value>
+  </data>
+  <data name="Usage_Cause_Unauthorized" xml:space="preserve">
+    <value>the endpoint refused the token, which usually means the login has to be renewed</value>
+  </data>
+  <data name="Usage_Cause_Unreachable" xml:space="preserve">
+    <value>the endpoint could not be reached</value>
+  </data>
+  <data name="Usage_Cause_Failed" xml:space="preserve">
+    <value>the endpoint answered with something ACT could not read</value>
+  </data>
+  <data name="Settings_Group_Retention" xml:space="preserve">
+    <value>Retention</value>
+  </data>
+  <data name="Settings_AutoArchive" xml:space="preserve">
+    <value>Archive completed tasks automatically</value>
+  </data>
+  <data name="Settings_AutoArchive_Hint" xml:space="preserve">
+    <value>A signed-off task leaves the board once it is old enough. Nothing is destroyed — it moves to the archive, where you can restore it.</value>
+  </data>
+  <data name="Settings_AutoArchiveDays" xml:space="preserve">
+    <value>Archive after</value>
+  </data>
+  <data name="Settings_AutoArchiveDays_Hint" xml:space="preserve">
+    <value>Days since the task was completed. A task you restore by hand stays on the board.</value>
+  </data>
   <data name="Settings_Group_System" xml:space="preserve">
     <value>System</value>
   </data>
@@ -551,6 +602,9 @@
   </data>
   <data name="Archive_Restore" xml:space="preserve">
     <value>Restore to the board</value>
+  </data>
+  <data name="Archive_AutoArchived" xml:space="preserve">
+    <value>archived automatically</value>
   </data>
   <data name="Archive_Clear" xml:space="preserve">
     <value>Clear archive</value>

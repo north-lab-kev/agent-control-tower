@@ -29,6 +29,10 @@ public sealed class UserSettings
     // cannot find" a first-impression rather than a rule that would keep undoing the user.
     public bool AgentInstallsProbed { get; set; }
 
+    public bool AutoArchiveCompleted { get; set; } = true;
+
+    public int AutoArchiveCompletedAfterDays { get; set; } = 10;
+
     // What a new task is pre-filled with. Never null, so the form can read it unconditionally.
     public TaskDefaults TaskDefaults { get; set; } = new();
 }

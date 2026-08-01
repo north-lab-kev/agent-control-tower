@@ -1,5 +1,6 @@
 using Act.Core.Abstractions;
 using Act.Core.Model;
+using Act.Core.Rules;
 
 namespace Act.App.Settings;
 
@@ -22,6 +23,14 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
     public bool KeepAwake => current.KeepAwake;
 
     public bool CloseToTray => current.CloseToTray;
+
+    public bool AutoArchiveCompleted => current.AutoArchiveCompleted;
+
+    public int AutoArchiveCompletedAfterDays => CompletedRetention.ClampDays(current.AutoArchiveCompletedAfterDays);
+
+    public TimeSpan? CompletedRetentionWindow => current.AutoArchiveCompleted
+        ? CompletedRetention.Window(current.AutoArchiveCompletedAfterDays)
+        : null;
 
     // A copy, always: the caller is a form binding its own fields, and handing out the stored object
     // would let it edit the settings in place and skip the save.
@@ -120,6 +129,24 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
             return;
 
         Update(settings => settings.CloseToTray = closeToTray);
+    }
+
+    public void SetAutoArchiveCompleted(bool autoArchive)
+    {
+        if (autoArchive == current.AutoArchiveCompleted)
+            return;
+
+        Update(settings => settings.AutoArchiveCompleted = autoArchive);
+    }
+
+    public void SetAutoArchiveCompletedAfterDays(int days)
+    {
+        var clamped = CompletedRetention.ClampDays(days);
+
+        if (clamped == current.AutoArchiveCompletedAfterDays)
+            return;
+
+        Update(settings => settings.AutoArchiveCompletedAfterDays = clamped);
     }
 
     private void Update(Action<UserSettings> change)
