@@ -113,7 +113,10 @@
     font-size: var(--act-t4);
 }
 
-::deep .colcount {
+/* `.rz-badge` is in the selector to outweigh Radzen's own three-class badge rule — without it the
+   colour below loses and the count renders in the framework's grey, which is what it had been
+   doing: close enough to `--act-faint` that nobody caught it by eye. */
+::deep .rz-badge.colcount {
     font-family: var(--act-mono);
     font-size: var(--act-t2);
     color: var(--act-faint);
@@ -122,7 +125,7 @@
 
 /* Muted like the hold chips, not like a badge: it reports what the filter is doing, and must not
    compete with the attention treatment it is pointing at. */
-::deep .hiddenattn {
+::deep .rz-badge.hiddenattn {
     font-family: var(--act-mono);
     font-size: var(--act-t2);
     color: var(--act-wait);

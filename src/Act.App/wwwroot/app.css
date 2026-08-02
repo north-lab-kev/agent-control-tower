@@ -1,4 +1,7 @@
-.act-root {
+/* On the document element rather than the layout root, because Radzen appends its popups to <body>
+   and the `--rz-*` mapping below is written in these tokens. `data-act-theme` is stamped on <html>
+   by App.razor and kept current by `actTheme.apply`. */
+:root {
     --act-bg: #0d1217;
     --act-surface: #18222b;
     --act-surface2: #1e2a34;
@@ -26,6 +29,10 @@
     --act-track: #ffffff10;
     --act-attn-fill: #f0a93b;
     --act-on-attn: #1a130a;
+    /* Text on a filled accent. Dark's accents are *light* — they are built to glow on a near-black
+       board — so white on them reads at 2.0–4.2:1 and fails AA; this is the near-black that clears
+       4.5:1 against all four. Light's accents are dark, and there white is the one that passes. */
+    --act-on-accent: #0a1016;
     --act-tint-fill: 9%;
     --act-tint-edge: 20%;
 
@@ -74,11 +81,14 @@
     --act-icon: 14px;
 
     color-scheme: dark;
+}
+
+.act-root {
     background-color: var(--act-bg);
     color: var(--act-ink);
 }
 
-.act-root[data-act-theme="light"] {
+:root[data-act-theme="light"] {
     --act-bg: #e9edf1;
     --act-surface: #ffffff;
     --act-surface2: #f4f7fa;
@@ -106,6 +116,7 @@
     --act-track: #0f172a14;
     --act-attn-fill: #f6b93f;
     --act-on-attn: #2b1d05;
+    --act-on-accent: #ffffff;
     --act-tint-fill: 12%;
     --act-tint-edge: 30%;
 
@@ -113,7 +124,7 @@
 }
 
 @media (prefers-color-scheme: light) {
-    .act-root[data-act-theme="system"] {
+    :root[data-act-theme="system"] {
         --act-bg: #e9edf1;
         --act-surface: #ffffff;
         --act-surface2: #f4f7fa;
@@ -146,6 +157,69 @@
 
         color-scheme: light;
     }
+}
+
+/* Radzen's widgets shipped in their own palette — neutral grey cards on ACT's blue-grey control
+   room, 4px corners next to ACT's 7px, and a generic #3871ff primary that appears nowhere else in
+   the app. This is the seam between the two systems.
+
+   It is *one* block for both themes, and that is the whole trick: Radzen's variables are `var()`
+   chains, not baked literals — `--rz-card-background-color` is `var(--rz-base-background-color)`,
+   `--rz-card-border-radius` is `var(--rz-border-radius)` — so re-pointing the semantic layer
+   cascades through every widget, and re-pointing it at `--act-*` tokens means the theme switch is
+   already handled by the tokens themselves. Overriding Radzen's `--rz-base-50…900` ramp instead
+   was the alternative, and it was rejected: the ramp runs lightest-to-darkest in *both* sheets and
+   only the semantic pointers flip, so the same ramp slot means "page background" in one theme and
+   "body text" in the other — three copies to maintain, to say what these fifteen lines say once.
+
+   Loaded after both Radzen sheets (App.razor's link order), so equal `:root` specificity resolves
+   this way. */
+:root {
+    --rz-base-background-color: var(--act-surface);
+    --rz-body-background-color: var(--act-bg);
+
+    --rz-text-title-color: var(--act-ink);
+    --rz-text-color: var(--act-ink);
+    --rz-text-secondary-color: var(--act-dim);
+    --rz-text-tertiary-color: var(--act-faint);
+    --rz-text-disabled-color: var(--act-faint);
+
+    --rz-border-normal: var(--rz-border-width) solid var(--act-line);
+    --rz-border-hover: var(--rz-border-width) solid var(--act-line2);
+    --rz-border-focus: var(--rz-border-width) solid var(--act-line2);
+    --rz-border-disabled: var(--rz-border-width) solid var(--act-line);
+    --rz-border-radius: var(--act-radius);
+
+    /* The status palette is the app's vocabulary, so a Radzen widget must not invent a second one:
+       a Danger button is the red a killed card blinks in, and Primary is the blue of `to review`. */
+    /* `Base` is the style ACT reaches for most — every quiet outlined button and badge — and it is
+       an accent of its own (`--rz-base`), not a step on the ramp. `--act-dim` rather than
+       `--act-faint`: it has to carry button labels, and faint is 2.6:1 on a card. */
+    --rz-base: var(--act-dim);
+    --rz-on-base: var(--act-on-accent);
+
+    --rz-primary: var(--act-review);
+    --rz-info: var(--act-review);
+    --rz-success: var(--act-done);
+    --rz-warning: var(--act-wait);
+    --rz-danger: var(--act-err);
+
+    /* Radzen writes these as a literal `#ffffff`, which is the one assumption in its palette that
+       does not survive the swap: it holds only while every accent is dark. Measured on the Save
+       button — white on ACT's dark-theme review blue is 2.8:1, under AA. */
+    --rz-on-primary: var(--act-on-accent);
+    --rz-on-secondary: var(--act-on-accent);
+    --rz-on-info: var(--act-on-accent);
+    --rz-on-success: var(--act-on-accent);
+    --rz-on-warning: var(--act-on-accent);
+    --rz-on-danger: var(--act-on-accent);
+
+    /* The three that reach past the semantic layer into the raw ramp, so the cascade above cannot
+       catch them. Found by walking the rendered DOM for neutral greys the palette does not contain
+       — the fieldset border is the most visible of them, drawn seven times on the settings page. */
+    --rz-fieldset-border: var(--rz-border-width) solid var(--act-line);
+    --rz-fieldset-toggle-background-color: var(--act-line);
+    --rz-switch-background-color: var(--act-faint);
 }
 
 body {

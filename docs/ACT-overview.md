@@ -2068,6 +2068,21 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
       step above at `t6` + `--act-w-em`, because it has to out-rank the labels it heads.
       Icons are sized as icons: an icon beside a label takes `--act-icon` so it never out-sizes
       its own word; an icon-only button keeps Radzen's, which already tracks the button size.
+  - **"Radzen themed to the same palette" is one block of `--rz-*` in `app.css`, written in
+    `--act-*`.** Radzen's variables are `var()` chains rather than baked literals, so re-pointing
+    the *semantic* layer — `--rz-base-background-color`, the text and border families,
+    `--rz-border-radius`, `--rz-base` and the status colours — cascades to every widget, and
+    pointing it at tokens that already switch means **one block serves both themes**. Remapping
+    Radzen's `--rz-base-50…900` ramp instead was rejected: the ramp runs the same direction in both
+    sheets and only the semantic pointers flip, so a slot means "page background" in one theme and
+    "body text" in the other.
+    - **The tokens therefore live on `:root`, keyed by `data-act-theme` on `<html>`**, not on the
+      layout root — Radzen mounts a dialog's mask and wrapper at `<body>`, outside the layout, and
+      the mapping has to reach there.
+    - **`--act-on-accent` exists because Radzen's `--rz-on-*` are a literal white**, which holds
+      only while every accent is dark. ACT's dark accents are light — built to glow on a near-black
+      board — so white on them fails AA. The token is a near-black in dark and white in light,
+      chosen by computing the ratio against all four status colours.
 - **Theme (dark / light):** both are supported and **follow the OS** by default.
   Radzen's *Standard* and *Standard Dark* stylesheets are linked behind
   `prefers-color-scheme`, and ACT's own control-room palette (the `--act-*`

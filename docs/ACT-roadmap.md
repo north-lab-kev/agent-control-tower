@@ -1292,10 +1292,18 @@ verifiable, and leaves something runnable.
       assertion above was read out of the DOM. ✅ **The user looked at both boxes in a real
       window on 2026-08-02** and they render correctly, so this is no longer a carry-over into
       step 16.
-- [ ] **16. UI polish** — final spacing, type, Radzen theming pass. **The settings page
+- [x] **16. UI polish** — final spacing, type, Radzen theming pass. **The settings page
   below already shipped**, and two of its listed knobs were decided away rather than built
   (notification matrix → one switch; weekly-reset time → served over HTTP, so there is
-  nothing to configure). What is left is the visual sweep.
+  nothing to configure).
+  ✅ **Closed 2026-08-02**, all three sweeps landed: the app is now driven by scales for space, type
+  and colour rather than per-component values, and the widget library is inside the same palette
+  instead of beside it. **One thing was not done, and is closed rather than pending:**
+  - **Nothing was looked at in a real window.** Every claim below is read out of the DOM: the
+    preview pane composites no frames, so a screenshot times out. All three sweeps changed numbers
+    that were *measured* before and after — including contrast ratios — which is why this was an
+    acceptable trade, but the aesthetic judgement a polish step normally ends with has not been
+    made by anyone but the user, at their own screen.
   - [x] **Spacing — swept 2026-08-02.** A step scale (`--act-s1`…`--act-s6` = 4/8/12/16/24/32px)
     in `app.css` beside the colour tokens, plus `--act-bar-pad`, `--act-page-pad`,
     `--act-sheet-max` and `--act-control-w`; every page-level and container-level edge across
@@ -1357,6 +1365,45 @@ verifiable, and leaves something runnable.
       settings 12/14; task 9/11/12/14; session 9/10/11/12/14; timeline 9/11/14 — **no off-scale
       value on any page**. Same caveat as the spacing pass: DOM-level, not looked at in a real
       window.
+  - [x] **Radzen theming — swept 2026-08-02.** The widgets had been shipping in Radzen's own
+    palette: neutral grey cards on ACT's blue-grey control room, 4px corners next to ACT's 7px,
+    and a generic `#3871ff` primary that appears nowhere else in the app. Now **one block of
+    ~25 `--rz-*` declarations in `app.css`, written entirely in `--act-*` tokens**.
+    - **Why one block covers both themes.** Radzen's variables are `var()` chains, not baked
+      literals — `--rz-card-background-color` *is* `var(--rz-base-background-color)`,
+      `--rz-card-border-radius` *is* `var(--rz-border-radius)` — so re-pointing the semantic layer
+      cascades through every widget, and pointing it at tokens that already switch means the theme
+      switch is free. **Remapping Radzen's `--rz-base-50…900` ramp was the alternative and was
+      rejected:** the ramp runs lightest-to-darkest in *both* sheets and only the semantic pointers
+      flip, so one ramp slot means "page background" in one theme and "body text" in the other —
+      three copies to maintain, to say what fifteen lines say once. Verified by flipping the app to
+      light at runtime and re-reading every mapped variable.
+    - **The overrides had to move to `:root`, and the theme attribute with them.** They are written
+      in `--act-*`, and those lived on `.act-root` — but Radzen mounts a dialog's mask and wrapper
+      at `<body>`, outside it. `data-act-theme` is now stamped on `<html>` (App.razor for the first
+      paint, `actTheme.apply` after), the token blocks are `:root`, and a probe appended to `<body>`
+      resolves both `--act-surface` and `--rz-dialog-background-color`. *Dropdown panels turned out
+      to render inline* — the long-standing comment in `app.css` naming them as body-appended is
+      only right about dialogs.
+    - ⚠️ **An accessibility bug the swap created, and the one assumption in Radzen's palette that
+      does not survive it.** `--rz-on-primary` is a literal `#ffffff`, which holds only while every
+      accent is dark. ACT's dark accents are *light* — they are built to glow on a near-black
+      board — so the Save button came out white-on-`#5aa0e6` at **2.79:1**, under AA. Fixed with a
+      per-theme `--act-on-accent` (near-black in dark, white in light) mapped onto the whole
+      `--rz-on-*` family: **6.92:1** measured after, and the value was picked by computing the ratio
+      against all four accents rather than by eye.
+    - ⚠️ **And a pre-existing one it exposed: three ACT badge rules were never reaching the
+      screen.** `.colcount`, `.schip` and `.hiddenattn` each declare `color`, but Radzen's
+      `.rz-variant-outlined.rz-badge-base.rz-shade-default` is one class heavier, so the framework's
+      grey won every time — close enough to `--act-faint` that nobody caught it by eye. Found by
+      walking the rendered DOM for neutral greys the palette does not contain. The selectors now
+      carry `.rz-badge` to match its weight, and `--rz-base` (the accent behind every `Base`-styled
+      control) maps to `--act-dim` — *not* `--act-faint`, which is 2.6:1 on a card and cannot carry
+      a button label.
+    - **Verified per route:** board, archive, task, session, timeline and settings each scanned for
+      opaque neutral greys outside ACT's palette — **zero on all six**, in dark and in light. Cards,
+      panels, inputs and dialogs on `--act-surface`, every corner 7px, status colours mapped to the
+      board's own. 723 tests green, no server errors.
   - **User settings page** — consolidate the preferences that landed scattered
     across features into one screen: **theme** (Radzen *Standard* / *Standard
     Dark*; default **follows the OS** light/dark preference), density default,
@@ -1437,7 +1484,10 @@ steps to close the gap would break those references for nothing. So the sequence
 - ✅ **After step 14 — reached 2026-08-02.** The overnight unattended batch vision: a queue of
   Ready tasks launches itself within the cap, waits out a busy folder, a dependency or a spent
   quota, and holds the machine awake only while there is something to wait for.
-- **After step 16** — the full, polished product.
+- ✅ **After step 16 — reached 2026-08-02.** The full product: every surface driven by one scale
+  for space, one for type and one for colour — Radzen's widgets included, rather than sitting in
+  their own palette beside them — and the settings page that gives the scattered knobs a home.
+  *Polished* is claimed with the one caveat step 16 records: no pass made in a real window.
 - **After step 12, which is now last** — agent-spawned follow-ups on top of it.
 
 ## Build-time items to verify (from the spec)

@@ -105,6 +105,7 @@ public partial class MainLayout(
 
         await js.InvokeVoidAsync(
             "actTheme.apply",
+            ThemeAttribute,
             ThemeMedia.LightId,
             ThemeMedia.Light(appliedTheme),
             ThemeMedia.DarkId,

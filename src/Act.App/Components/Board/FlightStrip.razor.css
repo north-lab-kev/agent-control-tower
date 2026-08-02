@@ -88,7 +88,9 @@
     white-space: nowrap;
 }
 
-::deep .schip {
+/* `.rz-badge` for the same reason as the board's `.colcount`: Radzen's outlined-base badge rule is
+   one class heavier, so this colour was never reaching the screen. */
+::deep .rz-badge.schip {
     font-family: var(--act-mono);
     font-size: var(--act-t1);
     color: var(--act-faint);
