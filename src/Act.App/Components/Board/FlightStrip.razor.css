@@ -97,6 +97,18 @@
     white-space: nowrap;
 }
 
+/* A detailed strip is tall enough to say the whole title: it wraps and the card grows, up to three
+   lines, and only then does the ellipsis take over. The compact strip keeps its single line, which
+   is the density it exists for. */
+::deep .ttl3 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
 ::deep .path {
     font-size: var(--act-t2);
     color: var(--act-dim);
