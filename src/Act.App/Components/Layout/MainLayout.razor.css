@@ -86,7 +86,7 @@
 
 ::deep .fullname {
     font-family: var(--act-mono);
-    font-size: 11px;
+    font-size: var(--act-t3);
     letter-spacing: .2em;
     text-transform: uppercase;
     color: var(--act-dim);

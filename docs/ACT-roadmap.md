@@ -1324,6 +1324,39 @@ verifiable, and leaves something runnable.
       view's left edge, inter-pane gap and right edge all 8px. 723 tests green.
       **Not looked at in a real window** — the pane composites no frames, so a screenshot times
       out; that glance belongs with the type and theming passes.
+  - [x] **Type — swept 2026-08-02.** `--act-t1`…`--act-t7` (9/10/11/12/13/14/20px) plus
+    `--act-w-em`, `--act-track-caps`, `--act-lh-dense` and `--act-icon`. **Sixteen distinct sizes
+    in two units became seven**, and the audit that proves it is per route: every text node under
+    `main` on all six pages now computes to a scale value and nothing else.
+    - **px, not the rem the spacing scale uses** — deliberate, and stated in the token block. The
+      app is a fixed-density readout and its sizes were being hand-tuned to the half pixel
+      (9.5px, 11.5px, 12.5px all existed); that is a pixel grid asking to be named.
+    - ⚠️ **The hierarchy was inverted, and only measuring found it.** Radzen's Body2 renders at
+      **14px** while ACT's page titles were 13px — so on the settings page every *field label* was
+      larger than the *name of the page*. Fixed by making the top of ACT's scale Radzen's own
+      (`t4` = its Caption at 12px, `t6` = its Body2 at 14px) and giving a page title `t6` +
+      `--act-w-em`: it wins on weight, which is the only step a strip that dense can afford.
+      - **And a first reading of this was wrong in a way worth recording.** Querying
+        `.rz-text-caption` returned 11px — but the first match in the document is the top bar's
+        `.fullname`, which *overrides* it. Radzen's Caption is 12px. When probing a framework's
+        scale, query an element the app has not restyled.
+    - **What the sizes now encode:** a card's title is **one size wherever a card is listed**
+      (strip, archive row, follow-ups dialog) — it was 12.5px on the strip, 13.1px in an archive
+      row and 12.8px in the dialog, three sizes for one datum, and the card number was three more.
+      A page's title is the step above. Icons follow their own rule: beside a label they take
+      `--act-icon` (the strip's Launch glyph was 16px next to its own 12px word), while icon-only
+      buttons keep Radzen's, which already tracks the button size.
+    - **One weight retired:** 500 existed once, on the error page. 600 is now the only emphasis;
+      700 stays on the wordmark alone, as a logotype.
+    - ⚠️ **A live bug the pass surfaced: `NotFound.razor` was rendering completely unstyled.** It
+      reuses Error's `.errpage` markup, but scoped CSS stops at the component that owns it — so
+      that page had a 32px browser-default heading, no padding and no colour, and had presumably
+      looked that way since it was written. `Error.razor.css` is now a global block in `app.css`
+      and both pages get it. Verified: `/not-found` reads 20px/600 in ACT's red with 24px padding.
+    - **Verified per route and 723 tests green.** Board 9/10/12/13; archive 10/11/12/13/14;
+      settings 12/14; task 9/11/12/14; session 9/10/11/12/14; timeline 9/11/14 — **no off-scale
+      value on any page**. Same caveat as the spacing pass: DOM-level, not looked at in a real
+      window.
   - **User settings page** — consolidate the preferences that landed scattered
     across features into one screen: **theme** (Radzen *Standard* / *Standard
     Dark*; default **follows the OS** light/dark preference), density default,

@@ -30,7 +30,9 @@ else
             <div class="sheet">
                 @if (Entries.Count == 0)
                 {
-                    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Timeline_Empty" class="empty" />
+                    @* Body2, like the archive's: an empty page states itself at reading size. Only
+                       a lane's empty note is a whisper, because it sits inside a working surface. *@
+                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Timeline_Empty" class="empty" />
                 }
                 else
                 {

@@ -6,7 +6,8 @@
 }
 
 .bar .title {
-    font-size: 0.82rem;
+    font-size: var(--act-t6);
+    font-weight: var(--act-w-em);
     color: var(--act-ink);
 }
 

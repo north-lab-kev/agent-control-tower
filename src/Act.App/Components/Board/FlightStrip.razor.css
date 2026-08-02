@@ -56,28 +56,31 @@
 
 /* Stated, not alarmed: the colour says "worth a look", the badge beside it still says `running`. */
 ::deep .quiet {
-    font-size: 9.5px;
+    font-size: var(--act-t2);
     color: var(--act-quiet);
 }
 
 ::deep .cid,
 ::deep .metrics,
 ::deep .lin {
-    font-size: 9.5px;
+    font-size: var(--act-t2);
     color: var(--act-faint);
 }
 
+/* A card's title is one size wherever a card is listed — here, in an archive row, in the follow-ups
+   dialog. The strip earns its density from its padding, not from half a pixel off the string you
+   came for. (A *page*'s title is a step up, since it has to out-rank what it heads.) */
 ::deep .ttl {
-    font-size: 12.5px;
+    font-size: var(--act-t5);
     color: var(--act-ink);
-    line-height: 1.35;
+    line-height: var(--act-lh-dense);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 ::deep .path {
-    font-size: 10px;
+    font-size: var(--act-t2);
     color: var(--act-dim);
     opacity: .7;
     overflow: hidden;
@@ -87,7 +90,7 @@
 
 ::deep .schip {
     font-family: var(--act-mono);
-    font-size: 9px;
+    font-size: var(--act-t1);
     color: var(--act-faint);
     border-style: dashed;
     border-color: var(--act-line2);
@@ -96,9 +99,9 @@
 
 ::deep .badge {
     font-family: var(--act-mono);
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: .05em;
+    font-size: var(--act-t1);
+    font-weight: var(--act-w-em);
+    letter-spacing: var(--act-track-caps);
     text-transform: uppercase;
     white-space: nowrap;
     color: var(--tint, var(--act-faint));
@@ -115,6 +118,12 @@
 ::deep .b-err { --tint: var(--act-err); }
 ::deep .b-review { --tint: var(--act-review); }
 ::deep .b-done { --tint: var(--act-done); }
+
+/* Radzen gives it a 16px glyph beside a 12px label, so the icon was the loudest thing on a strip
+   whose whole job is to be read. */
+::deep .launch .rz-button-icon-left {
+    font-size: var(--act-icon);
+}
 
 ::deep .ctxbar {
     height: 3px;

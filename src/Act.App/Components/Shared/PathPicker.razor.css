@@ -17,7 +17,7 @@
 .crumbs .here {
     margin-left: 0.4rem;
     font-family: var(--act-mono);
-    font-size: 0.68rem;
+    font-size: var(--act-t3);
     color: var(--act-dim);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -43,7 +43,7 @@
     background: none;
     color: var(--act-ink);
     font: inherit;
-    font-size: 0.78rem;
+    font-size: var(--act-t4);
     text-align: left;
     cursor: pointer;
 }

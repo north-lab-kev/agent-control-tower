@@ -14,8 +14,8 @@
 .cardtabs ::deep .tab {
     padding: 0.35rem 0.7rem;
     font-family: var(--act-mono);
-    font-size: 0.62rem;
-    letter-spacing: 0.05em;
+    font-size: var(--act-t1);
+    letter-spacing: var(--act-track-caps);
     text-transform: uppercase;
     color: var(--act-faint);
     text-decoration: none;

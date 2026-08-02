@@ -2055,6 +2055,19 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     below it on every page — and that the one *page header* rule lives in the layout
     (`::deep .bar`) rather than in five identical copies, with only the window's own strip
     (`.titlebar`) reserving room for the OS overlay.
+  - **Type is a scale too, and it interlocks with Radzen's.** `--act-t1`…`--act-t7`
+    (9/10/11/12/13/14/20px), in **px** rather than the spacing scale's rem: this is a
+    fixed-density readout — a 960px floor, a terminal on a character grid — and its sizes were
+    being hand-tuned to the half pixel. Two steps are deliberately Radzen's own (`t4` = its
+    Caption, `t6` = its Body2 and controls), so ACT's chrome steps *down* from the widgets
+    instead of landing a pixel off them. One emphasis weight (`--act-w-em: 600`; 700 is the
+    wordmark's alone, as a logotype), one tracking for uppercase labels
+    (`--act-track-caps`), and one dense leading (`--act-lh-dense`).
+    - **The hierarchy rule the sizes encode:** a **card's title is one size wherever a card is
+      listed** — flight strip, archive row, follow-ups dialog — while a **page's own title is a
+      step above at `t6` + `--act-w-em`, because it has to out-rank the labels it heads.
+      Icons are sized as icons: an icon beside a label takes `--act-icon` so it never out-sizes
+      its own word; an icon-only button keeps Radzen's, which already tracks the button size.
 - **Theme (dark / light):** both are supported and **follow the OS** by default.
   Radzen's *Standard* and *Standard Dark* stylesheets are linked behind
   `prefers-color-scheme`, and ACT's own control-room palette (the `--act-*`

@@ -125,8 +125,7 @@ public partial class UsageIndicator(UsageState usage, UserSettingsService settin
             Strings.Usage_Tooltip,
             Name(reading.Agent),
             Name(window.Kind),
-            window.ResetsAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture),
-            reading.TakenAt.ToLocalTime().ToString("t", CultureInfo.CurrentCulture));
+            window.ResetsAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture));
 
         return new Meter(
             $"{Name(reading.Agent)} {Name(window.Kind)}",

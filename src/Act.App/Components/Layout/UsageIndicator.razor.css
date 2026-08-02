@@ -25,11 +25,11 @@
 
 .meter.warn ::deep .nvalue {
     font-family: var(--act-mono);
-    font-size: 10px;
-    line-height: 1.3;
+    font-size: var(--act-t2);
+    line-height: var(--act-lh-dense);
     white-space: nowrap;
     color: var(--act-err);
-    font-weight: 600;
+    font-weight: var(--act-w-em);
 }
 
 .meter.warn ::deep .nicon {
@@ -41,20 +41,20 @@
 .meter ::deep .mvalue,
 .meter ::deep .mreset {
     font-family: var(--act-mono);
-    font-size: 10px;
-    line-height: 1.3;
+    font-size: var(--act-t2);
+    line-height: var(--act-lh-dense);
     white-space: nowrap;
 }
 
 .meter ::deep .mlabel {
     color: var(--act-dim);
     text-transform: uppercase;
-    letter-spacing: .08em;
+    letter-spacing: var(--act-track-caps);
 }
 
 .meter ::deep .mvalue {
     color: var(--act-ink);
-    font-weight: 600;
+    font-weight: var(--act-w-em);
 }
 
 .nrule {

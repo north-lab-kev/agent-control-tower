@@ -856,7 +856,7 @@
     <value>{0} min</value>
   </data>
   <data name="Usage_Tooltip" xml:space="preserve">
-    <value>{0} — fenêtre {1} · réinitialisation {2} · relevé à {3}</value>
+    <value>{0} — fenêtre {1} · réinitialisation {2}</value>
   </data>
   <data name="Search_Placeholder" xml:space="preserve">
     <value>Filtrer par numéro, titre, dossier ou consigne</value>

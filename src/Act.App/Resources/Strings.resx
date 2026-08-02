@@ -856,7 +856,7 @@
     <value>{0}m</value>
   </data>
   <data name="Usage_Tooltip" xml:space="preserve">
-    <value>{0} — {1} window · resets {2} · read at {3}</value>
+    <value>{0} — {1} window · resets {2}</value>
   </data>
   <data name="Search_Placeholder" xml:space="preserve">
     <value>Filter by number, title, folder or prompt</value>

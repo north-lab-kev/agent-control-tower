@@ -13,12 +13,13 @@
 
 .bar .id {
     font-family: var(--act-mono);
-    font-size: 0.72rem;
+    font-size: var(--act-t3);
     color: var(--act-review);
 }
 
 .bar .title {
-    font-size: 0.82rem;
+    font-size: var(--act-t6);
+    font-weight: var(--act-w-em);
     color: var(--act-ink);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -33,9 +34,9 @@
     padding: 2px 6px;
     border-radius: 3px;
     font-family: var(--act-mono);
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: .05em;
+    font-size: var(--act-t1);
+    font-weight: var(--act-w-em);
+    letter-spacing: var(--act-track-caps);
     text-transform: uppercase;
     white-space: nowrap;
     color: var(--tint, var(--act-faint));
@@ -97,16 +98,16 @@
 }
 
 .facts dt {
-    font-size: 0.62rem;
+    font-size: var(--act-t2);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--act-track-caps);
     color: var(--act-faint);
     margin-top: var(--act-s2);
 }
 
 .facts dd {
     margin: 0;
-    font-size: 0.75rem;
+    font-size: var(--act-t4);
     color: var(--act-ink);
 }
 
@@ -130,7 +131,7 @@
 
 .facts dd.path {
     font-family: var(--act-mono);
-    font-size: 0.68rem;
+    font-size: var(--act-t3);
     color: var(--act-dim);
     overflow-wrap: anywhere;
 }

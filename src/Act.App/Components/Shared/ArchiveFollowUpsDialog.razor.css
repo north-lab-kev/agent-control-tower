@@ -25,13 +25,13 @@
 
 .kids .id {
     font-family: var(--act-mono);
-    font-size: 0.68rem;
+    font-size: var(--act-t3);
     color: var(--act-faint);
     flex: none;
 }
 
 .kids .ttl {
-    font-size: 0.8rem;
+    font-size: var(--act-t5);
     color: var(--act-ink);
     overflow: hidden;
     text-overflow: ellipsis;

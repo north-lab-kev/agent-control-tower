@@ -13,12 +13,13 @@
 
 .bar .id {
     font-family: var(--act-mono);
-    font-size: 0.72rem;
+    font-size: var(--act-t3);
     color: var(--act-review);
 }
 
 .bar .title {
-    font-size: 0.82rem;
+    font-size: var(--act-t6);
+    font-weight: var(--act-w-em);
     color: var(--act-ink);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -55,7 +56,7 @@
     gap: var(--act-s2);
     position: relative;
     padding: 0 0 var(--act-s3) var(--act-s4);
-    font-size: 0.72rem;
+    font-size: var(--act-t4);
 }
 
 .tl .ev::before {
@@ -89,7 +90,7 @@
 
 .tl .ev .col {
     font-family: var(--act-mono);
-    font-size: 0.62rem;
+    font-size: var(--act-t2);
     color: var(--act-faint);
     margin-left: 0.35rem;
 }
@@ -98,7 +99,7 @@
     margin-left: auto;
     flex: none;
     font-family: var(--act-mono);
-    font-size: 0.62rem;
+    font-size: var(--act-t2);
     color: var(--act-faint);
 }
 

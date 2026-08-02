@@ -5,8 +5,11 @@
     min-height: 0;
 }
 
+/* A page's own name has to out-rank the labels on it, and Radzen's are 14px — so it takes the same
+   size and wins on weight, which is the only step a strip this dense can afford. */
 .bar .title {
-    font-size: 0.82rem;
+    font-size: var(--act-t6);
+    font-weight: var(--act-w-em);
     color: var(--act-ink);
 }
 
@@ -45,7 +48,7 @@
 
 .row .id {
     font-family: var(--act-mono);
-    font-size: 0.7rem;
+    font-size: var(--act-t3);
     color: var(--act-faint);
     flex: none;
 }
@@ -59,7 +62,7 @@
 }
 
 .row .ttl {
-    font-size: 0.82rem;
+    font-size: var(--act-t5);
     color: var(--act-dim);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -68,7 +71,7 @@
 
 .row .meta {
     font-family: var(--act-mono);
-    font-size: 0.65rem;
+    font-size: var(--act-t2);
     color: var(--act-faint);
     overflow: hidden;
     text-overflow: ellipsis;

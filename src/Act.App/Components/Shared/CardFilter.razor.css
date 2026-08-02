@@ -13,7 +13,7 @@
 }
 
 ::deep .ico {
-    font-size: 14px;
+    font-size: var(--act-icon);
     color: var(--act-faint);
 }
 
@@ -23,7 +23,7 @@
     border: none;
     background: none;
     box-shadow: none;
-    font-size: 0.78rem;
+    font-size: var(--act-t4);
     color: var(--act-ink);
 }
 
