@@ -5,15 +5,6 @@
     min-height: 0;
 }
 
-.bar {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.35rem 0.6rem;
-    border-bottom: 1px solid var(--act-line);
-    background: linear-gradient(var(--act-bar-top), var(--act-bar-bottom));
-}
-
 .bar .title {
     font-size: 0.82rem;
     color: var(--act-ink);
@@ -23,7 +14,7 @@
     margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: var(--act-s2);
 }
 
 ::deep .purgeconfirm {
@@ -34,12 +25,12 @@
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
-    padding: 1rem 0.75rem;
+    padding: var(--act-page-pad);
 }
 
 ::deep .sheet {
     width: 100%;
-    max-width: 46rem;
+    max-width: var(--act-sheet-max);
     margin: 0 auto;
 }
 
@@ -47,8 +38,8 @@
 .row {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem 0.6rem;
+    gap: var(--act-s3);
+    padding: var(--act-s2);
     border-bottom: 1px solid var(--act-line);
 }
 

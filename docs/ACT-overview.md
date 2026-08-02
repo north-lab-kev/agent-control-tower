@@ -1584,9 +1584,23 @@ user wants a hold when there is something to hold for.
 
 ### Usage indicator
 
-The top bar carries a live meter per usage window per agent — percentage used, how
-long until it resets, and the local time it resets at. It is the same data
-`schedule` and backpressure reason about, made visible.
+The top bar carries a live meter per usage window per agent — percentage used and how
+long until it resets. It is the same data `schedule` and backpressure reason about,
+made visible.
+
+- **Two lines each, and the strip's height is why — 2026-08-02.** The meter began as
+  three stacked rows (label + percent, bar, reset), which made it the tallest thing in
+  the top bar and grew the whole strip by a third over what the shell had before usage
+  existed. It is now everything you read on one line — `CLAUDE 5H 3% · in 4h 50m` —
+  with the bar under it spanning the meter's width. At 19px that fits inside the 28px
+  the buttons already claim, so the strip is sized by its buttons again, as it was.
+- **The countdown is on the strip; the clock time is in the tooltip.** Three windows ×
+  "in 4h 50m · 3:19 p.m." does not fit a one-line strip at a normal window width, and
+  the countdown is the half you act on. The tooltip still carries the agent, the window,
+  the absolute reset stamp and when the reading was taken.
+- **The reset never hides.** It used to disappear below 1200px, which read as a bug; now
+  the meters shrink and the countdown ellipsizes as a last resort instead. Nothing about
+  the usage is width-gated any more.
 
 **Source: a live HTTP endpoint per agent**, authenticated with a bearer token read
 from that CLI's own credential file, polled **once every 3 minutes and never faster
@@ -2031,6 +2045,16 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   same palette via shared CSS variables. Mockups were hand-CSS only. The terminal
   is xterm.js, themed from the same `--act-*` tokens so it reads as part of the
   control room rather than an embedded console.
+  - **Spacing is a scale, not a per-component guess.** `--act-s1`…`--act-s6`
+    (4/8/12/16/24/32px) in `app.css` beside the colour tokens, plus four measurements
+    every page repeats — `--act-bar-pad`, `--act-page-pad`, `--act-sheet-max`,
+    `--act-control-w`. It governs **box padding and the gaps between components**; the
+    sub-pixel stacking inside a single label group, and the chrome of a chip or a badge,
+    stay where they were tuned. The payoff is that the header strip and the body under it
+    share a horizontal edge, so a page header's first control lines up with the content
+    below it on every page — and that the one *page header* rule lives in the layout
+    (`::deep .bar`) rather than in five identical copies, with only the window's own strip
+    (`.titlebar`) reserving room for the OS overlay.
 - **Theme (dark / light):** both are supported and **follow the OS** by default.
   Radzen's *Standard* and *Standard Dark* stylesheets are linked behind
   `prefers-color-scheme`, and ACT's own control-room palette (the `--act-*`

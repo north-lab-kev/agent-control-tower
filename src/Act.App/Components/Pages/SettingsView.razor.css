@@ -5,15 +5,6 @@
     min-height: 0;
 }
 
-.bar {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.35rem 0.6rem;
-    border-bottom: 1px solid var(--act-line);
-    background: linear-gradient(var(--act-bar-top), var(--act-bar-bottom));
-}
-
 .bar .title {
     font-size: 0.82rem;
     color: var(--act-ink);
@@ -23,12 +14,12 @@
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
-    padding: 1rem 0.75rem;
+    padding: var(--act-page-pad);
 }
 
 ::deep .sheet {
     width: 100%;
-    max-width: 42rem;
+    max-width: var(--act-sheet-max);
     margin: 0 auto;
 }
 
@@ -37,7 +28,7 @@
 }
 
 ::deep .control {
-    width: 13rem;
+    width: var(--act-control-w);
     flex: 0 0 auto;
 }
 
@@ -45,7 +36,7 @@
 ::deep .dirrow {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--act-s2);
 }
 
 ::deep .dirrow .wide {
@@ -57,7 +48,7 @@
    reasonable thing to enter. Amber is the board's "needs you", which is exactly the weight. */
 ::deep .binwarn {
     color: var(--act-wait);
-    padding: 0.4rem 0.5rem;
+    padding: var(--act-s2);
     border: 1px solid color-mix(in srgb, var(--act-wait) var(--act-tint-edge), transparent);
     background: color-mix(in srgb, var(--act-wait) var(--act-tint-fill), transparent);
     border-radius: var(--act-radius);
@@ -73,12 +64,12 @@
 /* Deliberately quiet: confirming a path is worth a line, not a colour that competes with a card. */
 ::deep .binok {
     color: var(--act-dim);
-    padding: 0.3rem 0.5rem;
+    padding: var(--act-s2);
 }
 
 ::deep .row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
+    gap: var(--act-s4);
 }

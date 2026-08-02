@@ -1,13 +1,14 @@
-::deep .usage {
-    -webkit-app-region: no-drag;
-}
-
 .meter {
     --meter-fill: var(--act-run);
     display: flex;
     flex-direction: column;
+    align-items: stretch;
     gap: 2px;
-    min-width: 7.25rem;
+    min-width: 0;
+}
+
+.meter ::deep .mtop {
+    min-width: 0;
 }
 
 .meter.mid {
@@ -36,16 +37,6 @@
     color: var(--act-err);
 }
 
-.nrule {
-    height: 4px;
-    min-height: 4px;
-    border-radius: 2px;
-    background: repeating-linear-gradient(
-        90deg,
-        var(--act-track) 0 3px,
-        transparent 3px 6px);
-}
-
 .meter ::deep .mlabel,
 .meter ::deep .mvalue,
 .meter ::deep .mreset {
@@ -66,8 +57,23 @@
     font-weight: 600;
 }
 
+.nrule {
+    height: 4px;
+    min-height: 4px;
+    border-radius: 2px;
+    background: repeating-linear-gradient(
+        90deg,
+        var(--act-track) 0 3px,
+        transparent 3px 6px);
+}
+
+/* The first thing to give when the strip runs out of room, and the only one that may: it ellipsizes
+   rather than pushing the meters over the wordmark. */
 .meter ::deep .mreset {
     color: var(--act-faint);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .meter ::deep .mbar {
@@ -80,10 +86,4 @@
 
 .meter ::deep .mbar .rz-progressbar-value {
     background: var(--meter-fill);
-}
-
-@media (max-width: 980px) {
-    ::deep .usage {
-        display: none;
-    }
 }

@@ -119,7 +119,7 @@ public partial class UsageIndicator(UsageState usage, UserSettingsService settin
 
         var reset = rolled
             ? Strings.Usage_AfterReset
-            : Text(Strings.Usage_Resets, Left(window.RemainingAt(now)), Stamp(window.ResetsAt, now));
+            : Text(Strings.Usage_ResetsIn, Left(window.RemainingAt(now)));
 
         var tooltip = Text(
             Strings.Usage_Tooltip,
@@ -144,23 +144,6 @@ public partial class UsageIndicator(UsageState usage, UserSettingsService settin
         UsagePressure.RolledOver => "rolled",
         _ => "low",
     };
-
-    // A reset later today needs only a clock time; anything past midnight is ambiguous without the
-    // day, and a monthly window is four weeks out. The day pattern is taken from the culture and
-    // abbreviated in place, so the month/day order stays whatever that culture writes.
-    private static string Stamp(DateTimeOffset resetsAt, DateTimeOffset now)
-    {
-        var culture = CultureInfo.CurrentCulture;
-        var local = resetsAt.ToLocalTime();
-        var time = local.ToString("t", culture);
-
-        if (local.Date == now.ToLocalTime().Date)
-            return time;
-
-        var day = culture.DateTimeFormat.MonthDayPattern.Replace("MMMM", "MMM", StringComparison.Ordinal);
-
-        return Text(Strings.Usage_ResetStamp, local.ToString(day, culture), time);
-    }
 
     private static string Left(TimeSpan remaining)
     {

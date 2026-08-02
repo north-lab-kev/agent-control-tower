@@ -1286,12 +1286,44 @@ verifiable, and leaves something runnable.
     *prompt*, with the purge button gone; the handoff link read `2 dans les archives ›` →
     `/archive?q=shell` and landed pre-filtered; `Esc` cleared the box, restored all 31 rows and
     brought the purge button back. No console errors, no server errors.
-    - ⚠️ **DOM-level, not visual.** The preview pane is not displayed, so it composites no
-      frames: a screenshot times out, and the pane also swallowed the synthetic keystrokes
-      (the queries had to be dispatched as `input` events). Every assertion above is read out
-      of the DOM. **The styling of the two boxes has not been looked at in a real window** —
-      worth a glance during step 16's theming pass.
-- [ ] **16. UI polish** — final spacing, type, Radzen theming pass.
+    - **DOM-level, not visual — and the visual half is now closed.** The preview pane is not
+      displayed, so it composites no frames: a screenshot times out, and the pane also swallowed
+      the synthetic keystrokes (the queries had to be dispatched as `input` events). Every
+      assertion above was read out of the DOM. ✅ **The user looked at both boxes in a real
+      window on 2026-08-02** and they render correctly, so this is no longer a carry-over into
+      step 16.
+- [ ] **16. UI polish** — final spacing, type, Radzen theming pass. **The settings page
+  below already shipped**, and two of its listed knobs were decided away rather than built
+  (notification matrix → one switch; weekly-reset time → served over HTTP, so there is
+  nothing to configure). What is left is the visual sweep.
+  - [x] **Spacing — swept 2026-08-02.** A step scale (`--act-s1`…`--act-s6` = 4/8/12/16/24/32px)
+    in `app.css` beside the colour tokens, plus `--act-bar-pad`, `--act-page-pad`,
+    `--act-sheet-max` and `--act-control-w`; every page-level and container-level edge across
+    the six routes now reads from it. Chip, badge and label-group micro-spacing is deliberately
+    left alone — the scale governs boxes and the gaps between components, not text stacking.
+    - **The five page headers were five identical copies of one rule, and one of them had
+      already drifted into a bug.** They now share the layout's `::deep .bar`, and only the
+      window's own strip — newly marked `.titlebar` — reserves room for the OS overlay. It was
+      applying that reservation, plus the titlebar's `min-height`, to every page header; the
+      padding survived only because the pages' shorthand happened to be bundled *later*, which
+      is source order deciding a layout question. Verified the step-15 fix survived the merge:
+      the archive's filter input still reads `user-select: text` / `-webkit-app-region: no-drag`.
+    - **Real inconsistencies closed, not just re-spelled:** `.sheet` was 46rem on three pages
+      and 42rem on Settings; `.control` 15rem on the task form and 13rem in Settings; the two
+      identical amber warning boxes had different padding; the board mixed px with everything
+      else's rem; and the session view's page edges were **asymmetric** — 0.4rem left, 0.6rem
+      right — so the terminal and rail sat off-centre in their own window.
+    - ⚠️ **One regression caught by measuring rather than by eye.** Snapping the lane gutter up
+      to 12px pushed five *detailed* columns 1px past the app's own 960px floor. The gutter is
+      now 8px — the same step the lanes are padded with, so the space between two strips in
+      neighbouring columns reads as one measure — and both densities fit at 960 with no
+      horizontal scrollbar.
+    - **Verified DOM-level on all six routes** (board, archive, task, session, timeline,
+      settings): every header strip 8px/12px with its first control at x=12, every body
+      16px/12px, every sheet 736px, the card tabs' first tab also at x=12, and the session
+      view's left edge, inter-pane gap and right edge all 8px. 723 tests green.
+      **Not looked at in a real window** — the pane composites no frames, so a screenshot times
+      out; that glance belongs with the type and theming passes.
   - **User settings page** — consolidate the preferences that landed scattered
     across features into one screen: **theme** (Radzen *Standard* / *Standard
     Dark*; default **follows the OS** light/dark preference), density default,

@@ -7,17 +7,8 @@
 
 .session.missing {
     align-items: flex-start;
-    gap: 0.75rem;
-    padding: 1.25rem;
-}
-
-.bar {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.35rem 0.6rem;
-    border-bottom: 1px solid var(--act-line);
-    background: linear-gradient(var(--act-bar-top), var(--act-bar-bottom));
+    gap: var(--act-s3);
+    padding: var(--act-s5);
 }
 
 .bar .id {
@@ -64,12 +55,14 @@
 }
 
 /* The terminal owns the width it can get: an 80-column TUI is the floor, and the rail is
-   deliberately fixed so widening the window widens the terminal rather than the metrics. */
+   deliberately fixed so widening the window widens the terminal rather than the metrics. Its
+   margin is the page's left and top edge, and the rail's padding is the right one — the two have
+   to agree or the body sits off-centre in its own window. */
 .terminal {
     flex: 1;
     min-width: 0;
-    margin: 0.4rem;
-    padding: 0.35rem;
+    margin: var(--act-s2);
+    padding: var(--act-s1);
     border: 1px solid var(--act-line);
     border-radius: var(--act-radius);
     background: var(--act-term-bg);
@@ -81,16 +74,16 @@
     flex: none;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
-    padding: 0.6rem 0.6rem 0.6rem 0;
+    gap: var(--act-s3);
+    padding: var(--act-s2) var(--act-s2) var(--act-s2) 0;
     overflow-y: auto;
 }
 
 .idle {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.6rem;
+    gap: var(--act-s2);
+    padding: var(--act-s2);
     border: 1px solid var(--act-line);
     border-radius: var(--act-radius);
     background: var(--act-surface);
@@ -108,7 +101,7 @@
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--act-faint);
-    margin-top: 0.4rem;
+    margin-top: var(--act-s2);
 }
 
 .facts dd {
@@ -145,6 +138,6 @@
 .actions {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: var(--act-s2);
     margin-top: auto;
 }

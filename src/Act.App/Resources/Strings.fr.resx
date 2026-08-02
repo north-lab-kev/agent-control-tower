@@ -466,7 +466,7 @@
     <value>Garder l'ordinateur éveillé</value>
   </data>
   <data name="Settings_KeepAwake_Hint" xml:space="preserve">
-    <value>Empêche la mise en veille tant qu'une tâche est en cours ou attend de démarrer, pour qu'une longue exécution ou une file de nuit ne soit pas interrompue. Un tableau inactif est laissé s'endormir.</value>
+    <value>Empêche la mise en veille tant qu'une tâche est en cours ou attend de démarrer. Un tableau inactif est laissé s'endormir.</value>
   </data>
   <data name="Settings_CloseToTray" xml:space="preserve">
     <value>Fermer vers la zone de notification</value>
@@ -840,14 +840,11 @@
   <data name="Usage_Percent" xml:space="preserve">
     <value>{0} %</value>
   </data>
-  <data name="Usage_Resets" xml:space="preserve">
-    <value>dans {0} · {1}</value>
+  <data name="Usage_ResetsIn" xml:space="preserve">
+    <value>· dans {0}</value>
   </data>
   <data name="Usage_AfterReset" xml:space="preserve">
-    <value>réinitialisé · aucune activité</value>
-  </data>
-  <data name="Usage_ResetStamp" xml:space="preserve">
-    <value>{0} à {1}</value>
+    <value>· réinitialisé · aucune activité</value>
   </data>
   <data name="Usage_DaysHours" xml:space="preserve">
     <value>{0} j {1} h</value>

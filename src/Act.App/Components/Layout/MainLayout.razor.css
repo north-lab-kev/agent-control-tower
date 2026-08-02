@@ -9,19 +9,31 @@
     height: 100vh;
 }
 
+/* Every page header is a `.bar` too, so this is the one definition of the strip: the window's own
+   and the five page headers get the same edges, the same rule, and no chance to drift apart. The
+   title strip is a `RadzenStack`, whose inline flex styles win over these — which is why the
+   layout rules can be shared with the plain `<header>` elements the pages use. */
 ::deep .bar {
-    padding: 10px 15px;
-    padding-right: calc(100% - env(titlebar-area-width, 100%) + 15px);
-    /* A floor, not a fixed height: the strip has to reach at least the OS overlay so the window
-       buttons sit inside it, but a three-line usage meter is taller than the overlay — pinned to
-       that height the meters overflow the strip at both edges and are cut by its border, which is
-       what reads as "not centred". Growing instead keeps the centring true. */
-    min-height: env(titlebar-area-height, auto);
+    display: flex;
+    align-items: center;
+    gap: var(--act-s3);
+    padding: var(--act-bar-pad);
     background: linear-gradient(var(--act-bar-top), var(--act-bar-bottom));
     border-bottom: 1px solid var(--act-line);
     flex: 0 0 auto;
     user-select: none;
     -webkit-app-region: drag;
+}
+
+/* Only the window's own strip: the OS overlay sits at the top of the window, so reserving room for
+   it on a page header lower down would be an empty gutter the width of the window buttons. The
+   height is a floor, not a fixed value — the strip has to reach at least the overlay so the window
+   buttons sit inside it, but a three-line usage meter is taller than the overlay, and pinned to
+   that height the meters overflow the strip at both edges and are cut by its border, which is what
+   reads as "not centred". Growing instead keeps the centring true. */
+::deep .titlebar {
+    padding-right: calc(100% - env(titlebar-area-width, 100%) + var(--act-s3));
+    min-height: env(titlebar-area-height, auto);
 }
 
 /* Every page header is a `.bar` too, so this reaches them as well as the title strip — and an OS
@@ -48,6 +60,16 @@
 ::deep .usagegroup {
     flex: 1 1 auto;
     min-width: 0;
+}
+
+/* `.usage` is UsageIndicator's own root, so it carries no scope attribute and that component's
+   `::deep .usage` rules never match anything — these have to live here, where the scope sits on the
+   layout's root. Without the shrink it overflows its share of the strip and runs under the wordmark
+   on a narrow window. */
+::deep .usagegroup .usage {
+    min-width: 0;
+    overflow: hidden;
+    -webkit-app-region: no-drag;
 }
 
 ::deep .mark {

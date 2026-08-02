@@ -36,7 +36,7 @@ else
 
         <RadzenTemplateForm TItem="NewTaskForm" Data="form" Submit="OnSubmitAsync" class="newtask">
             <div class="body">
-            <RadzenStack Gap="1.1rem" class="sheet">
+            <RadzenStack Gap="1.5rem" class="sheet">
 
                 @* Said once, at the top, rather than repeated beside every frozen control: the
                    reason is one fact about the card, not a property of each field. *@
@@ -47,7 +47,7 @@ else
                 }
 
                 <RadzenFieldset Text="@Strings.NewTask_Group_Task">
-                    <RadzenStack Gap="0.9rem">
+                    <RadzenStack Gap="1rem">
                         <RadzenStack Gap="0.3rem">
                             <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Title" />
                             <RadzenTextBox Name="Title" @bind-Value="form.Title" MaxLength="200" class="wide" />
@@ -99,7 +99,7 @@ else
                             @if (WorkingDirMissing)
                             {
                                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
-                                             Gap="0.6rem" class="dirwarn">
+                                             Gap="0.5rem" class="dirwarn">
                                     <RadzenIcon Icon="folder_off" />
                                     <RadzenText TextStyle="TextStyle.Caption" Text="@WorkingDirMissingText" />
                                     <RadzenButton Text="@Strings.NewTask_CreateDir" Icon="create_new_folder"

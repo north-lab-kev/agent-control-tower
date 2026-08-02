@@ -7,19 +7,8 @@
 
 .taskview.empty {
     align-items: flex-start;
-    gap: 0.75rem;
-    padding: 1.25rem;
-}
-
-/* Same strip as the session view: a card is a route now, so both of its pages announce
-   themselves and offer the way back in the same place. */
-.bar {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.35rem 0.6rem;
-    border-bottom: 1px solid var(--act-line);
-    background: linear-gradient(var(--act-bar-top), var(--act-bar-bottom));
+    gap: var(--act-s3);
+    padding: var(--act-s5);
 }
 
 .bar .id {
@@ -47,20 +36,20 @@
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
-    padding: 1rem 0.75rem;
+    padding: var(--act-page-pad);
 }
 
 /* A page is as wide as the window, but a form is not more readable for being 2000px across, so
    the fields stay in a column of their own and the page just centres it. */
 ::deep .sheet {
     width: 100%;
-    max-width: 46rem;
+    max-width: var(--act-sheet-max);
     margin: 0 auto;
 }
 
 .footer {
     flex: 0 0 auto;
-    padding: 0.7rem 0.75rem;
+    padding: var(--act-s3);
     border-top: 1px solid var(--act-line);
     background: var(--act-surface);
 }
@@ -71,13 +60,13 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
+    gap: var(--act-s4);
 }
 
 .destructive {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--act-s2);
     min-width: 0;
 }
 
@@ -92,7 +81,7 @@
 .dirrow {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--act-s2);
 }
 
 .dirrow ::deep .wide {
@@ -104,7 +93,7 @@
    saves. It earns the amber the board uses for "needs you", nothing louder. */
 ::deep .dirwarn {
     color: var(--act-wait);
-    padding: 0.3rem 0.5rem;
+    padding: var(--act-s2);
     border: 1px solid color-mix(in srgb, var(--act-wait) var(--act-tint-edge), transparent);
     background: color-mix(in srgb, var(--act-wait) var(--act-tint-fill), transparent);
     border-radius: var(--act-radius);
@@ -118,10 +107,10 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
+    gap: var(--act-s4);
 }
 
 ::deep .control {
-    width: 15rem;
+    width: var(--act-control-w);
     flex: 0 0 auto;
 }

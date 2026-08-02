@@ -466,7 +466,7 @@
     <value>Keep the computer awake</value>
   </data>
   <data name="Settings_KeepAwake_Hint" xml:space="preserve">
-    <value>Stop the machine sleeping while there is work running or waiting to start, so a long run or an overnight queue is not cut short. An idle board is left to sleep.</value>
+    <value>Stop the machine sleeping while there is work running or waiting to start. An idle board is left to sleep.</value>
   </data>
   <data name="Settings_CloseToTray" xml:space="preserve">
     <value>Close to the notification area</value>
@@ -840,14 +840,11 @@
   <data name="Usage_Percent" xml:space="preserve">
     <value>{0}%</value>
   </data>
-  <data name="Usage_Resets" xml:space="preserve">
-    <value>in {0} · {1}</value>
+  <data name="Usage_ResetsIn" xml:space="preserve">
+    <value>· in {0}</value>
   </data>
   <data name="Usage_AfterReset" xml:space="preserve">
-    <value>reset · no activity</value>
-  </data>
-  <data name="Usage_ResetStamp" xml:space="preserve">
-    <value>{0} {1}</value>
+    <value>· reset · no activity</value>
   </data>
   <data name="Usage_DaysHours" xml:space="preserve">
     <value>{0}d {1}h</value>

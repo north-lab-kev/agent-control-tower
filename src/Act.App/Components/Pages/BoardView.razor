@@ -34,7 +34,10 @@
         </div>
     </div>
 
-    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Stretch" Gap="0.6rem" class="cols">
+    @* The lane gutter is the step the lanes are padded with, so the space between two strips in
+       neighbouring columns reads as one measure. It is also what keeps five detailed columns inside
+       the 960px floor without a horizontal scrollbar. *@
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Stretch" Gap="0.5rem" class="cols">
         @foreach (var column in AllColumns)
         {
             var cards = CardsIn(column);
@@ -43,7 +46,7 @@
             <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" class="@ColumnClass(column)"
                          @ondragover:preventDefault="true" @ondragenter:preventDefault="true"
                          @ondrop="() => DropAsync(column)">
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.45rem"
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem"
                              class="colhead">
                     <RadzenText TextStyle="TextStyle.Subtitle2" Text="@Label(column)" class="colname" />
                     <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" IsPill="true"

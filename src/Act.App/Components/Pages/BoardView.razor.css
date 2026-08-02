@@ -1,8 +1,11 @@
+/* The horizontal edge is the one every other page's body uses, so the filter box starts where an
+   archive row or a form field would. The deeper bottom is room to drop a card below the last
+   strip in a full column. */
 .board {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    padding: 14px 10px 40px;
+    padding: var(--act-s4) var(--act-s3) var(--act-s6);
     overflow-x: auto;
     min-height: 100%;
     background: var(--act-bg);
@@ -11,8 +14,8 @@
 .filterbar {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0 2px 10px;
+    gap: var(--act-s2);
+    padding: 0 0 var(--act-s3);
 }
 
 ::deep .archlink {
@@ -28,7 +31,7 @@
     margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--act-s2);
 }
 
 ::deep .statchip {
@@ -73,7 +76,7 @@
 }
 
 ::deep .col {
-    padding: 8px;
+    padding: var(--act-s2);
     flex: 1 1 0;
     min-width: 0;
     background: var(--act-lane);
@@ -143,6 +146,6 @@
     font-size: 9.5px;
     color: var(--act-faint);
     text-align: center;
-    padding: 10px 0 2px;
+    padding: var(--act-s3) 0 var(--act-s1);
     opacity: .75;
 }

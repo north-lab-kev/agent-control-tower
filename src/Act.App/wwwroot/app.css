@@ -32,6 +32,23 @@
     --act-radius: 7px;
     --act-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
 
+    /* One step scale, so an edge is picked from a set rather than invented per component. It
+       governs box padding and the gaps between components; the sub-pixel-tuned stacking inside a
+       single label group stays where it was tuned. */
+    --act-s1: 0.25rem;
+    --act-s2: 0.5rem;
+    --act-s3: 0.75rem;
+    --act-s4: 1rem;
+    --act-s5: 1.5rem;
+    --act-s6: 2rem;
+
+    /* The four measurements every page repeats. The bar and the body share a horizontal edge, so
+       a page header's first control lines up with the content under it. */
+    --act-bar-pad: var(--act-s2) var(--act-s3);
+    --act-page-pad: var(--act-s4) var(--act-s3);
+    --act-sheet-max: 46rem;
+    --act-control-w: 14rem;
+
     color-scheme: dark;
     background-color: var(--act-bg);
     color: var(--act-ink);
