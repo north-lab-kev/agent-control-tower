@@ -49,4 +49,7 @@ public sealed class UserSettings
 
     // What a new task is pre-filled with. Never null, so the form can read it unconditionally.
     public TaskDefaults TaskDefaults { get; set; } = new();
+
+    // Where the desktop window was last left. Null until the shell has run once.
+    public WindowBounds? Window { get; set; }
 }

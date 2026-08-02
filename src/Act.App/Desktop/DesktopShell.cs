@@ -1,6 +1,7 @@
 using Act.App.Resources;
 using Act.App.Sessions;
 using Act.App.Settings;
+using Act.Core.Model;
 using ElectronNET.API;
 using ElectronNET.API.Entities;
 
@@ -24,6 +25,12 @@ public sealed class DesktopShell(
 
     private const int MinWindowHeight = 320;
 
+    private const int DefaultWindowWidth = 1440;
+
+    private const int DefaultWindowHeight = 900;
+
+    private static readonly TimeSpan BoundsSaveDelay = TimeSpan.FromMilliseconds(600);
+
     // Windows reads the toast's header from the Application User Model ID, and Electron's default
     // makes every notification announce itself as `electron.app.Electron`. It has to match the
     // installer's `appId`, which is what puts the same id on the Start-menu shortcut Windows
@@ -32,9 +39,19 @@ public sealed class DesktopShell(
 
     private readonly Lock gate = new();
 
+    private readonly bool remembered = settings.Window is not null;
+
+    private readonly WindowBounds bounds = settings.Window ?? new WindowBounds
+    {
+        Width = DefaultWindowWidth,
+        Height = DefaultWindowHeight,
+    };
+
     private BrowserWindow? window;
 
     private Task? revealing;
+
+    private Timer? boundsSave;
 
     private bool trayShown;
 
@@ -79,7 +96,15 @@ public sealed class DesktopShell(
             TitleBarStyle = TitleBarStyle.hidden,
             MinWidth = MinWindowWidth,
             MinHeight = MinWindowHeight,
+            UseContentSize = true,
+            Center = true,
+            Width = Math.Max(bounds.Width, MinWindowWidth),
+            Height = Math.Max(bounds.Height, MinWindowHeight),
         };
+
+        // A remembered position is only worth restoring onto a screen that still exists: unplug the
+        // monitor the window was left on and the saved corner is somewhere nobody can reach it.
+        var restorable = remembered && await OnSomeDisplayAsync(bounds);
 
         // Transparent on purpose. The overlay is native and can only be coloured at window
         // creation, so any fixed colour is wrong half the time — it cannot follow the theme, and
@@ -96,7 +121,33 @@ public sealed class DesktopShell(
 
         var opened = await Electron.WindowManager.CreateWindowAsync(options);
 
-        opened.OnReadyToShow += () => opened.Show();
+        // Content bounds rather than window bounds, both here and when they are read back. What
+        // Windows calls the window includes an invisible resize border that Electron reports but
+        // does not accept, so a saved-then-restored window rectangle grows by it on every launch.
+        if (restorable)
+            opened.SetContentBounds(new Rectangle
+            {
+                X = bounds.X,
+                Y = bounds.Y,
+                Width = Math.Max(bounds.Width, MinWindowWidth),
+                Height = Math.Max(bounds.Height, MinWindowHeight),
+            });
+
+        boundsSave ??= new Timer(_ => _ = CaptureBoundsAsync(), null, Timeout.Infinite, Timeout.Infinite);
+
+        opened.OnResize += TrackBounds;
+        opened.OnMove += TrackBounds;
+        opened.OnMaximize += TrackBounds;
+        opened.OnUnmaximize += TrackBounds;
+
+        opened.OnReadyToShow += () =>
+        {
+            if (bounds.Maximized)
+                opened.Maximize();
+
+            opened.Show();
+        };
+
         opened.OnClosed += () =>
         {
             lock (gate)
@@ -109,6 +160,57 @@ public sealed class DesktopShell(
         lock (gate)
             window = opened;
     }
+
+    private void TrackBounds() => boundsSave?.Change(BoundsSaveDelay, Timeout.InfiniteTimeSpan);
+
+    // Only a window that is neither maximized nor minimized has bounds worth keeping — those states
+    // are their own answer, and writing the screen-sized rectangle they report would lose the size
+    // the user actually chose.
+    private async Task CaptureBoundsAsync()
+    {
+        BrowserWindow? live;
+
+        lock (gate)
+            live = window;
+
+        if (live is null)
+            return;
+
+        try
+        {
+            var maximized = await live.IsMaximizedAsync();
+
+            if (!maximized && !await live.IsMinimizedAsync())
+            {
+                var rectangle = await live.GetContentBoundsAsync();
+
+                bounds.X = rectangle.X;
+                bounds.Y = rectangle.Y;
+                bounds.Width = rectangle.Width;
+                bounds.Height = rectangle.Height;
+            }
+
+            bounds.Maximized = maximized;
+
+            settings.SetWindow(bounds);
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    private static async Task<bool> OnSomeDisplayAsync(WindowBounds saved)
+    {
+        var displays = await Electron.Screen.GetAllDisplaysAsync();
+
+        return displays.Any(display => Overlaps(display.WorkArea, saved));
+    }
+
+    private static bool Overlaps(Rectangle area, WindowBounds saved)
+        => saved.X + saved.Width > area.X + 80
+            && saved.X < area.X + area.Width - 80
+            && saved.Y + TitleBarHeight > area.Y
+            && saved.Y < area.Y + area.Height - 40;
 
     private void OnTrayActivated(TrayClickEventArgs args, Rectangle bounds) => _ = RevealAsync();
 

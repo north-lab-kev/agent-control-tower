@@ -81,6 +81,19 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
 
     public void MarkAgentDefaultsLifted() => Update(settings => settings.AgentDefaultsLifted = true);
 
+    public WindowBounds? Window => current.Window?.Copy();
+
+    // Straight to the store rather than through `Update`: dragging a window edge fires this many
+    // times a second, and nothing on screen is bound to it.
+    public void SetWindow(WindowBounds bounds)
+    {
+        lock (gate)
+        {
+            current.Window = bounds.Copy();
+            store.Save(current);
+        }
+    }
+
     public bool AgentInstallsProbed => current.AgentInstallsProbed;
 
     public void MarkAgentInstallsProbed() => Update(settings => settings.AgentInstallsProbed = true);
