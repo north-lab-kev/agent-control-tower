@@ -119,50 +119,9 @@ public class CardStoreTests
         stored["LaunchConfig"]["PermissionMode"].AsString.Should().Be(nameof(PermissionMode.DontAsk));
     }
 
-    [Fact]
-    public async Task A_transition_reason_this_build_no_longer_has_reads_back_as_null()
-    {
-        using var temp = new TempDirectory();
-        var card = new Card
-        {
-            Title = "Retired reason",
-            Column = BoardColumn.YourTurn,
-            Transitions =
-            [
-                new Transition
-                {
-                    At = DateTimeOffset.UtcNow,
-                    Column = BoardColumn.YourTurn,
-                    Reason = TransitionReason.TurnEnded,
-                    Note = "written by an older build",
-                },
-            ],
-        };
-
-        using (var provider = Provider(temp.Path))
-            await provider.GetRequiredService<ICardStore>().AddAsync(card);
-
-        using (var database = new LiteDatabase(Path.Combine(temp.Path, "act.db")))
-        {
-            var cards = database.GetCollection("cards");
-            var stored = cards.FindById(card.Id);
-
-            stored["Transitions"].AsArray[0].AsDocument["Reason"] = "TurnWithoutStatusFile";
-            cards.Update(stored);
-        }
-
-        using var reading = Provider(temp.Path);
-
-        var reloaded = await reading.GetRequiredService<ICardStore>().GetAsync(card.Id);
-
-        reloaded!.Transitions[0].Reason.Should().BeNull();
-        reloaded.Transitions[0].Note.Should().Be("written by an older build");
-    }
-
-    // `LastMessage` was dropped on 2026-08-01, and every card on a real board carries one. A retired
-    // *field* is the easier half of the retired-`Reason` problem — no converter needed, the mapper
-    // simply has nothing to bind it to — but this repo has been surprised once by what a stored value
-    // does to a read, so it is pinned rather than assumed.
+    // A stored field the model no longer binds must not stop the card loading. No converter is
+    // involved — the mapper simply has nothing to bind it to — but this repo has been surprised once
+    // by what a stored value does to a read, so it is pinned rather than assumed.
     [Fact]
     public async Task A_field_this_build_no_longer_has_does_not_stop_the_card_loading()
     {
@@ -187,40 +146,6 @@ public class CardStoreTests
 
         reloaded!.Title.Should().Be("Retired field");
         reloaded.Column.Should().Be(BoardColumn.YourTurn);
-    }
-
-    // `stale` was retired with its watchdog, and a real board had cards carrying it. Losing the badge
-    // must not lose the card.
-    [Fact]
-    public async Task A_badge_this_build_no_longer_has_reads_back_as_null()
-    {
-        using var temp = new TempDirectory();
-        var card = new Card
-        {
-            Title = "Retired badge",
-            Column = BoardColumn.Executing,
-            Badge = Badge.Running,
-        };
-
-        using (var provider = Provider(temp.Path))
-            await provider.GetRequiredService<ICardStore>().AddAsync(card);
-
-        using (var database = new LiteDatabase(Path.Combine(temp.Path, "act.db")))
-        {
-            var cards = database.GetCollection("cards");
-            var stored = cards.FindById(card.Id);
-
-            stored["Badge"] = "Stale";
-            cards.Update(stored);
-        }
-
-        using var reading = Provider(temp.Path);
-
-        var reloaded = await reading.GetRequiredService<ICardStore>().GetAsync(card.Id);
-
-        reloaded.Should().NotBeNull();
-        reloaded!.Badge.Should().BeNull();
-        reloaded.Column.Should().Be(BoardColumn.Executing);
     }
 
     [Fact]
@@ -420,42 +345,6 @@ public class CardStoreTests
         var card = await provider.GetRequiredService<ICardStore>().GetAsync(Guid.NewGuid());
 
         card.Should().BeNull();
-    }
-
-    // `WindowAfterNext` was retired on 2026-08-02, and a Ready card can be sitting on it. Manual
-    // rather than null, so the card waits for a hand instead of launching on a schedule this build
-    // cannot resolve.
-    [Fact]
-    public async Task A_schedule_this_build_retired_reads_back_as_manual()
-    {
-        using var temp = new TempDirectory();
-        var card = new Card
-        {
-            Title = "Armed for a window that no longer exists",
-            Column = BoardColumn.Ready,
-            Schedule = TaskSchedule.NextWindow,
-        };
-
-        using (var provider = Provider(temp.Path))
-        {
-            await provider.GetRequiredService<ICardStore>().AddAsync(card);
-        }
-
-        using (var database = new LiteDatabase(Path.Combine(temp.Path, "act.db")))
-        {
-            var cards = database.GetCollection("cards");
-            var stored = cards.FindById(card.Id);
-
-            stored["Schedule"] = "WindowAfterNext";
-            cards.Update(stored);
-        }
-
-        using var reading = Provider(temp.Path);
-
-        var reloaded = await reading.GetRequiredService<ICardStore>().GetAsync(card.Id);
-
-        reloaded!.Schedule.Should().Be(TaskSchedule.Manual);
-        reloaded.Title.Should().Be("Armed for a window that no longer exists");
     }
 
     private static ServiceProvider Provider(string dataDirectory)

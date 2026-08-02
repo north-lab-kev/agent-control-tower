@@ -14,6 +14,11 @@ public sealed class Card
 
     public BoardColumn Column { get; set; }
 
+    // The card's place inside its column — see `CardOrder`. Stamped past everything already there
+    // whenever the card lands in a column, rewritten by a manual reorder, and read by the queue as
+    // well as by the board. Cards sharing an order fall back to `number`, which is arrival order.
+    public int Order { get; set; }
+
     public Badge? Badge { get; set; }
 
     public AgentType AgentType { get; set; }

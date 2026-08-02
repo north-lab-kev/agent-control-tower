@@ -76,11 +76,6 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
     public void SetTaskDefaults(TaskDefaults defaults)
         => Update(settings => settings.TaskDefaults = defaults.Copy());
 
-    // Startup only, for the one-time lift of what used to live on each card.
-    public bool AgentDefaultsLifted => current.AgentDefaultsLifted;
-
-    public void MarkAgentDefaultsLifted() => Update(settings => settings.AgentDefaultsLifted = true);
-
     public WindowBounds? Window => current.Window?.Copy();
 
     // Straight to the store rather than through `Update`: dragging a window edge fires this many

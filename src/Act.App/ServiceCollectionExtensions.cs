@@ -71,7 +71,6 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<AppCulture>();
         services.AddSingleton<UserSettingsService>();
-        services.AddSingleton<AgentDefaultsMigration>();
         services.AddSingleton<AgentInstallDiscovery>();
         services.AddSingleton<BoardState>();
         services.AddSingleton<RetentionPump>();

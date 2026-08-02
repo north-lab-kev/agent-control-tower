@@ -23,15 +23,6 @@ public static class ScheduleArming
     public static DateTimeOffset? Arm(Card card, UsageWindow? session)
         => NeedsArming(card) ? session?.ResetsAt : null;
 
-    // The instant this card is due, or null when it is due as soon as everything else allows.
-    // `Manual` is not answered here at all — it is not scheduling, it is the absence of it.
-    public static DateTimeOffset? DueAt(Card card) => card.Schedule switch
-    {
-        TaskSchedule.SpecificDateTime => card.ScheduledFor,
-        TaskSchedule.NextWindow => card.EligibleAt,
-        _ => null,
-    };
-
     public static bool IsDue(Card card, DateTimeOffset now) => card.Schedule switch
     {
         TaskSchedule.Now => true,

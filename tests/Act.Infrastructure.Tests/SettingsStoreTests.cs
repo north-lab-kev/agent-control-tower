@@ -89,37 +89,6 @@ public class SettingsStoreTests
         Directory.Exists(Path.Combine(temp.Path, "nested")).Should().BeTrue();
     }
 
-    // `Spacious` was renamed to `Detailed`, and the enum is persisted by name — so every settings
-    // document written before the rename carries a name this build does not have. Reading it back as
-    // the default is what keeps such a machine able to start at all.
-    [Fact]
-    public void A_density_name_this_build_retired_loads_as_the_default()
-    {
-        using var temp = new TempDirectory();
-
-        using (var provider = Provider(temp.Path))
-        {
-            provider.GetRequiredService<ISettingsStore>().Save(new UserSettings { Language = LanguagePreference.French });
-        }
-
-        using (var database = new LiteDatabase(Path.Combine(temp.Path, "act.db")))
-        {
-            var settings = database.GetCollection("settings");
-            var document = settings.FindById(1);
-
-            document["Settings"]["Density"] = "Spacious";
-
-            settings.Update(document);
-        }
-
-        using var reading = Provider(temp.Path);
-
-        var stored = reading.GetRequiredService<ISettingsStore>().Load();
-
-        stored.Density.Should().Be(BoardDensity.Detailed);
-        stored.Language.Should().Be(LanguagePreference.French);
-    }
-
     private static ServiceProvider Provider(string dataDirectory)
         => new ServiceCollection().AddActInfrastructure(dataDirectory).BuildServiceProvider();
 }

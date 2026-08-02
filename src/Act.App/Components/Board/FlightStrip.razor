@@ -1,8 +1,14 @@
 @using Act.Core.Model
 
+@* A strip is a drop target as well as a thing that lifts: dropping onto one is how the column is
+   ordered. The drop is stopped here rather than left to bubble, so the column below never sees it
+   twice — a drop that crosses columns is handed on by the board instead. *@
 <div class="@StripClass" role="button" tabindex="0" title="@Card.Title"
      draggable="@(Draggable ? "true" : "false")"
      @ondragstart="OnDragStartAsync" @ondragend="OnDragEndAsync"
+     @ondragenter="OnDragOverAsync" @ondragenter:preventDefault="true" @ondragenter:stopPropagation="true"
+     @ondragover:preventDefault="true"
+     @ondrop="OnDropAsync" @ondrop:stopPropagation="true"
      @onclick="OpenAsync" @onkeydown="OnKeyDownAsync">
 <RadzenCard Variant="Variant.Outlined" class="stripcard">
     @if (IsCompact)

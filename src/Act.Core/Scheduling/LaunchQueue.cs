@@ -16,9 +16,11 @@ public sealed record QueueEvaluation(
 // up saying `queued` beside a card that started thirty seconds ago, so they come out of the same
 // pass — and the launch list is exactly the cards for which no hold was found.
 //
-// **FIFO, by the instant a card became due and then by its number.** Nothing here weighs one task
-// against another: a queue that reorders itself is a queue nobody can predict, and the number is
-// the only tiebreak that is stable across restarts.
+// **The queue is the Ready column, read top to bottom.** Nothing here weighs one task against
+// another: a queue that reorders itself is a queue nobody can predict. Which order that is belongs
+// to `CardOrder` — arrival order until the user drags a strip, that order afterwards — so the lane
+// on screen and the list the runner takes are the same sequence rather than two rules that agree
+// most of the time.
 public static class LaunchQueue
 {
     public static QueueEvaluation Evaluate(
@@ -56,9 +58,9 @@ public static class LaunchQueue
         return new QueueEvaluation(launch, holds, arm);
     }
 
-    // Every Ready card, armed if it needs arming, ordered the way the runner will take them. Cards
-    // with no due instant sort first: `now` means now, and a card waiting for a boundary should not
-    // jump ahead of one that has been waiting since it was created.
+    // Every Ready card, armed if it needs arming, ordered the way the runner will take them — which
+    // is the order the column is displayed in. A card not yet due is not in the queue at all, so the
+    // due instant decides *whether* a card is taken, never where in the lane it sits.
     private static IEnumerable<Card> Queue(
         IReadOnlyList<Card> cards,
         Func<AgentType, AgentUsage?> usage,
@@ -76,10 +78,7 @@ public static class LaunchQueue
             ready.Add(card);
         }
 
-        return ready
-            .Where(card => ScheduleArming.IsDue(card, now))
-            .OrderBy(card => ScheduleArming.DueAt(card) ?? DateTimeOffset.MinValue)
-            .ThenBy(card => card.Number);
+        return CardOrder.Sort(ready.Where(card => ScheduleArming.IsDue(card, now)));
     }
 
     // Null means launch it. The order of the checks is the precedence the chip renders by.

@@ -21,6 +21,24 @@
     cursor: grabbing;
 }
 
+/* Where the lifted strip will land, drawn on the edge it goes to: a line under the card you are
+   dragging past, above the one you are dragging up to. It reads as an insertion point rather than a
+   selection, which is the difference between "this slot" and "this card". */
+.strip.drop-before::after,
+.strip.drop-after::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 3px;
+    z-index: 2;
+    background: var(--act-ready);
+}
+
+.strip.drop-before::after { top: 0; }
+
+.strip.drop-after::after { bottom: 0; }
+
 .strip::before {
     content: "";
     position: absolute;

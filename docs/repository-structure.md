@@ -32,7 +32,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     running snapshot) — all shared by both adapters
 │  │  ├─ Rules/                     #   the rules engine, manual-move validity, sign-off and
 │  │  │                            #     reopen validity,
-│  │  │                            #     Your-turn ordering, which cards are resumable after their
+│  │  │                            #     where a card sits in its column (CardOrder — the board's
+│  │  │                            #     order and the queue's are one rule),
+│  │  │                            #     which cards are resumable after their
 │  │  │                            #     process died, how long a running card has been quiet,
 │  │  │                            #     which Completed cards retention is due to archive,
 │  │  │                            #     which card is already working in a folder a launch
@@ -271,11 +273,12 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   (`Transition_TurnEnded`) rather than through a switch that could drift; a test asserts
   every reason resolves in every shipped language, and that the French is actually different
   from the English.
-  - **A retired reason must not make old cards unreadable.** The vocabulary changes as the
-    rules do, and LiteDB's enum deserializer throws on a name the build no longer has — so
-    `ActBsonMapper` maps `TransitionReason` itself and reads an unknown name back as **null**,
-    which `TransitionText` already renders as the transition's verbatim note. Retiring a
-    reason is therefore a code change, not a migration.
+  - **Retiring a reason is a code change today, and will not always be.** The vocabulary
+    changes as the rules do, and LiteDB's enum deserializer throws on a name the build no
+    longer has. Before the first public release that costs nothing — the store is wiped —
+    but once a real board exists, a retired name needs either a schema migration or a
+    tolerant `RegisterType` in `ActBsonMapper` that reads it back as **null**, which
+    `TransitionText` already renders as the transition's verbatim note.
 - **The pseudo-terminal is a Core port, not adapter code.** Spawning a process under
   a pty and pumping its bytes is agent-agnostic plumbing; only the *command line* is
   agent-shaped. So `IPtyHost` lives in `Act.Core/Abstractions` and its `Porta.Pty`
@@ -335,7 +338,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   (`ActDatabase.Open`) that configures the `BsonMapper` and applies the schema —
   a **version document plus an ordered migration list**, so `CurrentVersion` is
   derived from that list and a store written by a newer build is rejected instead
-  of silently mangled. Collection names live in one place (`ActCollections`), and
+  of silently mangled. The list is **empty**: nothing has shipped yet, so every
+  breaking store change so far was handled by starting a fresh `act.db` rather
+  than by a migration. The first release is what makes that stop being an option. Collection names live in one place (`ActCollections`), and
   the friendly card `number` comes from a counter document that seeds itself
   above any card already stored.
 - **No sample data.** `Act.App/Seeding/` existed so the board had something to render

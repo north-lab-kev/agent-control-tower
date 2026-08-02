@@ -248,10 +248,13 @@ attention blink and the notification rules can both key off. The consequences,
 all deliberate:
 
 - **Ordering replaces adjacency.** Two columns implied a priority by sitting
-  side by side; one column has to state it. Your turn is ordered by cost of
-  waiting: `needs permission` → `needs answer` → `error` → `killed` →
-  `to review`. A live session parked on a prompt is burning a turn nobody is
-  answering; finished work is waiting on nothing.
+  side by side; one column has to state it. Your turn is ordered like every other
+  column — arrival order, and whatever order the user drags it into after that
+  (see *Ordering a column*). It was briefly ranked by badge (`needs permission`
+  → `needs answer` → `error` → `killed` → `to review`); that was **dropped on
+  2026-08-02**, because a rank the user cannot override decides for them which of
+  twenty waiting cards to look at next, and only they know that. The badge still
+  says *why* each one is waiting, and the blink still says *that* one is.
 - **Sign-off is gated by the column, not the badge.** Any card in Your turn can
   be completed, including one that errored or was killed — previously those had
   no path to Completed except a round trip through the terminal.
@@ -315,7 +318,7 @@ resumable), so the exits are the same regardless of badge:
   other column change, so the strip carries no sign-off button; the session view
   keeps its **Complete** action for a card you are already inside.
 
-Cards are ordered by cost of waiting — see the ordering note under Summary.
+Cards are ordered like every other column's — see *Ordering a column*.
 
 **5. Completed** *(terminal-ish, human-controlled)*
 The user marks the task done from Your turn. Not strictly terminal: it has one
@@ -333,6 +336,29 @@ From there the normal Your turn exits apply.
 - **It starts no session.** The terminal comes back the way it does for every bound
   card — by being opened (see *Session lifecycle*) — so the reopen is the column move
   and nothing else.
+
+### Ordering a column — added 2026-08-02
+
+Every column is a **list the user owns**, and the same rule covers all five:
+`Act.Core/Rules/CardOrder`, on a stored `order` per card.
+
+- **A card lands at the end of the column it arrives in** — created, dragged,
+  launched, moved by the rules engine, signed off, reopened. Nothing arrives in
+  the middle of a lane the user has arranged.
+- **So an untouched board is FIFO**, which is what it always was. `number` is the
+  tiebreak, so cards that share an order still read in the order they were created.
+- **A strip dropped on one of its own column-mates takes that card's place**:
+  dragged down it lands after the card under the cursor, dragged up it lands
+  before, and an insertion line on that edge says which while the drag is live.
+  Crossing columns is the move it always was — the card lands last, not wherever
+  the cursor was.
+- **Ready's order is the queue's order.** The runner takes that column exactly as
+  it is drawn (see *Runner logic*), so dragging a strip to the top of Ready is how
+  you say "this one next". That is the reason this exists; ordering the other four
+  is the same gesture doing the obvious thing.
+- **The lane is ordered, not the filter.** A drop is resolved against the whole
+  column, so reordering while a search is narrowing the board cannot silently
+  reshuffle the cards it is hiding.
 
 ---
 
@@ -584,12 +610,6 @@ joins the two on the way to the adapter and is the only place they meet.
     you cannot spend is not a number to act on, and the top bar is the one surface with no room for
     information that leads nowhere. The pump checks the switch each tick rather than at startup, so
     it stops and resumes without a restart.
-- **A one-time migration lifts what a real board already had** (`AgentDefaultsMigration`,
-  at startup, newest card wins, skipped once an agent has settings). Without it the loss
-  is silent and specific: a Store-packaged Codex is on no `PATH`, so every existing Codex
-  card would fail at spawn for a path the user had already supplied and could no longer
-  see anywhere.
-
 - `workingDir` — the task's cwd. **Stored as the user typed it and resolved at launch:** a
   leading `~` is expanded (nothing below a shell does it, so `~/dev/act` would otherwise
   reach `CreateProcess` verbatim and fail), separators are normalized, and the directory
@@ -1441,9 +1461,11 @@ a 20-second backstop tick.
   either** — an unreadable credential file must not freeze an overnight run, so
   the queue launches and lets the CLI be the one to refuse. So `schedule` is
   *intent*; cap and backpressure are *reality*.
-- **FIFO**, by the instant a card became due and then by its number. Nothing
-  weighs one task against another: a queue that reorders itself is a queue nobody
-  can predict.
+- **The queue is the Ready column, read top to bottom** — see *Ordering a
+  column*. Nothing weighs one task against another: a queue that reorders itself
+  is a queue nobody can predict. A due instant decides *whether* a card is in the
+  queue, never where in it: a card that is not due yet is not queued at all, and
+  one that has come due sits where the lane shows it.
 - **A prerequisite the store no longer has counts as satisfied.** The alternative
   is a card that can never launch and says nothing about why.
 
@@ -1532,8 +1554,7 @@ A Ready strip carries two chips, and the split is the section's own line —
   already says when, and a chip claiming otherwise would imply ACT intends to
   start it.
 
-**A hold is not a `Badge`.** `Badge` is persisted, ranked by `AttentionOrder`, and
-drives the blink and the toast; a hold is derived every render, stored nowhere,
+**A hold is not a `Badge`.** `Badge` is persisted and drives the blink and the toast; a hold is derived every render, stored nowhere,
 and must raise no attention — nothing is wrong and every one of them clears on
 its own. It borrows the badge *slot*, which a Ready card leaves empty, and the
 muted colour the `quiet` chip established.
@@ -1949,15 +1970,14 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     point. The rename goes **all the way down** — `BoardDensity.Detailed`, the resx
     key, the CSS class — rather than stopping at the label, so nothing in the code
     keeps a name the product no longer uses.
-    - **The enum is persisted by name, so the stored value has to be tolerated.**
-      A settings document still saying `Spacious` is a name this build does not
-      have, and LiteDB's enum deserializer throws on it — *measured*, not assumed:
-      `ArgumentException: Requested value 'Spacious' was not found`. Settings are
-      loaded in a constructor at start-up, so unlike a retired `Badge` this takes
-      the **whole app** down rather than one card. `ActBsonMapper` therefore maps
-      `BoardDensity` the way it already maps `Badge` and `TransitionReason`: an
-      unknown name reads back as the **default**, and the next save writes the
-      current one. Renaming a persisted enum member is never only a rename.
+    - **Enums are persisted by name, so renaming one is never only a rename.**
+      LiteDB's enum deserializer throws on a name the build no longer has —
+      *measured*, not assumed: `ArgumentException: Requested value 'Spacious' was
+      not found` — and settings are loaded in a constructor at start-up, so unlike
+      a retired `Badge` that takes the **whole app** down rather than one card.
+      Before the first public release the answer is a fresh store; after it, a
+      rename needs a schema migration in `ActSchema` or a tolerant `RegisterType`
+      in `ActBsonMapper`.
 - **Attention:** needs-you cards get a **loud in-place treatment** (glowing rail
   + pulse + `!` corner); no separate inbox, and no top-bar counter either. A
   **"N need you ›"** pill was there and is gone: ACT answers no permission prompt,

@@ -12,18 +12,18 @@ public sealed class BoardState(ICardStore store, IClock clock)
 {
     private IReadOnlyList<Card> cards = [];
 
+    // The column each card was last seen in, so `UpdateAsync` can tell an arrival from an ordinary
+    // save. Rebuilt on every load, because that is when the instances are replaced.
+    private readonly Dictionary<Guid, BoardColumn> placed = [];
+
     public event Action? Changed;
 
-    // Your turn is the one column whose cards are there for different reasons, so it is ordered by
-    // how much the waiting costs rather than by insertion — see `AttentionOrder`.
+    // Every column reads the same way — the order the user put it in, arrival order until they do —
+    // and Your turn is no exception: the badge says *why* a card is waiting, and ranking by it took
+    // the order out of the user's hands for the one column where the next thing to look at is their
+    // call. See `CardOrder`.
     public IReadOnlyList<Card> In(BoardColumn column)
-    {
-        var live = cards.Where(card => card.IsOnBoard && card.Column == column);
-
-        return column is BoardColumn.YourTurn
-            ? [.. live.OrderBy(card => AttentionOrder.Rank(card.Badge))]
-            : [.. live];
-    }
+        => CardOrder.Sort(cards.Where(card => card.IsOnBoard && card.Column == column));
 
     public IReadOnlyList<Card> Archived
         => [.. cards.Where(card => !card.IsOnBoard).OrderByDescending(card => card.DeletedAt ?? card.ArchivedAt)];
@@ -50,18 +50,59 @@ public sealed class BoardState(ICardStore store, IClock clock)
     {
         cards = await store.GetAllAsync(cancellationToken);
 
+        placed.Clear();
+
+        foreach (var card in cards)
+            placed[card.Id] = card.Column;
+
         Changed?.Invoke();
     }
 
     public async Task CreateAsync(Card card, CancellationToken cancellationToken = default)
     {
+        Arriving(card);
+
         await store.AddAsync(card, cancellationToken);
         await LoadAsync(cancellationToken);
     }
 
     public async Task UpdateAsync(Card card, CancellationToken cancellationToken = default)
     {
+        Arriving(card);
+
         await store.UpdateAsync(card, cancellationToken);
+        await LoadAsync(cancellationToken);
+    }
+
+    // A card that lands in a column lands at the end of it. Decided here rather than at each of the
+    // half-dozen places a column is assigned — the launch, the rules engine, the sign-off, the
+    // reopen, a hand drag — because every one of them saves through this method, and a stamp that
+    // only *most* of them remembered would leave cards sitting wherever their last column had put
+    // them.
+    private void Arriving(Card card)
+    {
+        if (placed.TryGetValue(card.Id, out var was) && was == card.Column)
+            return;
+
+        card.Order = CardOrder.Last(In(card.Column), card);
+    }
+
+    // Manual ordering inside a column, which for Ready is also the order the queue will launch in:
+    // the runner takes that column exactly as it is drawn. Writes only the strips that actually
+    // moved, then reloads once.
+    public async Task ReorderAsync(Card card, Card target, CancellationToken cancellationToken = default)
+    {
+        if (card.Id == target.Id || card.Column != target.Column)
+            return;
+
+        var moved = CardOrder.Move(In(card.Column), card, target);
+
+        if (moved.Count == 0)
+            return;
+
+        foreach (var affected in moved)
+            await store.UpdateAsync(affected, cancellationToken);
+
         await LoadAsync(cancellationToken);
     }
 

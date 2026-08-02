@@ -23,47 +23,6 @@ internal static class ActBsonMapper
             value => value.ToString(TimeSpanFormat, CultureInfo.InvariantCulture),
             bson => TimeSpan.ParseExact(bson.AsString, TimeSpanFormat, CultureInfo.InvariantCulture));
 
-        // A stored badge or reason is a code from a vocabulary that keeps changing, so a card written
-        // by an older build must still load: a name this build no longer has reads back as null,
-        // which both the strip and the timeline already handle. Without this, retiring one value
-        // makes every card that ever carried it unreadable — `stale` and two turn-end reasons have
-        // been retired already.
-        mapper.RegisterType(
-            typeof(TransitionReason),
-            value => value.ToString(),
-            bson => Enum.TryParse<TransitionReason>(bson.AsString, out var reason)
-                ? reason
-                : null);
-
-        mapper.RegisterType(
-            typeof(Badge),
-            value => value.ToString(),
-            bson => Enum.TryParse<Badge>(bson.AsString, out var badge)
-                ? badge
-                : null);
-
-        // `WindowAfterNext` was retired, and a Ready card can be carrying it. Unknown reads back as
-        // `Manual` rather than null, because this is asked of a non-nullable property too (the task
-        // defaults in settings) — and because manual is the safe direction: a card whose schedule
-        // ACT no longer understands should wait for a hand, not launch on a guess.
-        mapper.RegisterType(
-            typeof(TaskSchedule),
-            value => value.ToString(),
-            bson => Enum.TryParse<TaskSchedule>(bson.AsString, out var schedule)
-                ? schedule
-                : TaskSchedule.Manual);
-
-        // Same problem one level up: `BoardDensity.Spacious` became `Detailed`, and a settings
-        // document is loaded in a constructor at start-up — so a name this build does not have takes
-        // the whole app down rather than one card. It reads back as the default and the next save
-        // writes the current name.
-        mapper.RegisterType(
-            typeof(BoardDensity),
-            value => value.ToString(),
-            bson => Enum.TryParse<BoardDensity>(bson.AsString, out var density)
-                ? density
-                : BoardDensity.Detailed);
-
         mapper.Entity<Card>()
             .Ignore(card => card.NeedsAttention)
             .Ignore(card => card.IsDeleted)

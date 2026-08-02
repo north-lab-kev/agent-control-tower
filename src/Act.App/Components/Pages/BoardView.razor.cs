@@ -38,6 +38,8 @@ public partial class BoardView(
 
     private Card? dragging;
 
+    private Card? over;
+
     private string query = string.Empty;
 
     [CascadingParameter(Name = "Density")]
@@ -149,18 +151,67 @@ public partial class BoardView(
 
     private void OnDragStartAsync(Card card) => dragging = card;
 
-    private void OnDragEndAsync() => dragging = null;
+    private void OnDragEndAsync()
+    {
+        dragging = null;
+        over = null;
+    }
 
-    private async Task DropAsync(BoardColumn column)
+    // Hovering a strip is what arms the reorder; hovering the lane itself clears it, so the marker
+    // never outlives the card it was drawn under.
+    private void OnDragOverCard(Card card)
+    {
+        if (dragging is { } moved && moved.Id != card.Id)
+            over = card;
+    }
+
+    private void OnDragOverColumn() => over = null;
+
+    // Reordering is the same gesture as moving, told apart by where it lands: a strip dropped on one
+    // of its own column-mates takes that card's place, and anything else is the column change it
+    // always was — a card crossing columns lands last, not wherever the cursor happened to be.
+    private async Task DropOnAsync(Card target)
     {
         var card = dragging;
-        dragging = null;
+
+        OnDragEndAsync();
 
         if (card is null)
             return;
 
+        if (card.Column != target.Column)
+        {
+            await DropIntoAsync(card, target.Column);
+
+            return;
+        }
+
+        await board.ReorderAsync(card, target);
+    }
+
+    private Task DropAsync(BoardColumn column)
+    {
+        var card = dragging;
+
+        OnDragEndAsync();
+
+        return card is null ? Task.CompletedTask : DropIntoAsync(card, column);
+    }
+
+    // Which edge of a hovered strip the insertion line is drawn on — asked of the same rule that
+    // will do the move, so the marker cannot promise a position the drop does not deliver.
+    private string? DropEdge(Card card)
+    {
+        if (over?.Id != card.Id || dragging is not { } moved || moved.Column != card.Column)
+            return null;
+
+        return CardOrder.LandsAfter(board.In(card.Column), moved, card) ? "drop-after" : "drop-before";
+    }
+
+    private async Task DropIntoAsync(Card card, BoardColumn column)
+    {
         // The one drop that is not a move: sign-off stamps the card and ends its session, so it goes
-        // through the completer rather than through `MoveAsync`.
+        // through the completer rather than through `board.MoveAsync`.
         if (CardCompletion.CanCompleteInto(card, column))
         {
             await CompleteAsync(card);

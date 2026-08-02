@@ -43,7 +43,18 @@ public partial class FlightStrip
     public EventCallback OnDragEnd { get; set; }
 
     [Parameter]
+    public EventCallback<Card> OnDragOver { get; set; }
+
+    [Parameter]
+    public EventCallback<Card> OnDrop { get; set; }
+
+    [Parameter]
     public bool IsDragging { get; set; }
+
+    // Which edge the insertion marker sits on, or null when nothing is hovering this strip. Decided
+    // by the board, which is the only side that knows what is being dragged.
+    [Parameter]
+    public string? DropEdge { get; set; }
 
     [Parameter]
     public bool IsLaunching { get; set; }
@@ -63,6 +74,10 @@ public partial class FlightStrip
     private Task OnDragStartAsync() => Draggable ? OnDragStart.InvokeAsync(Card) : Task.CompletedTask;
 
     private Task OnDragEndAsync() => OnDragEnd.InvokeAsync();
+
+    private Task OnDragOverAsync() => OnDragOver.InvokeAsync(Card);
+
+    private Task OnDropAsync() => OnDrop.InvokeAsync(Card);
 
     private Task OnKeyDownAsync(KeyboardEventArgs args)
         => args.Key is "Enter" or " " ? OnOpen.InvokeAsync(Card) : Task.CompletedTask;
@@ -86,6 +101,7 @@ public partial class FlightStrip
         AttentionClass is not null && !Blink ? "still" : null,
         Draggable ? "liftable" : null,
         IsDragging ? "lifted" : null,
+        DropEdge,
     }.Where(part => !string.IsNullOrEmpty(part)));
 
     private string FullBadgeClass => $"badge {BadgeClass}".TrimEnd();

@@ -71,7 +71,9 @@
                     }
                 </RadzenStack>
 
-                <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem">
+                @* The lane between the strips clears the insertion marker: a strip stops it from
+                   bubbling, so this only fires once the cursor is off every card. *@
+                <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" @ondragenter="OnDragOverColumn">
                     @if (cards.Count == 0)
                     {
                         <RadzenText TextStyle="TextStyle.Caption" class="empty"
@@ -85,6 +87,8 @@
                                          OnOpen="OpenAsync" OnLaunch="LaunchAsync"
                                          OnRetry="RetryAsync" Retriable="CanRetry(card)"
                                          OnDragStart="OnDragStartAsync" OnDragEnd="OnDragEndAsync"
+                                         OnDragOver="OnDragOverCard" OnDrop="DropOnAsync"
+                                         DropEdge="@DropEdge(card)"
                                          IsDragging="dragging?.Id == card.Id" IsLaunching="IsLaunching(card)"
                                          Hold="holds.GetValueOrDefault(card.Id)" />
                         }

@@ -205,10 +205,27 @@ public class LaunchQueueTests
             .Should().Equal(1040, 1041);
     }
 
-    // A card that has been waiting since it was created should not be jumped by one that has only
-    // just come due.
+    // The whole point of ordering a column by hand: the runner takes Ready the way the board draws
+    // it, so a strip dragged to the top is the next thing that launches.
     [Fact]
-    public void An_undated_card_goes_before_a_dated_one()
+    public void A_hand_ordered_column_launches_in_that_order()
+    {
+        var first = Ready(1040, TaskSchedule.Now);
+        first.WorkingDir = "/dev/one";
+        first.Order = 2;
+
+        var second = Ready(1041, TaskSchedule.Now);
+        second.WorkingDir = "/dev/two";
+        second.Order = 1;
+
+        Evaluate([first, second]).Launch.Select(card => card.Number)
+            .Should().Equal(1041, 1040);
+    }
+
+    // A due instant decides whether a card is in the queue at all, never where in it: a dated card
+    // that has come due sits where the column shows it, which with nothing reordered is by number.
+    [Fact]
+    public void A_dated_card_that_is_due_queues_in_column_order()
     {
         var dated = Ready(1039, TaskSchedule.SpecificDateTime);
         dated.ScheduledFor = Now.AddMinutes(-1);
@@ -218,7 +235,7 @@ public class LaunchQueueTests
         immediate.WorkingDir = "/dev/two";
 
         Evaluate([dated, immediate]).Launch.Select(card => card.Number)
-            .Should().Equal(1041, 1039);
+            .Should().Equal(1039, 1041);
     }
 
     [Fact]

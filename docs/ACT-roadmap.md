@@ -64,8 +64,9 @@ verifiable, and leaves something runnable.
     operational thing and differed only in the reason, which the badge already
     carried; `idle` became the **`to review`** badge, sign-off is gated by the
     column rather than the badge (a crashed or killed card can now be signed off
-    without a terminal round trip), and `Act.Core/Rules/AttentionOrder` gives the
-    merged column the priority its two neighbours used to imply by adjacency. The
+    without a terminal round trip), and the merged column took a badge ranking
+    (`AttentionOrder`) in place of the priority its two neighbours used to imply by
+    adjacency — **retired 2026-08-02** for `CardOrder`, the user's own ordering. The
     attention blink now covers the whole column in three colours — amber blocked,
     red error/killed, review blue for `to review`. See the spec's *Why one column
     and not two*. **`docs/ui-preview.html` still shows the old six** — it is a
@@ -1051,8 +1052,8 @@ verifiable, and leaves something runnable.
       Ready card is not running and they clear at wildly different times — a cap frees in
       minutes, a weekly quota in days — so a single word would flatten the one thing the
       user needs. See *The chips* below.
-    - **A hold is a derived chip, never a `Badge`.** `Badge` is persisted, ranked by
-      `AttentionOrder` and drives the blink and the toast; a hold is transient, computed,
+    - **A hold is a derived chip, never a `Badge`.** `Badge` is persisted and drives
+      the blink and the toast; a hold is transient, computed,
       and must raise no attention at all. It renders **in the badge slot**, which a Ready
       card leaves empty, in the muted register the `quiet` chip established.
     - **`dependsOn` gets its gate and no UI.** Its only producer is step 12's

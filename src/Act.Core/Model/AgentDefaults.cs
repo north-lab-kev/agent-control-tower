@@ -27,23 +27,6 @@ public sealed class AgentDefaults
 
     public IDictionary<string, string> Env { get; set; } = new Dictionary<string, string>();
 
-    // Gaps only, for the one-time lift of what used to be typed per card: a value already here is
-    // the user's and outranks anything a card remembers, so this can never undo a deliberate
-    // change — which is what makes it safe to run against a half-populated settings document.
-    public AgentDefaults FillGapsFrom(AgentDefaults other)
-    {
-        if (string.IsNullOrWhiteSpace(Binary))
-            Binary = other.Binary;
-
-        if (ExtraFlags.Count == 0)
-            ExtraFlags = [.. other.ExtraFlags];
-
-        if (Env.Count == 0)
-            Env = new Dictionary<string, string>(other.Env);
-
-        return this;
-    }
-
     public AgentDefaults Copy() => new()
     {
         Agent = Agent,
