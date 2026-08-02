@@ -12,6 +12,8 @@ public sealed class UserSettings
 
     public bool KeepAwake { get; set; } = true;
 
+    public bool Notifications { get; set; } = true;
+
     public bool CloseToTray { get; set; } = true;
 
     // On by default: two agents in one working tree is the failure mode that costs work rather than

@@ -121,6 +121,7 @@ public class SessionRestartTests
             [adapter],
             registry,
             board,
+            TestNotifications.Dispatcher(settings, new RecordingNotifier()),
             settings,
             new PassThroughDirectories(),
             clock), registry, adapter);

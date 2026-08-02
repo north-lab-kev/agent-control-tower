@@ -2,6 +2,7 @@ using Act.Agents.ClaudeCode;
 using Act.Agents.Codex;
 using Act.App.Cards;
 using Act.App.Desktop;
+using Act.App.Notifications;
 using Act.App.Sessions;
 using Act.App.Settings;
 using Act.App.Usage;
@@ -27,6 +28,10 @@ public static class ServiceCollectionExtensions
         services.AddRadzenComponents();
         services.AddSingleton<IAssetVersions, AssetVersions>();
         services.AddScoped<IDesktopBridge, BrowserDesktopBridge>();
+        services.AddSingleton<INotifier, BrowserNotifier>();
+        services.AddSingleton<UiPresence>();
+        services.AddSingleton<DeepLinkRouter>();
+        services.AddSingleton<NotificationDispatcher>();
         services.AddActInfrastructure(
             ActDataDirectory.Resolve(configuration[ActDataDirectory.OverrideKey]));
 
@@ -44,6 +49,7 @@ public static class ServiceCollectionExtensions
         services.AddElectron();
         services.AddSingleton<DesktopShell>();
         services.Replace(ServiceDescriptor.Scoped<IDesktopBridge, ElectronDesktopBridge>());
+        services.Replace(ServiceDescriptor.Singleton<INotifier, ElectronNotifier>());
 
         return services;
     }

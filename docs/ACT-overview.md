@@ -1725,18 +1725,47 @@ be running a long build is exactly the false alarm the chip exists to avoid.
 
 ### Behavior rules
 
-- **Actionable.** Where the OS supports it, notifications carry a button that
-  deep-links **into that card's terminal view** — the place the user has to be to
-  answer anyway. ACT carries no approve/deny buttons, in the notification or
+- **Actionable.** Clicking the notification reveals the window and navigates
+  **into that card's terminal view** — the place the user has to be to answer
+  anyway. The whole toast is the target rather than a button on it: Windows gives
+  an unpackaged app the body click and nothing more, and one destination needs no
+  second control. ACT carries no approve/deny buttons, in the notification or
   anywhere else.
-- **Respect focus.** Suppress the popup when ACT is focused and on the board
+- **Respect focus.** Suppress the popup when ACT is focused **and on the board**
   (the in-app pulse covers it); notify mainly when ACT is backgrounded — the
-  overnight case.
-- **Coalesce, don't spam.** Batch bursts into a digest ("4 completed, 1 needs
-  you"); never re-fire the same state for the same task.
-- **Configurable per event type** — a small settings matrix (e.g. error/needs-you
-  always on; "completed" maybe off by day, on overnight). Stored as a
-  notification-preferences setting.
+  overnight case. Focused on a *card* still notifies: the board is the only
+  surface that shows every card's state at once.
+  - A state suppressed because the user was watching is **not** replayed when the
+    window later loses focus. The notification is about the moment the card
+    changed, and that moment was seen.
+- **One state, one ping — and no digest.** The same state never fires twice for
+  the same task (several sources report the same block, and a card is written
+  again for reasons that are not changes). Bursts are **deliberately not
+  coalesced**, decided 2026-08-01: a digest saying *"4 need you"* cannot deep-link
+  to any of the four, which throws away the one thing that makes the notification
+  actionable. Five cards finishing at once is five toasts, and that is the right
+  trade.
+- **One switch, not a matrix.** Notifications are on or off (*Settings → System*,
+  default on, desktop only). A per-kind matrix was designed and dropped: nobody
+  wants to hear that a task failed but not that one finished, and every extra
+  toggle is another way to silence the signal unattended mode depends on.
+
+### App identity on the toast (Windows)
+
+Windows takes the header line and the icon from the **Application User Model ID**,
+not from anything in the notification. Left alone, every ACT toast announces itself
+as `electron.app.Electron`.
+
+- ACT sets its own id (`com.northlabkev.act`, mirroring the GitHub org) at startup,
+  and the installer's `appId`
+  is the **same string** — the NSIS shortcut is what maps the id to the product
+  name, so a mismatch there would leave the packaged build no better off.
+- **Unpackaged runs still show the raw id**, because a `dotnet run` has no
+  Start-menu shortcut to resolve a name from. Accepted rather than fixed: the
+  alternative is ACT writing a display-name key into the user's registry on every
+  machine it runs on, which is an installer's job, not a dev session's.
+- The icon rides the notification itself (`icon.ico`, the same file the window and
+  tray use) and therefore works in both modes.
 
 ### Shell caveat (build note)
 
@@ -1909,7 +1938,11 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     same task twice by accident. Changing the default agent clears a model or effort the new one
     does not offer, and moves the permission mode to one it does, rather than storing a default
     that would be rejected at launch.
-  the notification matrix, `maxConcurrent`, weekly-reset time, and the auto-execution pause.
+  `maxConcurrent`, weekly-reset time, and the auto-execution pause.
+  - **Desktop notifications** (*System*, on by default, **desktop only**) is the single switch
+    that replaced the planned per-event matrix — see *Native OS notifications* for why. It is
+    hidden in browser mode for the same reason close-to-tray is: a switch that governs nothing
+    is worse than no switch.
   - **Archive completed tasks automatically** (*Retention*, on by default, **10 days**) is the
     retention policy's one knob, and the day count only appears while the switch is on — a number
     that governs nothing is a question the user has already answered. The window is clamped to

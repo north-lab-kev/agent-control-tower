@@ -22,6 +22,8 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
 
     public bool KeepAwake => current.KeepAwake;
 
+    public bool Notifications => current.Notifications;
+
     public bool CloseToTray => current.CloseToTray;
 
     public bool PreventConcurrentWorkingDir => current.PreventConcurrentWorkingDir;
@@ -123,6 +125,14 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
             return;
 
         Update(settings => settings.KeepAwake = keepAwake);
+    }
+
+    public void SetNotifications(bool notifications)
+    {
+        if (notifications == current.Notifications)
+            return;
+
+        Update(settings => settings.Notifications = notifications);
     }
 
     public void SetCloseToTray(bool closeToTray)

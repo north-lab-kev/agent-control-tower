@@ -34,3 +34,21 @@ internal sealed class FrozenClock(DateTimeOffset now) : IClock
 {
     public DateTimeOffset Now => now;
 }
+
+internal sealed class FakeSettingsStore : ISettingsStore
+{
+    private UserSettings settings = new();
+
+    public UserSettings Load() => settings;
+
+    public void Save(UserSettings updated) => settings = updated;
+}
+
+internal sealed class FakeSleepInhibitor : ISleepInhibitor
+{
+    public bool IsHeld { get; private set; }
+
+    public void Hold() => IsHeld = true;
+
+    public void Release() => IsHeld = false;
+}

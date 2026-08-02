@@ -20,6 +20,12 @@ public sealed class DesktopShell(
 {
     private const int TitleBarHeight = 49;
 
+    // Windows reads the toast's header from the Application User Model ID, and Electron's default
+    // makes every notification announce itself as `electron.app.Electron`. It has to match the
+    // installer's `appId`, which is what puts the same id on the Start-menu shortcut Windows
+    // resolves the display name from — a mismatch there and the packaged build is no better off.
+    private const string AppUserModelId = "com.northlabkev.act";
+
     private readonly Lock gate = new();
 
     private BrowserWindow? window;
@@ -30,6 +36,9 @@ public sealed class DesktopShell(
 
     public async Task StartAsync()
     {
+        if (OperatingSystem.IsWindows())
+            Electron.App.SetAppUserModelId(AppUserModelId);
+
         Electron.Menu.SetApplicationMenu([]);
 
         settings.Changed += ApplyCloseBehaviour;
@@ -100,7 +109,7 @@ public sealed class DesktopShell(
     // Windows delivers a double click as a click *and* a double click, so two reveals race — and
     // two reveals with no window would build two windows. Whoever arrives second waits on the
     // first instead of starting its own.
-    private Task RevealAsync()
+    public Task RevealAsync()
     {
         lock (gate)
         {
@@ -230,5 +239,5 @@ public sealed class DesktopShell(
         lifetime.StopApplication();
     }
 
-    private static string IconPath => Path.Combine(AppContext.BaseDirectory, "icon.ico");
+    public static string IconPath => Path.Combine(AppContext.BaseDirectory, "icon.ico");
 }

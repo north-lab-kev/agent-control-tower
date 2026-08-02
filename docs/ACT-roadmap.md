@@ -968,8 +968,68 @@ verifiable, and leaves something runnable.
 
 ## Phase 5 — Automation (on a proven base)
 
-- [ ] **13. Native notifications** — OS pings for attention states; actionable,
+- [x] **13. Native notifications** — OS pings for attention states; actionable,
   focus-aware, coalesced. *Verify:* backgrounded ACT pings on needs-you.
+  ✅ **Landed 2026-08-01**, with one word of the line above deliberately unbuilt: see *no digest*.
+  - [x] **The decision is a pure rule; everything else is policy in the app.**
+    `Act.Core/Rules/NotificationTrigger.Wants(card)` is the whole of it — on the board, in Your
+    turn, wanting attention — and it reads `Card.NeedsAttention` rather than listing the five
+    badges again, because the pulse on the board and the ping on the desktop are the same claim
+    and a card that blinks without pinging is a bug nobody notices until the night it matters.
+    Reading the *card* rather than the event is what lets both writers of an attention state ask
+    the same question: `SessionEventPump` after a move, and `SessionLauncher` after a failed
+    launch. It also makes asking twice harmless, which the dedupe below relies on.
+  - [x] **`Act.App/Notifications/` holds the policy.** `NotificationDispatcher` owns the setting,
+    the focus gate, the one-ping-per-state rule and the wording; `UiPresence` is how a server-side
+    decision knows whether anyone is looking (`MainLayout` reports focus + route per circuit, from
+    `act-presence.js` watching `focus`/`blur`/`visibilitychange` — both halves, because a minimised
+    window can still report focus); `DeepLinkRouter` turns a clicked toast into a navigation on the
+    live circuit rather than a page reload.
+  - [x] **`INotifier` is an `Act.App/Desktop` port, not a Core one.** Nothing in Core calls it once
+    the decision is a pure rule, which is the same test that keeps `IDesktopBridge` out of
+    `Act.Core/Abstractions`. `ElectronNotifier` + a no-op `BrowserNotifier`, registered and
+    `Replace`d exactly as the bridge is. The doc line that placed it in Core is corrected.
+  - [x] **No coalescing — decided 2026-08-01, against the step's own one-liner.** A digest saying
+    *"4 need you"* cannot deep-link to any of the four, and the deep link is the thing that makes
+    the notification worth having. So bursts stay one toast each, and the whole debounce/digest
+    machinery is not built. What carries the anti-spam job alone is **one state, one ping**:
+    `(taskId, badge)` is remembered and cleared when the card leaves that state, so a re-block
+    after the user answers pings again and a card written twice for the same state does not.
+  - [x] **One switch, not a per-kind matrix** (*Settings → System*, on by default, desktop only).
+    Nobody wants to hear that a task failed but not that one finished, and every extra toggle is
+    another way to silence the signal unattended mode depends on.
+  - [x] **A suppressed state is not replayed.** The dedupe entry is written *before* the setting
+    and focus gates are consulted, so a card the user watched change on the board does not fire a
+    toast when they later walk away. The notification is about the moment it changed.
+  - [x] **`ElectronBoundaryTests` replaces the project split that was considered and rejected.**
+    Making `Act.Desktop` a real csproj only isolates anything if `Act.App` becomes a library and
+    the desktop host becomes the exe — which moves every static asset to `_content/Act.App/…` for
+    ~350 lines of shell code. Instead a test fails the build if anything outside `Program.cs`,
+    `ServiceCollectionExtensions.cs` and `Desktop/` names ElectronNET, and the empty
+    `src/Act.Desktop/` placeholder is deleted. Full reasoning in *repository-structure*.
+  - ✅ **Verified live in the Electron shell, window minimised** — cards #1102 and #1103, driven
+    from a second browser client on the same host so the desktop window stayed backgrounded.
+    #1102 parked on Claude Code's directory-trust prompt and raised **`Needs permission / #1102 ·
+    Notification check`**; #1103 finished a turn and raised **`Ready for review / #1103 · Toast
+    identity check`**. 614 tests green.
+    - ⚠️ **Two identity bugs the live run exposed, one fixed and one accepted.** The first toast
+      announced itself as **`electron.app.Electron`** and carried no icon: Windows takes both from
+      the Application User Model ID, which Electron leaves at its own default. Fixed by setting
+      `com.northlabkev.act` (the GitHub org, hyphens dropped as reverse-DNS wants) at startup and
+      putting the *same string* in the installer's `appId` — the
+      NSIS shortcut is what maps the id to a product name, so a mismatch would leave the packaged
+      build no better off — plus `NotificationOptions.Icon` pointing at the same `icon.ico` the
+      window and tray use, which works in both modes. **Unpackaged runs still show the raw id**,
+      because `dotnet run` has no Start-menu shortcut to resolve a name from; accepted rather than
+      fixed, since the alternative is ACT writing a display-name key into the user's registry on
+      every machine it runs on.
+    - **What is not verified by hand: the click-through.** The toast's `OnClick` reveals the window
+      and routes to the card's terminal, and nothing in the harness can click a Windows toast. The
+      pieces either side of it are covered (`DeepLinkRouter` → `MainLayout` navigation, and
+      `DesktopShell.RevealAsync`, which the tray already uses), but the join is unexercised.
+    - **Also learned, and reusable:** a screen capture taken from a *background* PowerShell task is
+      blank — it runs on a non-interactive window station. Anything that has to see the desktop has
+      to run in the foreground.
 - [ ] **14. Scheduling & queue runner** — `schedule`, `maxConcurrent`,
   `dependsOn` ordering, rate-limit backpressure (`waiting-reset`), keep-awake,
   and the global **auto-execution pause switch**. *Verify:* a queue of Ready

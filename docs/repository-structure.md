@@ -76,8 +76,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │  └─ Layout/                 #     MainLayout, top bar, theme stylesheets
 │  │  ├─ Desktop/                   #   DesktopShell: the Electron window + tray icon and the
 │  │  │                            #     close/exit rules (Electron-only; registered when enabled)
-│  │  │                            #     + IDesktopBridge and its two implementations — the only
-│  │  │                            #     shell surface a page may touch
+│  │  │                            #     + IDesktopBridge / INotifier and their two
+│  │  │                            #     implementations each — the only shell surface a page may
+│  │  │                            #     touch. With Program.cs and the DI extensions, the ONLY
+│  │  │                            #     place allowed to name ElectronNET (a test enforces it)
 │  │  ├─ Cards/                     #   BoardState — owns every card incl. archived ones, and
 │  │  │                            #     decides what may see which; RetentionPump (the hourly
 │  │  │                            #     auto-archive sweep); task form model; capability
@@ -88,6 +90,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     past the launch boundary),
 │  │  │                            #     SessionEventPump (drains events onto the board),
 │  │  │                            #     TranscriptPump (one polling tail per live session)
+│  │  ├─ Notifications/             #   NotificationDispatcher (setting + focus gate + one ping
+│  │  │                            #     per state, and the wording), UiPresence (who is looking
+│  │  │                            #     at what), DeepLinkRouter (clicked toast → that card)
 │  │  ├─ Usage/                     #   UsageState (latest result per agent, reading or named
 │  │  │                            #     unavailability) + UsagePump (one poll loop per probe,
 │  │  │                            #     backing off on a failure that cost a request);
@@ -99,13 +104,13 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │  │                         #       pinning version + SHA-256 of each file
 │  │  │  └─ js/                     #     interop modules: act-terminal (attach / write / resize /
 │  │  │                            #       dispose), act-unsaved (the window-close guard),
-│  │  │                            #       act-escape (Escape leaves the page it is bound on)
+│  │  │                            #       act-escape (Escape leaves the page it is bound on),
+│  │  │                            #       act-presence (focus + visibility, for the toast gate)
 │  │  ├─ Properties/                #   launchSettings + electron-builder.json (packaging)
 │  │  ├─ ServiceCollectionExtensions.cs
 │  │  │                            #   AddActApp: every Act.App registration (agents, board,
 │  │  │                            #     sessions) + AddActDesktopShell for the Electron branch
 │  │  └─ Program.cs                 #   startup pipeline; Electron wired only when enabled
-│  └─ Act.Desktop/                  # unused under Option B (Electron lives in Act.App); pending removal
 │
 ├─ tests/
 │  ├─ Act.Core.Tests/               # xUnit — rules engine & scheduler (hard, pure)
@@ -276,11 +281,31 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   in `Act.Agents.Tests` asserts identity, capabilities and launch-config resolution —
   never a live session — because ACT deliberately runs no real CLI in automated
   tests. Live behavior is verified by hand per roadmap step.
-- **`INotifier` is a port.** Native OS notifications come from Electron, which
-  under Option B lives in `Act.App` — so the native implementation lives there
-  too (gated on Electron being active), with a no-op/web fallback for the plain
-  `dotnet run` browser mode. *(Originally slated for `Act.Desktop`; moved when
-  Electron wiring was consolidated into `Act.App`.)*
+- **`INotifier` is an `Act.App/Desktop` port, not a Core one** (decided 2026-08-01,
+  when step 13 built it). Nothing in Core calls it: the decision half is a pure rule
+  (`Act.Core/Rules/NotificationTrigger`, "is this card wanting something") and the
+  App half owns the wording, the settings gate and the transport. So it sits beside
+  `IDesktopBridge` under the same test — an interface earns a place in
+  `Act.Core/Abstractions` only when Core-side code triggers it, as `ISleepInhibitor`
+  does. `ElectronNotifier` and a no-op `BrowserNotifier` are the two
+  implementations, registered the same way the bridge is.
+- **`Act.App/Notifications/` is the policy, `Desktop/` is the transport.** The
+  dispatcher decides *whether* (the setting, the focus gate, one-state-one-ping) and
+  composes the text; the notifier only shows what it is handed. `UiPresence` is how
+  the server knows whether anyone is looking — `MainLayout` reports focus and route
+  per circuit — and `DeepLinkRouter` is the way back, turning a clicked toast into a
+  navigation on the live circuit instead of a page reload.
+- **`Act.Desktop` is not a project, decided 2026-08-01.** The folder existed as a
+  placeholder for a shell-specific concern that never emerged; notifications were
+  the first real candidate and they did not change the answer. Splitting would only
+  isolate anything if `Act.App` became a *library* and the desktop host became the
+  exe — which moves every static asset to `_content/Act.App/…` (the xterm bundle,
+  `act-terminal.js`, the theme css, the favicon) and leaves two hosts to keep in
+  sync, for ~350 lines of shell code. The cheap half of the benefit is taken
+  instead: `ElectronBoundaryTests` fails the build if anything outside `Program.cs`,
+  `ServiceCollectionExtensions.cs` and `Desktop/` so much as names ElectronNET.
+  Revisit if the shell grows auto-update, native menus and protocol handlers, or if
+  a second front-end (remote access) forces the library split anyway.
 - **No page references ElectronNET.** `Desktop/IDesktopBridge` carries the only two
   things a view needs from the shell — `IsDesktop`, and `OpenExternalAsync` for a
   `claude://` handoff — with `ElectronDesktopBridge` and `BrowserDesktopBridge`

@@ -378,6 +378,30 @@
   <data name="Settings_Env_Hint" xml:space="preserve">
     <value>One KEY=value per line.</value>
   </data>
+  <data name="Settings_Notifications" xml:space="preserve">
+    <value>Desktop notifications</value>
+  </data>
+  <data name="Settings_Notifications_Hint" xml:space="preserve">
+    <value>Ping when a task needs you or finishes, unless you are already watching the board.</value>
+  </data>
+  <data name="Notify_NeedsPermission" xml:space="preserve">
+    <value>Needs permission</value>
+  </data>
+  <data name="Notify_NeedsAnswer" xml:space="preserve">
+    <value>Needs an answer</value>
+  </data>
+  <data name="Notify_Error" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Notify_Killed" xml:space="preserve">
+    <value>Session killed</value>
+  </data>
+  <data name="Notify_ReadyForReview" xml:space="preserve">
+    <value>Ready for review</value>
+  </data>
+  <data name="Notify_Body" xml:space="preserve">
+    <value>#{0} · {1}</value>
+  </data>
   <data name="Settings_KeepAwake" xml:space="preserve">
     <value>Keep the computer awake</value>
   </data>

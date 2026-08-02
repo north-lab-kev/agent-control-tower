@@ -107,6 +107,22 @@
 
             <RadzenFieldset Text="@Strings.Settings_Group_System">
                 <RadzenStack Gap="1.1rem">
+                    @* Desktop-only, like close-to-tray: a browser tab has no OS notification worth
+                       the permission prompt, so the switch would govern nothing. *@
+                    @if (IsDesktop)
+                    {
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                     JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Notifications" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Notifications_Hint"
+                                            class="hint" />
+                            </RadzenStack>
+                            <RadzenSwitch Value="Notifications"
+                                          ValueChanged="@((bool value) => OnNotificationsChanged(value))" />
+                        </RadzenStack>
+                    }
+
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
                                  JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
                         <RadzenStack Gap="0.1rem">

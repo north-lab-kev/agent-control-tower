@@ -1,4 +1,5 @@
 using Act.App.Cards;
+using Act.App.Notifications;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
@@ -15,6 +16,7 @@ namespace Act.App.Sessions;
 public sealed class SessionEventPump(
     SessionRegistry sessions,
     BoardState board,
+    NotificationDispatcher notifications,
     IClock clock,
     ILogger<SessionEventPump> log) : IAsyncDisposable
 {
@@ -78,6 +80,8 @@ public sealed class SessionEventPump(
             });
 
             await board.UpdateAsync(card, stopping.Token);
+
+            notifications.Notify(card);
 
             return;
         }

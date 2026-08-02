@@ -48,6 +48,8 @@ public partial class SettingsView(
 
     private bool KeepAwake => settings.KeepAwake;
 
+    private bool Notifications => settings.Notifications;
+
     private bool CloseToTray => settings.CloseToTray;
 
     private bool PreventConcurrentWorkingDir => settings.PreventConcurrentWorkingDir;
@@ -272,6 +274,8 @@ public partial class SettingsView(
     private void OnBlinkYourTurnChanged(bool blink) => settings.SetBlinkYourTurn(blink);
 
     private void OnKeepAwakeChanged(bool keepAwake) => settings.SetKeepAwake(keepAwake);
+
+    private void OnNotificationsChanged(bool notifications) => settings.SetNotifications(notifications);
 
     private void OnCloseToTrayChanged(bool closeToTray) => settings.SetCloseToTray(closeToTray);
 

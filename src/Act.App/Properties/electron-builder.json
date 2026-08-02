@@ -1,6 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/refs/heads/master/packages/app-builder-lib/scheme.json",
   "productName": "ACT — Agent Control Tower",
+  "appId": "com.northlabkev.act",
   "compression": "maximum",
   "win": {
     "icon": "bin/icon.ico",

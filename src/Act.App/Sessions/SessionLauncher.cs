@@ -1,4 +1,5 @@
 using Act.App.Cards;
+using Act.App.Notifications;
 using Act.App.Resources;
 using Act.App.Settings;
 using Act.Core.Abstractions;
@@ -14,6 +15,7 @@ public sealed class SessionLauncher(
     IEnumerable<IAgentAdapter> adapters,
     SessionRegistry registry,
     BoardState board,
+    NotificationDispatcher notifications,
     UserSettingsService settings,
     IWorkingDirectories directories,
     IClock clock)
@@ -139,6 +141,8 @@ public sealed class SessionLauncher(
             });
 
             await board.UpdateAsync(card, cancellationToken);
+
+            notifications.Notify(card);
 
             return LaunchResult.Refused(error.Message);
         }

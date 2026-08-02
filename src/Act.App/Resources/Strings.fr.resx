@@ -378,6 +378,30 @@
   <data name="Settings_Env_Hint" xml:space="preserve">
     <value>Une paire CLÉ=valeur par ligne.</value>
   </data>
+  <data name="Settings_Notifications" xml:space="preserve">
+    <value>Notifications du bureau</value>
+  </data>
+  <data name="Settings_Notifications_Hint" xml:space="preserve">
+    <value>Vous avertit quand une tâche vous attend ou se termine, sauf si vous regardez déjà le tableau.</value>
+  </data>
+  <data name="Notify_NeedsPermission" xml:space="preserve">
+    <value>Permission requise</value>
+  </data>
+  <data name="Notify_NeedsAnswer" xml:space="preserve">
+    <value>Réponse requise</value>
+  </data>
+  <data name="Notify_Error" xml:space="preserve">
+    <value>Échec</value>
+  </data>
+  <data name="Notify_Killed" xml:space="preserve">
+    <value>Session terminée</value>
+  </data>
+  <data name="Notify_ReadyForReview" xml:space="preserve">
+    <value>Prêt pour révision</value>
+  </data>
+  <data name="Notify_Body" xml:space="preserve">
+    <value>#{0} · {1}</value>
+  </data>
   <data name="Settings_KeepAwake" xml:space="preserve">
     <value>Garder l'ordinateur éveillé</value>
   </data>
