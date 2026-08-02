@@ -3,6 +3,7 @@ using Act.App.Cards;
 using Act.App.Resources;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Core.Scheduling;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
@@ -46,6 +47,12 @@ public partial class FlightStrip
 
     [Parameter]
     public bool IsLaunching { get; set; }
+
+    // Why this Ready card is not running, decided by the board in one pass over every card — the
+    // same pass the queue runner launches from, so a strip cannot claim a card is queued while it
+    // is starting.
+    [Parameter]
+    public ReadyHold? Hold { get; set; }
 
     private bool Draggable => ManualMove.CanDrag(Card.Column);
 
@@ -149,6 +156,57 @@ public partial class FlightStrip
             Card.ScheduledFor?.ToString(Strings.Schedule_DateFormat, Culture)),
         _ => null,
     };
+
+    // A hold is not a `Badge` — it is derived, it is never stored, and it must not blink or notify.
+    // It borrows the badge *slot*, which a Ready card leaves empty, and the muted colour the quiet
+    // chip established: nothing here is wrong, and every one of these clears on its own.
+    private string? HoldText => Hold is not { } hold ? null : hold.Reason switch
+    {
+        LaunchHold.Paused => Strings.Hold_Paused,
+        LaunchHold.AgentDisabled => Strings.Hold_AgentOff,
+        LaunchHold.UsageLimit => Text.Format(Strings.Hold_Usage, Countdown(hold.Until)),
+        LaunchHold.WorkingDir => Text.Format(Strings.Hold_Folder, hold.Blocker?.Number),
+        LaunchHold.Dependency => Text.Format(Strings.Hold_Dependency, hold.Blocker?.Number),
+        LaunchHold.Slot => Text.Format(Strings.Hold_Slot, hold.Used, hold.Cap),
+        _ => null,
+    };
+
+    private string? HoldTip => Hold is not { } hold ? null : hold.Reason switch
+    {
+        LaunchHold.Paused => Strings.Hold_Paused_Tip,
+        LaunchHold.AgentDisabled => Text.Format(Strings.Hold_AgentOff_Tip, AgentName),
+        LaunchHold.UsageLimit => Text.Format(
+            Strings.Hold_Usage_Tip,
+            AgentName,
+            hold.Until?.ToLocalTime().ToString(Strings.Schedule_DateFormat, Culture)),
+        LaunchHold.WorkingDir => Text.Format(
+            Strings.Hold_Folder_Tip, hold.Blocker?.Number, hold.Blocker?.Title),
+        LaunchHold.Dependency => Text.Format(
+            Strings.Hold_Dependency_Tip, hold.Blocker?.Number, hold.Blocker?.Title),
+        LaunchHold.Slot => Text.Format(Strings.Hold_Slot_Tip, hold.Used, hold.Cap),
+        _ => null,
+    };
+
+    // `paused` and `agent off` are the user's own doing rather than something in the way, so they
+    // stay neutral; the rest carry the quiet tint that says "waiting on something".
+    private string HoldClass => Hold?.Reason is LaunchHold.Paused or LaunchHold.AgentDisabled
+        ? "badge"
+        : "badge b-hold";
+
+    private static string Countdown(DateTimeOffset? until)
+    {
+        var left = (until ?? DateTimeOffset.UtcNow) - DateTimeOffset.UtcNow;
+
+        if (left < TimeSpan.Zero)
+            left = TimeSpan.Zero;
+
+        if (left.TotalHours >= 24)
+            return Text.Format(Strings.Hold_Days, (int)left.TotalDays, left.Hours);
+
+        return left.TotalMinutes >= 60
+            ? Text.Format(Strings.Hold_Hours, (int)left.TotalHours, left.Minutes)
+            : Text.Format(Strings.Hold_Minutes, (int)left.TotalMinutes);
+    }
 
     private static IEnumerable<string> Metrics(CardMetrics m)
     {

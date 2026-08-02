@@ -1,5 +1,6 @@
 .act-root {
     min-height: 100vh;
+    min-width: 960px;
 }
 
 .shell {
@@ -24,8 +25,14 @@
     -webkit-app-region: no-drag;
 }
 
-::deep .brand {
+::deep .brand,
+::deep .actions {
     flex: 0 0 auto;
+}
+
+::deep .usagegroup {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 ::deep .mark {
@@ -61,26 +68,33 @@
 ::deep .statchip {
     font-family: var(--act-mono);
     font-size: 10px;
+    white-space: nowrap;
     color: var(--act-dim);
     border-color: var(--act-line2);
+    background: transparent;
+    padding: 0.15rem 0.5rem;
+    text-transform: none;
+    letter-spacing: 0;
 }
 
-::deep .statchip.live::before {
-    content: "";
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    margin-right: 6px;
-    vertical-align: middle;
-    background: var(--act-run);
+::deep .statchip.paused {
+    color: var(--act-wait);
+    border-color: color-mix(in srgb, var(--act-wait) 45%, transparent);
 }
 
-::deep .newtaskbtn {
-    font-size: 11px;
-    color: var(--act-ink);
-    border-color: var(--act-line2);
-    -webkit-app-region: no-drag;
+::deep .statchip .rz-button-icon-left {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    margin-right: 5px;
+}
+
+::deep .statchip.live .rz-button-icon-left {
+    color: var(--act-run);
+}
+
+::deep .statchip.paused .rz-button-icon-left {
+    color: var(--act-wait);
 }
 
 ::deep .gear {

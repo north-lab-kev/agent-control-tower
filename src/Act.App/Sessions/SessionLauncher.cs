@@ -153,6 +153,10 @@ public sealed class SessionLauncher(
         card.Column = BoardColumn.Executing;
         card.Badge = Badge.Running;
         card.LaunchedAt ??= clock.Now;
+
+        // The armed instant belongs to the wait, not to the card: left behind, a card dragged back
+        // to Ready would still be pointing at a window boundary that passed while it was running.
+        card.EligibleAt = null;
         card.Transitions.Add(new Transition
         {
             At = clock.Now,

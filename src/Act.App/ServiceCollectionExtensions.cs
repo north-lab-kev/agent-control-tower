@@ -111,6 +111,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAgentEventSink, SessionEventSink>();
         services.AddSingleton<SessionRegistry>();
         services.AddSingleton<SessionLauncher>();
+        services.AddSingleton<TerminalGeometry>();
+        services.AddSingleton<QueueRunner>();
         services.AddSingleton<SessionEventPump>();
         services.AddSingleton<TranscriptPump>();
         services.AddSingleton<SessionRestorer>();

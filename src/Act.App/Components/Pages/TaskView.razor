@@ -173,6 +173,14 @@ else
                             <RadzenRequiredValidator Component="ScheduledFor" Text="@Strings.NewTask_Required" />
                         }
 
+                        @* A warning, never a block: the combination is legal and the user may have a
+                           reason. What it must not be is a surprise at 3am. *@
+                        @if (WarnsUnattended)
+                        {
+                            <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Shade="Shade.Lighter"
+                                         AllowClose="false" Text="@Strings.NewTask_UnattendedPrompting" class="warn" />
+                        }
+
                         @* Only while the guard is on: an exemption from a rule nobody is enforcing
                            is a switch that reads as if it did something. *@
                         @if (FolderGuardOn)

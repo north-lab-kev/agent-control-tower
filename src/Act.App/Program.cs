@@ -34,7 +34,6 @@ app.BindActHookEndpoint();
 var settings = app.Services.GetRequiredService<UserSettingsService>();
 
 settings.ApplyLanguage();
-settings.ApplyKeepAwake();
 
 await app.Services.GetRequiredService<BoardState>().LoadAsync();
 
@@ -57,8 +56,18 @@ app.Services.GetRequiredService<RetentionPump>().Start();
 // listening: a resumed agent posts its first hook within moments of starting, and the endpoint that
 // answers it is this app's. Not awaited — restoring several agents is several process spawns, and
 // none of them is a reason to hold up the window.
-app.Lifetime.ApplicationStarted.Register(
-    () => _ = app.Services.GetRequiredService<SessionRestorer>().RestoreAllAsync(app.Lifetime.ApplicationStopping));
+//
+// The queue runner starts *after* it, and that ordering is load-bearing: a restored card occupies a
+// concurrency slot and holds its working directory, so a runner that went first would judge an
+// empty board and launch straight past the cap.
+app.Lifetime.ApplicationStarted.Register(() => _ = RestoreThenRunAsync());
+
+async Task RestoreThenRunAsync()
+{
+    await app.Services.GetRequiredService<SessionRestorer>().RestoreAllAsync(app.Lifetime.ApplicationStopping);
+
+    app.Services.GetRequiredService<QueueRunner>().Start();
+}
 
 // Before everything: the two ports mean different things, and the guard is what says so — hooks
 // answer only on the loopback hook port, the UI only on the app's.

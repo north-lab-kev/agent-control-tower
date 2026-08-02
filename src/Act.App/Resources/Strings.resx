@@ -15,8 +15,14 @@
   <data name="Shell_FullName" xml:space="preserve">
     <value>Agent Control Tower</value>
   </data>
-  <data name="Shell_AutoExecOn" xml:space="preserve">
-    <value>auto-exec on</value>
+  <data name="Shell_AutoExec" xml:space="preserve">
+    <value>auto-exec</value>
+  </data>
+  <data name="Shell_AutoExecOn_Tip" xml:space="preserve">
+    <value>Scheduled tasks launch on their own. Click to pause all automatic execution.</value>
+  </data>
+  <data name="Shell_AutoExecPaused_Tip" xml:space="preserve">
+    <value>Nothing starts on its own. Launching a task by hand still works. Click to resume.</value>
   </data>
   <data name="Shell_UnhandledError" xml:space="preserve">
     <value>An unhandled error has occurred.</value>
@@ -77,6 +83,9 @@
   </data>
   <data name="NewTask_Schedule_Hint" xml:space="preserve">
     <value>When the task may launch, once you move it to Ready.</value>
+  </data>
+  <data name="NewTask_UnattendedPrompting" xml:space="preserve">
+    <value>This task can start on its own, but its permission mode still asks before acting. ACT never answers a prompt, so it will wait at the first one — holding a slot — until you do. Choose auto, don't ask or bypass for unattended work.</value>
   </data>
   <data name="NewTask_ScheduledFor" xml:space="preserve">
     <value>Date &amp; time</value>
@@ -228,6 +237,51 @@
   <data name="Schedule_DateFormat" xml:space="preserve">
     <value>MMM d HH:mm</value>
   </data>
+  <data name="Hold_Paused" xml:space="preserve">
+    <value>paused</value>
+  </data>
+  <data name="Hold_Paused_Tip" xml:space="preserve">
+    <value>Automatic execution is paused. Launch this task by hand, or click auto-exec paused in the top bar to resume.</value>
+  </data>
+  <data name="Hold_AgentOff" xml:space="preserve">
+    <value>agent off</value>
+  </data>
+  <data name="Hold_AgentOff_Tip" xml:space="preserve">
+    <value>{0} is switched off in Settings, so nothing can start with it.</value>
+  </data>
+  <data name="Hold_Usage" xml:space="preserve">
+    <value>usage {0}</value>
+  </data>
+  <data name="Hold_Usage_Tip" xml:space="preserve">
+    <value>The usage limit for {0} has been reached. This task starts on its own when the window resets at {1}.</value>
+  </data>
+  <data name="Hold_Folder" xml:space="preserve">
+    <value>folder #{0}</value>
+  </data>
+  <data name="Hold_Folder_Tip" xml:space="preserve">
+    <value>#{0} · {1} is working in this folder. This task starts on its own once that one is completed.</value>
+  </data>
+  <data name="Hold_Dependency" xml:space="preserve">
+    <value>after #{0}</value>
+  </data>
+  <data name="Hold_Dependency_Tip" xml:space="preserve">
+    <value>Waiting for #{0} · {1} to be completed.</value>
+  </data>
+  <data name="Hold_Slot" xml:space="preserve">
+    <value>queued {0}/{1}</value>
+  </data>
+  <data name="Hold_Slot_Tip" xml:space="preserve">
+    <value>{0} of {1} tasks are already running. This one starts on its own as soon as a slot frees.</value>
+  </data>
+  <data name="Hold_Hours" xml:space="preserve">
+    <value>{0}h{1:00}m</value>
+  </data>
+  <data name="Hold_Minutes" xml:space="preserve">
+    <value>{0}m</value>
+  </data>
+  <data name="Hold_Days" xml:space="preserve">
+    <value>{0}d{1}h</value>
+  </data>
   <data name="Metrics_Context" xml:space="preserve">
     <value>{0}/{1} ctx</value>
   </data>
@@ -308,6 +362,18 @@
   </data>
   <data name="Settings_OneTaskPerFolder_Hint" xml:space="preserve">
     <value>Stop a task launching while another is still working in the same folder. A task holds its folder until it is completed. A single task can be allowed to run alongside the others from its own page.</value>
+  </data>
+  <data name="Settings_PauseAutoExecution" xml:space="preserve">
+    <value>Pause automatic execution</value>
+  </data>
+  <data name="Settings_PauseAutoExecution_Hint" xml:space="preserve">
+    <value>Nothing starts on its own while this is on, whatever a task is scheduled for. Launching a task by hand still works.</value>
+  </data>
+  <data name="Settings_MaxConcurrent" xml:space="preserve">
+    <value>Tasks running at once</value>
+  </data>
+  <data name="Settings_MaxConcurrent_Hint" xml:space="preserve">
+    <value>How many tasks the queue keeps working at the same time. Each one holds a live agent and its terminal, so this is a real ceiling on the machine. A task waiting to be signed off does not count.</value>
   </data>
   <data name="Settings_Group_Retention" xml:space="preserve">
     <value>Retention</value>
@@ -406,7 +472,7 @@
     <value>Keep the computer awake</value>
   </data>
   <data name="Settings_KeepAwake_Hint" xml:space="preserve">
-    <value>Stop the machine sleeping while ACT is open, so a long run is not cut short.</value>
+    <value>Stop the machine sleeping while there is work running or waiting to start, so a long run or an overnight queue is not cut short. An idle board is left to sleep.</value>
   </data>
   <data name="Settings_CloseToTray" xml:space="preserve">
     <value>Close to the notification area</value>

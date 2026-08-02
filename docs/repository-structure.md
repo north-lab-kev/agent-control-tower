@@ -37,7 +37,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     which Completed cards retention is due to archive,
 │  │  │                            #     which card is already working in a folder a launch
 │  │  │                            #     wants (pure logic)
-│  │  ├─ Scheduling/                #   queue runner, schedule, backpressure
+│  │  ├─ Scheduling/                #   the queue decision as pure logic: LaunchQueue (one pass →
+│  │  │                            #     ordered launch list + a hold per Ready card), ScheduleArming,
+│  │  │                            #     ConcurrencySlots, DependencyGate, UsageBackpressure,
+│  │  │                            #     SleepPolicy, QueuePolicy/LaunchHold
 │  │  ├─ Resources/                 #   CoreStrings (+ .fr) — localised text the CORE writes,
 │  │  │                            #     e.g. the autoGit sentence appended to a prompt
 │  │  └─ Abstractions/              #   INTERFACES: IAgentAdapter, IAgentSession,
@@ -89,7 +92,11 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     CardCompleter / CardReopener (the two hand-driven moves
 │  │  │                            #     past the launch boundary),
 │  │  │                            #     SessionEventPump (drains events onto the board),
-│  │  │                            #     TranscriptPump (one polling tail per live session)
+│  │  │                            #     TranscriptPump (one polling tail per live session),
+│  │  │                            #     QueueRunner (the unattended launches + the sleep
+│  │  │                            #       inhibitor; the board reads its holds so the chip and
+│  │  │                            #       the decision are one evaluation),
+│  │  │                            #     TerminalGeometry (last xterm size, for headless launches)
 │  │  ├─ Notifications/             #   NotificationDispatcher (setting + focus gate + one ping
 │  │  │                            #     per state, and the wording), UiPresence (who is looking
 │  │  │                            #     at what), DeepLinkRouter (clicked toast → that card)

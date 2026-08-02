@@ -448,6 +448,11 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
   window-after-next | datetime`. Set at **creation** (new-task modal, default
   `manual`) and editable in Ready; only *displayed* as a badge in the Ready column
   (see Scheduling & queue policy).
+- `scheduledFor` — the datetime the user picked, for `datetime` only.
+- `eligibleAt` — the instant a *relative* schedule was resolved to when the card
+  was armed, for `next-window` / `window-after-next` only. Written by the queue
+  runner, cleared when the schedule changes and when the card launches; see
+  *Runner logic* for why it is stored rather than recomputed.
 - `allowConcurrentWorkingDir` — the card's exemption from the one-task-per-folder
   guard (see *One task per working directory*). Default false; only meaningful
   while the global `preventConcurrentWorkingDir` setting is on, which is why the
@@ -997,8 +1002,8 @@ What silence in Executing actually means, honestly enumerated:
 - **Blocked *inside* a tool call** — permission was already granted and the command
   itself is waiting (an interactive CLI reading stdin, an install stuck on a private
   registry). The agent is not asking, so no hook fires.
-- **A rate limit hit mid-turn** — the CLI sits showing a reset time. `waiting-reset`
-  is a *Ready*-column state for the queue runner; nothing covers this.
+- **A rate limit hit mid-turn** — the CLI sits showing a reset time. The
+  usage-limit hold is a *Ready*-column chip for the queue runner; nothing covers this.
 - **Auth expiry mid-session** — not a tool permission, so no notification.
 - **ACT having lost sight of a healthy agent** — hook port moved, generated settings
   clobbered, session resumed in the desktop app. The card claiming `running` is then
@@ -1399,17 +1404,43 @@ is in Ready — it is launch intent, and nothing launches from Preparing:
 ### Runner logic
 
 A task becomes **eligible** when its `schedule` condition is met, then launches
-only if **both**: the concurrency cap has a free slot, **and** its `dependsOn`
-prerequisites are Completed.
+only if nothing is holding it. **One pure evaluation answers both questions** —
+`Act.Core/Scheduling/LaunchQueue.Evaluate` returns the ordered launch list *and*
+the per-card hold — so the chip a Ready strip shows and the decision the runner
+acts on cannot disagree. `Act.App/Sessions/QueueRunner` is the only stateful
+part: a coalesced pass on a board change, a usage reading, a settings change, or
+a 20-second backstop tick.
 
-- `maxConcurrent` — cap on tasks past the launch boundary that are not yet
-  awaiting sign-off (i.e. **Executing**, plus **Your turn** on any badge but
-  `to review` — blocked-but-alive sessions count).
-- **Rate-limit backpressure (safety net)** — if an eligible task's usage window
-  is exhausted, it **waits for reset** (shown as `waiting-reset` in Ready)
-  rather than erroring. Distinguish the two limits: 5-hour window → wait hours;
-  weekly cap → wait days (don't retry hourly against a weekly lockout). So
-  `schedule` is *intent*; cap + backpressure are *reality*.
+- **A relative schedule is resolved to an instant once, when the card is armed**
+  (`card.eligibleAt`). "Next window" means the boundary that was next *then*; a
+  value recomputed from live usage would slide forward every time that boundary
+  passed, and the card would be perpetually one window from starting. It also
+  makes the queue survive a restart. It is cleared when the schedule changes and
+  when the card launches.
+- `maxConcurrent` (default **5**) — cap on tasks past the launch boundary that are
+  not yet awaiting sign-off: Executing, plus Your turn on any badge but
+  `to review`. A parked prompt owns an agent process and its pty and costs what a
+  working one costs. **`error` and `killed` count too, with no process left**, and
+  that is deliberate: each is a failure the user has not dealt with, one Retry from
+  being live again, and a queue that kept launching past a growing pile of them
+  would turn one broken task into twenty. The cap is a ceiling on work in flight,
+  not a process count — which is why *Keep-awake*, which really is about processes,
+  draws its line one badge tighter.
+- **Usage backpressure (safety net)** — if an eligible task's usage window is
+  exhausted it **waits for the reset** rather than erroring. A window reporting
+  its own exhaustion names itself and the **latest** such reset wins (launching
+  at the 5-hour boundary against a spent weekly quota would only fail again); the
+  account-level `limit_reached` flag names no window, so the **soonest** reset is
+  taken, since being wrong there costs one re-check rather than days. A reading
+  held past its own reset is not a limit, and **no reading is not a limit
+  either** — an unreadable credential file must not freeze an overnight run, so
+  the queue launches and lets the CLI be the one to refuse. So `schedule` is
+  *intent*; cap and backpressure are *reality*.
+- **FIFO**, by the instant a card became due and then by its number. Nothing
+  weighs one task against another: a queue that reorders itself is a queue nobody
+  can predict.
+- **A prerequisite the store no longer has counts as satisfied.** The alternative
+  is a card that can never launch and says nothing about why.
 
 ### One task per working directory — added 2026-08-01
 
@@ -1441,11 +1472,15 @@ not launch while another card is working in the same directory.
 - **Only a Ready launch is guarded.** A retry and a post-restart re-attach belong
   to a session that already holds that folder, so guarding them would strand the
   very card the folder is busy for.
-- **Refused, not queued — for now.** The card stays in Ready untouched and the
-  launch reports which card is in the way, so nothing needs undoing when the
-  folder frees. Auto-queueing belongs to the runner (roadmap step 14), where a
-  blocked card waits in Ready under a `queued` scheduling badge and starts on its
-  own once the holder is signed off.
+- **Refused for a button press, queued for the runner** (both, since 2026-08-02).
+  A launch the user just pressed is refused: the card stays in Ready untouched
+  and the message names the card in the way, so nothing needs undoing when the
+  folder frees. The runner reads the same non-null answer as *not yet* — the card
+  waits under a `folder #NNNN` chip and starts on its own once the holder is
+  signed off. The rule is unchanged; only what each caller does with the answer
+  differs. One addition: the runner also asks it of the cards **it is about to
+  launch in the same pass** (`WorkingDirConflict.SameFolder`), which
+  `Blocking` cannot answer because none of them is Executing yet.
 - **It reports amber, not red.** `LaunchResult.Wait` is its own outcome beside
   `Refused` for exactly this: nothing is broken — the card, the prompt and the
   install are all fine, and the folder clears on its own. A red *Launch failed*
@@ -1464,22 +1499,55 @@ not launch while another card is working in the same directory.
 A global **"pause all auto-execution"** toggle (auto-execution on by default).
 When paused, no task auto-launches regardless of its `schedule`; per-task
 **Manual** remains the per-task opt-out. Manual launches still work while paused.
+It lives in *Settings → Execution* **and in the top bar**, where the existing
+`auto-exec on` chip became the switch itself: it is what you reach for when
+something is going wrong, and two navigations away is the wrong place for that.
+The chip loses its green dot and turns amber when paused.
 
 ### Ready-card indicators
 
-Ready cards show their **`schedule` as a badge** (e.g. `manual`, `now`,
-`next window`, `⏱ Mar 3 09:00`), and a `waiting-reset` badge when
-backpressure-paused. (Pre-launch, so no *execution* badge yet — these are
-scheduling badges specific to the Ready column.)
+A Ready strip carries two chips, and the split is the section's own line —
+**intent** below, **reality** in the badge slot:
+
+- **Intent** is the `schedule`, on the dashed chip it always had: `manual`,
+  `now`, `next win`, `win +2`, `⏱ Mar 3 09:00`.
+- **Reality** is the *hold* — why this card is not running right now — one chip
+  per reason: `queued 5/5` (cap full) · `folder #1041` · `after #1043`
+  (dependency) · `usage 2h14m` (limit reached, counting down to the reset) ·
+  `paused` · `agent off`. Precedence is most-durable first (paused, agent off,
+  usage, folder, dependency, slot), because only one fits. **No hold chip at all**
+  when the card is `manual`, or armed and simply not due yet: the intent chip
+  already says when, and a chip claiming otherwise would imply ACT intends to
+  start it.
+
+**A hold is not a `Badge`.** `Badge` is persisted, ranked by `AttentionOrder`, and
+drives the blink and the toast; a hold is derived every render, stored nowhere,
+and must raise no attention — nothing is wrong and every one of them clears on
+its own. It borrows the badge *slot*, which a Ready card leaves empty, and the
+muted colour the `quiet` chip established.
 
 ### Keep-awake (prevent sleep)
 
-A configuration option to **prevent the computer from sleeping** while
-auto-execution is active — otherwise the overnight queue stalls when the machine
+A configuration option to **prevent the computer from sleeping** while there is
+auto-work to protect — otherwise the overnight queue stalls when the machine
 sleeps. OS-specific under the hood (Windows `SetThreadExecutionState` / Linux
-`systemd-inhibit` / macOS `caffeinate`); exposed as one ACT setting. Should also
-be respectful — only inhibit sleep when there's pending/active auto-work, and
-release it otherwise.
+`systemd-inhibit` / macOS `caffeinate`); exposed as one ACT setting.
+
+It is respectful rather than unconditional: the hold is taken only while a **live
+agent process** exists — Executing, or Your turn on `needs permission` /
+`needs answer` / `compacting` — or a **Ready card could actually launch on its
+own**, meaning a non-`manual` schedule with auto-execution not paused. An idle
+board is left to sleep, a `manual` Ready card is waiting for a human who is
+evidently not there, and pausing releases the hold unless something is already
+running, because nothing can start while the switch is off.
+
+**This is one badge tighter than the concurrency cap, and the two must not be
+merged.** The cap counts `error` and `killed` because they are work in flight the
+user still owes an answer to; sleep is about processes, and those two have none —
+keeping a laptop up all night for a session that died at 3am protects nothing. The
+inhibitor is therefore owned by the queue runner, which is the only thing that
+knows what is pending — not by the settings service, which only knows that the
+user wants a hold when there is something to hold for.
 
 ### Build-time dependencies (not blockers)
 
@@ -1493,8 +1561,10 @@ release it otherwise.
   suggestion: since ACT never answers a prompt, a prompting mode leaves the task
   parked at a TUI prompt that nobody is awake to answer, all night, holding a
   concurrency slot. `acceptEdits` only covers edits, so it still stalls on the
-  first `Bash` call it wants approval for. Worth warning about in the new-task
-  modal when `schedule` is unattended and `permissionMode` prompts.
+  first `Bash` call it wants approval for. **The task form warns** when `schedule`
+  is not `manual` and the mode is `default` or `acceptEdits` — a warning and never
+  a block, since the combination is legal and the user may have a reason; what it
+  must not be is a surprise at 3am.
 - **`maxConcurrent` now caps live terminals too.** Every card past the launch
   boundary holds a live agent process, so the cap is a real resource ceiling, not
   just a politeness setting.
@@ -1716,7 +1786,7 @@ unattended mode is half-blind.
   `killed` (blocked on you). Always on.
 - **`to review` in Your turn** — a task finished and wants sign-off. This *is* the
   overnight "it's done" ping, since nothing completes itself.
-- **`waiting-reset` / rate-limited** — queue paused until the window resets, and
+- **Usage limit reached / rate-limited** — queue held until the window resets, and
   again when it resumes.
 
 There is nothing to notify for a *quiet* card: silence is not a state and ACT makes
@@ -1928,6 +1998,7 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   **theme** (follow-OS / light / dark override),
   **display mode** (compact / spacious — settings-only; there is no top-bar
   density toggle), **blink in Your turn**, **keep-awake**, **close-to-tray**,
+  **pause automatic execution** and **tasks running at once** (*Execution*),
   **Agents** — one section per registered adapter carrying that CLI's **enabled** switch,
   executable, extra flags and environment (see *Launch config*; these are properties of
   the install, which is why they are here and not on the task form) — and
@@ -1938,7 +2009,7 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     same task twice by accident. Changing the default agent clears a model or effort the new one
     does not offer, and moves the permission mode to one it does, rather than storing a default
     that would be rejected at launch.
-  `maxConcurrent`, weekly-reset time, and the auto-execution pause.
+  Weekly-reset time.
   - **Desktop notifications** (*System*, on by default, **desktop only**) is the single switch
     that replaced the planned per-event matrix — see *Native OS notifications* for why. It is
     hidden in browser mode for the same reason close-to-tray is: a switch that governs nothing

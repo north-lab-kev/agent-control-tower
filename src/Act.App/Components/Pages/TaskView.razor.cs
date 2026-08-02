@@ -78,6 +78,14 @@ public partial class TaskView(
 
     private bool FolderGuardOn => settings.PreventConcurrentWorkingDir;
 
+    // An unattended schedule with a permission mode that prompts is a task that parks at a TUI
+    // prompt nobody is awake to answer, holding a concurrency slot all night — ACT never answers a
+    // prompt, so nothing will move it until morning. `acceptEdits` counts as prompting: it covers
+    // edits and still stops at the first `Bash` call it wants approval for.
+    private bool WarnsUnattended
+        => form.Schedule is not TaskSchedule.Manual
+            && form.Permission is PermissionMode.Default or PermissionMode.AcceptEdits;
+
     // Only the agents whose switch is on — plus, always, the one this card already carries. An
     // agent turned off after a card was made must not leave that card showing an empty dropdown for
     // a value it is still holding, the same rule a retired model follows.

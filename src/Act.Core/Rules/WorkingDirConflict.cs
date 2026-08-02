@@ -42,6 +42,14 @@ public static class WorkingDirConflict
             && string.Equals(held, folder, Comparison));
     }
 
+    // The same comparison without the column rule, for the one caller that has already decided what
+    // holding means: the queue runner, judging a card against the cards it is about to launch this
+    // pass — none of which is Executing yet, so `Blocking` would answer no about every one of them.
+    public static bool SameFolder(Card card, Card other, IWorkingDirectories directories)
+        => Key(card, directories) is { } folder
+            && Key(other, directories) is { } held
+            && string.Equals(held, folder, Comparison);
+
     // Resolved before comparing, because `~/dev/act` and `C:\dev\act\` are one folder and a guard
     // that only catches identical typing is a guard that silently does nothing. A path that will
     // not resolve matches nothing: the launch is about to fail on it for a better reason than this.

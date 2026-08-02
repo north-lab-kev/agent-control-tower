@@ -94,6 +94,13 @@ public sealed record NewTaskForm
             card.InitialPrompt = Prompt.Trim();
             card.WorkingDir = WorkingDir.Trim();
             card.AgentType = Agent;
+
+            // Re-armed from scratch whenever the schedule itself changes: an instant resolved
+            // against "next window" is meaningless once the user has asked for something else, and
+            // nothing on the card would say it was stale.
+            if (card.Schedule != Schedule)
+                card.EligibleAt = null;
+
             card.Schedule = Schedule;
             card.ScheduledFor = ScheduledAt();
             card.AutoGit = GitOptions();

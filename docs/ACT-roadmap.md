@@ -1030,38 +1030,186 @@ verifiable, and leaves something runnable.
     - **Also learned, and reusable:** a screen capture taken from a *background* PowerShell task is
       blank — it runs on a non-interactive window station. Anything that has to see the desktop has
       to run in the foreground.
-- [ ] **14. Scheduling & queue runner** — `schedule`, `maxConcurrent`,
-  `dependsOn` ordering, rate-limit backpressure (`waiting-reset`), keep-awake,
-  and the global **auto-execution pause switch**. *Verify:* a queue of Ready
+- [x] **14. Scheduling & queue runner** — `schedule`, `maxConcurrent`,
+  `dependsOn` ordering, usage backpressure, keep-awake, and the global
+  **auto-execution pause switch**. *Verify:* a queue of Ready
   tasks processes unattended across a window reset; pause halts all auto-launch.
-  - **The working-directory guard must queue rather than refuse.** It ships
-    (2026-08-01) as a refusal: `WorkingDirConflict` blocks a Ready launch while
-    another card is working in the same folder, the card stays in Ready, and the
-    launch reports which card is in the way. That is the honest answer for a
-    button the user just pressed, but it is the wrong one for the runner — an
-    unattended queue must not drop a task because the folder happened to be busy
-    when its turn came. Here the blocked card **waits in Ready under a `queued`
-    scheduling badge** (beside `manual` / `now` / `waiting-reset`) and launches on
-    its own once the holder reaches Completed. The rule itself needs no change:
-    the runner asks `WorkingDirConflict.Blocking` the same question and treats a
-    non-null answer as "not yet" instead of "no".
-  - **Keep-awake must become task-aware.** It ships unconditional — the hold is
-    taken at startup for the life of the process whenever the setting is on. Here
-    it must hold sleep **only while a Ready or Running task exists**, and release
-    otherwise: an idle board is safe to sleep, since nothing can auto-launch from
-    it. Scheduled work (*specific date & time*, *next window*, `waiting-reset`)
-    sits in Ready, so a Ready/Running predicate still covers the overnight queue.
-    This is what the spec's *Keep-awake* section already asks for ("only inhibit
-    sleep when there's pending/active auto-work"); the Settings section's
-    "as long as ACT runs" wording describes the interim behaviour and must be
-    corrected when this lands.
+  ✅ **Landed 2026-08-02**, 696 tests green. Verified live on the real board: card **#1105**
+  was created, dragged to Ready on `now`, and **launched by the runner on its own** the
+  moment the cap was raised past the occupied count — no button pressed — then walked to
+  Your turn on Claude Code's directory-trust prompt and was signed off. Beside it **#1104**
+  sat in Ready under `folder #1099` and never started, and both showed `paused` the instant
+  the top-bar switch was clicked. What was **not** exercised is the one thing that needs a
+  five-hour boundary to happen: an armed `next window` card firing at a real reset. That is
+  an observation to make, not a thing to build — the arming path is unit-tested and the
+  `now` path is the same code from `IsDue` onward.
+  - **Decisions taken 2026-08-01, before any code.** Each one changes where the code
+    lives or what the board says, so they are settled here rather than discovered:
+    - **`waiting-reset` is renamed *usage limit reached*.** The old name described the
+      remedy rather than the condition, and the condition is what the card has to say.
+    - **Every hold has its own chip, not one `queued`.** There are six distinct reasons a
+      Ready card is not running and they clear at wildly different times — a cap frees in
+      minutes, a weekly quota in days — so a single word would flatten the one thing the
+      user needs. See *The chips* below.
+    - **A hold is a derived chip, never a `Badge`.** `Badge` is persisted, ranked by
+      `AttentionOrder` and drives the blink and the toast; a hold is transient, computed,
+      and must raise no attention at all. It renders **in the badge slot**, which a Ready
+      card leaves empty, in the muted register the `quiet` chip established.
+    - **`dependsOn` gets its gate and no UI.** Its only producer is step 12's
+      `create_followup`, which is the last step ACT builds; the gate is cheap and
+      unit-testable now, and a dependency picker nobody can populate is not.
+    - **The runner reads the same `UsageState` the top bar reads.** No second poll, no
+      extra request to either vendor — backpressure is a consumer of the existing pump.
+    - **A usage reading ACT cannot get does not stop the queue.** An unavailable probe
+      launches anyway: a broken credential file must not silently freeze an overnight
+      run. (A card whose *schedule* is a window boundary is the exception — it stays
+      unarmed, because "later" cannot be resolved without a reset instant.)
+    - **FIFO**, ordered by the eligibility instant and then by card number.
+    - **`UsageWindow` gains its declared length**, so *window after next* is
+      `resetsAt + length` rather than a hardcoded five hours. Codex declares
+      `limit_window_seconds`; Claude Code declares a `kind` instead, so the length falls
+      back to the nominal one for that kind.
+    - **A headless launch uses the last terminal geometry**, not a constant — an
+      unattended card that is opened later should not have to reflow from 120×30.
+  - **The chips**, one per reason, shown in the badge slot with the full sentence in the
+    tooltip. The dashed schedule chip below stays what it always was — the *intent* —
+    so a Ready strip reads intent on one line and reality on the other:
+    `queued 5/5` (cap full) · `folder #1041` · `after #1043` (dependency) ·
+    `usage 2h14m` (limit reached, counting to reset) · `paused` · `agent off`.
+    Precedence is most-durable first — paused, agent off, usage, folder, dependency,
+    slot — because only one fits. No chip at all when the card is `manual`, or armed and
+    simply not due yet: the intent chip already says when.
+  - [x] **1. Settings + model.** ✅ `MaxConcurrent` (default **5**, clamped 1–20) and
+    `AutoExecutionPaused` on `UserSettings`, both in *Settings → Execution*; `Card.EligibleAt`
+    for the armed instant; `UsageWindow.Length` with a `Duration` that falls back to the
+    nominal length for the kind — Codex declares `limit_window_seconds`, Claude Code declares
+    a `kind` and nothing else, and *window after next* needs a number either way.
+  - [x] **2. `Act.Core/Scheduling/` — eligibility as pure logic.** ✅ `LaunchQueue.Evaluate`
+    returns the ordered launch list, the per-card hold **and** the instants to arm, out of one
+    pass, so the chip on the board cannot disagree with what the runner did. Parts:
+    `ScheduleArming`, `ConcurrencySlots`, `DependencyGate`, `UsageBackpressure`, `SleepPolicy`,
+    and `WorkingDirConflict` reused.
+    - **The pass had to be able to judge its own decisions.** Two Ready cards in one folder are
+      both eligible and neither is Executing, so `WorkingDirConflict.Blocking` says yes to both
+      and the pass would launch two agents into one working tree — the exact collision the guard
+      exists to prevent, reintroduced by the thing that was supposed to honour it. The rule gained
+      `SameFolder`, the folder comparison without the column test, which the pass asks of the
+      cards it has already claimed this round. Unit-tested as
+      `Two_ready_cards_in_one_folder_do_not_both_launch`.
+  - [x] **3. The runner pump.** ✅ `Act.App/Sessions/QueueRunner`: a 20-second backstop tick plus
+    `BoardState.Changed` / `UsageState.Changed` / `settings.Changed`, single-flight like
+    `RetentionPump`, launching sequentially. Started **after** `SessionRestorer` — a restored card
+    occupies a slot and holds its folder, so a runner that went first would judge an empty board
+    and launch straight past the cap.
+    - **The changes it causes are coalesced, not queued.** Every launch and every arming is a card
+      write that raises `Changed`; without a pending flag, one pass over five cards schedules five
+      more that each find nothing to do. The flag is cleared *inside* the gate, so a change landing
+      during a pass still schedules the next one — it suppresses duplicates, never the news.
+  - [x] **4. The hold chips** on the Ready strips, derived, both densities. ✅ Plus the thing the
+    chips exposed: **the board had no way to hear about them.** They are computed from the pause
+    switch, the cap and the usage reading — none of which is a card write — so a toggled pause left
+    every strip saying the opposite of what the queue was doing, which is exactly the disagreement
+    the single-evaluation design exists to prevent. `QueueRunner.Evaluated` fires after each pass
+    and `BoardView` re-renders on it.
+  - [x] **5. The unattended warning** in the task form. ✅ Verified live: `now` + `default` raises
+    it, `now` + `don't ask` clears it, and it never blocks a save.
+  - [x] **6. Keep-awake becomes task-aware.** ✅ Held only while there is auto-work to protect —
+    a Ready card that can actually auto-launch, or live work — and released otherwise, **including
+    while `AutoExecutionPaused` is on** unless something is already running. The ownership moved
+    with it: `UserSettingsService` no longer takes `ISleepInhibitor` at all, because it knows the
+    user wants a hold and not whether there is anything to hold for.
+  - [x] **7. The working-directory guard queues rather than refuses.** ✅ Both, and the split is the
+    point: a launch the user just pressed is still refused with the card named, because nothing
+    needs undoing when the folder frees; the runner reads the same non-null answer as "not yet".
+    No change to the rule beyond item 2's `SameFolder`.
+  - [x] **8. Live verify + docs.** ✅ Spec (*Runner logic*, *Ready-card indicators*, *Keep-awake*,
+    *Master switch*, the refused-not-queued bullet, `eligibleAt` in the data model, the
+    `waiting-reset` name retired), `repository-structure.md`, and the ticks here.
+  - ⚠️ **The cap and keep-awake draw *nearly* the same line, and merging them was a mistake.**
+    Mid-step the cap was narrowed to exclude `error` and `killed` — the dev board showed eleven
+    occupants against a cap of five, almost all of them sessions that died weeks ago, and "no
+    process, no slot" looked obviously right. **Reverted on the same day**, because the evidence was
+    a test board's wreckage and not something a real board accumulates: an `error` card is a failure
+    the user has not dealt with, one Retry from being live again, and a queue that launched past a
+    growing pile of them would turn one broken task into twenty. So the cap stays exactly as the
+    spec wrote it — Executing plus Your turn on any badge but `to review`.
+    - **What the detour did leave behind is the right split.** `SleepPolicy` had been reading
+      `ConcurrencySlots.Occupies`, so reverting would have made a card that died at 3am keep the
+      laptop up until morning. It now has its own predicate, one badge tighter: the cap counts
+      *work in flight*, sleep protects *processes*, and `error` / `killed` are the two badges where
+      those differ. Both rules say so in a comment, because the next reader will assume they are
+      the same set.
+  - ✅ **The top bar's `auto-exec on` chip was a hardcoded lie, and is now the switch.** It had been
+    a mockup leftover since the shell was built; adding the setting would have made it worse — a
+    chip claiming the queue was live while it was paused. It is now a button: it reflects the
+    state, drops its green dot and turns amber when paused, and toggles on click. The master switch
+    is what you reach for when something is going wrong, and Settings is two navigations away.
 
 ## Phase 6 — Breadth & polish
 
 - [ ] **15. Persistence polish** — auto-archive (**landed**: 10-day default,
   `archivedAt` its own marker, `CompletedRetention` + `RetentionPump`, the knob in
-  Settings → *Retention*), search, transitions timeline in the drawer. *Verify:* old
-  Completed cards archive and stay searchable.
+  Settings → *Retention*), the transitions timeline (**landed**, see below), and
+  **finding a card again** — the only open work. *Verify:* old Completed cards archive
+  and stay searchable.
+  - [x] **The timeline was already built, and as a page rather than a drawer.**
+    `TimelineView` is the third tab on a card (`/card/{id}/timeline`), rendering
+    `Transitions` oldest-first with the badge tokens on the rail — a row's dot is the
+    colour the badge was when it happened — and falling back to "entered &lt;column&gt;"
+    for rows written before `TransitionReason` existed. This entry said *"in the drawer"*
+    from before the drawer was replaced by pages (the spec's *Every surface is a page*);
+    the wording was stale, not the work.
+  - **Decisions taken 2026-08-02, before any code.** The spec says "fully searchable" and
+    nothing more, so every one of these is settled here rather than discovered:
+    - **Two filter boxes, not a search page.** The two places you go looking for a card
+      are the board and the archive, and filtering *in place* leaves each result on the
+      surface it belongs to, in the strip or the row the user already reads. A `/search`
+      page was the alternative and was rejected: it is a third list of cards, needing its
+      own row design, its own ordering rule and its own answer to "where is this card
+      now" — all to show what the two existing surfaces already show correctly.
+      - **The cost, and how it is paid.** No single query spans both surfaces. So the
+        **board box reports what it cannot show**: while a query is active it carries a
+        link reading *"N archived match"* onto the archive, filter and all. Cheap, because
+        `BoardState.All` already holds every card in memory.
+    - **The filter narrows what is *drawn*, never what is counted or what blinks.** A
+      column header reads `3/12` while a query is active, and the attention treatment —
+      rail glow, pulse, `!` corner — keeps answering for the whole column, matched or not.
+      A board that could hide a card needing you is the one failure this app exists to
+      prevent, and a filter is a view, not a truth.
+    - **Match on number, title, working directory and the initial prompt.** The first
+      three are how a card is identified, the fourth is where the recall value actually
+      is ("the one where I asked it to fix the pty quoting"). Agent / model and transition
+      notes were considered and left out: both match far too broadly to be typed into a
+      box whose results are supposed to narrow.
+    - **Semantics: whitespace-split terms, all of which must match (AND), case- and
+      diacritic-insensitive.** French is a shipped UI language, so `IgnoreNonSpace` goes
+      in beside `IgnoreCase`. A term that is digits — with or without a leading `#` —
+      also matches the card **number by prefix**, so `#104`, `104` and `1042` all find
+      `#1042`. No ranking and no fuzzy matching: the board's order is the column's and the
+      archive's is newest-first, and filtering must not reorder either.
+    - **Nothing is persisted and nothing is stored.** The query is view state, cleared by
+      `Esc`, by the clear button and by navigation. No `ICardStore` change, no LiteDB
+      index, no debounce — every card is already in memory and a substring scan over a few
+      thousand of them is free.
+  - [ ] **1. `Act.Core/Rules/CardSearch` — the predicate, and the only unit-tested part.**
+    Term tokenizer + `Matches(card, query)`, pure. Tests cover the AND across terms, the
+    accent and case folding, the numeric prefix rule (including that `104` still substring-
+    matches a *title* containing it), an empty query matching everything, and that a query
+    matching nothing is not an error.
+  - [ ] **2. The shared filter control, and the board.** One `CardFilter` component
+    (Radzen text box, search icon, clear button, `Esc`) used by both pages, so there is one
+    control and one set of resx strings. `BoardView` filters each column's list through
+    `CardSearch`, the header count becomes `matched/total` while a query is live, and the
+    attention path is left reading the unfiltered column per the decision above.
+  - [ ] **3. The archive filter and the cross-link.** Same control on `ArchiveView` over
+    `board.Archived` — this is the half that satisfies the step's verify line, since an
+    auto-archived card is reachable nowhere else. Then the board's *"N archived match"*
+    link, which carries the query across.
+  - [ ] **4. Live verify + docs.** A *Finding a card* subsection in the spec (the two
+    boxes, the fields, the counted-not-hidden rule), `repository-structure.md` if the
+    shared control lands in a new folder, and the ticks here. Live: a query narrows both
+    surfaces, a needs-you card filtered out still blinks its column, and a Completed card
+    past the retention window is found on the archive after it auto-archives.
 - [ ] **16. UI polish** — final spacing, type, Radzen theming pass.
   - **User settings page** — consolidate the preferences that landed scattered
     across features into one screen: **theme** (Radzen *Standard* / *Standard
@@ -1140,7 +1288,9 @@ steps to close the gap would break those references for nothing. So the sequence
 - ✅ **After step 10 — reached 2026-08-01.** Usable, manually-driven, **multi-agent** ACT (a
   plausible v1): every session runs in its own embedded terminal, the board tells you which one
   needs you, and you answer it there.
-- **After step 14** — the overnight unattended batch vision.
+- ✅ **After step 14 — reached 2026-08-02.** The overnight unattended batch vision: a queue of
+  Ready tasks launches itself within the cap, waits out a busy folder, a dependency or a spent
+  quota, and holds the machine awake only while there is something to wait for.
 - **After step 16** — the full, polished product.
 - **After step 12, which is now last** — agent-spawned follow-ups on top of it.
 

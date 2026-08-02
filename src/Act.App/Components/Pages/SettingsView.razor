@@ -28,15 +28,41 @@
             </RadzenFieldset>
 
             <RadzenFieldset Text="@Strings.Settings_Group_Execution">
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
-                             JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
-                    <RadzenStack Gap="0.1rem">
-                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_OneTaskPerFolder" />
-                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_OneTaskPerFolder_Hint"
-                                    class="hint" />
+                <RadzenStack Gap="1.1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_PauseAutoExecution" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_PauseAutoExecution_Hint"
+                                        class="hint" />
+                        </RadzenStack>
+                        <RadzenSwitch Value="AutoExecutionPaused"
+                                      ValueChanged="@((bool value) => OnAutoExecutionPausedChanged(value))" />
                     </RadzenStack>
-                    <RadzenSwitch Value="PreventConcurrentWorkingDir"
-                                  ValueChanged="@((bool value) => OnPreventConcurrentWorkingDirChanged(value))" />
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_MaxConcurrent" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_MaxConcurrent_Hint"
+                                        class="hint" />
+                        </RadzenStack>
+                        <RadzenNumeric TValue="int" Value="MaxConcurrent"
+                                       Min="MinimumConcurrent" Max="MaximumConcurrent" Step="1"
+                                       Change="@((int value) => OnMaxConcurrentChanged(value))"
+                                       class="control" />
+                    </RadzenStack>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_OneTaskPerFolder" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_OneTaskPerFolder_Hint"
+                                        class="hint" />
+                        </RadzenStack>
+                        <RadzenSwitch Value="PreventConcurrentWorkingDir"
+                                      ValueChanged="@((bool value) => OnPreventConcurrentWorkingDirChanged(value))" />
+                    </RadzenStack>
                 </RadzenStack>
             </RadzenFieldset>
 

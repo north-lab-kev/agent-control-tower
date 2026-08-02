@@ -58,10 +58,13 @@ public sealed class CodexUsageDialect : IUsageDialect
         if (Resets(window, takenAt) is not { } resetsAt)
             return;
 
+        var length = TimeSpan.FromSeconds(seconds);
+
         windows.Add(new UsageWindow(
-            UsageWindow.Classify(TimeSpan.FromSeconds(seconds)),
+            UsageWindow.Classify(length),
             Percent(window, "used_percent"),
-            resetsAt));
+            resetsAt,
+            length));
     }
 
     private static DateTimeOffset? Resets(JsonElement window, DateTimeOffset takenAt)

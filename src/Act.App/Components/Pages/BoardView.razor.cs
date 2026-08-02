@@ -4,6 +4,7 @@ using Act.App.Sessions;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Core.Scheduling;
 using Microsoft.AspNetCore.Components;
 using Radzen;
 
@@ -12,6 +13,8 @@ namespace Act.App.Components.Pages;
 public partial class BoardView(
     BoardState board,
     SessionLauncher launcher,
+    QueueRunner queue,
+    TerminalGeometry geometry,
     CardCompleter completer,
     CardReopener reopener,
     NotificationService notifications,
@@ -43,6 +46,7 @@ public partial class BoardView(
     protected override void OnInitialized()
     {
         board.Changed += OnChanged;
+        queue.Evaluated += OnChanged;
 
         _ = RefreshLoopAsync();
     }
@@ -50,6 +54,7 @@ public partial class BoardView(
     public async ValueTask DisposeAsync()
     {
         board.Changed -= OnChanged;
+        queue.Evaluated -= OnChanged;
 
         await leaving.CancelAsync();
 
@@ -66,7 +71,9 @@ public partial class BoardView(
         {
             while (await timer.WaitForNextTickAsync(leaving.Token))
             {
-                if (board.In(BoardColumn.Executing).Count > 0)
+                // Ready counts too now: a hold chip counting down to a usage reset is the same kind
+                // of number as the quiet chip — derived from an instant, with nothing to push it.
+                if (board.In(BoardColumn.Executing).Count > 0 || board.In(BoardColumn.Ready).Count > 0)
                     await InvokeAsync(StateHasChanged);
             }
         }
@@ -76,6 +83,10 @@ public partial class BoardView(
     }
 
     private IReadOnlyList<Card> CardsIn(BoardColumn column) => board.In(column);
+
+    // Read from the runner rather than computed here, so the chip a Ready card shows and the
+    // decision the runner acts on are literally the same evaluation.
+    private IReadOnlyDictionary<Guid, ReadyHold> Holds() => queue.Evaluate().Holds;
 
     private string ColumnClass(BoardColumn column)
     {
@@ -133,6 +144,8 @@ public partial class BoardView(
             ? $"/card/{card.Id}/edit"
             : $"/card/{card.Id}/terminal");
 
+    private void OpenNewTask() => navigation.NavigateTo("/card/new");
+
     private bool IsLaunching(Card card) => launching.Contains(card.Id);
 
     // Ready → Executing happens right here: the session belongs to the registry, not to a view,
@@ -145,7 +158,7 @@ public partial class BoardView(
 
         try
         {
-            var result = await launcher.LaunchAsync(card, TerminalSize.Default);
+            var result = await launcher.LaunchAsync(card, geometry.Last);
 
             if (result.Message is { } message)
             {
@@ -176,7 +189,7 @@ public partial class BoardView(
 
         try
         {
-            var result = await launcher.RetryAsync(card, TerminalSize.Default);
+            var result = await launcher.RetryAsync(card, geometry.Last);
 
             if (result.Message is { } message)
             {

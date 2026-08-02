@@ -14,6 +14,12 @@
             {
                 <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@BadgeText" class="@FullBadgeClass" />
             }
+            @if (HoldText is not null)
+            {
+                <span title="@HoldTip">
+                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@HoldText" class="@HoldClass" />
+                </span>
+            }
             @if (ScheduleText is not null)
             {
                 <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="@ScheduleText" class="schip" />
@@ -29,6 +35,12 @@
                 @if (BadgeText is not null)
                 {
                     <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@BadgeText" class="@FullBadgeClass" />
+                }
+                @if (HoldText is not null)
+                {
+                    <span title="@HoldTip">
+                        <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@HoldText" class="@HoldClass" />
+                    </span>
                 }
             </RadzenStack>
 

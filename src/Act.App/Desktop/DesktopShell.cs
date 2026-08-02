@@ -20,6 +20,10 @@ public sealed class DesktopShell(
 {
     private const int TitleBarHeight = 49;
 
+    private const int MinWindowWidth = 1000;
+
+    private const int MinWindowHeight = 320;
+
     // Windows reads the toast's header from the Application User Model ID, and Electron's default
     // makes every notification announce itself as `electron.app.Electron`. It has to match the
     // installer's `appId`, which is what puts the same id on the Start-menu shortcut Windows
@@ -73,6 +77,8 @@ public sealed class DesktopShell(
             Show = false,
             Icon = IconPath,
             TitleBarStyle = TitleBarStyle.hidden,
+            MinWidth = MinWindowWidth,
+            MinHeight = MinWindowHeight,
         };
 
         // Transparent on purpose. The overlay is native and can only be coloured at window

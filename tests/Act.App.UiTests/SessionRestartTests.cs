@@ -113,7 +113,7 @@ public class SessionRestartTests
         var adapter = new MockAgentAdapter(AgentType.ClaudeCode, clock: clock);
         var registry = new SessionRegistry(new StubHookEndpoint(), new StubAgentConfigFiles());
         var board = new BoardState(new FakeCardStore(cards), clock);
-        var settings = new UserSettingsService(new MemorySettingsStore(), new AppCulture(), new NoSleepInhibitor());
+        var settings = new UserSettingsService(new MemorySettingsStore(), new AppCulture());
 
         board.LoadAsync().GetAwaiter().GetResult();
 
@@ -143,15 +143,6 @@ public class SessionRestartTests
         public UserSettings Load() => settings;
 
         public void Save(UserSettings updated) => settings = updated;
-    }
-
-    private sealed class NoSleepInhibitor : ISleepInhibitor
-    {
-        public bool IsHeld { get; private set; }
-
-        public void Hold() => IsHeld = true;
-
-        public void Release() => IsHeld = false;
     }
 
     private sealed class PassThroughDirectories : IWorkingDirectories

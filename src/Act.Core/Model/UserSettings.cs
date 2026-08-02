@@ -20,6 +20,14 @@ public sealed class UserSettings
     // time, and a user who wants them side by side can say so on the card that needs it.
     public bool PreventConcurrentWorkingDir { get; set; } = true;
 
+    // How many cards may be past the launch boundary at once. A real resource ceiling rather than a
+    // politeness setting: every one of them holds a live agent process and its pty.
+    public int MaxConcurrent { get; set; } = 5;
+
+    // The master switch, off by default — auto-execution is the point of the queue. Manual launches
+    // are unaffected: pausing stops ACT from starting things, not the user.
+    public bool AutoExecutionPaused { get; set; }
+
     // One entry per agent, holding what its install looks like on this machine. A list rather than
     // a property per agent, so adding an adapter does not mean touching the settings model.
     public IList<AgentDefaults> Agents { get; set; } = [];

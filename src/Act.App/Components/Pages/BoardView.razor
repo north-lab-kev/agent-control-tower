@@ -3,6 +3,12 @@
 
 <PageTitle>@($"ACT — {Strings.Shell_FullName}")</PageTitle>
 
+@* Once per render, not once per strip: the holds come from a single pass over the whole board, and
+   asking per card would both cost more and let two strips disagree. *@
+@{
+    var holds = Holds();
+}
+
 <div class="board @DensityClass @(dragging is null ? null : "dragging")">
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Stretch" Gap="0.6rem" class="cols">
         @foreach (var column in AllColumns)
@@ -16,6 +22,15 @@
                     <RadzenText TextStyle="TextStyle.Subtitle2" Text="@Label(column)" class="colname" />
                     <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" IsPill="true"
                                  Text="@cards.Count.ToString()" class="colcount" />
+
+                    @* New tasks land in Preparing, so the one place that always shows where a card
+                       appears is also where you ask for one. *@
+                    @if (column is BoardColumn.Preparing)
+                    {
+                        <RadzenButton Icon="add" ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
+                                      Size="ButtonSize.Small" Click="OpenNewTask" class="newtaskbtn"
+                                      title="@Strings.Shell_NewTask" aria-label="@Strings.Shell_NewTask" />
+                    }
                 </RadzenStack>
 
                 <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem">
@@ -31,7 +46,8 @@
                                          OnOpen="OpenAsync" OnLaunch="LaunchAsync"
                                          OnRetry="RetryAsync" Retriable="CanRetry(card)"
                                          OnDragStart="OnDragStartAsync" OnDragEnd="OnDragEndAsync"
-                                         IsDragging="dragging?.Id == card.Id" IsLaunching="IsLaunching(card)" />
+                                         IsDragging="dragging?.Id == card.Id" IsLaunching="IsLaunching(card)"
+                                         Hold="holds.GetValueOrDefault(card.Id)" />
                         }
                     }
                 </RadzenStack>

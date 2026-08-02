@@ -18,6 +18,7 @@ public partial class SessionView(
     BoardState board,
     SessionRegistry registry,
     SessionLauncher launcher,
+    TerminalGeometry geometry,
     CardCompleter completer,
     CardReopener reopener,
     IEnumerable<IAgentAdapter> adapters,
@@ -120,7 +121,14 @@ public partial class SessionView(
     }
 
     [JSInvokable]
-    public void OnResize(int cols, int rows) => session?.Terminal.Resize(cols, rows);
+    public void OnResize(int cols, int rows)
+    {
+        Geometry = new TerminalSize(cols, rows);
+
+        geometry.Report(Geometry);
+
+        session?.Terminal.Resize(cols, rows);
+    }
 
     public async ValueTask DisposeAsync()
     {
@@ -152,9 +160,11 @@ public partial class SessionView(
         if (module is not { } loaded || owner is null)
             return;
 
-        var size = await loaded.InvokeAsync<TerminalGeometry?>("attach", terminalId, owner);
+        var size = await loaded.InvokeAsync<TerminalMeasurement?>("attach", terminalId, owner);
 
-        Geometry = size is null ? TerminalSize.Default : new TerminalSize(size.Cols, size.Rows);
+        Geometry = size is null ? geometry.Last : new TerminalSize(size.Cols, size.Rows);
+
+        geometry.Report(Geometry);
 
         BindSession();
 
@@ -377,5 +387,7 @@ public partial class SessionView(
         StateHasChanged();
     });
 
-    private sealed record TerminalGeometry(int Cols, int Rows);
+    // What `attach` measures the xterm to be. Distinct from `TerminalGeometry`, the service that
+    // remembers it for the next headless launch — this one is the wire shape.
+    private sealed record TerminalMeasurement(int Cols, int Rows);
 }

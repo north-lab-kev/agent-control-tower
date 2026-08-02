@@ -26,6 +26,11 @@ public sealed class Card
 
     public DateTimeOffset? ScheduledFor { get; set; }
 
+    // When a relative schedule was resolved to a real instant — see `ScheduleArming`. Stored rather
+    // than recomputed, because "the next window" has to mean the boundary that was next when the
+    // card was armed: recomputed after that boundary passes, it would keep pointing at the one after.
+    public DateTimeOffset? EligibleAt { get; set; }
+
     public AutoGitOptions? AutoGit { get; set; }
 
     // The card's own exemption from the one-task-per-folder guard — see `WorkingDirConflict`. It is

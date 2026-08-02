@@ -106,6 +106,10 @@
     border: 1px solid color-mix(in srgb, var(--tint, var(--act-faint)) var(--act-tint-edge), transparent);
 }
 
+/* The hold chip borrows the badge box and the quiet chip's colour: it sits where the eye already
+   looks for a state, without claiming to be one. */
+::deep .b-hold { --tint: var(--act-quiet); }
+
 ::deep .b-run { --tint: var(--act-run); }
 ::deep .b-wait { --tint: var(--act-wait); }
 ::deep .b-err { --tint: var(--act-err); }

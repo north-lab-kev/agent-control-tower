@@ -1,10 +1,11 @@
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Core.Scheduling;
 
 namespace Act.App.Settings;
 
-public sealed class UserSettingsService(ISettingsStore store, AppCulture culture, ISleepInhibitor sleep)
+public sealed class UserSettingsService(ISettingsStore store, AppCulture culture)
 {
     private readonly Lock gate = new();
 
@@ -27,6 +28,18 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
     public bool CloseToTray => current.CloseToTray;
 
     public bool PreventConcurrentWorkingDir => current.PreventConcurrentWorkingDir;
+
+    public int MaxConcurrent => ConcurrencySlots.Clamp(current.MaxConcurrent);
+
+    public bool AutoExecutionPaused => current.AutoExecutionPaused;
+
+    // Everything the queue reads, in one object, so the runner and the board ask the same question
+    // of the same values rather than each assembling their own.
+    public QueuePolicy QueuePolicy => new(
+        MaxConcurrent,
+        current.AutoExecutionPaused,
+        current.PreventConcurrentWorkingDir,
+        EnabledAgents.ToHashSet());
 
     public bool AutoArchiveCompleted => current.AutoArchiveCompleted;
 
@@ -76,16 +89,6 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
         => current.Agents.FirstOrDefault(entry => entry.Agent == agent);
 
     public void ApplyLanguage() => culture.Apply(current.Language);
-
-    // Called at startup as well as on every change, because a setting that only takes effect when
-    // you toggle it is a setting that quietly turns itself off every time the app restarts.
-    public void ApplyKeepAwake()
-    {
-        if (current.KeepAwake)
-            sleep.Hold();
-        else
-            sleep.Release();
-    }
 
     public void SetLanguage(LanguagePreference language)
     {
@@ -151,6 +154,24 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
         Update(settings => settings.PreventConcurrentWorkingDir = prevent);
     }
 
+    public void SetMaxConcurrent(int cap)
+    {
+        var clamped = ConcurrencySlots.Clamp(cap);
+
+        if (clamped == current.MaxConcurrent)
+            return;
+
+        Update(settings => settings.MaxConcurrent = clamped);
+    }
+
+    public void SetAutoExecutionPaused(bool paused)
+    {
+        if (paused == current.AutoExecutionPaused)
+            return;
+
+        Update(settings => settings.AutoExecutionPaused = paused);
+    }
+
     public void SetAutoArchiveCompleted(bool autoArchive)
     {
         if (autoArchive == current.AutoArchiveCompleted)
@@ -178,7 +199,6 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
         }
 
         ApplyLanguage();
-        ApplyKeepAwake();
         Changed?.Invoke();
     }
 }

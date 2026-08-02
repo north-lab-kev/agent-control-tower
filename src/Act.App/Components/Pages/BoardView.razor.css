@@ -51,6 +51,18 @@
     border-color: var(--act-line);
 }
 
+::deep .newtaskbtn {
+    margin-left: auto;
+    min-width: 0;
+    padding: 0 0.3rem;
+    color: var(--act-dim);
+    border-color: var(--act-line2);
+}
+
+::deep .newtaskbtn:hover {
+    color: var(--act-ink);
+}
+
 ::deep .empty {
     font-family: var(--act-mono);
     font-size: 9.5px;

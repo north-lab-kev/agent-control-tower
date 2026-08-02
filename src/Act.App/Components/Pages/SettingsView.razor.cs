@@ -4,6 +4,7 @@ using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Core.Scheduling;
 using Microsoft.AspNetCore.Components;
 
 namespace Act.App.Components.Pages;
@@ -53,6 +54,14 @@ public partial class SettingsView(
     private bool CloseToTray => settings.CloseToTray;
 
     private bool PreventConcurrentWorkingDir => settings.PreventConcurrentWorkingDir;
+
+    private bool AutoExecutionPaused => settings.AutoExecutionPaused;
+
+    private int MaxConcurrent => settings.MaxConcurrent;
+
+    private static int MinimumConcurrent => ConcurrencySlots.Minimum;
+
+    private static int MaximumConcurrent => ConcurrencySlots.Maximum;
 
     private bool IsDesktop => desktop.IsDesktop;
 
@@ -281,6 +290,10 @@ public partial class SettingsView(
 
     private void OnPreventConcurrentWorkingDirChanged(bool prevent)
         => settings.SetPreventConcurrentWorkingDir(prevent);
+
+    private void OnAutoExecutionPausedChanged(bool paused) => settings.SetAutoExecutionPaused(paused);
+
+    private void OnMaxConcurrentChanged(int cap) => settings.SetMaxConcurrent(cap);
 
     private void OnAutoArchiveCompletedChanged(bool autoArchive) => settings.SetAutoArchiveCompleted(autoArchive);
 

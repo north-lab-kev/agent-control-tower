@@ -186,10 +186,7 @@ public class NotificationDispatcherTests
     private static (NotificationDispatcher, RecordingNotifier, UserSettingsService) DispatcherOf(
         UiPresence? presence = null)
     {
-        var settings = new UserSettingsService(
-            new FakeSettingsStore(),
-            new AppCulture(),
-            new FakeSleepInhibitor());
+        var settings = new UserSettingsService(new FakeSettingsStore(), new AppCulture());
 
         var notifier = new RecordingNotifier();
 

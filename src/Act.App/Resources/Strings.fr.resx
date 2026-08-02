@@ -15,8 +15,14 @@
   <data name="Shell_FullName" xml:space="preserve">
     <value>Agent Control Tower</value>
   </data>
-  <data name="Shell_AutoExecOn" xml:space="preserve">
-    <value>exéc. auto activée</value>
+  <data name="Shell_AutoExec" xml:space="preserve">
+    <value>exéc. auto</value>
+  </data>
+  <data name="Shell_AutoExecOn_Tip" xml:space="preserve">
+    <value>Les tâches planifiées démarrent d'elles-mêmes. Cliquez pour suspendre toute exécution automatique.</value>
+  </data>
+  <data name="Shell_AutoExecPaused_Tip" xml:space="preserve">
+    <value>Rien ne démarre tout seul. Le lancement manuel reste possible. Cliquez pour reprendre.</value>
   </data>
   <data name="Shell_UnhandledError" xml:space="preserve">
     <value>Une erreur non gérée s’est produite.</value>
@@ -77,6 +83,9 @@
   </data>
   <data name="NewTask_Schedule_Hint" xml:space="preserve">
     <value>Quand la tâche pourra démarrer, une fois déplacée dans « Prêt ».</value>
+  </data>
+  <data name="NewTask_UnattendedPrompting" xml:space="preserve">
+    <value>Cette tâche peut démarrer seule, mais son mode d'autorisation demande encore avant d'agir. ACT ne répond jamais à une invite : elle attendra à la première — en occupant une place — jusqu'à ce que vous répondiez. Choisissez auto, ne pas demander ou contourner pour du travail sans surveillance.</value>
   </data>
   <data name="NewTask_ScheduledFor" xml:space="preserve">
     <value>Date et heure</value>
@@ -228,6 +237,51 @@
   <data name="Schedule_DateFormat" xml:space="preserve">
     <value>d MMM HH:mm</value>
   </data>
+  <data name="Hold_Paused" xml:space="preserve">
+    <value>en pause</value>
+  </data>
+  <data name="Hold_Paused_Tip" xml:space="preserve">
+    <value>L'exécution automatique est suspendue. Lancez cette tâche à la main, ou cliquez sur « exéc. auto suspendue » dans la barre du haut pour reprendre.</value>
+  </data>
+  <data name="Hold_AgentOff" xml:space="preserve">
+    <value>agent inactif</value>
+  </data>
+  <data name="Hold_AgentOff_Tip" xml:space="preserve">
+    <value>{0} est désactivé dans les réglages : rien ne peut démarrer avec lui.</value>
+  </data>
+  <data name="Hold_Usage" xml:space="preserve">
+    <value>quota {0}</value>
+  </data>
+  <data name="Hold_Usage_Tip" xml:space="preserve">
+    <value>La limite d'utilisation de {0} est atteinte. Cette tâche démarrera d'elle-même à la réinitialisation, à {1}.</value>
+  </data>
+  <data name="Hold_Folder" xml:space="preserve">
+    <value>dossier #{0}</value>
+  </data>
+  <data name="Hold_Folder_Tip" xml:space="preserve">
+    <value>#{0} · {1} travaille dans ce dossier. Cette tâche démarrera d'elle-même une fois celle-là terminée.</value>
+  </data>
+  <data name="Hold_Dependency" xml:space="preserve">
+    <value>après #{0}</value>
+  </data>
+  <data name="Hold_Dependency_Tip" xml:space="preserve">
+    <value>En attente de #{0} · {1}, qui doit être terminée.</value>
+  </data>
+  <data name="Hold_Slot" xml:space="preserve">
+    <value>en file {0}/{1}</value>
+  </data>
+  <data name="Hold_Slot_Tip" xml:space="preserve">
+    <value>{0} tâches sur {1} sont déjà en cours. Celle-ci démarrera d'elle-même dès qu'une place se libère.</value>
+  </data>
+  <data name="Hold_Hours" xml:space="preserve">
+    <value>{0} h {1:00}</value>
+  </data>
+  <data name="Hold_Minutes" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="Hold_Days" xml:space="preserve">
+    <value>{0} j {1} h</value>
+  </data>
   <data name="Metrics_Context" xml:space="preserve">
     <value>{0}/{1} ctx</value>
   </data>
@@ -308,6 +362,18 @@
   </data>
   <data name="Settings_OneTaskPerFolder_Hint" xml:space="preserve">
     <value>Empêche une tâche de démarrer pendant qu'une autre travaille encore dans le même dossier. Une tâche occupe son dossier jusqu'à ce qu'elle soit terminée. Une tâche précise peut être autorisée à s'exécuter en parallèle depuis sa propre page.</value>
+  </data>
+  <data name="Settings_PauseAutoExecution" xml:space="preserve">
+    <value>Suspendre l'exécution automatique</value>
+  </data>
+  <data name="Settings_PauseAutoExecution_Hint" xml:space="preserve">
+    <value>Rien ne démarre tout seul tant que ceci est activé, quelle que soit la planification d'une tâche. Le lancement manuel reste possible.</value>
+  </data>
+  <data name="Settings_MaxConcurrent" xml:space="preserve">
+    <value>Tâches en cours simultanées</value>
+  </data>
+  <data name="Settings_MaxConcurrent_Hint" xml:space="preserve">
+    <value>Combien de tâches la file fait travailler en même temps. Chacune occupe un agent et son terminal, c'est donc une vraie limite pour la machine. Une tâche en attente de validation ne compte pas.</value>
   </data>
   <data name="Settings_Group_Retention" xml:space="preserve">
     <value>Conservation</value>
@@ -406,7 +472,7 @@
     <value>Garder l'ordinateur éveillé</value>
   </data>
   <data name="Settings_KeepAwake_Hint" xml:space="preserve">
-    <value>Empêche la mise en veille pendant qu'ACT est ouvert, pour qu'une longue exécution ne soit pas interrompue.</value>
+    <value>Empêche la mise en veille tant qu'une tâche est en cours ou attend de démarrer, pour qu'une longue exécution ou une file de nuit ne soit pas interrompue. Un tableau inactif est laissé s'endormir.</value>
   </data>
   <data name="Settings_CloseToTray" xml:space="preserve">
     <value>Fermer vers la zone de notification</value>
