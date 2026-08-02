@@ -20,12 +20,6 @@
 
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
                          JustifyContent="JustifyContent.End" Gap="0.6rem" class="actions">
-                @* The master switch, one click from anywhere — it is the thing you reach for when
-                   something is going wrong, and Settings is two navigations away. *@
-                <RadzenButton Icon="@AutoExecIcon" Text="@Strings.Shell_AutoExec" ButtonStyle="ButtonStyle.Base"
-                              Variant="Variant.Outlined" Size="ButtonSize.Small" Click="ToggleAutoExecution"
-                              title="@AutoExecTip" class="@AutoExecClass" />
-
                 <RadzenButton Icon="inventory_2" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
                               Size="ButtonSize.Small" Click="OpenArchive" class="gear"
                               title="@Strings.Archive_Title" aria-label="@Strings.Archive_Title" />

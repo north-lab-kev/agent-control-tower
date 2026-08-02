@@ -35,7 +35,7 @@ public partial class SettingsView(
 
     private static SettingChoice<BoardDensity>[] DensityChoices =>
     [
-        new(BoardDensity.Spacious, Strings.Settings_Density_Spacious),
+        new(BoardDensity.Detailed, Strings.Settings_Density_Detailed),
         new(BoardDensity.Compact, Strings.Settings_Density_Compact),
     ];
 
@@ -103,7 +103,6 @@ public partial class SettingsView(
         new(TaskSchedule.Manual, Strings.ScheduleOption_Manual),
         new(TaskSchedule.Now, Strings.ScheduleOption_Now),
         new(TaskSchedule.NextWindow, Strings.ScheduleOption_NextWindow),
-        new(TaskSchedule.WindowAfterNext, Strings.ScheduleOption_WindowAfterNext),
     ];
 
     private static SettingChoice<GitAction?>[] DefaultGitChoices =>

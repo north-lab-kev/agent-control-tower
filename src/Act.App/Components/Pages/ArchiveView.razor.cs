@@ -2,6 +2,7 @@ using System.Globalization;
 using Act.App.Cards;
 using Act.App.Resources;
 using Act.Core.Model;
+using Act.Core.Rules;
 using Microsoft.AspNetCore.Components;
 using Radzen;
 
@@ -19,7 +20,30 @@ public partial class ArchiveView(
 
     private bool duplicating;
 
+    private bool seeded;
+
+    private string query = string.Empty;
+
+    // The board hands its query over rather than making the user type it twice — it is the same
+    // question, asked of the half of the store the board cannot show.
+    [SupplyParameterFromQuery(Name = "q")]
+    private string? InitialQuery { get; set; }
+
+    private bool Filtering => CardSearch.IsActive(query);
+
+    private IReadOnlyList<Card> Rows => CardSearch.Filter(board.Archived, query);
+
     protected override void OnInitialized() => board.Changed += OnChanged;
+
+    // Once: a cascading value changing must not throw away what the user has typed since.
+    protected override void OnParametersSet()
+    {
+        if (seeded)
+            return;
+
+        seeded = true;
+        query = InitialQuery ?? string.Empty;
+    }
 
     public void Dispose() => board.Changed -= OnChanged;
 

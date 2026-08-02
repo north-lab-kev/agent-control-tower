@@ -165,9 +165,6 @@
   <data name="ScheduleOption_NextWindow" xml:space="preserve">
     <value>prochaine fenêtre de 5 h</value>
   </data>
-  <data name="ScheduleOption_WindowAfterNext" xml:space="preserve">
-    <value>fenêtre suivante</value>
-  </data>
   <data name="ScheduleOption_DateTime" xml:space="preserve">
     <value>date et heure précises</value>
   </data>
@@ -227,9 +224,6 @@
   </data>
   <data name="Schedule_NextWindow" xml:space="preserve">
     <value>proch. fenêtre</value>
-  </data>
-  <data name="Schedule_WindowAfterNext" xml:space="preserve">
-    <value>fenêtre +2</value>
   </data>
   <data name="Schedule_At" xml:space="preserve">
     <value>⏱ {0}</value>
@@ -534,8 +528,8 @@
   <data name="Settings_BlinkYourTurn_Hint" xml:space="preserve">
     <value>Fait pulser une carte qui vous attend. Désactivez pour garder la couleur sans le mouvement.</value>
   </data>
-  <data name="Settings_Density_Spacious" xml:space="preserve">
-    <value>Spacieux</value>
+  <data name="Settings_Density_Detailed" xml:space="preserve">
+    <value>Détaillé</value>
   </data>
   <data name="Settings_Density_Compact" xml:space="preserve">
     <value>Compact</value>
@@ -866,5 +860,29 @@
   </data>
   <data name="Usage_Tooltip" xml:space="preserve">
     <value>{0} — fenêtre {1} · réinitialisation {2} · relevé à {3}</value>
+  </data>
+  <data name="Search_Placeholder" xml:space="preserve">
+    <value>Filtrer par numéro, titre, dossier ou consigne</value>
+  </data>
+  <data name="Search_Clear" xml:space="preserve">
+    <value>Effacer le filtre</value>
+  </data>
+  <data name="Search_ArchiveMatches" xml:space="preserve">
+    <value>{0} dans les archives ›</value>
+  </data>
+  <data name="Board_ColumnNoMatch" xml:space="preserve">
+    <value>aucun résultat</value>
+  </data>
+  <data name="Board_HiddenAttention" xml:space="preserve">
+    <value>{0} masquée(s)</value>
+  </data>
+  <data name="Board_HiddenAttention_Tip" xml:space="preserve">
+    <value>Des tâches de cette colonne demandent votre attention mais ne correspondent pas au filtre.</value>
+  </data>
+  <data name="Archive_NoMatch" xml:space="preserve">
+    <value>Aucune archive ne correspond au filtre.</value>
+  </data>
+  <data name="Board_Density_Tip" xml:space="preserve">
+    <value>Niveau de détail des bandes de vol. Cliquez pour changer.</value>
   </data>
 </root>

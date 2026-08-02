@@ -23,7 +23,6 @@ public class SleepPolicyTests
     [Theory]
     [InlineData(TaskSchedule.Now)]
     [InlineData(TaskSchedule.NextWindow)]
-    [InlineData(TaskSchedule.WindowAfterNext)]
     [InlineData(TaskSchedule.SpecificDateTime)]
     public void So_is_a_ready_card_that_can_launch_on_its_own(TaskSchedule schedule)
         => SleepPolicy.ShouldHold([Ready(schedule)], keepAwake: true, paused: false).Should().BeTrue();

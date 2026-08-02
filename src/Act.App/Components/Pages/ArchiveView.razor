@@ -9,10 +9,16 @@
                       ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="BackToBoard" />
         <span class="title">@Strings.Archive_Title</span>
 
+        @if (board.HasArchived)
+        {
+            <CardFilter @bind-Query="query" Placeholder="@Strings.Search_Placeholder" />
+        }
+
         @* Also a dialog: this is the one irreversible action in the app, so it must not be quieter
-           than the reversible one next to it. *@
+           than the reversible one next to it. It is gone while a filter is up: *Clear archive*
+           empties what the list shows, and a filtered list is not what it would empty. *@
         <div class="purge">
-            @if (board.HasArchived)
+            @if (board.HasArchived && !Filtering)
             {
                 <RadzenButton Icon="delete_forever" Text="@Strings.Archive_Clear" Size="ButtonSize.ExtraSmall"
                               ButtonStyle="ButtonStyle.Danger" Variant="Variant.Text" Disabled="purging"
@@ -27,9 +33,13 @@
             {
                 <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Archive_Empty" class="empty" />
             }
+            else if (Rows.Count == 0)
+            {
+                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Archive_NoMatch" class="empty" />
+            }
             else
             {
-                @foreach (var card in board.Archived)
+                @foreach (var card in Rows)
                 {
                     <div class="row">
                         <span class="id">#@card.Number</span>

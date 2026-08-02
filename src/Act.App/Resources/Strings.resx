@@ -165,9 +165,6 @@
   <data name="ScheduleOption_NextWindow" xml:space="preserve">
     <value>next 5-hour window</value>
   </data>
-  <data name="ScheduleOption_WindowAfterNext" xml:space="preserve">
-    <value>window after next</value>
-  </data>
   <data name="ScheduleOption_DateTime" xml:space="preserve">
     <value>specific date &amp; time</value>
   </data>
@@ -227,9 +224,6 @@
   </data>
   <data name="Schedule_NextWindow" xml:space="preserve">
     <value>next win</value>
-  </data>
-  <data name="Schedule_WindowAfterNext" xml:space="preserve">
-    <value>win +2</value>
   </data>
   <data name="Schedule_At" xml:space="preserve">
     <value>⏱ {0}</value>
@@ -534,8 +528,8 @@
   <data name="Settings_BlinkYourTurn_Hint" xml:space="preserve">
     <value>Pulse a card that is waiting on you. Turn it off to keep the colour without the movement.</value>
   </data>
-  <data name="Settings_Density_Spacious" xml:space="preserve">
-    <value>Spacious</value>
+  <data name="Settings_Density_Detailed" xml:space="preserve">
+    <value>Detailed</value>
   </data>
   <data name="Settings_Density_Compact" xml:space="preserve">
     <value>Compact</value>
@@ -866,5 +860,29 @@
   </data>
   <data name="Usage_Tooltip" xml:space="preserve">
     <value>{0} — {1} window · resets {2} · read at {3}</value>
+  </data>
+  <data name="Search_Placeholder" xml:space="preserve">
+    <value>Filter by number, title, folder or prompt</value>
+  </data>
+  <data name="Search_Clear" xml:space="preserve">
+    <value>Clear the filter</value>
+  </data>
+  <data name="Search_ArchiveMatches" xml:space="preserve">
+    <value>{0} in the archive ›</value>
+  </data>
+  <data name="Board_ColumnNoMatch" xml:space="preserve">
+    <value>no match</value>
+  </data>
+  <data name="Board_HiddenAttention" xml:space="preserve">
+    <value>{0} hidden</value>
+  </data>
+  <data name="Board_HiddenAttention_Tip" xml:space="preserve">
+    <value>Cards in this column need you but do not match the filter.</value>
+  </data>
+  <data name="Archive_NoMatch" xml:space="preserve">
+    <value>Nothing archived matches the filter.</value>
+  </data>
+  <data name="Board_Density_Tip" xml:space="preserve">
+    <value>How much detail each flight strip shows. Click to switch.</value>
   </data>
 </root>

@@ -42,6 +42,28 @@ internal static class ActBsonMapper
                 ? badge
                 : null);
 
+        // `WindowAfterNext` was retired, and a Ready card can be carrying it. Unknown reads back as
+        // `Manual` rather than null, because this is asked of a non-nullable property too (the task
+        // defaults in settings) — and because manual is the safe direction: a card whose schedule
+        // ACT no longer understands should wait for a hand, not launch on a guess.
+        mapper.RegisterType(
+            typeof(TaskSchedule),
+            value => value.ToString(),
+            bson => Enum.TryParse<TaskSchedule>(bson.AsString, out var schedule)
+                ? schedule
+                : TaskSchedule.Manual);
+
+        // Same problem one level up: `BoardDensity.Spacious` became `Detailed`, and a settings
+        // document is loaded in a constructor at start-up — so a name this build does not have takes
+        // the whole app down rather than one card. It reads back as the default and the next save
+        // writes the current name.
+        mapper.RegisterType(
+            typeof(BoardDensity),
+            value => value.ToString(),
+            bson => Enum.TryParse<BoardDensity>(bson.AsString, out var density)
+                ? density
+                : BoardDensity.Detailed);
+
         mapper.Entity<Card>()
             .Ignore(card => card.NeedsAttention)
             .Ignore(card => card.IsDeleted)

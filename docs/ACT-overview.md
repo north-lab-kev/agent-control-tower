@@ -445,12 +445,17 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
 - `workingDir` — the task's cwd.
 - `launchConfig` — per-task launch parameters (see Launch config below).
 - `schedule` — *when* the task may auto-launch: `manual | now | next-window |
-  window-after-next | datetime`. Set at **creation** (new-task modal, default
+  datetime`. Set at **creation** (new-task modal, default
   `manual`) and editable in Ready; only *displayed* as a badge in the Ready column
   (see Scheduling & queue policy).
+  - **`window-after-next` was offered and is gone — removed 2026-08-02.** It said
+    "start two resets from now", which is a duration dressed as a boundary: the
+    thing a user actually wants that far out is a time, and `datetime` already says
+    it exactly. It also cost `UsageWindow` a declared length whose only reader was
+    that one arithmetic. A stored `WindowAfterNext` reads back as `manual`.
 - `scheduledFor` — the datetime the user picked, for `datetime` only.
 - `eligibleAt` — the instant a *relative* schedule was resolved to when the card
-  was armed, for `next-window` / `window-after-next` only. Written by the queue
+  was armed, for `next-window` only. Written by the queue
   runner, cleared when the schedule changes and when the card launches; see
   *Runner logic* for why it is stored rather than recomputed.
 - `allowConcurrentWorkingDir` — the card's exemption from the one-task-per-folder
@@ -1499,10 +1504,17 @@ not launch while another card is working in the same directory.
 A global **"pause all auto-execution"** toggle (auto-execution on by default).
 When paused, no task auto-launches regardless of its `schedule`; per-task
 **Manual** remains the per-task opt-out. Manual launches still work while paused.
-It lives in *Settings → Execution* **and in the top bar**, where the existing
-`auto-exec on` chip became the switch itself: it is what you reach for when
-something is going wrong, and two navigations away is the wrong place for that.
-The chip loses its green dot and turns amber when paused.
+It lives in *Settings → Execution* **and on the board**, in the control row beside
+the filter box, where the old top-bar `auto-exec on` chip became the switch itself:
+it is what you reach for when something is going wrong, and two navigations away is
+the wrong place for that. The chip loses its green glyph and turns amber when paused.
+
+- **Why it moved off the top bar — 2026-08-02.** The switch governs the board and
+  nothing else: paused, the only thing that changes is which Ready cards start, which
+  is a sentence about the board. The top bar is the *app's* furniture (identity, usage
+  meters, archive, settings), and the board is one back-arrow from every page, so
+  "reachable from anywhere" survives the move. It sits with the density toggle in the
+  row the filter box created — the board's own controls, together.
 
 ### Ready-card indicators
 
@@ -1510,7 +1522,7 @@ A Ready strip carries two chips, and the split is the section's own line —
 **intent** below, **reality** in the badge slot:
 
 - **Intent** is the `schedule`, on the dashed chip it always had: `manual`,
-  `now`, `next win`, `win +2`, `⏱ Mar 3 09:00`.
+  `now`, `next win`, `⏱ Mar 3 09:00`.
 - **Reality** is the *hold* — why this card is not running right now — one chip
   per reason: `queued 5/5` (cap full) · `folder #1041` · `after #1043`
   (dependency) · `usage 2h14m` (limit reached, counting down to the reset) ·
@@ -1691,6 +1703,36 @@ history.
   there is nothing there to clean up — the generated launch config (settings / profile /
   MCP config) lives in ACT's own data directory and is removed when the session ends. It
   **never** touches the agent's transcripts (not ACT's to delete, and needed for resume).
+
+### Finding a card — two filter boxes, not a search page
+
+Retention keeps everything, so the question retention creates is *where did that task go*.
+The answer is a filter box on each of the two surfaces a card can be on — the board and the
+archive — narrowing what is drawn, in place, in the strip or the row the user already reads.
+
+- **A query matches the number, the title, the working directory and the initial prompt.**
+  The first three are how a card is identified; the fourth is where the recall value is.
+  Agent, model and transition notes are deliberately not searched — they match far too
+  broadly for a box whose job is to narrow. Terms are whitespace-separated and **all** must
+  match; matching folds case and accents (French is a shipped UI language), and a term of
+  digits, with or without a leading `#`, also matches the **number by prefix** — `#104`,
+  `104` and `1042` all find `#1042`. No ranking: each surface keeps its own order.
+- **The filter narrows what is *drawn*, never what is counted.** A board column header reads
+  `3/12` while a query is live, so a filtered board can never be mistaken for the real one.
+- **And it can never hide the fact that a card needs you.** Attention is rendered per strip,
+  so a needs-you card that falls out of a query would simply vanish — the one thing the board
+  exists to prevent. Its column therefore carries a muted amber `N hidden` chip counting the
+  needs-you cards the query is holding back.
+- **The board says what it cannot show.** The board has no archived cards on it, so while a
+  query is live it carries a link reading *"N in the archive ›"* which opens the archive with
+  the same query applied (`/archive?q=…`). That is the price of filtering in place rather than
+  building a `/search` page — a page was rejected as a third list of cards, with its own row
+  design and its own ordering rule, showing what the two existing surfaces already show.
+- **Clear archive disappears while a filter is up.** *Clear archive* empties exactly what the
+  list shows, and a filtered list is not what it would empty; the one irreversible action in
+  the app must not be able to mean something other than what is on screen.
+- **The query is view state**: never persisted, never stored, cleared by `Esc`, by the clear
+  button and by leaving the page. Nothing is indexed — every card is already in memory.
 
 ### Session lifecycle — resumability rides the transcript
 
@@ -1878,12 +1920,30 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   The board background is a flat `--act-bg` — an earlier fixed-pitch vertical
   grid was dropped because its 40px pitch never aligned with the flexible column
   widths, so it read as noise rather than structure.
-- **Density toggle:** **compact** (id + title + **badge** + schedule chip — badges
-  shown, not just a dot) vs **spacious** (fuller strip with metrics, path,
-  lineage). Chosen in the **settings dialog** (*Appearance → display mode*) and
-  persisted; there is **no top-bar toggle** — see Settings dialog below. In
-  compact the title ellipsizes so the badge keeps its full width: the badge is
-  the signal, the title yields.
+- **Density toggle:** **Compact** (id + title + **badge** + schedule chip — badges
+  shown, not just a dot) vs **Detailed** (fuller strip with metrics, path,
+  lineage). Chosen in *Settings → Appearance → display mode* **or on the board**, on
+  a chip in the control row beside the auto-execution switch, and persisted either
+  way. In compact the title ellipsizes so the badge keeps its full width: the badge
+  is the signal, the title yields.
+  - **The chip names the mode you are in, not the one you would get.** The board in
+    front of you is the answer to "which mode is this", and a button labelled with
+    the *other* mode would contradict it on every glance.
+  - **"Detailed", not "Spacious" — renamed 2026-08-02.** The setting's own hint says
+    *how much detail each flight strip shows*, so the label now says the same thing;
+    "spacious" described the whitespace, which is the side effect rather than the
+    point. The rename goes **all the way down** — `BoardDensity.Detailed`, the resx
+    key, the CSS class — rather than stopping at the label, so nothing in the code
+    keeps a name the product no longer uses.
+    - **The enum is persisted by name, so the stored value has to be tolerated.**
+      A settings document still saying `Spacious` is a name this build does not
+      have, and LiteDB's enum deserializer throws on it — *measured*, not assumed:
+      `ArgumentException: Requested value 'Spacious' was not found`. Settings are
+      loaded in a constructor at start-up, so unlike a retired `Badge` this takes
+      the **whole app** down rather than one card. `ActBsonMapper` therefore maps
+      `BoardDensity` the way it already maps `Badge` and `TransitionReason`: an
+      unknown name reads back as the **default**, and the next save writes the
+      current one. Renaming a persisted enum member is never only a rename.
 - **Attention:** needs-you cards get a **loud in-place treatment** (glowing rail
   + pulse + `!` corner); no separate inbox, and no top-bar counter either. A
   **"N need you ›"** pill was there and is gone: ACT answers no permission prompt,
@@ -1996,8 +2056,8 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   dump you on the board; now you stay on settings.
   Shipped: **language**, **archive completed tasks automatically** with its window in days,
   **theme** (follow-OS / light / dark override),
-  **display mode** (compact / spacious — settings-only; there is no top-bar
-  density toggle), **blink in Your turn**, **keep-awake**, **close-to-tray**,
+  **display mode** (Compact / Detailed — also a chip on the board's control row),
+  **blink in Your turn**, **keep-awake**, **close-to-tray**,
   **pause automatic execution** and **tasks running at once** (*Execution*),
   **Agents** — one section per registered adapter carrying that CLI's **enabled** switch,
   executable, extra flags and environment (see *Launch config*; these are properties of

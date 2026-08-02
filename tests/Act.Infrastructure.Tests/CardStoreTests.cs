@@ -422,6 +422,42 @@ public class CardStoreTests
         card.Should().BeNull();
     }
 
+    // `WindowAfterNext` was retired on 2026-08-02, and a Ready card can be sitting on it. Manual
+    // rather than null, so the card waits for a hand instead of launching on a schedule this build
+    // cannot resolve.
+    [Fact]
+    public async Task A_schedule_this_build_retired_reads_back_as_manual()
+    {
+        using var temp = new TempDirectory();
+        var card = new Card
+        {
+            Title = "Armed for a window that no longer exists",
+            Column = BoardColumn.Ready,
+            Schedule = TaskSchedule.NextWindow,
+        };
+
+        using (var provider = Provider(temp.Path))
+        {
+            await provider.GetRequiredService<ICardStore>().AddAsync(card);
+        }
+
+        using (var database = new LiteDatabase(Path.Combine(temp.Path, "act.db")))
+        {
+            var cards = database.GetCollection("cards");
+            var stored = cards.FindById(card.Id);
+
+            stored["Schedule"] = "WindowAfterNext";
+            cards.Update(stored);
+        }
+
+        using var reading = Provider(temp.Path);
+
+        var reloaded = await reading.GetRequiredService<ICardStore>().GetAsync(card.Id);
+
+        reloaded!.Schedule.Should().Be(TaskSchedule.Manual);
+        reloaded.Title.Should().Be("Armed for a window that no longer exists");
+    }
+
     private static ServiceProvider Provider(string dataDirectory)
         => new ServiceCollection().AddActInfrastructure(dataDirectory).BuildServiceProvider();
 }

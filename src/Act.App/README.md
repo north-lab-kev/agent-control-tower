@@ -45,7 +45,7 @@ cross-platform.
 
 Air-traffic-control aesthetic; cards are flight-progress strips. Six flat columns,
 launch-boundary shown dynamically at drag time (gray out invalid columns).
-Compact/spacious density toggle. Reference mockup: [../../docs/ui-preview.html](../../docs/ui-preview.html).
+Compact/detailed density toggle. Reference mockup: [../../docs/ui-preview.html](../../docs/ui-preview.html).
 
 Signature flight-strip look = custom Blazor markup + CSS; heavier widgets
 (modal, drawer, tables, inputs) = Radzen themed to the same palette.

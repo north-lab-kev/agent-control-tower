@@ -1,6 +1,8 @@
+using System.Globalization;
 using Act.App.Cards;
 using Act.App.Resources;
 using Act.App.Sessions;
+using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
@@ -18,6 +20,7 @@ public partial class BoardView(
     CardCompleter completer,
     CardReopener reopener,
     NotificationService notifications,
+    UserSettingsService settings,
     NavigationManager navigation) : IAsyncDisposable
 {
     // What the quiet chip costs: it is derived from a stamp rather than from an event, so nothing
@@ -35,18 +38,44 @@ public partial class BoardView(
 
     private Card? dragging;
 
+    private string query = string.Empty;
+
     [CascadingParameter(Name = "Density")]
     private BoardDensity Density { get; set; }
 
     [CascadingParameter(Name = "BlinkYourTurn")]
     private bool BlinkYourTurn { get; set; }
 
-    private string DensityClass => Density is BoardDensity.Compact ? "compact" : "spacious";
+    private string DensityClass => Density is BoardDensity.Compact ? "compact" : "detailed";
+
+    private bool Paused => settings.AutoExecutionPaused;
+
+    private string AutoExecIcon => Paused ? "pause_circle" : "play_circle";
+
+    private string AutoExecTip => Paused ? Strings.Shell_AutoExecPaused_Tip : Strings.Shell_AutoExecOn_Tip;
+
+    // The green glyph is what says the queue is live, so a paused board loses it and takes the amber
+    // of every other "waiting on you" surface.
+    private string AutoExecClass => Paused ? "statchip paused" : "statchip live";
+
+    private string DensityIcon => Density is BoardDensity.Compact ? "density_small" : "density_medium";
+
+    // Says the mode you are in, not the one you would get: the board in front of you is the answer,
+    // and a button that named the other one would disagree with it.
+    private string DensityText => Density is BoardDensity.Compact
+        ? Strings.Settings_Density_Compact
+        : Strings.Settings_Density_Detailed;
+
+    private void ToggleAutoExecution() => settings.SetAutoExecutionPaused(!Paused);
+
+    private void ToggleDensity() => settings.SetDensity(
+        Density is BoardDensity.Compact ? BoardDensity.Detailed : BoardDensity.Compact);
 
     protected override void OnInitialized()
     {
         board.Changed += OnChanged;
         queue.Evaluated += OnChanged;
+        settings.Changed += OnChanged;
 
         _ = RefreshLoopAsync();
     }
@@ -55,6 +84,7 @@ public partial class BoardView(
     {
         board.Changed -= OnChanged;
         queue.Evaluated -= OnChanged;
+        settings.Changed -= OnChanged;
 
         await leaving.CancelAsync();
 
@@ -82,7 +112,23 @@ public partial class BoardView(
         }
     }
 
-    private IReadOnlyList<Card> CardsIn(BoardColumn column) => board.In(column);
+    private bool Filtering => CardSearch.IsActive(query);
+
+    private IReadOnlyList<Card> CardsIn(BoardColumn column) => CardSearch.Filter(board.In(column), query);
+
+    // Reads `shown/total` while a query is live: the filter narrows what is drawn, and the header is
+    // where it admits to it.
+    private string Count(BoardColumn column, int shown) => Filtering
+        ? $"{shown}/{board.In(column).Count}"
+        : shown.ToString(CultureInfo.CurrentCulture);
+
+    private int HiddenAttention(BoardColumn column) => Filtering
+        ? board.In(column).Count(card => card.NeedsAttention && !CardSearch.Matches(card, query))
+        : 0;
+
+    private int ArchivedMatches => Filtering ? CardSearch.Filter(board.Archived, query).Count : 0;
+
+    private string ArchiveHref => $"/archive?q={Uri.EscapeDataString(query)}";
 
     // Read from the runner rather than computed here, so the chip a Ready card shows and the
     // decision the runner acts on are literally the same evaluation.

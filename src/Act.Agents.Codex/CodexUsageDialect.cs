@@ -63,8 +63,7 @@ public sealed class CodexUsageDialect : IUsageDialect
         windows.Add(new UsageWindow(
             UsageWindow.Classify(length),
             Percent(window, "used_percent"),
-            resetsAt,
-            length));
+            resetsAt));
     }
 
     private static DateTimeOffset? Resets(JsonElement window, DateTimeOffset takenAt)

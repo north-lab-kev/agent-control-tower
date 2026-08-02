@@ -37,18 +37,6 @@ public partial class MainLayout(
     private string MarkPath
         => markPath ??= $"favicon.png{assetVersions.For(typeof(MainLayout).Assembly)}";
 
-    private bool Paused => settings.AutoExecutionPaused;
-
-    private string AutoExecIcon => Paused ? "pause_circle" : "play_circle";
-
-    private string AutoExecTip => Paused ? Strings.Shell_AutoExecPaused_Tip : Strings.Shell_AutoExecOn_Tip;
-
-    // The green glyph is what says the queue is live, so a paused bar loses it and takes the amber of
-    // every other "waiting on you" surface.
-    private string AutoExecClass => Paused ? "statchip paused" : "statchip live";
-
-    private void ToggleAutoExecution() => settings.SetAutoExecutionPaused(!Paused);
-
     protected override void OnInitialized()
     {
         settings.Changed += OnChanged;

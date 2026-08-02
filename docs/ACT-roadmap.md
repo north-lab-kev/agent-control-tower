@@ -1065,10 +1065,10 @@ verifiable, and leaves something runnable.
       run. (A card whose *schedule* is a window boundary is the exception — it stays
       unarmed, because "later" cannot be resolved without a reset instant.)
     - **FIFO**, ordered by the eligibility instant and then by card number.
-    - **`UsageWindow` gains its declared length**, so *window after next* is
-      `resetsAt + length` rather than a hardcoded five hours. Codex declares
-      `limit_window_seconds`; Claude Code declares a `kind` instead, so the length falls
-      back to the nominal one for that kind.
+    - ~~**`UsageWindow` gains its declared length**, so *window after next* is
+      `resetsAt + length` rather than a hardcoded five hours.~~ **Both are gone —
+      2026-08-02**, see step 15's item 6: the schedule was removed, and `Length` /
+      `Duration` had no other reader.
     - **A headless launch uses the last terminal geometry**, not a constant — an
       unattended card that is opened later should not have to reflow from 120×30.
   - **The chips**, one per reason, shown in the badge slot with the full sentence in the
@@ -1083,7 +1083,8 @@ verifiable, and leaves something runnable.
     `AutoExecutionPaused` on `UserSettings`, both in *Settings → Execution*; `Card.EligibleAt`
     for the armed instant; `UsageWindow.Length` with a `Duration` that falls back to the
     nominal length for the kind — Codex declares `limit_window_seconds`, Claude Code declares
-    a `kind` and nothing else, and *window after next* needs a number either way.
+    a `kind` and nothing else, and *window after next* needs a number either way. **Both fields
+    were deleted at step 15 with the schedule that was their only reader.**
   - [x] **2. `Act.Core/Scheduling/` — eligibility as pure logic.** ✅ `LaunchQueue.Evaluate`
     returns the ordered launch list, the per-card hold **and** the instants to arm, out of one
     pass, so the chip on the board cannot disagree with what the runner did. Parts:
@@ -1144,14 +1145,19 @@ verifiable, and leaves something runnable.
     chip claiming the queue was live while it was paused. It is now a button: it reflects the
     state, drops its green dot and turns amber when paused, and toggles on click. The master switch
     is what you reach for when something is going wrong, and Settings is two navigations away.
+    - **Moved off the top bar at step 15**, into the board's control row beside the filter box, and
+      the density toggle joined it there. It governs the board and nothing else, and the board is one
+      back-arrow from every page — so it kept its reachability and gave the top bar back to the app.
 
 ## Phase 6 — Breadth & polish
 
-- [ ] **15. Persistence polish** — auto-archive (**landed**: 10-day default,
+- [x] **15. Persistence polish** — auto-archive (**landed**: 10-day default,
   `archivedAt` its own marker, `CompletedRetention` + `RetentionPump`, the knob in
   Settings → *Retention*), the transitions timeline (**landed**, see below), and
   **finding a card again** — the only open work. *Verify:* old Completed cards archive
-  and stay searchable.
+  and stay searchable. ✅ **Landed 2026-08-02**, 717 tests green, and the verify line met on the
+  real board: `shell` typed into the archive's box found **#1031 *Empty app shell***, an
+  auto-archived Completed card, from a store of 31 archived rows.
   - [x] **The timeline was already built, and as a page rather than a drawer.**
     `TimelineView` is the third tab on a card (`/card/{id}/timeline`), rendering
     `Transitions` oldest-first with the badge tokens on the rail — a row's dot is the
@@ -1191,25 +1197,100 @@ verifiable, and leaves something runnable.
       `Esc`, by the clear button and by navigation. No `ICardStore` change, no LiteDB
       index, no debounce — every card is already in memory and a substring scan over a few
       thousand of them is free.
-  - [ ] **1. `Act.Core/Rules/CardSearch` — the predicate, and the only unit-tested part.**
-    Term tokenizer + `Matches(card, query)`, pure. Tests cover the AND across terms, the
-    accent and case folding, the numeric prefix rule (including that `104` still substring-
-    matches a *title* containing it), an empty query matching everything, and that a query
-    matching nothing is not an error.
-  - [ ] **2. The shared filter control, and the board.** One `CardFilter` component
-    (Radzen text box, search icon, clear button, `Esc`) used by both pages, so there is one
-    control and one set of resx strings. `BoardView` filters each column's list through
-    `CardSearch`, the header count becomes `matched/total` while a query is live, and the
-    attention path is left reading the unfiltered column per the decision above.
-  - [ ] **3. The archive filter and the cross-link.** Same control on `ArchiveView` over
-    `board.Archived` — this is the half that satisfies the step's verify line, since an
-    auto-archived card is reachable nowhere else. Then the board's *"N archived match"*
-    link, which carries the query across.
-  - [ ] **4. Live verify + docs.** A *Finding a card* subsection in the spec (the two
-    boxes, the fields, the counted-not-hidden rule), `repository-structure.md` if the
-    shared control lands in a new folder, and the ticks here. Live: a query narrows both
-    surfaces, a needs-you card filtered out still blinks its column, and a Completed card
-    past the retention window is found on the archive after it auto-archives.
+  - [x] **1. `Act.Core/Rules/CardSearch` — the predicate, and the only unit-tested part.**
+    ✅ Term tokenizer + `Matches` + `Filter`, pure, 21 tests: the AND across terms, the case
+    and accent folding both ways, the numeric prefix rule (including that a numeric term
+    **still** reaches the text fields, so `220` finds a title reading *"Bump to 2.1.220"*, and
+    that `042` does **not** find `#1042` — a prefix, not a substring), an empty query matching
+    everything, a `#`-prefixed non-number being ordinary text, and that filtering hands back
+    the order it was given.
+  - [x] **2. The shared filter control, and the board.** ✅ One `CardFilter` (Radzen text box,
+    search icon, clear button, `Esc`) two-way bound, used by both pages. Column headers read
+    `shown/total` while a query is live.
+    - **The "attention keeps answering for the whole column" decision needed a control that
+      did not exist.** The blink is rendered *per strip*, not per column — so a filtered-out
+      needs-you card does not blink quietly, it disappears. The column header now carries a
+      muted amber **`N hidden`** chip counting exactly those cards, which is the honest form of
+      the same promise.
+  - [x] **3. The archive filter and the cross-link.** ✅ Same control on `ArchiveView`, the
+    board's *"N in the archive ›"* link carrying the query over as `/archive?q=…`, and the
+    receiving page seeding its box from it **once** — a cascading value changing must not throw
+    away what the user has typed since.
+    - **And *Clear archive* is hidden while a filter is up.** The spec says it empties exactly
+      what the list shows; a filtered list is not what it would empty, and the one irreversible
+      action in the app must not be able to mean two things.
+    - ⚠️ **The archive's box could not be typed into, and the cause was the window title bar.**
+      Reported by the user, 2026-08-02: the field read as *read-only*. Every page header carries
+      `class="bar"` and `MainLayout`'s `::deep .bar` reaches page content, so all five of them
+      inherit the title strip's `-webkit-app-region: drag` and `user-select: none` — and an OS
+      drag region swallows the mouse, so the input never took focus. The existing exceptions
+      punched out `.rz-button` and `a`, which is why every *button* in that header always worked;
+      the archive filter is simply the **first input ever placed in a page header**. Fixed by
+      adding `input` / `textarea` to the same exception and giving them their selection back.
+      - **Why the live verify missed it:** the preview pane delivers no keystrokes, so the query
+        had to be dispatched as an `input` event — which bypasses focus entirely and would pass
+        against a field the mouse can never reach. Reading the computed style (`user-select`
+        inherited as `none` on both the header and the input) is what named the cause, and is
+        the check worth making whenever a control lands in a `.bar`.
+  - [x] **5. The board's control row — added 2026-08-02, on the user's call.** ✅ The filter box
+    opened a strip of space between the top bar and the columns, so the board's own switches moved
+    into it, right-aligned: the **auto-execution master switch** (down from the top bar) and a new
+    **density chip**. Two clicks that used to cost a trip to Settings, on the surface they change.
+    - **The density label is now *Detailed*, not *Spacious*.** The setting's hint always said *how
+      much detail each flight strip shows*; "spacious" described the whitespace instead of the
+      point. *Standard* was the other candidate and lost for saying nothing about what it does —
+      and for implying the other mode is not standard. **The rename goes all the way down** —
+      `BoardDensity.Detailed`, the resx key, the CSS class — so no code keeps a name the product
+      does not use.
+      - ⚠️ **And the stored value bites back — the plan was to rewrite the one database by hand, and
+        that turned out to be both impossible from here and insufficient.** `BoardDensity` is
+        persisted by name, so a document still saying `Spacious` is a name this build does not have.
+        Measured rather than assumed: `ArgumentException: Requested value 'Spacious' was not found`,
+        thrown out of `BsonMapper.Deserialize`. Settings load in a **constructor at start-up**, so
+        unlike a retired `Badge` — which costs one unreadable card — this takes the whole app down.
+        So `ActBsonMapper` now maps `BoardDensity` like `Badge` and `TransitionReason`: unknown name
+        → the default, next save writes the current one. Guarded by
+        `A_density_name_this_build_retired_loads_as_the_default`, which fails with that exact
+        exception without the converter.
+        - **Why the by-hand rewrite could not be done:** the agent's tools run inside the Claude
+          desktop app's MSIX container, where writes to `%LOCALAPPDATA%` are **redirected** to
+          `…\Packages\Claude_…\LocalCache\Local\`. Reads pass through to the real file until the
+          first write, which is why the db read back correctly and the app launched with real data
+          — the agent was verifying its own copy. Both paths hash identically from inside and
+          diverge from what the user sees. **Anything under `%LOCALAPPDATA%` an agent claims to
+          have written on this machine is suspect; have the app or the user do it.**
+    - The chip **names the mode you are in**, not the one you would get: the board in front of you
+      is the answer, and a button labelled with the other mode would contradict it on every glance.
+    - Verified live: both chips render in the row, the top bar is down to archive + settings, the
+      density chip flips `board detailed` ↔ `board compact` and its label with it, the switch goes
+      amber on `statchip paused`, and both persist through the settings service.
+  - [x] **6. `window after next` removed from the schedule choices — 2026-08-02, on the user's
+    call.** It said "two resets from now", which is a duration wearing a boundary's clothes: what a
+    user wants that far out is a time, and `datetime` already says one exactly. Gone from
+    `TaskSchedule`, `ScheduleArming`, both choice lists (task form and task defaults), the strip's
+    intent chip and four resx entries.
+    - **It took `UsageWindow.Length` and `Duration` with it** — added at step 14 for this one
+      arithmetic (`resetsAt + length`) and read by nothing else once it left. Codex still measures
+      `limit_window_seconds`, but only to `Classify` the window, which is what it was always for.
+    - **A stored `WindowAfterNext` reads back as `Manual`**, not null: the mapper is asked this of a
+      non-nullable property too (the task defaults in settings), and a card whose schedule ACT can no
+      longer resolve should wait for a hand rather than launch on a guess. Guarded by
+      `A_schedule_this_build_retired_reads_back_as_manual`. **This is the third retired enum value in
+      this codebase and the second in one day** — `Badge`, `TransitionReason`, `BoardDensity`, now
+      `TaskSchedule`. Retiring a persisted name without a converter is a start-up crash, and the
+      converter is four lines; add it in the same commit as the deletion, every time.
+  - [x] **4. Live verify + docs.** ✅ Spec (*Finding a card*), `repository-structure.md`, the
+    ticks here. Verified on the real board, all four claims: `rollout` narrowed every column to
+    `0/n` but one and raised **`20 masquée(s)`** on Your turn; `#109` matched exactly
+    #1090–#1099 by prefix; `shell` found the auto-archived **#1031** plus a card matching on its
+    *prompt*, with the purge button gone; the handoff link read `2 dans les archives ›` →
+    `/archive?q=shell` and landed pre-filtered; `Esc` cleared the box, restored all 31 rows and
+    brought the purge button back. No console errors, no server errors.
+    - ⚠️ **DOM-level, not visual.** The preview pane is not displayed, so it composites no
+      frames: a screenshot times out, and the pane also swallowed the synthetic keystrokes
+      (the queries had to be dispatched as `input` events). Every assertion above is read out
+      of the DOM. **The styling of the two boxes has not been looked at in a real window** —
+      worth a glance during step 16's theming pass.
 - [ ] **16. UI polish** — final spacing, type, Radzen theming pass.
   - **User settings page** — consolidate the preferences that landed scattered
     across features into one screen: **theme** (Radzen *Standard* / *Standard

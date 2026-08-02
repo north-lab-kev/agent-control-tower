@@ -5,6 +5,5 @@ public enum TaskSchedule
     Manual,
     Now,
     NextWindow,
-    WindowAfterNext,
     SpecificDateTime,
 }

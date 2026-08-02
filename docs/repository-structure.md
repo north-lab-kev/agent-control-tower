@@ -36,7 +36,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     process died, how long a running card has been quiet,
 │  │  │                            #     which Completed cards retention is due to archive,
 │  │  │                            #     which card is already working in a folder a launch
-│  │  │                            #     wants (pure logic)
+│  │  │                            #     wants, which cards a filter query matches (pure logic)
 │  │  ├─ Scheduling/                #   the queue decision as pure logic: LaunchQueue (one pass →
 │  │  │                            #     ordered launch list + a hold per Ready card), ScheduleArming,
 │  │  │                            #     ConcurrencySlots, DependencyGate, UsageBackpressure,

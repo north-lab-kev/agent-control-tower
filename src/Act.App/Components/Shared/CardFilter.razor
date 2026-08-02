@@ -1,0 +1,16 @@
+@* One control for both surfaces, so a query narrows the board and the archive the same way and
+   there is one set of strings to keep. It filters what is drawn and nothing else — the counts
+   beside it keep answering for the whole column. *@
+<div class="cardfilter">
+    <RadzenIcon Icon="search" class="ico" />
+
+    <RadzenTextBox Value="@Query" @oninput="OnInput" @onkeydown="OnKeyDownAsync"
+                   Placeholder="@Placeholder" aria-label="@Placeholder" class="box" />
+
+    @if (Query.Length > 0)
+    {
+        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                      Size="ButtonSize.ExtraSmall" Click="ClearAsync" class="clear"
+                      title="@Strings.Search_Clear" aria-label="@Strings.Search_Clear" />
+    }
+</div>

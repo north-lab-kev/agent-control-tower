@@ -141,7 +141,6 @@ public partial class TaskView(
         new(TaskSchedule.Manual, Strings.ScheduleOption_Manual),
         new(TaskSchedule.Now, Strings.ScheduleOption_Now),
         new(TaskSchedule.NextWindow, Strings.ScheduleOption_NextWindow),
-        new(TaskSchedule.WindowAfterNext, Strings.ScheduleOption_WindowAfterNext),
         new(TaskSchedule.SpecificDateTime, Strings.ScheduleOption_DateTime),
     ];
 

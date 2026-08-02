@@ -104,7 +104,7 @@ public partial class FlightStrip
         },
     };
 
-    // Spacious only: the compact strip has no room for it without pushing the badge out, and the
+    // Detailed only: the compact strip has no room for it without pushing the badge out, and the
     // badge is the signal the density exists to preserve.
     private bool CanLaunch => Card.Column is BoardColumn.Ready && !IsCompact;
 
@@ -150,7 +150,6 @@ public partial class FlightStrip
         TaskSchedule.Manual => Strings.Schedule_Manual,
         TaskSchedule.Now => Strings.Schedule_Now,
         TaskSchedule.NextWindow => Strings.Schedule_NextWindow,
-        TaskSchedule.WindowAfterNext => Strings.Schedule_WindowAfterNext,
         TaskSchedule.SpecificDateTime => Text.Format(
             Strings.Schedule_At,
             Card.ScheduledFor?.ToString(Strings.Schedule_DateFormat, Culture)),

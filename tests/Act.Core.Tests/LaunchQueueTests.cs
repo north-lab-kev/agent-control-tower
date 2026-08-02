@@ -226,7 +226,7 @@ public class LaunchQueueTests
     {
         var session = new AgentUsage(
             AgentType.ClaudeCode,
-            [new UsageWindow(UsageWindowKind.Session, 30, Now.AddHours(2), TimeSpan.FromHours(5))],
+            [new UsageWindow(UsageWindowKind.Session, 30, Now.AddHours(2))],
             Now,
             false,
             null);

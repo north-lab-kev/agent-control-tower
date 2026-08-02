@@ -18,8 +18,7 @@ public enum UsagePressure
 public sealed record UsageWindow(
     UsageWindowKind Kind,
     int Percent,
-    DateTimeOffset ResetsAt,
-    TimeSpan? Length = null)
+    DateTimeOffset ResetsAt)
 {
     private const int CriticalPercent = 90;
 
@@ -28,16 +27,6 @@ public sealed record UsageWindow(
     private static readonly TimeSpan LongestSession = TimeSpan.FromHours(8);
 
     private static readonly TimeSpan LongestWeek = TimeSpan.FromDays(8);
-
-    // What "the window after next" is measured in. Codex declares the length outright; Claude Code
-    // declares a kind instead, so the nominal length for that kind stands in — which is what the
-    // kind means anyway, and it is only ever used to place a launch one window further out.
-    public TimeSpan Duration => Length ?? Kind switch
-    {
-        UsageWindowKind.Session => TimeSpan.FromHours(5),
-        UsageWindowKind.Weekly => TimeSpan.FromDays(7),
-        _ => TimeSpan.FromDays(30),
-    };
 
     public static UsageWindowKind Classify(TimeSpan length)
     {

@@ -82,12 +82,6 @@
     background: var(--meter-fill);
 }
 
-@media (max-width: 1200px) {
-    .meter ::deep .mreset {
-        display: none;
-    }
-}
-
 @media (max-width: 980px) {
     ::deep .usage {
         display: none;

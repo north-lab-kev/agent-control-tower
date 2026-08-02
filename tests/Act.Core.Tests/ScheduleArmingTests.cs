@@ -8,11 +8,9 @@ public class ScheduleArmingTests
 {
     private static readonly DateTimeOffset Now = new(2026, 8, 2, 9, 0, 0, TimeSpan.Zero);
 
-    [Theory]
-    [InlineData(TaskSchedule.NextWindow)]
-    [InlineData(TaskSchedule.WindowAfterNext)]
-    public void A_window_schedule_needs_arming(TaskSchedule schedule)
-        => ScheduleArming.NeedsArming(Ready(schedule)).Should().BeTrue();
+    [Fact]
+    public void The_window_schedule_needs_arming()
+        => ScheduleArming.NeedsArming(Ready(TaskSchedule.NextWindow)).Should().BeTrue();
 
     [Theory]
     [InlineData(TaskSchedule.Manual)]
@@ -43,22 +41,6 @@ public class ScheduleArmingTests
     public void Next_window_arms_to_the_reset_the_reading_reports()
         => ScheduleArming.Arm(Ready(TaskSchedule.NextWindow), Session())
             .Should().Be(Now.AddHours(2));
-
-    // The whole reason `UsageWindow` carries its length: one window further out is measured, not
-    // guessed at five hours.
-    [Fact]
-    public void Window_after_next_arms_one_declared_length_beyond_it()
-        => ScheduleArming.Arm(Ready(TaskSchedule.WindowAfterNext), Session())
-            .Should().Be(Now.AddHours(2).AddHours(5));
-
-    [Fact]
-    public void A_window_that_declares_no_length_falls_back_to_the_nominal_one()
-    {
-        var weekly = new UsageWindow(UsageWindowKind.Weekly, 20, Now.AddDays(1));
-
-        ScheduleArming.Arm(Ready(TaskSchedule.WindowAfterNext), weekly)
-            .Should().Be(Now.AddDays(1).AddDays(7));
-    }
 
     // Unlike backpressure, where an unreadable quota launches anyway: a boundary ACT cannot see is
     // not something to guess at, and the intent chip already says the card is waiting for one.
@@ -109,8 +91,7 @@ public class ScheduleArmingTests
         ScheduleArming.IsDue(card, Now.AddHours(2)).Should().BeTrue();
     }
 
-    private static UsageWindow Session()
-        => new(UsageWindowKind.Session, 40, Now.AddHours(2), TimeSpan.FromHours(5));
+    private static UsageWindow Session() => new(UsageWindowKind.Session, 40, Now.AddHours(2));
 
     private static Card Ready(TaskSchedule schedule) => new()
     {

@@ -10,18 +10,53 @@
 }
 
 <div class="board @DensityClass @(dragging is null ? null : "dragging")">
+    <div class="filterbar">
+        <CardFilter @bind-Query="query" Placeholder="@Strings.Search_Placeholder" />
+
+        @* The board cannot show an archived card, so it says how many it is not showing rather
+           than letting the query look like the whole answer. *@
+        @if (ArchivedMatches > 0)
+        {
+            <RadzenLink Path="@ArchiveHref" Text="@Text.Format(Strings.Search_ArchiveMatches, ArchivedMatches)"
+                        class="archlink" />
+        }
+
+        @* Both switches belong to the board rather than to the shell: they change what the board
+           does and what it looks like, and this row is the board's own furniture. *@
+        <div class="viewctl">
+            <RadzenButton Icon="@AutoExecIcon" Text="@Strings.Shell_AutoExec" ButtonStyle="ButtonStyle.Base"
+                          Variant="Variant.Outlined" Size="ButtonSize.Small" Click="ToggleAutoExecution"
+                          title="@AutoExecTip" class="@AutoExecClass" />
+
+            <RadzenButton Icon="@DensityIcon" Text="@DensityText" ButtonStyle="ButtonStyle.Base"
+                          Variant="Variant.Outlined" Size="ButtonSize.Small" Click="ToggleDensity"
+                          title="@Strings.Board_Density_Tip" class="statchip" />
+        </div>
+    </div>
+
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Stretch" Gap="0.6rem" class="cols">
         @foreach (var column in AllColumns)
         {
             var cards = CardsIn(column);
+            var hidden = HiddenAttention(column);
 
             <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" class="@ColumnClass(column)"
                          @ondragover:preventDefault="true" @ondragenter:preventDefault="true"
                          @ondrop="() => DropAsync(column)">
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.45rem">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.45rem"
+                             class="colhead">
                     <RadzenText TextStyle="TextStyle.Subtitle2" Text="@Label(column)" class="colname" />
                     <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" IsPill="true"
-                                 Text="@cards.Count.ToString()" class="colcount" />
+                                 Text="@Count(column, cards.Count)" class="colcount" />
+
+                    @* A filter must never be able to hide the one thing the board is for, so a
+                       column whose needs-you cards fell out of the query says so. *@
+                    @if (hidden > 0)
+                    {
+                        <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" IsPill="true"
+                                     Text="@Text.Format(Strings.Board_HiddenAttention, hidden)"
+                                     class="hiddenattn" title="@Strings.Board_HiddenAttention_Tip" />
+                    }
 
                     @* New tasks land in Preparing, so the one place that always shows where a card
                        appears is also where you ask for one. *@
@@ -36,7 +71,8 @@
                 <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem">
                     @if (cards.Count == 0)
                     {
-                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Board_ColumnEmpty" class="empty" />
+                        <RadzenText TextStyle="TextStyle.Caption" class="empty"
+                                    Text="@(Filtering ? Strings.Board_ColumnNoMatch : Strings.Board_ColumnEmpty)" />
                     }
                     else
                     {

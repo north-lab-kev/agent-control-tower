@@ -12,7 +12,11 @@
 ::deep .bar {
     padding: 10px 15px;
     padding-right: calc(100% - env(titlebar-area-width, 100%) + 15px);
-    height: env(titlebar-area-height, auto);
+    /* A floor, not a fixed height: the strip has to reach at least the OS overlay so the window
+       buttons sit inside it, but a three-line usage meter is taller than the overlay — pinned to
+       that height the meters overflow the strip at both edges and are cut by its border, which is
+       what reads as "not centred". Growing instead keeps the centring true. */
+    min-height: env(titlebar-area-height, auto);
     background: linear-gradient(var(--act-bar-top), var(--act-bar-bottom));
     border-bottom: 1px solid var(--act-line);
     flex: 0 0 auto;
@@ -20,9 +24,20 @@
     -webkit-app-region: drag;
 }
 
+/* Every page header is a `.bar` too, so this reaches them as well as the title strip — and an OS
+   drag region swallows the mouse, which is how the archive's filter box ended up unfocusable and
+   reading as read-only. A control is a control wherever it sits: inputs are punched out of the
+   region like the buttons and links, and get their selection back. */
 ::deep .bar .rz-button,
-::deep .bar a {
+::deep .bar a,
+::deep .bar input,
+::deep .bar textarea {
     -webkit-app-region: no-drag;
+}
+
+::deep .bar input,
+::deep .bar textarea {
+    user-select: text;
 }
 
 ::deep .brand,
@@ -63,38 +78,6 @@
     ::deep .fullname {
         display: none;
     }
-}
-
-::deep .statchip {
-    font-family: var(--act-mono);
-    font-size: 10px;
-    white-space: nowrap;
-    color: var(--act-dim);
-    border-color: var(--act-line2);
-    background: transparent;
-    padding: 0.15rem 0.5rem;
-    text-transform: none;
-    letter-spacing: 0;
-}
-
-::deep .statchip.paused {
-    color: var(--act-wait);
-    border-color: color-mix(in srgb, var(--act-wait) 45%, transparent);
-}
-
-::deep .statchip .rz-button-icon-left {
-    font-size: 14px;
-    width: 14px;
-    height: 14px;
-    margin-right: 5px;
-}
-
-::deep .statchip.live .rz-button-icon-left {
-    color: var(--act-run);
-}
-
-::deep .statchip.paused .rz-button-icon-left {
-    color: var(--act-wait);
 }
 
 ::deep .gear {
