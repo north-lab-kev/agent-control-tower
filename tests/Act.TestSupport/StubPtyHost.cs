@@ -30,7 +30,6 @@ public sealed class StubPtyProcess : IPtyProcess
 
     public List<TerminalSize> Resizes { get; } = [];
 
-    public bool Killed { get; private set; }
 
     public int ProcessId => 4242;
 
@@ -48,13 +47,6 @@ public sealed class StubPtyProcess : IPtyProcess
     }
 
     public void Resize(int cols, int rows) => Resizes.Add(new TerminalSize(cols, rows));
-
-    public Task KillAsync(CancellationToken cancellationToken = default)
-    {
-        Killed = true;
-
-        return Task.CompletedTask;
-    }
 
     public async Task EmitAsync(string chunk)
     {

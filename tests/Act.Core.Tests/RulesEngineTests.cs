@@ -224,15 +224,6 @@ public class RulesEngineTests
         => RulesEngine.Decide(CardIn(BoardColumn.YourTurn, Badge.ReadyForReview), new ProcessExited(SessionId, At, 0))
             .Should().BeNull();
 
-    [Fact]
-    public void A_kill_lands_the_card_rather_than_leaving_it_running()
-    {
-        var move = RulesEngine.Decide(CardIn(BoardColumn.Executing), new SessionKilled(SessionId, At));
-
-        move!.Column.Should().Be(BoardColumn.YourTurn);
-        move.Badge.Should().Be(Badge.Killed);
-    }
-
     // The launch boundary, from the other side: observation must never drag a card back across it.
     // A dying session reporting one last thing cannot un-complete finished work or start unstarted
     // work, and this is the assertion that says so for every event the engine knows.
@@ -347,7 +338,6 @@ public class RulesEngineTests
         new TurnFailed(SessionId, At, "the model is not supported on this account"),
         new ProcessExited(SessionId, At, 0),
         new ProcessExited(SessionId, At, 3),
-        new SessionKilled(SessionId, At),
         new SessionEnded(SessionId, At),
         new SessionStarted(SessionId, At, "t.jsonl", "C:/repo"),
         new SessionEnriched(SessionId, At, new EnrichmentSnapshot()),

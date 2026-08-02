@@ -231,8 +231,8 @@ rule still holds: no manual moves while a session is actively mid-flight, which
 is why **Executing** is the one column that neither lifts nor accepts a drop.
 
 **Badges (orthogonal to columns, always auto):** `running`, `needs permission`,
-`needs answer`, `error`, `killed` (user-terminated via the kill/abandon hatch),
-`compacting` (context being compacted), `to review` (finished, awaiting
+`needs answer`, `error`, `killed` (**no producer since 2026-08-01** — see *Restart
+terminal*), `compacting` (context being compacted), `to review` (finished, awaiting
 sign-off). One event can both move a card *and* stamp its badge. `compacting`
 occurs *during* Executing. There is deliberately **no `stale` badge** — a card
 that has gone quiet says so beside its badge instead of in it (see *No stale
@@ -293,7 +293,10 @@ Everything the user is on the hook for, in one column; the badge says which kind
 - **needs permission** — a permission prompt is open in the TUI.
 - **needs answer** — the agent asked a question.
 - **error** — crash or non-zero exit.
-- **killed** — the user terminated the session via the kill/abandon hatch.
+- **killed** — **unreachable since 2026-08-01.** It was stamped by the kill hatch,
+  and the hatch and its whole event chain are gone (see *Restart terminal*). The
+  badge itself is kept so a card stored with one still reads back and can still be
+  signed off.
 - **to review** — the agent finished its turn cleanly (`Stop`, no question, no
   error). Work is produced and nothing is blocking.
 
@@ -889,7 +892,7 @@ confirm at build.)*
   region — Executing and Your turn — that still carries a `sessionId`**,
   with `--resume` into a fresh terminal and no message, which drops the user at the
   prompt. The same restore happens when a card's terminal is *opened* and its process
-  is gone (killed, exited on its own, signed off, or a restart that could not reach
+  is gone (exited on its own, signed off, or a restart that could not reach
   it), so the terminal is never an empty pane behind a button. The on-screen scrollback
   does not come back; the restore is recorded as a transition so the timeline says why.
   - A restore **moves nothing**: the card stays in the column and badge the rules
@@ -903,8 +906,9 @@ confirm at build.)*
   - Not restored: Ready and Preparing (nothing has been launched — that is the
     user's call). A card with no `sessionId` has no binding to resume and is left
     alone.
-  - A kill still kills. The restore happens on the *next* open or the next start,
-    never in reaction to the kill itself.
+  - **Restart terminal is the one teardown that resumes immediately**, because ending
+    the pty is the whole point of it rather than a side effect — see *Restart terminal*.
+    Every other way a session ends waits for the next open or the next start.
 
 ---
 
@@ -932,7 +936,6 @@ the same column, so the **badge is the only thing the event decides**.
 | Executing | turn ended (`Stop`) | Your turn | `to review` |
 | Executing | process exited non-zero / crash | Your turn | `error` |
 | Executing | the agent reports the turn failed *(api error, model refused)* | Your turn | `error` |
-| Executing | killed by the user | Your turn | `killed` |
 | Executing | startup prompt waiting *(no hook at all since the spawn)* | Your turn | `needs permission` |
 | Your turn | activity observed *(the user answered, or sent it back, in the terminal)* | Executing | `running` |
 | Your turn + `needs answer` | permission requested | *(ignored)* | *(stays)* `needs answer` |
@@ -1075,9 +1078,9 @@ Error kinds and what retry means:
 
 So the drawer's action set is state-specific — and, since ACT no longer answers
 anything, mostly a way *into* the terminal: permission / question → **Open
-terminal**; **error → Retry (± edit launch config)**; review → complete / kill, or
-Open terminal to tell it what to do next. Open terminal, Open in Desktop and Kill
-are available on any active card.
+terminal**; **error → Retry (± edit launch config)**; review → complete, or
+Open terminal to tell it what to do next. Open terminal, Open in Desktop and
+Restart terminal are available on any active card.
 
 ### No auto-completion — decided 2026-07-30
 
@@ -1215,8 +1218,8 @@ The division of labour this buys is the whole point:
 ### Alive while the card is active
 
 The process is spawned at launch and stays **alive across turns** — through
-Executing and Your turn alike — until the user kills it or the
-card completes. This is the natural shape for an interactive terminal: scrollback
+Executing and Your turn alike — until the card completes, the CLI exits, or the
+user restarts the terminal (which resumes the same session into a new pty). This is the natural shape for an interactive terminal: scrollback
 survives, and the user can keep typing without ACT re-spawning anything underneath
 them.
 
@@ -1251,7 +1254,7 @@ string on the screen. See *The one prompt no hook reports*.
 
 **ACT types nothing into a session at all.** Every byte reaching a live agent is a
 keystroke the user made in the terminal ACT is showing them; ACT's only writes to
-the pty are the resize and the kill.
+the pty are the resize and the teardown.
 
 *(Until 2026-08-01 there was one exception — a **send-back message**, seeded from
 the UI into a session parked at its prompt, going in as bracketed paste followed by
@@ -1277,11 +1280,57 @@ terminal ACT is showing them.
 Consequently ACT has **no approve/deny surface at all**. See *Hooks are
 observability, not control*.
 
-### Kill / abandon hatch
+### Restart terminal — replaced the kill hatch, 2026-08-01
 
-ACT owns the process, so **kill = terminate the PTY** → route the card to Needs
-feedback with a `killed` badge. Not a manual column move — a *session action* that
-triggers an auto transition, so the launch-boundary rule holds.
+The session view's one process action is **Restart terminal**: end the pty and
+resume the *same* `sessionId` into a fresh one. The card keeps its column, its
+badge and its binding, because resuming a session is not a claim about the work —
+the same rule the startup restore follows. Recorded as `TerminalRestarted` rather
+than `SessionRestored`, since here ACT ended a live process on purpose and the
+timeline should say the scrollback was **discarded**, not lost.
+
+It exists for the terminal that has become unusable while the session behind it is
+fine — a wedged or garbled screen, a CLI that stopped painting. `RestoreAsync`
+could not serve: it bails on a live session, and a live-but-useless one is exactly
+the case.
+
+**Why the kill hatch went.** It was specified as *terminate the PTY → route the
+card to Your turn with a `killed` badge*, and three things undid it:
+
+- **It never did that.** The button called `SessionRegistry.EndAsync` →
+  `DisposeAsync`, which publishes nothing; `IAgentSession.KillAsync` — the only
+  thing that raises `SessionKilled` — had **no caller anywhere**. So a kill left the
+  card sitting in Executing badged `running` with a dead process behind it: the exact
+  stranded state the spec invoked it to prevent.
+- **Its remaining jobs have owners.** `Esc` in the terminal interrupts a response
+  *or a tool call* mid-turn (Claude Code, verified in the CLI docs), so redirecting a
+  misbehaving agent is the terminal's job; the turn then ends and `Stop` moves the
+  card by itself. A genuinely wedged card is **deleted** — soft, restorable from the
+  archive — which is the honest verb for abandoning work.
+- **Ending a healthy session was the wrong remedy** for what was almost always a
+  broken screen. Restart fixes that without costing the run.
+
+**The whole chain went with it.** The `SessionKilled` event, the rules-engine row
+that consumed it, `TransitionReason.SessionKilled` and its wording,
+`IAgentSession.KillAsync` and `IPtyProcess.KillAsync` are all deleted. Nothing was
+lost: the event had exactly one producer (`PtyAgentSession.KillAsync`) and that had
+no caller, so no stored card can carry the reason or the badge. Two consequences
+worth knowing:
+
+- **Disposal is now the only teardown a session has.** `PtyProcess.DisposeAsync`
+  already killed the connection itself, so the second path bought nothing — and it
+  was a way for an adapter to end a process *without* `SessionRegistry` retiring the
+  session's hook token and config file, both of which hang off disposal.
+- **`PtyAgentSession` no longer needs its `killed` flag.** It existed so a
+  user-kill did not also report `ProcessExited` as an `error`; `DisposeAsync`
+  unsubscribes from `Exited` before tearing the process down, which is what actually
+  protects a sign-off or a terminal restart from being read as a crash.
+
+**`Badge.Killed` is kept, and is now unreachable.** It stays in the model, the
+attention order and the colours so that a card stored with it still reads back —
+belt and braces, since nothing could have written one — and so signing off a card
+carrying it keeps working. Removing it is a separate decision about the documented
+state model.
 
 ### Handoff to the Claude desktop app — a per-card action
 
@@ -1745,8 +1794,8 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
 - **Interaction — two surfaces, one rule.** The **drawer** is where you *read* a
   card; the **session view** is where you *talk* to it.
   - **Contextual right-side drawer** over a dimmed board, action set by state.
-    Actions: Open terminal, Open in Desktop, Kill, **Retry** (± edit launch config,
-    on `error`), Complete. Open terminal / Open in Desktop / Kill on any active card.
+    Actions: Open terminal, Open in Desktop, Restart terminal, **Retry** (± edit launch
+    config, on `error`), Complete. The first three on any active card.
     - **No Send back — decided 2026-08-01.** Replying to finished work is typing into
       the session, and the session is a tab on the card. A compose box in the drawer or
       the rail is a worse text input inches from a better one, and it was the last thing

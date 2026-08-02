@@ -47,15 +47,6 @@ public sealed class MockAgentSession : IAgentSession
 
     public IAsyncEnumerable<AgentEvent> Events => events.Reader.ReadAllAsync();
 
-    public async Task KillAsync(CancellationToken cancellationToken = default)
-    {
-        Record(new AgentInput(AgentInputKind.Kill));
-        await StopPumpAsync();
-
-        events.Writer.TryWrite(new SessionKilled(SessionId ?? string.Empty, clock.Now));
-        events.Writer.TryComplete();
-    }
-
     public async ValueTask DisposeAsync()
     {
         await StopPumpAsync();

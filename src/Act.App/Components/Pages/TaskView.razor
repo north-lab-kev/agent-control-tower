@@ -126,9 +126,9 @@ else
                                 <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Model" />
                                 <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Model_Hint" class="hint" />
                             </RadzenStack>
-                            <RadzenDropDown TValue="string" @bind-Value="form.Model" Data="Models"
-                                            AllowClear="true" Placeholder="@Strings.NewTask_AgentDefault"
-                                            class="control" />
+                            <RadzenDropDown TValue="string" Value="form.Model" ValueChanged="OnModelChanged"
+                                            Data="Models" AllowClear="true"
+                                            Placeholder="@Strings.NewTask_AgentDefault" class="control" />
                         </div>
 
                         <div class="row">

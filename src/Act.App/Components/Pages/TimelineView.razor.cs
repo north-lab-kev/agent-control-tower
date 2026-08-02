@@ -16,9 +16,18 @@ public partial class TimelineView(BoardState board, NavigationManager navigation
     [Parameter]
     public Guid CardId { get; set; }
 
-    private IReadOnlyList<Entry> Entries => card is null
-        ? []
-        : [.. card.Transitions.OrderBy(transition => transition.At).Select(Entry.From)];
+    private IReadOnlyList<Entry> Entries
+    {
+        get
+        {
+            if (card is null)
+                return [];
+
+            var now = DateTimeOffset.Now;
+
+            return [.. card.Transitions.OrderBy(transition => transition.At).Select(transition => Entry.From(transition, now))];
+        }
+    }
 
     protected override void OnInitialized() => board.Changed += OnChanged;
 
@@ -46,14 +55,31 @@ public partial class TimelineView(BoardState board, NavigationManager navigation
         BoardColumn? Column,
         string RailClass)
     {
-        public static Entry From(Transition transition) => new(
+        public static Entry From(Transition transition, DateTimeOffset now) => new(
             transition.At,
-            transition.At.ToLocalTime().ToString("HH:mm:ss", CultureInfo.CurrentCulture),
+            Stamp(transition.At, now),
             Text: Wording(transition),
             // Suppressed for a row that has no reason of its own: the wording already *is* the
             // column, and "Entered Ready → Ready" reads like a bug.
             Column: transition.Reason is null ? null : transition.Column,
             RailClass: CardVisuals.BadgeClass(transition.Badge) ?? RailFor(transition.Column));
+
+        private static string Stamp(DateTimeOffset at, DateTimeOffset now)
+        {
+            var culture = CultureInfo.CurrentCulture;
+            var local = at.ToLocalTime();
+            var today = now.ToLocalTime();
+            var clock = local.ToString("HH:mm:ss", culture);
+
+            if (local.Date == today.Date)
+                return clock;
+
+            var date = local.Year == today.Year
+                ? local.ToString(culture.DateTimeFormat.MonthDayPattern.Replace("MMMM", "MMM"), culture)
+                : local.ToString("d", culture);
+
+            return $"{date} {clock}";
+        }
 
         // Rows written before `TransitionReason` existed carry neither a reason nor a note, and a
         // blank line looks like a defect rather than like history. All such a row actually tells us

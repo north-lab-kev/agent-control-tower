@@ -126,14 +126,6 @@ public static class RulesEngine
                 TransitionReason.AgentExited,
                 Detail: exit.ExitCode.ToString()),
 
-            // A kill is the user's own action, so it is reported rather than treated as a fault —
-            // but it still needs somewhere to land, and the card must not sit in Executing with no
-            // process behind it.
-            SessionKilled => new BoardMove(
-                BoardColumn.YourTurn,
-                Badge.Killed,
-                TransitionReason.SessionKilled),
-
             // Silence is deliberately not a rule. A card that has gone quiet gets no badge and no
             // transition, because ACT cannot tell a hung agent from a forty-minute build from its
             // own ingestion having broken — see `QuietSession`, which states the gap instead of

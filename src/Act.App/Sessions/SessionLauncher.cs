@@ -169,8 +169,8 @@ public sealed class SessionLauncher(
         return LaunchResult.Ok();
     }
 
-    // A restore is not a launch. The process died — with ACT, with a kill, with the CLI's own exit,
-    // with the sign-off that ended it — while the binding in the store did not, so the session id
+    // A restore is not a launch. The process died — with ACT, with the CLI's own exit, with the
+    // sign-off that ended it — while the binding in the store did not, so the session id
     // comes back into a fresh terminal and the card stays exactly where it was. Moving it to
     // Executing would claim work is running when all that is running is a prompt waiting for its
     // user, and a Completed card reopened to read its history is not work being resumed; the resume
@@ -183,6 +183,38 @@ public sealed class SessionLauncher(
         if (registry.IsLive(card.Id))
             return LaunchResult.Ok();
 
+        return await ResumeAsync(card, size, TransitionReason.SessionRestored, cancellationToken);
+    }
+
+    public bool CanRestart(Card card) => SessionRestore.IsResumable(card) && byAgent.ContainsKey(card.AgentType);
+
+    // The terminal, not the work. A TUI can become unusable while the session behind it is perfectly
+    // healthy — a wedged or garbled screen, a CLI that stopped painting — and the only remedy used to
+    // be ending a session that was never the problem. So this tears the pty down and brings the *same*
+    // session id straight back into a fresh one: the card keeps its column, its badge and its binding,
+    // because resuming a session is not a claim about the work.
+    //
+    // Unlike `RestoreAsync` it does not bail on a live session — a live-but-useless one is the entire
+    // reason it exists.
+    public async Task<LaunchResult> RestartAsync(
+        Card card,
+        TerminalSize size,
+        CancellationToken cancellationToken = default)
+    {
+        if (!CanRestart(card))
+            return LaunchResult.Refused($"A card in {card.Column} with no session cannot be restarted.");
+
+        await registry.EndAsync(card.Id);
+
+        return await ResumeAsync(card, size, TransitionReason.TerminalRestarted, cancellationToken);
+    }
+
+    private async Task<LaunchResult> ResumeAsync(
+        Card card,
+        TerminalSize size,
+        TransitionReason reason,
+        CancellationToken cancellationToken)
+    {
         if (!SessionRestore.IsResumable(card))
             return LaunchResult.Refused($"A card in {card.Column} with no session cannot be restored.");
 
@@ -235,7 +267,7 @@ public sealed class SessionLauncher(
             At = clock.Now,
             Column = card.Column,
             Badge = card.Badge,
-            Reason = TransitionReason.SessionRestored,
+            Reason = reason,
         });
 
         await board.UpdateAsync(card, cancellationToken);

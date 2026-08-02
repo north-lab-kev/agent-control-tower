@@ -42,6 +42,8 @@ public partial class SessionView(
 
     private bool completing;
 
+    private bool restarting;
+
 
     [Parameter]
     public Guid CardId { get; set; }
@@ -58,6 +60,11 @@ public partial class SessionView(
     // And its undo, in the same place: reading the transcript of a signed-off card is exactly when
     // the user finds the thing they still wanted to say.
     private bool CanReopen => card is { } existing && reopener.CanReopen(existing);
+
+    // Offered wherever there is a session to resume, live or not — a card whose process is already
+    // gone is restored on open, and asking for that again is a reasonable thing to want when the
+    // screen looks wrong.
+    private bool CanRestart => card is { } existing && launcher.CanRestart(existing);
 
     // Null until the session id is known, which for Codex is a little after launch — and null
     // forever for an agent with no desktop app, so the action simply does not appear.
@@ -151,10 +158,10 @@ public partial class SessionView(
 
         BindSession();
 
-        // Attach only, never on a later registry change: a card that lost its process — to a kill,
-        // to the CLI's own exit, to a restart the startup restore did not cover, to the sign-off that
-        // ended it — gets its terminal back by being opened, but a kill from this very view has to
-        // stay killed.
+        // Attach only, never on a later registry change: a card that lost its process — to the CLI's
+        // own exit, to an ACT restart the startup restore did not cover, to the sign-off that ended
+        // it — gets its terminal back by being opened. On a later change it must not, or the restart
+        // below would race this into resuming the session it just ended.
         if (session is null)
             await RestoreAsync();
 
@@ -296,12 +303,42 @@ public partial class SessionView(
         }
     }
 
-    private async Task KillAsync()
+    // A fresh terminal on the same session. The old pty goes first — two ptys on one session id is
+    // two CLIs writing one transcript — and the xterm is reset before rebinding, because the new
+    // session replays its own backlog and the dead one's output above it would read as one screen.
+    private async Task RestartTerminalAsync()
     {
-        await registry.EndAsync(CardId);
+        if (card is not { } existing || restarting)
+            return;
 
-        session = null;
-        live = false;
+        restarting = true;
+
+        try
+        {
+            var result = await launcher.RestartAsync(existing, Geometry);
+
+            if (result.Message is { } message)
+            {
+                notifications.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = Strings.Session_RestartFailed,
+                    Detail = message,
+                    Duration = 20000,
+                });
+            }
+
+            if (module is { } loaded)
+                await loaded.InvokeVoidAsync("clear", terminalId);
+
+            card = board.Card(CardId);
+
+            BindSession();
+        }
+        finally
+        {
+            restarting = false;
+        }
     }
 
     private Task OpenDesktopAsync(string url) => desktop.OpenExternalAsync(url);

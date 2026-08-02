@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Act.App\Act.App.csproj" />
+    <ProjectReference Include="..\Act.TestSupport\Act.TestSupport.csproj" />
   </ItemGroup>
 
 </Project>

@@ -22,6 +22,4 @@ public interface IAgentSession : IAsyncDisposable
     IAgentTerminal Terminal { get; }
 
     IAsyncEnumerable<AgentEvent> Events { get; }
-
-    Task KillAsync(CancellationToken cancellationToken = default);
 }

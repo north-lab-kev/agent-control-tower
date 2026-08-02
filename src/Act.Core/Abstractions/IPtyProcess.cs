@@ -13,7 +13,8 @@ public interface IPtyProcess : IAsyncDisposable
 
     Task WriteAsync(string data, CancellationToken cancellationToken = default);
 
+    // No `Kill`: disposal is the only teardown, and it kills the connection itself. A second way
+    // to end a process was one an adapter could take without ACT retiring the session's token or
+    // its config file, both of which hang off disposal.
     void Resize(int cols, int rows);
-
-    Task KillAsync(CancellationToken cancellationToken = default);
 }

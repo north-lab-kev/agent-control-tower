@@ -29,8 +29,6 @@ public sealed class PtyAgentSession : IAgentSession
 
     private readonly IClock clock;
 
-    private bool killed;
-
     private bool disposed;
 
     public PtyAgentSession(
@@ -85,21 +83,6 @@ public sealed class PtyAgentSession : IAgentSession
         events.Writer.TryWrite(agentEvent);
     }
 
-    public async Task KillAsync(CancellationToken cancellationToken = default)
-    {
-        if (killed)
-            return;
-
-        killed = true;
-
-        startupWatch.Cancel();
-
-        await process.KillAsync(cancellationToken);
-
-        events.Writer.TryWrite(new SessionKilled(SessionId ?? string.Empty, clock.Now));
-        events.Writer.TryComplete();
-    }
-
     public async ValueTask DisposeAsync()
     {
         if (disposed)
@@ -120,14 +103,12 @@ public sealed class PtyAgentSession : IAgentSession
         events.Writer.TryComplete();
     }
 
-    // A kill is a user action and already reported itself; reporting the exit as well would
-    // hand the card an `error` badge for something it asked for.
+    // Only reachable while the session is still bound: `DisposeAsync` unsubscribes before it tears
+    // the process down, so a teardown ACT asked for — a sign-off, a terminal restart — never comes
+    // back as an exit the card would wear as `error`.
     private void OnProcessExited(int exitCode)
     {
         startupWatch.Cancel();
-
-        if (killed)
-            return;
 
         events.Writer.TryWrite(new ProcessExited(SessionId ?? string.Empty, clock.Now, exitCode));
         events.Writer.TryComplete();

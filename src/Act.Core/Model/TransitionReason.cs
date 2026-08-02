@@ -32,6 +32,11 @@ public enum TransitionReason
     SessionRestored,
     RestoreFailed,
 
+    // The user asked for a fresh terminal on a session that was still running. Distinct from
+    // `SessionRestored`, which reacts to a process that had already died: here ACT ended a live one
+    // on purpose, so the timeline has to say the scrollback was discarded rather than lost.
+    TerminalRestarted,
+
     // The recovery and send-back row: the user acted in the terminal and ACT saw the session move.
     ActivityObserved,
     CompactingStarted,
@@ -41,7 +46,6 @@ public enum TransitionReason
     TurnEnded,
     TurnFailed,
     AgentExited,
-    SessionKilled,
 
     // The CLI is parked on its directory-trust prompt, which blocks before the session exists and
     // so reaches ACT as no hook at all. Its own reason rather than `PermissionRequested`: nothing

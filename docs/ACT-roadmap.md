@@ -924,9 +924,9 @@ verifiable, and leaves something runnable.
     predicate (its own rule, because reaching Completed stamps the sign-off and ends the session,
     which `BoardState.MoveAsync` neither does nor should — and because no event may decide it),
     and `Act.App/Sessions/CardCompleter` is the action, the mirror of `SessionLauncher`. It stamps
-    and persists the card *before* tearing the terminal down, so the `SessionKilled` the dying
-    pty reports lands on a card the engine no longer governs. The gate is the **column**, so
-    every card in Your turn can be signed off, `error` and `killed` included.
+    and persists the card *before* tearing the terminal down, so anything the dying pty still
+    reports lands on a card the engine no longer governs. The gate is the **column**, so
+    every card in Your turn can be signed off, `error` included.
     Verified live: a launched card walked to Your turn and was signed off from both surfaces —
     Completed, badge `done`, `Marked completed` on the timeline, agent process gone.
   - [x] **The sign-off is a drag, not a button.** A Your turn card now lifts (`ManualMove.CanDrag`)

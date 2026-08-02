@@ -57,8 +57,8 @@ public class TransitionTextTests
 
     [Fact]
     public void A_reason_that_takes_no_detail_renders_without_one()
-        => TransitionText.For(new Transition { Reason = TransitionReason.SessionKilled }, Shipped[0])
-            .Should().Be("Session killed");
+        => TransitionText.For(new Transition { Reason = TransitionReason.MovedByHand }, Shipped[0])
+            .Should().Be("Moved by hand");
 
     // Rows written before reasons existed carry only a note, and the timeline still has to show
     // something for them.

@@ -131,30 +131,9 @@ public class MockAgentSessionTests
         ]);
     }
 
-    [Fact]
-    public async Task Killing_a_live_session_ends_the_stream_with_a_kill()
-    {
-        var adapter = new MockAgentAdapter
-        {
-            Script = AgentScript.Start().Activity().AwaitsKeystroke().EndsTurn(),
-        };
-
-        await using var session = await LaunchAsync(adapter);
-
-        var seen = new List<AgentEvent>();
-
-        await foreach (var received in session.Events)
-        {
-            seen.Add(received);
-
-            if (received is ActivityObserved)
-                await session.KillAsync();
-        }
-
-        seen.Last().Should().BeOfType<SessionKilled>();
-        seen.Should().NotContain(received => received is TurnEnded);
-    }
-
+    // Disposal is the only teardown there is, and the restart depends on this: a session ended
+    // mid-script must stop producing, or a `TurnEnded` from the pty ACT just replaced would move the
+    // card as if the new one had finished a turn.
     [Fact]
     public async Task Disposing_a_live_session_completes_the_stream()
     {
@@ -174,6 +153,7 @@ public class MockAgentSessionTests
         }
 
         seen.Should().ContainSingle().Which.Should().BeOfType<SessionStarted>();
+        seen.Should().NotContain(received => received is TurnEnded);
     }
 
     [Fact]

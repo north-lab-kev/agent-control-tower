@@ -165,11 +165,24 @@ public partial class TaskView(
     {
         get
         {
-            var efforts = agents.For(form.Agent).EffortsFor(form.Model);
+            var efforts = OfferedEfforts;
 
             return form.Effort is { } current && !efforts.Contains(current)
                 ? [.. efforts, current]
                 : efforts;
+        }
+    }
+
+    // "Agent default" is not "no model", so the ladder shown is the one the launch will actually
+    // accept — `LaunchConfigResolver` fills the blank model in the same way before reading efforts
+    // off it, and offering nothing here made the field unusable until a model was named.
+    private IReadOnlyList<string> OfferedEfforts
+    {
+        get
+        {
+            var capabilities = agents.For(form.Agent);
+
+            return capabilities.EffortsFor(form.Model ?? capabilities.DefaultModel);
         }
     }
 
@@ -471,18 +484,39 @@ public partial class TaskView(
         }
     }
 
+    // `Models` and `Efforts` keep whatever the form carries in their lists on purpose, so the checks
+    // here ask the agent rather than the list — otherwise a retargeted card would always look valid.
     private void OnAgentChanged(AgentType agent)
     {
         form.Agent = agent;
 
-        if (!Models.Contains(form.Model))
+        var capabilities = agents.For(agent);
+
+        if (form.Model is { } model && capabilities.Model(model) is null)
             form.Model = null;
+
+        DropUnavailableEffort();
 
         // Unlike a model, a permission mode has no "agent default" to fall back to — the field is
         // required and every agent honours `Default`, so switching to an agent that does not offer the
         // chosen mode lands there rather than leaving a value the launch would reject.
-        if (!agents.For(agent).Supports(form.Permission))
+        if (!capabilities.Supports(form.Permission))
             form.Permission = PermissionMode.Default;
+    }
+
+    // The ladders differ per model, not only per agent, so the same rule has to run when the model
+    // changes underneath a chosen effort.
+    private void OnModelChanged(string? model)
+    {
+        form.Model = model;
+
+        DropUnavailableEffort();
+    }
+
+    private void DropUnavailableEffort()
+    {
+        if (form.Effort is { } effort && !OfferedEfforts.Contains(effort))
+            form.Effort = null;
     }
 
     private void OnScheduleChanged(TaskSchedule schedule)

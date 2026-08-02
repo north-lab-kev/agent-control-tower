@@ -70,14 +70,6 @@ internal sealed class PtyProcess(IPtyConnection connection) : IPtyProcess
         }
     }
 
-    public Task KillAsync(CancellationToken cancellationToken = default)
-    {
-        if (!disposed)
-            connection.Kill();
-
-        return Task.CompletedTask;
-    }
-
     public async ValueTask DisposeAsync()
     {
         if (disposed)

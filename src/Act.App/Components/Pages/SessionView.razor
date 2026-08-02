@@ -131,10 +131,14 @@ else
                                       ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
                                       Click="@(() => OpenDesktopAsync(url))" />
                     }
-                    @if (live)
+                    @* Recovery, not destruction — so it is a plain action, not a danger one. The
+                       session is resumed, never ended: only the terminal in front of it is new. *@
+                    @if (CanRestart)
                     {
-                        <RadzenButton Text="@Strings.Session_Kill" Icon="stop" Size="ButtonSize.Small"
-                                      ButtonStyle="ButtonStyle.Danger" Variant="Variant.Outlined" Click="KillAsync" />
+                        <RadzenButton Text="@Strings.Session_RestartTerminal" Icon="restart_alt"
+                                      Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                      Variant="Variant.Outlined" Disabled="restarting"
+                                      Click="RestartTerminalAsync" />
                     }
                 </div>
             </aside>

@@ -45,7 +45,7 @@ else
                                         <span class="col">→ @CardVisuals.Column(column)</span>
                                     }
                                 </span>
-                                <span class="tm" title="@entry.At.ToString("f")">@entry.Clock</span>
+                                <span class="tm" title="@entry.At.ToLocalTime().ToString("f")">@entry.Clock</span>
                             </div>
                         }
                     </div>

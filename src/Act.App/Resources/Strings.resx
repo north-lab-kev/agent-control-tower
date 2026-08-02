@@ -507,8 +507,11 @@
   <data name="Session_OpenInDesktop" xml:space="preserve">
     <value>Open in desktop app</value>
   </data>
-  <data name="Session_Kill" xml:space="preserve">
-    <value>Kill session</value>
+  <data name="Session_RestartTerminal" xml:space="preserve">
+    <value>Restart terminal</value>
+  </data>
+  <data name="Session_RestartFailed" xml:space="preserve">
+    <value>Could not restart the terminal</value>
   </data>
   <data name="Session_Open" xml:space="preserve">
     <value>Open terminal</value>
@@ -711,8 +714,8 @@
   <data name="Transition_AgentExited" xml:space="preserve">
     <value>Agent exited with code {0}</value>
   </data>
-  <data name="Transition_SessionKilled" xml:space="preserve">
-    <value>Session killed</value>
+  <data name="Transition_TerminalRestarted" xml:space="preserve">
+    <value>Terminal restarted — the session was resumed in a new one</value>
   </data>
   <data name="Transition_ActivityObserved" xml:space="preserve">
     <value>Activity observed in the terminal</value>
