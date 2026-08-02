@@ -319,16 +319,27 @@ The user marks the task done from Your turn. Not strictly terminal: it has one
 manual exit, **reopen → Your turn**, for when the user forgot some feedback.
 From there the normal Your turn exits apply.
 
+- **The gesture mirrors the sign-off** — a **drag back onto Your turn** on the board,
+  plus a **Reopen** action in the session view for a card you are already inside, which
+  is where the user usually is when they find the thing they still wanted to say.
+- **It un-stamps `completedAt`**, so the retention sweep (which dates a card from its
+  sign-off) cannot archive a card that is no longer signed off. That is why it is its
+  own rule (`CardReopen`) and not a plain manual move, exactly as the sign-off is.
+- **The badge it lands on is `to review`.** Nothing was observed; the card is simply
+  back in the user's court with work to look at.
+- **It starts no session.** The terminal comes back the way it does for every bound
+  card — by being opened (see *Session lifecycle*) — so the reopen is the column move
+  and nothing else.
+
 ---
 
 ## Task spawning & lineage
 
 Tasks can be created two ways: **manually** (born in Preparing) or **spawned**
-by another task (born in Ready, prompt already defined). This is a general
-mechanism, not a git-specific one — **any task can spawn follow-up tasks**
-(emergent; there is no special "plan" task type). A plan task decomposing into
-implementation tasks and a completed task emitting a git task are the *same*
-mechanism.
+by another task (born in Ready, prompt already defined). It is a general
+mechanism — **any task can spawn follow-up tasks** (emergent; there is no special
+"plan" task type). A plan task decomposing into implementation tasks and a
+reviewed task handing its leftovers to a second card are the *same* mechanism.
 
 ### Lineage
 
@@ -340,9 +351,13 @@ Every card carries:
 So navigation works both directions: a parent lists its children; a child shows
 where it came from. Spawn **author** is also recorded, since it affects labeling:
 
-- **ACT-emitted** — deterministic; ACT writes the child's prompt itself (e.g.
-  the git commit/push/PR task from the user's choice).
+- **ACT-emitted** — deterministic; ACT writes the child's prompt itself.
 - **Agent-emitted** — the agent produces the follow-ups (e.g. plan → tasks).
+
+**Every spawn today is agent-emitted.** The git task was the only ACT-emitted one
+and it is gone — git rides the prompt instead (see *Git integration*). The field
+stays because the distinction is about labeling and would be needed again the day
+ACT writes a child's prompt itself.
 
 ### Spawned tasks land in Ready
 
@@ -354,9 +369,9 @@ card (creation ≠ a manual column move).
 
 ### Spawn mechanism
 
-**ACT-emitted spawns** (e.g. the git task) skip all of the below — ACT already
-has the prompt, so it creates the Ready card **directly in its own store**. No
-disk round-trip.
+**ACT-emitted spawns** skip all of the below — ACT already has the prompt, so it
+creates the Ready card **directly in its own store**. No disk round-trip. Nothing
+emits one today.
 
 **Agent-emitted spawns** call the **`create_followup` MCP tool** — the whole
 agent→ACT contract, described in *Agent ↔ ACT contract*. The file mechanism this
@@ -430,6 +445,10 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
   window-after-next | datetime`. Set at **creation** (new-task modal, default
   `manual`) and editable in Ready; only *displayed* as a badge in the Ready column
   (see Scheduling & queue policy).
+- `allowConcurrentWorkingDir` — the card's exemption from the one-task-per-folder
+  guard (see *One task per working directory*). Default false; only meaningful
+  while the global `preventConcurrentWorkingDir` setting is on, which is why the
+  form hides it otherwise.
 - `autoGit` — optional, set at creation: the git actions
   (`commit` / `push` / `pr` + `draft`) the agent should do **in-session**, appended to the
   prompt as one sentence at launch. Independent of completion — the card still stops in
@@ -1085,8 +1104,10 @@ re-cut as a **prompt suffix** instead, independent of completion: pick a git act
 task form and ACT appends one sentence to the prompt at launch
 (`Once you are done: commit, push and create a draft pull request.`). The agent does the
 work in-session, the card still stops in Your turn for sign-off, and a failed git step is
-simply something the user sees on review. Git chosen at *review* time remains separate —
-that is the spawned task in *Git handoff on completion*.
+simply something the user sees on review. Git chosen at *review* time is **not a feature**
+(decided 2026-08-01, see *Git integration*): the terminal is already in front of the
+reviewer, so asking is what the modal would have done and typing is what the user does
+instead.
 
 ### Agent ↔ ACT contract — one MCP tool, decided 2026-07-30
 
@@ -1341,12 +1362,53 @@ prerequisites are Completed.
   weekly cap → wait days (don't retry hourly against a weekly lockout). So
   `schedule` is *intent*; cap + backpressure are *reality*.
 
+### One task per working directory — added 2026-08-01
+
+A folder is one working tree, and two agents editing it at once is the failure
+mode that costs *work* rather than time: the second reads a file the first is
+halfway through rewriting, and both commit over each other. So a Ready card does
+not launch while another card is working in the same directory.
+
+- **A folder is held until the holder is Completed, not until its turn ends.** A
+  card in Your turn still owns a live session parked at its prompt and whatever
+  it left in the tree, so it is no freer than it was mid-turn. Executing and Your
+  turn hold; Preparing, Ready and Completed hold nothing. This is why the rule
+  reads off the *column* rather than off `registry.IsLive` — a killed card whose
+  process is gone still has the tree it left behind.
+- **Compared resolved, never as typed.** A card stores `workingDir` the way the
+  user wrote it, so `~/dev/act`, `C:\dev\act\` and `/dev/act` must not read as
+  three folders. The guard resolves both sides through `IWorkingDirectories`
+  first (case-insensitively on Windows), which is the difference between a guard
+  and a guard that silently never fires.
+- **`preventConcurrentWorkingDir`** (*Settings → Execution*, **on** by default)
+  is the policy; **`allowConcurrentWorkingDir`** on the card is the escape hatch,
+  for the case that is genuinely fine — a `plan`-mode task that mutates nothing,
+  running beside the implementation task in the same repo. The task form shows
+  the per-card switch only while the global one is on: an exemption from a rule
+  nobody is enforcing reads as if it did something.
+- **The exemption is read off the card being started**, never off the one already
+  there. "Run this one anyway" is a decision about the task being launched, and
+  the card holding the folder has no say in what runs beside it.
+- **Only a Ready launch is guarded.** A retry and a post-restart re-attach belong
+  to a session that already holds that folder, so guarding them would strand the
+  very card the folder is busy for.
+- **Refused, not queued — for now.** The card stays in Ready untouched and the
+  launch reports which card is in the way, so nothing needs undoing when the
+  folder frees. Auto-queueing belongs to the runner (roadmap step 14), where a
+  blocked card waits in Ready under a `queued` scheduling badge and starts on its
+  own once the holder is signed off.
+- **It reports amber, not red.** `LaunchResult.Wait` is its own outcome beside
+  `Refused` for exactly this: nothing is broken — the card, the prompt and the
+  install are all fine, and the folder clears on its own. A red *Launch failed*
+  would send the user hunting for a fault that does not exist, so this is a
+  warning headed *Not started yet*. Every genuine failure — a bad path, a missing
+  binary, a rejected launch config — stays red.
+
 ### Spawned-task schedule defaults
 
-- **ACT-emitted** (git commit/push/PR): default **Now**; user can override the
-  schedule right in the Your turn → Completed git modal.
 - **Agent-emitted** (plan follow-ups): default **Manual** (nobody chose them at
   spawn time → review-before-run is safer). *(Revisit if inherit/now preferred.)*
+  This is the only kind of spawn there is — see *Task spawning & lineage*.
 
 ### Master switch
 
@@ -1567,20 +1629,29 @@ right answer.
 
 ## Git integration
 
-Optional git handoff on the **Your turn → Completed** transition. The completion
-modal prompts for an optional action: **commit**, **push**, **create PR** (with a
-**draft** checkbox). Actions chain (commit → push → PR; draft modifies the PR
-only); "no git action" is always available.
+**`autoGit` is the whole of it, and it is a prompt suffix.** The task form offers an
+optional action — **commit**, **push**, **create PR** (with a **draft** checkbox) —
+chosen at creation; `AutoGitInstruction` appends one sentence to the prompt at launch
+and the agent does the work **in-session**. Nothing is spawned, nothing is asked at
+sign-off, and ACT runs no git of its own. See the note under *No auto-completion* for
+how the field survived the status file, and *Agent ↔ ACT contract* for why appending it
+is not ACT teaching the agent a convention.
 
-- **Mechanism:** the completing task simply **completes**, and ACT **spawns a new
-  git task in Ready** (ACT-emitted — ACT writes its prompt from the user's
-  choice) to do the commit/push/PR. No Executing round-trip on the parent; the
-  git work is its own tracked card that can land in Your turn on its own — just
-  the general task-spawning mechanism applied to git. The completion modal also
-  offers the spawned task's `schedule` (default **Now**).
-- **Contrast — `autoGit` tasks.** When git is known at **creation**, it rides the prompt
-  as a suffix and the agent does it in-session, so there is no spawned card. Spawning
-  applies to git chosen at **review time**, which was not known at launch.
+**The completion modal and the spawned git task are cut — decided 2026-08-01.** The
+design was: sign-off pops a modal asking for a git action, and ACT spawns an
+ACT-emitted git card in Ready to do it. What killed it:
+
+- **The suffix already covers the case.** Git known at creation is the normal one, and
+  it costs no card, no second launch and no modal.
+- **A modal on the sign-off taxes every completion for a minority of them.** Completion
+  is the one thing ACT asks of the user; putting a question in front of it makes the
+  gesture heavier every single time, and *Interaction* holds that dialogs are for forks,
+  not for places.
+- **At review time the terminal is already open.** A user who decides on git while
+  reading the work types it into the session in front of them — the same live TUI they
+  reviewed in — or drags out a follow-up task. Neither needs a mechanism.
+- **A spawned card would be a second session for deterministic work**, which is the
+  objection *Embedded git* under *Future enhancements* already records.
 
 ---
 
@@ -1733,7 +1804,8 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   - **Dialogs are for forks, not for places.** A page is somewhere you go and can link to;
     a dialog interrupts an action already under way and has no meaning on its own. So the
     only modals are the two destructive prompts — archiving a card with follow-ups, and
-    emptying the archive — plus the completion/git prompt at step 11. Anything that is a
+    emptying the archive. The completion/git prompt that was to be the third was cut with
+    the spawned git task (see *Git integration*), so sign-off is a plain drag. Anything that is a
     *destination* is a route. Corollary learned the hard way: a decision that changes tasks
     other than the one on screen does not belong in a footer strip, however tidy.
   - **The two faces toggle, always.** Both card pages carry a `Task | Terminal` switch,
@@ -1887,10 +1959,10 @@ direction*, *Scheduling*, *Persistence*, *Native OS notifications*. Roadmap step
   `permissionMode` means it should never prompt anyway). Would run as a second
   session kind behind the same `IAgentAdapter` seam, with no `IAgentTerminal`.
   Only worth building if PTY-hosted overnight runs prove wasteful in practice.
-- **Embedded git** — instead of spawning an agent task (or an in-session turn)
-  for git, ACT runs the git / host-CLI operations **itself** to save tokens (a
+- **Embedded git** — instead of the agent doing it in-session off the `autoGit`
+  suffix, ACT runs the git / host-CLI operations **itself** to save tokens (a
   commit is deterministic work not worth spending LLM tokens on). An optimization
-  over the spawned/in-session git integration, which is the default.
+  over the in-session git integration, which is the default.
 - **Task templates / presets** — save a reusable launch config + prompt skeleton
   (e.g. "bugfix on repo X with these tools/model/permission mode") so creating a
   common task is one click instead of filling every field.

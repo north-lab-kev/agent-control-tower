@@ -20,11 +20,16 @@ public class ManualMoveTests
     public void A_card_handed_back_to_the_user_lifts_for_the_sign_off()
         => ManualMove.CanDrag(BoardColumn.YourTurn).Should().BeTrue();
 
-    [Theory]
-    [InlineData(BoardColumn.Executing)]
-    [InlineData(BoardColumn.Completed)]
-    public void A_card_the_user_no_longer_moves_does_not_lift(BoardColumn column)
-        => ManualMove.CanDrag(column).Should().BeFalse();
+    // Its mirror: Completed lifts for the reopen, whose drop side is `CardReopen`.
+    [Fact]
+    public void A_signed_off_card_lifts_for_the_reopen()
+        => ManualMove.CanDrag(BoardColumn.Completed).Should().BeTrue();
+
+    // The one column that neither lifts nor accepts a drop — mid-flight work is not the user's to
+    // move.
+    [Fact]
+    public void A_card_mid_flight_does_not_lift()
+        => ManualMove.CanDrag(BoardColumn.Executing).Should().BeFalse();
 
     [Fact]
     public void Preparing_and_ready_are_interchangeable_by_hand()
@@ -38,7 +43,7 @@ public class ManualMoveTests
         => ManualMove.IsAllowed(BoardColumn.Ready, BoardColumn.Executing).Should().BeFalse();
 
     [Fact]
-    public void Reopening_is_not_a_manual_move_yet()
+    public void Reopening_is_not_a_manual_move()
         => ManualMove.IsAllowed(BoardColumn.Completed, BoardColumn.YourTurn).Should().BeFalse();
 
     [Theory]

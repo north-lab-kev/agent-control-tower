@@ -1,0 +1,67 @@
+using Act.Core.Abstractions;
+using Act.Core.Model;
+
+namespace Act.Core.Rules;
+
+// One folder is one working tree, and two agents editing it at once is a collision no amount of
+// prompt care avoids: the second one reads a file the first is halfway through rewriting, and both
+// of them commit over each other.
+//
+// **A folder is held until the card is Completed, not until its turn ends.** A card parked in Your
+// turn still owns a live session sitting at its prompt and whatever it left in the tree, so the
+// folder is no freer than it was mid-turn. Executing and Your turn are exactly the machine region;
+// Preparing, Ready and Completed hold nothing.
+//
+// **The exemption lives on the card being started**, never on the one already there: "run this one
+// anyway" is a decision about the task being launched, and the card holding the folder has no say
+// in what the user chooses to run beside it.
+public static class WorkingDirConflict
+{
+    public static bool Holds(Card card)
+        => card.IsOnBoard && card.Column is BoardColumn.Executing or BoardColumn.YourTurn;
+
+    // Null when nothing is in the way — including when the guard is off, when this card is exempt,
+    // and when the launch is not a Ready one at all. A retry and a re-attach belong to a session
+    // that already holds the folder, so applying the guard to them would strand the card occupying
+    // it behind another card it is itself the reason for.
+    public static Card? Blocking(
+        Card card,
+        IEnumerable<Card> cards,
+        IWorkingDirectories directories,
+        bool enforced)
+    {
+        if (!enforced || card.AllowConcurrentWorkingDir || card.Column is not BoardColumn.Ready)
+            return null;
+
+        if (Key(card, directories) is not { } folder)
+            return null;
+
+        return cards.FirstOrDefault(other => other.Id != card.Id
+            && Holds(other)
+            && Key(other, directories) is { } held
+            && string.Equals(held, folder, Comparison));
+    }
+
+    // Resolved before comparing, because `~/dev/act` and `C:\dev\act\` are one folder and a guard
+    // that only catches identical typing is a guard that silently does nothing. A path that will
+    // not resolve matches nothing: the launch is about to fail on it for a better reason than this.
+    private static string? Key(Card card, IWorkingDirectories directories)
+    {
+        if (string.IsNullOrWhiteSpace(card.WorkingDir))
+            return null;
+
+        try
+        {
+            return directories.Resolve(card.WorkingDir).TrimEnd('/', '\\');
+        }
+        catch (Exception error) when (error is ArgumentException or NotSupportedException
+            or PathTooLongException or System.Security.SecurityException)
+        {
+            return null;
+        }
+    }
+
+    private static StringComparison Comparison => OperatingSystem.IsWindows()
+        ? StringComparison.OrdinalIgnoreCase
+        : StringComparison.Ordinal;
+}

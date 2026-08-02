@@ -909,10 +909,12 @@ verifiable, and leaves something runnable.
       #1040 reads `88k / 200k 44%`, 7 turns, 223k tokens, 2 compactions, with the bar measured at
       105.6 of 240px — 44%, matching its own number.
 
-## Phase 4 — Completion & lineage
+## Phase 4 — Completion
 
-- [ ] **11. Complete + reopen** — Your turn → Completed and reopen. *Verify:* a
-  signed-off task lands in Completed; reopen resumes.
+- [x] **11. Complete + reopen** — Your turn → Completed and reopen. *Verify:* a
+  signed-off task lands in Completed; reopen resumes. ✅ **Closed 2026-08-01** — both manual
+  transitions ship, and the third thing this step used to carry (the completion/git modal) was
+  cut rather than built.
   - **Auto-complete was cut on 2026-07-30** — see the spec's *No auto-completion*.
     Completion is always the user's drag, so this step is now just the two manual
     transitions, and nothing in ACT needs the agent to assert that it finished.
@@ -932,12 +934,94 @@ verifiable, and leaves something runnable.
     routes to `CardCompleter` rather than to `MoveAsync`. The strip's Complete button is gone —
     the board has one gesture for moving a card — and the session view keeps its rail action for
     a card you are already inside.
-  - **Still step 11's to finish:** reopen (Completed → Your turn), and the completion/git
-    modal — completing is a plain action for now, with no prompt and no spawned git task.
-- [ ] **12. Spawning & lineage — an MCP server** — the `create_followup` tool,
-  parent/children, the git-on-completion spawned task. *Verify:* a real agent calls the
-  tool mid-session and a tracked child card appears in Ready with correct lineage, on both
-  agents.
+  - [x] **Reopen — Completed → Your turn, the mirror of the sign-off — 2026-08-01.**
+    `Act.Core/Rules/CardReopen` is the predicate and `Act.App/Sessions/CardReopener` the action,
+    paired with `CardCompletion`/`CardCompleter` the same way. Completed now lifts
+    (`ManualMove.CanDrag`) with Your turn as its only legal drop, and the session view carries a
+    **Reopen** rail action where Complete sits for a card in the other column.
+    - **It is its own rule rather than a manual move for a concrete reason: it un-stamps
+      `completedAt`.** That field is the retention clock (`CompletedRetention` dates a card from
+      its sign-off), so a reopen that left the stamp behind would leave a card in Your turn that
+      the sweep could still archive out from under the user. `BoardState.MoveAsync` neither does
+      that nor should, which is the same argument that gave completion its own rule.
+    - **It lands on `to review`,** because nothing was observed — the card is simply back in the
+      user's court with work to look at — and **starts no session**: a reopened card gets its
+      terminal back the way every bound card does, by being opened (`SessionRestore` already
+      covers Completed, and Your turn is restored unattended at the next start). So "reopen
+      resumes" in the verify is the *terminal* resuming on open, which shipped at step 10.
+    - **An auto-archived card does not reopen.** `CanReopen` gates on `IsOnBoard`, not just
+      `!IsDeleted`: retention archives Completed cards, so this is the one case an unqualified
+      column check would let through — the card would land in Your turn and off the board at the
+      same time. A card off the board comes back through the archive's restore.
+    - **Verified live 2026-08-01, card #1052.** Picking it up lit Your turn and grayed every
+      other column; the drop moved it there on `to review`; the rail's Reopen did the same from
+      inside the card and left the page where it was, its action swapping to *Mark completed*.
+      The timeline reads `Marked completed → Completed`, `Reopened → Your turn` for both paths.
+      563 tests green.
+  - [x] **The completion/git modal is cut, not built — decided 2026-08-01.** With `autoGit`
+    already re-cut as a prompt suffix, the modal would have taxed *every* sign-off to ask a
+    question the suffix answers at creation, and the spawned ACT-emitted git card would have been
+    a second session for deterministic work. Git chosen at review time needs no mechanism: the
+    terminal the user just reviewed in is open in front of them. Reasoning and the doc rewrite are
+    in the spec's *Git integration*; the follow-on edits removed the last ACT-emitted spawn, so
+    every spawn is now agent-emitted. **No code changed** — completing was already a plain action.
+
+## Phase 5 — Automation (on a proven base)
+
+- [ ] **13. Native notifications** — OS pings for attention states; actionable,
+  focus-aware, coalesced. *Verify:* backgrounded ACT pings on needs-you.
+- [ ] **14. Scheduling & queue runner** — `schedule`, `maxConcurrent`,
+  `dependsOn` ordering, rate-limit backpressure (`waiting-reset`), keep-awake,
+  and the global **auto-execution pause switch**. *Verify:* a queue of Ready
+  tasks processes unattended across a window reset; pause halts all auto-launch.
+  - **The working-directory guard must queue rather than refuse.** It ships
+    (2026-08-01) as a refusal: `WorkingDirConflict` blocks a Ready launch while
+    another card is working in the same folder, the card stays in Ready, and the
+    launch reports which card is in the way. That is the honest answer for a
+    button the user just pressed, but it is the wrong one for the runner — an
+    unattended queue must not drop a task because the folder happened to be busy
+    when its turn came. Here the blocked card **waits in Ready under a `queued`
+    scheduling badge** (beside `manual` / `now` / `waiting-reset`) and launches on
+    its own once the holder reaches Completed. The rule itself needs no change:
+    the runner asks `WorkingDirConflict.Blocking` the same question and treats a
+    non-null answer as "not yet" instead of "no".
+  - **Keep-awake must become task-aware.** It ships unconditional — the hold is
+    taken at startup for the life of the process whenever the setting is on. Here
+    it must hold sleep **only while a Ready or Running task exists**, and release
+    otherwise: an idle board is safe to sleep, since nothing can auto-launch from
+    it. Scheduled work (*specific date & time*, *next window*, `waiting-reset`)
+    sits in Ready, so a Ready/Running predicate still covers the overnight queue.
+    This is what the spec's *Keep-awake* section already asks for ("only inhibit
+    sleep when there's pending/active auto-work"); the Settings section's
+    "as long as ACT runs" wording describes the interim behaviour and must be
+    corrected when this lands.
+
+## Phase 6 — Breadth & polish
+
+- [ ] **15. Persistence polish** — auto-archive (**landed**: 10-day default,
+  `archivedAt` its own marker, `CompletedRetention` + `RetentionPump`, the knob in
+  Settings → *Retention*), search, transitions timeline in the drawer. *Verify:* old
+  Completed cards archive and stay searchable.
+- [ ] **16. UI polish** — final spacing, type, Radzen theming pass.
+  - **User settings page** — consolidate the preferences that landed scattered
+    across features into one screen: **theme** (Radzen *Standard* / *Standard
+    Dark*; default **follows the OS** light/dark preference), density default,
+    notification matrix, keep-awake, `maxConcurrent`, weekly-reset time,
+    auto-archive window (**landed**), auto-execution pause. (Each knob works from its own
+    feature step; this just gives them a home. The theme override replaces the
+    interim OS-only auto-switch wired at Radzen setup.)
+
+## Phase 7 — Spawning & lineage (the last step)
+
+**Moved here on 2026-08-01** — it used to sit in Phase 4 as the step after completion, and it
+is now the last thing ACT builds. **Its number stays 12**, because the number is an identifier
+the spec cites (*Agent ↔ ACT contract*, *Local-endpoint security*) and renumbering four other
+steps to close the gap would break those references for nothing. So the sequence ends
+…15, 16, 12.
+
+- [ ] **12. Spawning & lineage — an MCP server** — the `create_followup` tool and
+  parent/children. *Verify:* a real agent calls the tool mid-session and a tracked child card
+  appears in Ready with correct lineage, on both agents.
   - **Decided 2026-07-30: one MCP tool, not a file and not a curl command.** The whole
     agent→ACT contract is this one tool; the `.act/followups/` file mechanism was dropped
     with the status file. Rationale (payload shape, grant width, sandbox avoidance,
@@ -991,40 +1075,6 @@ verifiable, and leaves something runnable.
       only where any future framing would live if it is ever wanted, so it is worth one
       look while the server is being built rather than a separate investigation later.
 
-## Phase 5 — Automation (on a proven base)
-
-- [ ] **13. Native notifications** — OS pings for attention states; actionable,
-  focus-aware, coalesced. *Verify:* backgrounded ACT pings on needs-you.
-- [ ] **14. Scheduling & queue runner** — `schedule`, `maxConcurrent`,
-  `dependsOn` ordering, rate-limit backpressure (`waiting-reset`), keep-awake,
-  and the global **auto-execution pause switch**. *Verify:* a queue of Ready
-  tasks processes unattended across a window reset; pause halts all auto-launch.
-  - **Keep-awake must become task-aware.** It ships unconditional — the hold is
-    taken at startup for the life of the process whenever the setting is on. Here
-    it must hold sleep **only while a Ready or Running task exists**, and release
-    otherwise: an idle board is safe to sleep, since nothing can auto-launch from
-    it. Scheduled work (*specific date & time*, *next window*, `waiting-reset`)
-    sits in Ready, so a Ready/Running predicate still covers the overnight queue.
-    This is what the spec's *Keep-awake* section already asks for ("only inhibit
-    sleep when there's pending/active auto-work"); the Settings section's
-    "as long as ACT runs" wording describes the interim behaviour and must be
-    corrected when this lands.
-
-## Phase 6 — Breadth & polish
-
-- [ ] **15. Persistence polish** — auto-archive (**landed**: 10-day default,
-  `archivedAt` its own marker, `CompletedRetention` + `RetentionPump`, the knob in
-  Settings → *Retention*), search, transitions timeline in the drawer. *Verify:* old
-  Completed cards archive and stay searchable.
-- [ ] **16. UI polish** — final spacing, type, Radzen theming pass.
-  - **User settings page** — consolidate the preferences that landed scattered
-    across features into one screen: **theme** (Radzen *Standard* / *Standard
-    Dark*; default **follows the OS** light/dark preference), density default,
-    notification matrix, keep-awake, `maxConcurrent`, weekly-reset time,
-    auto-archive window (**landed**), auto-execution pause. (Each knob works from its own
-    feature step; this just gives them a home. The theme override replaces the
-    interim OS-only auto-switch wired at Radzen setup.)
-
 ## Milestones
 
 - ✅ **After step 10 — reached 2026-08-01.** Usable, manually-driven, **multi-agent** ACT (a
@@ -1032,6 +1082,7 @@ verifiable, and leaves something runnable.
   needs you, and you answer it there.
 - **After step 14** — the overnight unattended batch vision.
 - **After step 16** — the full, polished product.
+- **After step 12, which is now last** — agent-spawned follow-ups on top of it.
 
 ## Build-time items to verify (from the spec)
 

@@ -173,6 +173,21 @@ else
                             <RadzenRequiredValidator Component="ScheduledFor" Text="@Strings.NewTask_Required" />
                         }
 
+                        @* Only while the guard is on: an exemption from a rule nobody is enforcing
+                           is a switch that reads as if it did something. *@
+                        @if (FolderGuardOn)
+                        {
+                            <div class="row">
+                                <RadzenStack Gap="0.1rem">
+                                    <RadzenText TextStyle="TextStyle.Body2"
+                                                Text="@Strings.NewTask_AllowConcurrentWorkingDir" />
+                                    <RadzenText TextStyle="TextStyle.Caption"
+                                                Text="@Strings.NewTask_AllowConcurrentWorkingDir_Hint" class="hint" />
+                                </RadzenStack>
+                                <RadzenSwitch @bind-Value="form.AllowConcurrentWorkingDir" Disabled="Locked" />
+                            </div>
+                        }
+
                         <div class="row">
                             <RadzenStack Gap="0.1rem">
                                 <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AutoGit" />

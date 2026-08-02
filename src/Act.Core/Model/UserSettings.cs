@@ -14,6 +14,10 @@ public sealed class UserSettings
 
     public bool CloseToTray { get; set; } = true;
 
+    // On by default: two agents in one working tree is the failure mode that costs work rather than
+    // time, and a user who wants them side by side can say so on the card that needs it.
+    public bool PreventConcurrentWorkingDir { get; set; } = true;
+
     // One entry per agent, holding what its install looks like on this machine. A list rather than
     // a property per agent, so adding an adapter does not mean touching the settings model.
     public IList<AgentDefaults> Agents { get; set; } = [];

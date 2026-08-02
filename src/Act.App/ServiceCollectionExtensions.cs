@@ -70,6 +70,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<BoardState>();
         services.AddSingleton<RetentionPump>();
         services.AddSingleton<CardCompleter>();
+        services.AddSingleton<CardReopener>();
 
         return services;
     }

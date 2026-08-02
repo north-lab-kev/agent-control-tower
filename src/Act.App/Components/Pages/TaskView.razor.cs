@@ -76,6 +76,8 @@ public partial class TaskView(
 
     private string PageHeading => card is { } existing ? existing.Title : Strings.TaskView_NewTitle;
 
+    private bool FolderGuardOn => settings.PreventConcurrentWorkingDir;
+
     // Only the agents whose switch is on — plus, always, the one this card already carries. An
     // agent turned off after a card was made must not leave that card showing an empty dropdown for
     // a value it is still holding, the same rule a retired model follows.

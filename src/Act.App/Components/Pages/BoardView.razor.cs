@@ -13,6 +13,7 @@ public partial class BoardView(
     BoardState board,
     SessionLauncher launcher,
     CardCompleter completer,
+    CardReopener reopener,
     NotificationService notifications,
     NavigationManager navigation) : IAsyncDisposable
 {
@@ -25,7 +26,7 @@ public partial class BoardView(
 
     private readonly HashSet<Guid> launching = [];
 
-    private readonly HashSet<Guid> completing = [];
+    private readonly HashSet<Guid> signing = [];
 
     private readonly CancellationTokenSource leaving = new();
 
@@ -85,7 +86,9 @@ public partial class BoardView(
     }
 
     private static bool CanDrop(Card card, BoardColumn column)
-        => ManualMove.IsAllowed(card.Column, column) || CardCompletion.CanCompleteInto(card, column);
+        => ManualMove.IsAllowed(card.Column, column)
+            || CardCompletion.CanCompleteInto(card, column)
+            || CardReopen.CanReopenInto(card, column);
 
     private void OnDragStartAsync(Card card) => dragging = card;
 
@@ -104,6 +107,15 @@ public partial class BoardView(
         if (CardCompletion.CanCompleteInto(card, column))
         {
             await CompleteAsync(card);
+
+            return;
+        }
+
+        // Nor is the mirror of it: taking the sign-off back un-stamps `completedAt`, which is the
+        // retention clock, so it goes through the reopener for the same reason.
+        if (CardReopen.CanReopenInto(card, column))
+        {
+            await ReopenAsync(card);
 
             return;
         }
@@ -139,8 +151,8 @@ public partial class BoardView(
             {
                 notifications.Notify(new NotificationMessage
                 {
-                    Severity = NotificationSeverity.Error,
-                    Summary = Strings.Session_LaunchFailed,
+                    Severity = result.Waiting ? NotificationSeverity.Warning : NotificationSeverity.Error,
+                    Summary = result.Waiting ? Strings.Session_NotLaunched : Strings.Session_LaunchFailed,
                     Detail = message,
                     Duration = 20000,
                 });
@@ -170,8 +182,8 @@ public partial class BoardView(
             {
                 notifications.Notify(new NotificationMessage
                 {
-                    Severity = NotificationSeverity.Error,
-                    Summary = Strings.Session_RetryFailed,
+                    Severity = result.Waiting ? NotificationSeverity.Warning : NotificationSeverity.Error,
+                    Summary = result.Waiting ? Strings.Session_NotLaunched : Strings.Session_RetryFailed,
                     Detail = message,
                     Duration = 20000,
                 });
@@ -187,7 +199,7 @@ public partial class BoardView(
     // Guarded like the launch is, because ending the card's session is not something to do twice.
     private async Task CompleteAsync(Card card)
     {
-        if (!completing.Add(card.Id))
+        if (!signing.Add(card.Id))
             return;
 
         try
@@ -196,7 +208,24 @@ public partial class BoardView(
         }
         finally
         {
-            completing.Remove(card.Id);
+            signing.Remove(card.Id);
+        }
+    }
+
+    // Completed → Your turn. No session is started here: a reopened card gets its terminal back the
+    // way every bound card does, by being opened.
+    private async Task ReopenAsync(Card card)
+    {
+        if (!signing.Add(card.Id))
+            return;
+
+        try
+        {
+            await reopener.ReopenAsync(card);
+        }
+        finally
+        {
+            signing.Remove(card.Id);
         }
     }
 

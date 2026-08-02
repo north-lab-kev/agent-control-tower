@@ -118,6 +118,13 @@ else
                                       ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat"
                                       Disabled="completing" Click="CompleteAsync" />
                     }
+                    @* The sign-off taken back, offered only where it applies — a Completed card. *@
+                    @if (CanReopen)
+                    {
+                        <RadzenButton Text="@Strings.Session_Reopen" Icon="undo" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
+                                      Disabled="completing" Click="ReopenAsync" />
+                    }
                     @if (HandoffUrl is { } url)
                     {
                         <RadzenButton Text="@Strings.Session_OpenInDesktop" Icon="open_in_new" Size="ButtonSize.Small"

@@ -84,6 +84,12 @@
   <data name="NewTask_DateFormat" xml:space="preserve">
     <value>yyyy-MM-dd HH:mm</value>
   </data>
+  <data name="NewTask_AllowConcurrentWorkingDir" xml:space="preserve">
+    <value>Run even if the folder is busy</value>
+  </data>
+  <data name="NewTask_AllowConcurrentWorkingDir_Hint" xml:space="preserve">
+    <value>Launch this task alongside another one already working in the same folder. Both agents then edit the same files.</value>
+  </data>
   <data name="NewTask_AutoGit" xml:space="preserve">
     <value>Git when done</value>
   </data>
@@ -294,6 +300,15 @@
   <data name="Usage_Cause_Failed" xml:space="preserve">
     <value>the endpoint answered with something ACT could not read</value>
   </data>
+  <data name="Settings_Group_Execution" xml:space="preserve">
+    <value>Execution</value>
+  </data>
+  <data name="Settings_OneTaskPerFolder" xml:space="preserve">
+    <value>One task at a time per folder</value>
+  </data>
+  <data name="Settings_OneTaskPerFolder_Hint" xml:space="preserve">
+    <value>Stop a task launching while another is still working in the same folder. A task holds its folder until it is completed. A single task can be allowed to run alongside the others from its own page.</value>
+  </data>
   <data name="Settings_Group_Retention" xml:space="preserve">
     <value>Retention</value>
   </data>
@@ -456,6 +471,9 @@
   <data name="NotFound_Text" xml:space="preserve">
     <value>Sorry, the content you are looking for does not exist.</value>
   </data>
+  <data name="Launch_WorkingDirBusy" xml:space="preserve">
+    <value>#{0} {1} is still working in this folder. Complete it first, or let this task run even if the folder is busy.</value>
+  </data>
   <data name="Session_NoLiveSession" xml:space="preserve">
     <value>No session is running for this card.</value>
   </data>
@@ -504,6 +522,9 @@
   <data name="Session_Complete" xml:space="preserve">
     <value>Mark completed</value>
   </data>
+  <data name="Session_Reopen" xml:space="preserve">
+    <value>Reopen</value>
+  </data>
   <data name="Nav_BackToBoard" xml:space="preserve">
     <value>Board</value>
   </data>
@@ -524,6 +545,9 @@
   </data>
   <data name="Session_LaunchFailed" xml:space="preserve">
     <value>Launch failed</value>
+  </data>
+  <data name="Session_NotLaunched" xml:space="preserve">
+    <value>Not started yet</value>
   </data>
   <data name="Session_RetryFailed" xml:space="preserve">
     <value>Retry failed</value>
@@ -662,6 +686,9 @@
   </data>
   <data name="Transition_CompletedByHand" xml:space="preserve">
     <value>Marked completed</value>
+  </data>
+  <data name="Transition_Reopened" xml:space="preserve">
+    <value>Reopened</value>
   </data>
   <data name="Transition_SessionRestored" xml:space="preserve">
     <value>Terminal restored</value>

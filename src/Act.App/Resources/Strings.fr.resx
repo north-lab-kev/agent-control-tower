@@ -84,6 +84,12 @@
   <data name="NewTask_DateFormat" xml:space="preserve">
     <value>yyyy-MM-dd HH:mm</value>
   </data>
+  <data name="NewTask_AllowConcurrentWorkingDir" xml:space="preserve">
+    <value>Démarrer même si le dossier est occupé</value>
+  </data>
+  <data name="NewTask_AllowConcurrentWorkingDir_Hint" xml:space="preserve">
+    <value>Lance cette tâche en parallèle d'une autre qui travaille déjà dans le même dossier. Les deux agents modifient alors les mêmes fichiers.</value>
+  </data>
   <data name="NewTask_AutoGit" xml:space="preserve">
     <value>Git à la fin</value>
   </data>
@@ -294,6 +300,15 @@
   <data name="Usage_Cause_Failed" xml:space="preserve">
     <value>le point d&apos;accès a répondu quelque chose qu&apos;ACT n&apos;a pas su lire</value>
   </data>
+  <data name="Settings_Group_Execution" xml:space="preserve">
+    <value>Exécution</value>
+  </data>
+  <data name="Settings_OneTaskPerFolder" xml:space="preserve">
+    <value>Une seule tâche à la fois par dossier</value>
+  </data>
+  <data name="Settings_OneTaskPerFolder_Hint" xml:space="preserve">
+    <value>Empêche une tâche de démarrer pendant qu'une autre travaille encore dans le même dossier. Une tâche occupe son dossier jusqu'à ce qu'elle soit terminée. Une tâche précise peut être autorisée à s'exécuter en parallèle depuis sa propre page.</value>
+  </data>
   <data name="Settings_Group_Retention" xml:space="preserve">
     <value>Conservation</value>
   </data>
@@ -456,6 +471,9 @@
   <data name="NotFound_Text" xml:space="preserve">
     <value>Désolé, le contenu que vous cherchez n’existe pas.</value>
   </data>
+  <data name="Launch_WorkingDirBusy" xml:space="preserve">
+    <value>#{0} {1} travaille encore dans ce dossier. Terminez-la d'abord, ou autorisez cette tâche à démarrer même si le dossier est occupé.</value>
+  </data>
   <data name="Session_NoLiveSession" xml:space="preserve">
     <value>Aucune session n'est en cours pour cette carte.</value>
   </data>
@@ -504,6 +522,9 @@
   <data name="Session_Complete" xml:space="preserve">
     <value>Marquer terminé</value>
   </data>
+  <data name="Session_Reopen" xml:space="preserve">
+    <value>Rouvrir</value>
+  </data>
   <data name="Nav_BackToBoard" xml:space="preserve">
     <value>Tableau</value>
   </data>
@@ -524,6 +545,9 @@
   </data>
   <data name="Session_LaunchFailed" xml:space="preserve">
     <value>Échec du démarrage</value>
+  </data>
+  <data name="Session_NotLaunched" xml:space="preserve">
+    <value>Pas encore démarrée</value>
   </data>
   <data name="Session_RetryFailed" xml:space="preserve">
     <value>Échec de la relance</value>
@@ -662,6 +686,9 @@
   </data>
   <data name="Transition_CompletedByHand" xml:space="preserve">
     <value>Marqué terminé</value>
+  </data>
+  <data name="Transition_Reopened" xml:space="preserve">
+    <value>Rouvert</value>
   </data>
   <data name="Transition_SessionRestored" xml:space="preserve">
     <value>Terminal rétabli</value>

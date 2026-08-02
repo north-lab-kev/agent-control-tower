@@ -20,6 +20,7 @@ public static class CardDuplicate
         AutoGit = card.AutoGit is { } git
             ? new AutoGitOptions { Action = git.Action, Draft = git.Draft }
             : null,
+        AllowConcurrentWorkingDir = card.AllowConcurrentWorkingDir,
         Column = BoardColumn.Preparing,
         Origin = TaskOrigin.Manual,
         CreatedAt = createdAt,

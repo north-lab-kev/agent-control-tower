@@ -30,6 +30,8 @@ public sealed record NewTaskForm
 
     public bool Draft { get; set; }
 
+    public bool AllowConcurrentWorkingDir { get; set; }
+
     public bool WantsDateTime => Schedule is TaskSchedule.SpecificDateTime;
 
     // A new task starts as the settings template — everything but the title and the prompt, which
@@ -59,6 +61,7 @@ public sealed record NewTaskForm
         ScheduledFor = card.ScheduledFor?.LocalDateTime,
         SelectedGitAction = card.AutoGit?.Action,
         Draft = card.AutoGit?.Draft ?? false,
+        AllowConcurrentWorkingDir = card.AllowConcurrentWorkingDir,
     };
 
     public Card ToCard(DateTimeOffset createdAt)
@@ -94,6 +97,7 @@ public sealed record NewTaskForm
             card.Schedule = Schedule;
             card.ScheduledFor = ScheduledAt();
             card.AutoGit = GitOptions();
+            card.AllowConcurrentWorkingDir = AllowConcurrentWorkingDir;
         }
 
         // Only what the *task* owns. The binary, the extra flags and the environment describe this

@@ -24,6 +24,8 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
 
     public bool CloseToTray => current.CloseToTray;
 
+    public bool PreventConcurrentWorkingDir => current.PreventConcurrentWorkingDir;
+
     public bool AutoArchiveCompleted => current.AutoArchiveCompleted;
 
     public int AutoArchiveCompletedAfterDays => CompletedRetention.ClampDays(current.AutoArchiveCompletedAfterDays);
@@ -129,6 +131,14 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
             return;
 
         Update(settings => settings.CloseToTray = closeToTray);
+    }
+
+    public void SetPreventConcurrentWorkingDir(bool prevent)
+    {
+        if (prevent == current.PreventConcurrentWorkingDir)
+            return;
+
+        Update(settings => settings.PreventConcurrentWorkingDir = prevent);
     }
 
     public void SetAutoArchiveCompleted(bool autoArchive)

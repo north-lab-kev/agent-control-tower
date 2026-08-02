@@ -28,6 +28,11 @@ public sealed class Card
 
     public AutoGitOptions? AutoGit { get; set; }
 
+    // The card's own exemption from the one-task-per-folder guard — see `WorkingDirConflict`. It is
+    // read off the card being *started*, so it says "run this one alongside whatever is already
+    // there" and never speaks for the card holding the folder.
+    public bool AllowConcurrentWorkingDir { get; set; }
+
     public TaskOrigin Origin { get; set; }
 
     public Guid? ParentId { get; set; }

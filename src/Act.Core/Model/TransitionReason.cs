@@ -23,6 +23,10 @@ public enum TransitionReason
     // it is the only transition that ends a card's session, and the timeline should say so.
     CompletedByHand,
 
+    // Completed → Your turn, the sign-off taken back — the user had more to say. Its own reason for
+    // the same kind of reason: it un-stamps the sign-off, which no plain move does.
+    Reopened,
+
     // The terminal came back for a card that never left its column: the process had died with the
     // app, with a kill or with the CLI itself, and the stored binding was resumed into a fresh one.
     SessionRestored,

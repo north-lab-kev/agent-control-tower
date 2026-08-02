@@ -1,4 +1,5 @@
 using Act.App.Cards;
+using Act.App.Resources;
 using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Core.Agents;
@@ -14,6 +15,7 @@ public sealed class SessionLauncher(
     SessionRegistry registry,
     BoardState board,
     UserSettingsService settings,
+    IWorkingDirectories directories,
     IClock clock)
 {
     private readonly IReadOnlyDictionary<AgentType, IAgentAdapter> byAgent =
@@ -37,6 +39,12 @@ public sealed class SessionLauncher(
     // gets. Every path to an adapter goes through here, so there is one place the two are joined.
     private LaunchConfig Config(Card card)
         => LaunchComposition.Compose(card.LaunchConfig, settings.Defaults(card.AgentType));
+
+    // The card already working in this card's folder, if the guard is on and this card is not
+    // exempt from it. `board.All` rather than a column query: the rule decides for itself what
+    // holding a folder means, and asking it about the whole store keeps that decision in one place.
+    private Card? Blocking(Card card)
+        => WorkingDirConflict.Blocking(card, board.All, directories, settings.PreventConcurrentWorkingDir);
 
     // A failed card is only retriable while its process is gone: a CLI that is still alive is one
     // the user can type into, and ACT types nothing into a live agent.
@@ -70,6 +78,13 @@ public sealed class SessionLauncher(
 
         if (!CanLaunch(card))
             return LaunchResult.Refused($"A card in {card.Column} cannot be launched.");
+
+        // Before anything is spawned and before the card is moved, so a refused launch leaves it
+        // sitting in Ready exactly as it was — the folder frees up on its own, and nothing here
+        // needs undoing when it does.
+        if (Blocking(card) is { } holder)
+            return LaunchResult.Wait(
+                Text.Format(Strings.Launch_WorkingDirBusy, holder.Number, holder.Title));
 
         if (!byAgent.TryGetValue(card.AgentType, out var adapter))
             return LaunchResult.Refused($"No adapter is registered for {card.AgentType}.");
@@ -240,9 +255,13 @@ public sealed class SessionLauncher(
                 resolution.Adjustments.Select(a => $"{a.Field} {a.Requested} → {a.Substituted}"));
 }
 
-public sealed record LaunchResult(bool Launched, string? Message)
+public sealed record LaunchResult(bool Launched, string? Message, bool Waiting = false)
 {
     public static LaunchResult Ok() => new(true, null);
 
     public static LaunchResult Refused(string message) => new(false, message);
+
+    // Refused, but nothing is broken: the card, the prompt and the install are all fine and the
+    // thing in the way clears on its own. Red would claim a failure the user then goes looking for.
+    public static LaunchResult Wait(string message) => new(false, message, Waiting: true);
 }

@@ -50,6 +50,8 @@ public partial class SettingsView(
 
     private bool CloseToTray => settings.CloseToTray;
 
+    private bool PreventConcurrentWorkingDir => settings.PreventConcurrentWorkingDir;
+
     private bool IsDesktop => desktop.IsDesktop;
 
     private bool AutoArchiveCompleted => settings.AutoArchiveCompleted;
@@ -272,6 +274,9 @@ public partial class SettingsView(
     private void OnKeepAwakeChanged(bool keepAwake) => settings.SetKeepAwake(keepAwake);
 
     private void OnCloseToTrayChanged(bool closeToTray) => settings.SetCloseToTray(closeToTray);
+
+    private void OnPreventConcurrentWorkingDirChanged(bool prevent)
+        => settings.SetPreventConcurrentWorkingDir(prevent);
 
     private void OnAutoArchiveCompletedChanged(bool autoArchive) => settings.SetAutoArchiveCompleted(autoArchive);
 

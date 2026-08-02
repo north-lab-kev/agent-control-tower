@@ -30,11 +30,13 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ Agents/                    #   PtyAgentSession/Terminal, launch-config resolution,
 │  │  │                            #     agent process environment, TranscriptTail (offset +
 │  │  │                            #     running snapshot) — all shared by both adapters
-│  │  ├─ Rules/                     #   the rules engine, manual-move validity, sign-off validity,
+│  │  ├─ Rules/                     #   the rules engine, manual-move validity, sign-off and
+│  │  │                            #     reopen validity,
 │  │  │                            #     Your-turn ordering, which cards are resumable after their
 │  │  │                            #     process died, how long a running card has been quiet,
-│  │  │                            #     which Completed cards retention is due to archive
-│  │  │                            #     (pure logic)
+│  │  │                            #     which Completed cards retention is due to archive,
+│  │  │                            #     which card is already working in a folder a launch
+│  │  │                            #     wants (pure logic)
 │  │  ├─ Scheduling/                #   queue runner, schedule, backpressure
 │  │  ├─ Resources/                 #   CoreStrings (+ .fr) — localised text the CORE writes,
 │  │  │                            #     e.g. the autoGit sentence appended to a prompt
@@ -82,6 +84,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     catalog built from the registered adapters
 │  │  ├─ Sessions/                  #   SessionRegistry (the live sessions), SessionLauncher
 │  │  │                            #     (launch + restore), SessionRestorer (startup re-attach),
+│  │  │                            #     CardCompleter / CardReopener (the two hand-driven moves
+│  │  │                            #     past the launch boundary),
 │  │  │                            #     SessionEventPump (drains events onto the board),
 │  │  │                            #     TranscriptPump (one polling tail per live session)
 │  │  ├─ Usage/                     #   UsageState (latest result per agent, reading or named
@@ -180,8 +184,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   settings dialog all became routes, because each was somewhere you *go*. What stayed modal
   is the opposite kind of thing: a prompt that interrupts an action already under way and
   would be meaningless as a URL — archiving a card with follow-ups, and emptying the
-  archive. Step 11's completion/git prompt is the same shape. `RadzenComponents`
-  and the `-webkit-app-region: no-drag` rule are kept for it.
+  archive. Those two are the whole list: step 11's completion/git prompt was cut with the
+  spawned git task (2026-08-01), so sign-off and reopen are plain drags. `RadzenComponents`
+  and the `-webkit-app-region: no-drag` rule are kept for the two that remain.
 - **The hook endpoint is two listeners on one web host, not a second server.** The UI keeps
   the app's address; `/hooks/claude` and `/hooks/codex` answer on a loopback port ACT
   allocates once and remembers. `HookPortGuard` is what makes the two ports mean different

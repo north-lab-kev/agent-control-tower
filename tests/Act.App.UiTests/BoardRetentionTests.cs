@@ -76,7 +76,7 @@ public class BoardRetentionTests
 
     private static async Task<BoardState> BoardOf(params Card[] cards)
     {
-        var board = new BoardState(new Store(cards), new FrozenClock());
+        var board = new BoardState(new FakeCardStore(cards), new FrozenClock(Now));
 
         await board.LoadAsync();
 
@@ -90,35 +90,4 @@ public class BoardRetentionTests
         CompletedAt = completedAt,
     };
 
-    private sealed class FrozenClock : IClock
-    {
-        public DateTimeOffset Now => BoardRetentionTests.Now;
-    }
-
-    private sealed class Store(IEnumerable<Card> cards) : ICardStore
-    {
-        private readonly List<Card> rows = [.. cards];
-
-        public Task<IReadOnlyList<Card>> GetAllAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult<IReadOnlyList<Card>>([.. rows]);
-
-        public Task<Card?> GetAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult(rows.FirstOrDefault(row => row.Id == id));
-
-        public Task AddAsync(Card card, CancellationToken cancellationToken = default)
-        {
-            rows.Add(card);
-
-            return Task.CompletedTask;
-        }
-
-        public Task UpdateAsync(Card card, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
-
-        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
-            => Task.FromResult(rows.RemoveAll(row => row.Id == id) > 0);
-
-        public Task<int> NextNumberAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult(rows.Count + 1);
-    }
 }

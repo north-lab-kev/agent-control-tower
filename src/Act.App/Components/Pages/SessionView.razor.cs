@@ -19,6 +19,7 @@ public partial class SessionView(
     SessionRegistry registry,
     SessionLauncher launcher,
     CardCompleter completer,
+    CardReopener reopener,
     IEnumerable<IAgentAdapter> adapters,
     NavigationManager navigation,
     NotificationService notifications,
@@ -53,6 +54,10 @@ public partial class SessionView(
 
     // The review happens in front of this terminal, so this is where the sign-off belongs.
     private bool CanComplete => card is { } existing && completer.CanComplete(existing);
+
+    // And its undo, in the same place: reading the transcript of a signed-off card is exactly when
+    // the user finds the thing they still wanted to say.
+    private bool CanReopen => card is { } existing && reopener.CanReopen(existing);
 
     // Null until the session id is known, which for Codex is a little after launch — and null
     // forever for an agent with no desktop app, so the action simply does not appear.
@@ -233,8 +238,8 @@ public partial class SessionView(
             {
                 notifications.Notify(new NotificationMessage
                 {
-                    Severity = NotificationSeverity.Error,
-                    Summary = Strings.Session_LaunchFailed,
+                    Severity = result.Waiting ? NotificationSeverity.Warning : NotificationSeverity.Error,
+                    Summary = result.Waiting ? Strings.Session_NotLaunched : Strings.Session_LaunchFailed,
                     Detail = message,
                     Duration = 20000,
                 });
@@ -263,6 +268,27 @@ public partial class SessionView(
         {
             if (await completer.CompleteAsync(existing))
                 navigation.NavigateTo("/");
+        }
+        finally
+        {
+            completing = false;
+        }
+    }
+
+    // Unlike the sign-off this stays on the page: the terminal it reopened into is the reason the
+    // user took the completion back, and the card is now in Your turn where the next step is said.
+    private async Task ReopenAsync()
+    {
+        if (card is not { } existing || completing)
+            return;
+
+        completing = true;
+
+        try
+        {
+            await reopener.ReopenAsync(existing);
+
+            card = board.Card(CardId);
         }
         finally
         {
