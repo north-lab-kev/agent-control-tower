@@ -16,6 +16,14 @@ public sealed class BoardState(ICardStore store, IClock clock)
     // save. Rebuilt on every load, because that is when the instances are replaced.
     private readonly Dictionary<Guid, BoardColumn> placed = [];
 
+    // Every mutation runs under this, and so does the reload each one ends with. The board is a
+    // singleton written from one drain task per live session, the transcript pump, the queue
+    // runner, the retention sweep and every circuit — and `placed` is an ordinary dictionary, so
+    // two of them clearing and refilling it at once is not a stale read but a corrupted one: an
+    // `InvalidOperationException` out of an event pump, which then stops and takes that card's
+    // liveness with it.
+    private readonly SemaphoreSlim gate = new(1, 1);
+
     public event Action? Changed;
 
     // Every column reads the same way — the order the user put it in, arrival order until they do —
@@ -46,7 +54,51 @@ public sealed class BoardState(ICardStore store, IClock clock)
     public IReadOnlyList<Card> ChildrenOf(Card card)
         => [.. card.Children.Select(Card).OfType<Card>()];
 
-    public async Task LoadAsync(CancellationToken cancellationToken = default)
+    public Task LoadAsync(CancellationToken cancellationToken = default)
+        => WriteAsync(_ => Task.CompletedTask, cancellationToken);
+
+    public Task CreateAsync(Card card, CancellationToken cancellationToken = default)
+        => WriteAsync(
+            token =>
+            {
+                Arriving(card);
+
+                return store.AddAsync(card, token);
+            },
+            cancellationToken);
+
+    public Task UpdateAsync(Card card, CancellationToken cancellationToken = default)
+        => WriteAsync(
+            token =>
+            {
+                Arriving(card);
+
+                return store.UpdateAsync(card, token);
+            },
+            cancellationToken);
+
+    // One shape for every mutation: take the gate, write, reload under it, then announce outside it.
+    // `Changed` is raised after the release because a handler synchronously reaches back in — the
+    // queue runner evaluates, a circuit re-renders — and holding the gate across that would be a
+    // deadlock waiting for a caller to add one more `await`.
+    private async Task WriteAsync(Func<CancellationToken, Task> write, CancellationToken cancellationToken)
+    {
+        await gate.WaitAsync(cancellationToken);
+
+        try
+        {
+            await write(cancellationToken);
+            await ReloadAsync(cancellationToken);
+        }
+        finally
+        {
+            gate.Release();
+        }
+
+        Changed?.Invoke();
+    }
+
+    private async Task ReloadAsync(CancellationToken cancellationToken)
     {
         cards = await store.GetAllAsync(cancellationToken);
 
@@ -54,24 +106,6 @@ public sealed class BoardState(ICardStore store, IClock clock)
 
         foreach (var card in cards)
             placed[card.Id] = card.Column;
-
-        Changed?.Invoke();
-    }
-
-    public async Task CreateAsync(Card card, CancellationToken cancellationToken = default)
-    {
-        Arriving(card);
-
-        await store.AddAsync(card, cancellationToken);
-        await LoadAsync(cancellationToken);
-    }
-
-    public async Task UpdateAsync(Card card, CancellationToken cancellationToken = default)
-    {
-        Arriving(card);
-
-        await store.UpdateAsync(card, cancellationToken);
-        await LoadAsync(cancellationToken);
     }
 
     // A card that lands in a column lands at the end of it. Decided here rather than at each of the
@@ -90,20 +124,23 @@ public sealed class BoardState(ICardStore store, IClock clock)
     // Manual ordering inside a column, which for Ready is also the order the queue will launch in:
     // the runner takes that column exactly as it is drawn. Writes only the strips that actually
     // moved, then reloads once.
-    public async Task ReorderAsync(Card card, Card target, CancellationToken cancellationToken = default)
+    public Task ReorderAsync(Card card, Card target, CancellationToken cancellationToken = default)
     {
         if (card.Id == target.Id || card.Column != target.Column)
-            return;
+            return Task.CompletedTask;
 
         var moved = CardOrder.Move(In(card.Column), card, target);
 
         if (moved.Count == 0)
-            return;
+            return Task.CompletedTask;
 
-        foreach (var affected in moved)
-            await store.UpdateAsync(affected, cancellationToken);
-
-        await LoadAsync(cancellationToken);
+        return WriteAsync(
+            async token =>
+            {
+                foreach (var affected in moved)
+                    await store.UpdateAsync(affected, token);
+            },
+            cancellationToken);
     }
 
     // The copy is a new card in every sense the store cares about — its own id and number — so it
@@ -120,73 +157,80 @@ public sealed class BoardState(ICardStore store, IClock clock)
     // Soft: the row stays, marked with a timestamp, and the archive can put it back. Lineage is
     // left intact on purpose — a restored parent should find its children still attached, which
     // means an archived card may be the parent of a live one, and that is fine.
-    public async Task DeleteAsync(
+    public Task DeleteAsync(
         Card card,
         bool includeChildren,
         CancellationToken cancellationToken = default)
-    {
-        foreach (var target in includeChildren ? Subtree(card) : [card])
-        {
-            if (target.IsDeleted)
-                continue;
+        => WriteAsync(
+            async token =>
+            {
+                foreach (var target in includeChildren ? Subtree(card) : [card])
+                {
+                    if (target.IsDeleted)
+                        continue;
 
-            target.DeletedAt = clock.Now;
+                    target.DeletedAt = clock.Now;
 
-            await store.UpdateAsync(target, cancellationToken);
-        }
-
-        await LoadAsync(cancellationToken);
-    }
+                    await store.UpdateAsync(target, token);
+                }
+            },
+            cancellationToken);
 
     // Restores one card, not its subtree: children were archived as their own decision and are
     // restored the same way, so bringing a parent back never silently resurrects work.
-    public async Task RestoreAsync(Card card, CancellationToken cancellationToken = default)
-    {
-        if (card.IsAutoArchived)
-            card.KeepOnBoard = true;
+    public Task RestoreAsync(Card card, CancellationToken cancellationToken = default)
+        => WriteAsync(
+            token =>
+            {
+                if (card.IsAutoArchived)
+                    card.KeepOnBoard = true;
 
-        card.DeletedAt = null;
-        card.ArchivedAt = null;
+                card.DeletedAt = null;
+                card.ArchivedAt = null;
 
-        await store.UpdateAsync(card, cancellationToken);
-        await LoadAsync(cancellationToken);
-    }
+                return store.UpdateAsync(card, token);
+            },
+            cancellationToken);
 
-    public async Task ApplyRetentionAsync(TimeSpan? window, CancellationToken cancellationToken = default)
+    public Task ApplyRetentionAsync(TimeSpan? window, CancellationToken cancellationToken = default)
     {
         if (window is not { } age)
-            return;
+            return Task.CompletedTask;
 
         var due = CompletedRetention.Due(cards, age, clock.Now);
 
         if (due.Count == 0)
-            return;
+            return Task.CompletedTask;
 
-        foreach (var card in due)
-        {
-            card.ArchivedAt = clock.Now;
+        return WriteAsync(
+            async token =>
+            {
+                foreach (var card in due)
+                {
+                    card.ArchivedAt = clock.Now;
 
-            await store.UpdateAsync(card, cancellationToken);
-        }
-
-        await LoadAsync(cancellationToken);
+                    await store.UpdateAsync(card, token);
+                }
+            },
+            cancellationToken);
     }
 
     // The only place a card actually leaves the store. Unlinks each one from any parent that is
     // still around, because `children` and `parentId` are stored on both sides and a purge that
     // skipped this would leave live cards pointing at rows that no longer exist.
-    public async Task PurgeArchivedAsync(CancellationToken cancellationToken = default)
-    {
-        foreach (var card in cards.Where(card => !card.IsOnBoard).ToList())
-        {
-            if (Card(card.ParentId ?? Guid.Empty) is { } parent && parent.Children.Remove(card.Id))
-                await store.UpdateAsync(parent, cancellationToken);
+    public Task PurgeArchivedAsync(CancellationToken cancellationToken = default)
+        => WriteAsync(
+            async token =>
+            {
+                foreach (var card in cards.Where(card => !card.IsOnBoard).ToList())
+                {
+                    if (Card(card.ParentId ?? Guid.Empty) is { } parent && parent.Children.Remove(card.Id))
+                        await store.UpdateAsync(parent, token);
 
-            await store.DeleteAsync(card.Id, cancellationToken);
-        }
-
-        await LoadAsync(cancellationToken);
-    }
+                    await store.DeleteAsync(card.Id, token);
+                }
+            },
+            cancellationToken);
 
     public async Task MoveAsync(Card card, BoardColumn target, CancellationToken cancellationToken = default)
     {

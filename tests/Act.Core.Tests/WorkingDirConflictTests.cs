@@ -165,6 +165,8 @@ public class WorkingDirConflictTests
 
         public PathCheck Check(string workingDir) => PathCheck.Found(Resolve(workingDir));
 
+        public string NearestDirectory(string? path) => path is null ? Home : Resolve(path);
+
         public DirectoryListing List(string? path, bool includeFiles = false)
             => new(path, null, []);
     }

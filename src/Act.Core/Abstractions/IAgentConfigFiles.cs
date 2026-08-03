@@ -22,7 +22,7 @@ public interface IAgentConfigFiles
     // The same, for a file the CLI writes back into. Codex appends its hook-trust state to the very
     // profile ACT generates, so an unconditional rewrite destroys the trust the user just granted and
     // the review screen returns on every launch. Everything from the first line beginning with
-    // `tailMarker` is carried across verbatim. Measured 2026-07-31.
+    // `tailMarker` is carried across verbatim.
     void WriteExternalPreservingTail(string absolutePath, string content, string tailMarker);
 
     void DeleteExternal(string absolutePath);

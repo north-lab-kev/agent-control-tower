@@ -5,22 +5,19 @@ using Act.Core.Agents;
 
 namespace Act.Agents.Codex;
 
-// Codex's hooks fire and ACT ingests them, verified live 2026-07-31 on `codex-cli
-// 0.146.0-alpha.3.1` — which reverses the finding this file was written blind under. The
-// `exited with code 1` that made them look dead was ACT quoting the program token; see `Command`.
+// The four facts this file is built on, each measured against the CLI rather than read from docs.
+// `docs/codex-hooks-findings.md` is where they were established and where the wrong turns are
+// recorded; what follows is only what a reader has to hold to edit this safely.
 //
-// Facts this file depends on, each measured against the CLI rather than read from docs:
-//   * The profile's `hooks` is a **table whose keys are event names**, each a list of matcher
-//     groups — `[[hooks.<Event>]]` with `matcher`, then `[[hooks.<Event>.hooks]]` with a handler.
-//     It is **not** a string path to a json file; that shape is what the CLI now rejects.
+//   * The profile's `hooks` is a **table whose keys are event names** — `[[hooks.<Event>]]` with a
+//     `matcher`, then `[[hooks.<Event>.hooks]]` with a handler. **Not** a string path to a json
+//     file: that shape is rejected outright, and rejecting it kills the launch.
 //   * A handler's `type` is one of `command`, `prompt`, `agent`, and `command` is a single string.
-//   * `$CODEX_HOME/hooks.json` is auto-discovered on its own, so it is a second way in — but ACT
-//     does not use it. That path is the *user's* file, and ACT writing over it is out of the
-//     question; writing the same json into ACT's own directory instead, as this class did while the
-//     hooks were believed dead, produced a file Codex never looks at. The profile is the one way in.
-//   * Codex hashes each handler definition and re-prompts for trust when it changes — so the
-//     command below must be byte-identical on every launch, which is why the endpoint url and
-//     the token are read from the process environment instead of appearing in it.
+//   * ACT declares its hooks in its own `--profile` layer and nowhere else. `$CODEX_HOME/hooks.json`
+//     is auto-discovered and would work, but it is the *user's* file and ACT will not write it.
+//   * Codex hashes each handler definition and re-prompts for trust when it changes, so **the
+//     command must be byte-identical on every launch** — which is why the endpoint url and the
+//     token ride the process environment instead of appearing in it.
 public static class CodexHookConfig
 {
     public const string ProfileName = "act";
@@ -53,16 +50,13 @@ public static class CodexHookConfig
     // a tool-name pattern and ACT observes them all. Both were accepted by the parser.
     private const string AllSources = "*";
 
-    // ACT's profile layer — the only place ACT declares its hooks. Only what ACT owns goes in
-    // it — the user's `~/.codex/config.toml` is never edited by ACT (Codex itself writes hook-trust
-    // state there, under `[hooks.state.…]`, which ACT cannot prevent).
+    // ACT's profile layer — the only place ACT declares its hooks. Only what ACT owns goes in it;
+    // the user's `~/.codex/config.toml` is never edited (Codex itself writes hook-trust state there,
+    // under `[hooks.state.…]`, which ACT cannot prevent).
     //
-    // The shape was **measured on 2026-07-31**, after the previous one (`hooks = "<path>"`) turned out
-    // to make the CLI refuse to start at all and killed every Codex launch. How it was pinned down,
-    // since the parser ignores unknown keys and would accept a wrong shape in silence: give a known
-    // field the wrong *type* and serde names it. `hooks.state = 1` → "expected a map";
-    // `hooks.SessionStart = 1` → "expected a sequence"; `matcher = 1` → "expected a string";
-    // `type = "bogus"` → "unknown variant `bogus`, expected one of `command`, `prompt`, `agent`".
+    // Changing this shape is not something to do from the docs: the parser accepts unknown keys in
+    // silence, so a wrong shape fails at launch rather than at write. `codex-hooks-findings.md` has
+    // the type-probing trick for re-measuring it against a newer CLI.
     public static string ComposeProfile(string forwarderPath)
     {
         var builder = new StringBuilder();
@@ -83,16 +77,13 @@ public static class CodexHookConfig
         return builder.ToString();
     }
 
-    // One string, identical to what the json file declares — the definition is hashed for trust, so
-    // the two must not drift.
+    // **The program token must not be quoted, and everything after it may be.** Codex takes quotes
+    // literally when it resolves the program, so `"<path>" <Event>` names a program called
+    // `"<path>"` — `hook exited with code 1`, script never reached. An unquoted shell with a quoted
+    // argument after it works, path with a space included, because from there `cmd` is parsing.
     //
-    // **The program token must not be quoted, and everything after it may be.** Measured
-    // 2026-07-31 by giving five events five candidate shapes and reading which ones ran: Codex takes
-    // quotes literally when it resolves the program, so `"<path>" <Event>` is a program named
-    // `"<path>"`, which does not exist — `hook exited with code 1`, with the script never reached.
-    // ACT quoted the path from the first launch it ever made, which is why no Codex hook had ever
-    // arrived. An *unquoted* path runs, and so does an unquoted shell with a quoted argument after
-    // it — including a path containing a space, because at that point `cmd` is doing the parsing.
+    // This one line is why no Codex hook arrived for the first weeks of the feature; the whole
+    // investigation is in `codex-hooks-findings.md`. Do not add quotes around the program.
     private static string Command(string forwarderPath, string eventName)
         => OperatingSystem.IsWindows()
             ? $"{WindowsShell} /c \"{forwarderPath}\" {eventName}"

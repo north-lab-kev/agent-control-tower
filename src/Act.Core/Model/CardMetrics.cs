@@ -22,6 +22,10 @@ public sealed class CardMetrics
 
     public long TokensTotal => TokensIn + TokensOut;
 
+    // Clamped, because the two figures come from different places and can disagree: a limit read
+    // from an earlier transcript line, or a model whose effective window is smaller than the one
+    // ACT knows, both produce a used count past the limit — and a bar that overflows its own track
+    // reads as a defect rather than as a full context.
     public int? ContextPercent
-        => ContextLimit > 0 ? (int)(100L * ContextUsed / ContextLimit) : null;
+        => ContextLimit > 0 ? (int)Math.Clamp(100L * ContextUsed / ContextLimit, 0, 100) : null;
 }

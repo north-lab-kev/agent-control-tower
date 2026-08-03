@@ -1,6 +1,7 @@
 using System.Globalization;
 using Act.App.Cards;
 using Act.App.Resources;
+using Act.Core.Abstractions;
 using Act.Core.Model;
 using Microsoft.AspNetCore.Components;
 
@@ -9,7 +10,7 @@ namespace Act.App.Components.Pages;
 // A card's history, read from the transitions it accumulated. Oldest first, because a timeline that
 // reads downwards is the one the eye follows — and because the connecting rail only makes sense in
 // the direction the work actually went.
-public partial class TimelineView(BoardState board, NavigationManager navigation) : IDisposable
+public partial class TimelineView(BoardState board, IClock clock, NavigationManager navigation) : IDisposable
 {
     private Card? card;
 
@@ -23,7 +24,7 @@ public partial class TimelineView(BoardState board, NavigationManager navigation
             if (card is null)
                 return [];
 
-            var now = DateTimeOffset.Now;
+            var now = clock.Now;
 
             return [.. card.Transitions.OrderBy(transition => transition.At).Select(transition => Entry.From(transition, now))];
         }

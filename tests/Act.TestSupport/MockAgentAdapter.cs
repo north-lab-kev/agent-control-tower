@@ -51,6 +51,11 @@ public sealed class MockAgentAdapter(
     // makes ACT change nothing.
     public AgentInstall Install { get; set; } = AgentInstall.OnPath;
 
+    // A spawn that throws — a binary that moved, a working directory that vanished, a transcript the
+    // CLI refused to resume. Distinct from a refused *resolution*, which never reaches the adapter:
+    // this is the failure that happens after ACT has committed to starting something.
+    public Exception? Fails { get; set; }
+
     public AgentInstall Locate(IExecutableProbe probe) => Install;
 
     public Task<IAgentSession> LaunchAsync(
@@ -77,6 +82,9 @@ public sealed class MockAgentAdapter(
 
     private void Refuse(LaunchConfig config)
     {
+        if (Fails is { } failure)
+            throw failure;
+
         var resolution = Resolve(config);
         if (resolution.CanLaunch)
             return;

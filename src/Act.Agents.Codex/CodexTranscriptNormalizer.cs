@@ -13,16 +13,13 @@ namespace Act.Agents.Codex;
 //   * `event_msg/task_complete`  — an `error` when the turn failed
 //   * `event_msg/token_count`    — `total_token_usage`, `last_token_usage`, `model_context_window`
 //
-// **This class used to report liveness too** — activity, turn ends and the turn/tool counts — because
-// Codex's hooks were believed not to fire. They do (the failures were ACT quoting the hook command),
-// so on 2026-07-31 all of that moved to the hooks, which report first-hand instead of a second behind
-// a file, and which count the same things Claude Code's do. The divergence the roadmap asked to undo
-// is undone: hooks own the counts, the transcript owns enrichment.
+// **Hooks own the counts; the transcript owns enrichment.** Liveness — activity, turn ends, the
+// turn and tool counts — is reported first-hand by hooks rather than a poll behind a file.
 //
-// The one event kept, and the reason it is an exception: `TurnFailed`. `task_complete` carrying an
-// `error` is the CLI saying the turn failed while its process stays alive and would exit zero — the
-// failure `ProcessExited` cannot see — and no hook has been *observed* reporting it. Measured, not
-// assumed: drop this only after watching a real failed turn's `Stop` payload.
+// The one event raised here, and the reason it is an exception: `TurnFailed`. `task_complete`
+// carrying an `error` is the CLI saying the turn failed while its process stays alive and would
+// exit zero — the failure `ProcessExited` cannot see — and no hook has been *observed* reporting
+// it. Measured, not assumed: drop this only after watching a real failed turn's `Stop` payload.
 public sealed class CodexTranscriptNormalizer : ITranscriptNormalizer
 {
     private const int FailureLimit = 400;

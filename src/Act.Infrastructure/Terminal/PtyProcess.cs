@@ -113,7 +113,13 @@ internal sealed class PtyProcess(IPtyConnection connection) : IPtyProcess
     private async Task ReadAsync(CancellationToken cancellationToken)
     {
         var buffer = new byte[8192];
-        var characters = new char[8192];
+
+        // `GetMaxCharCount`, never the byte count. The decoder carries the tail of a split UTF-8
+        // sequence across reads, so a read whose first byte completes a 4-byte one emits a
+        // surrogate *pair* — two chars for one byte — and a same-sized buffer overflows by one.
+        // `GetChars` then throws `ArgumentException`, which is not an `IOException`, so the whole
+        // read loop would die and that session's terminal would go blank for good.
+        var characters = new char[Encoding.UTF8.GetMaxCharCount(buffer.Length)];
 
         try
         {

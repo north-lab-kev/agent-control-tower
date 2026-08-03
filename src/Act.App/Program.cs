@@ -75,15 +75,10 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 
-// Deliberately no HTTPS redirection and no HSTS. ACT is a desktop app whose web host is an
-// implementation detail: the UI is a local window under Electron, there is no certificate to serve
-// and nothing reaches it from off the machine. Both were template defaults, and both were worse
-// than inert here — redirection logged "failed to determine the https port" on every start under
-// the http profile, and under the https one it would have found a port and bounced every
-// plain-http request to it, **including the agents' hook posts on the loopback port**. A hook
-// client does not follow a 307, so ingestion would have died quietly on that profile. HSTS only
-// ever applied to the packaged build, where a policy pinned to localhost is a liability to every
-// other local app on the machine rather than a protection for this one.
+// Deliberately no HTTPS redirection and no HSTS: ACT is a desktop app whose web host is an
+// implementation detail, and redirection would bounce the agents' hook posts off the loopback port
+// to a 307 no hook client follows. See *No HTTPS redirection and no HSTS* in `docs/design-notes.md`
+// before adding either back.
 app.UseAntiforgery();
 
 app.MapActHooks();

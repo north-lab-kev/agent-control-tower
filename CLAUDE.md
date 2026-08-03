@@ -17,6 +17,11 @@ Instructions for Claude Code when working in this repository.
 - **`docs/ACT-roadmap.md` — read when needed.** Build sequence and step status.
   Consult it to know what comes next or what a step's *verify* line requires;
   tick steps off as they land.
+- **`docs/design-notes.md` — read when a comment points at it, or before undoing something
+  that looks arbitrary.** How the non-obvious decisions were reached: measurements against a
+  pinned CLI, shapes that were tried and rejected, code that was deleted and why. The code
+  states its invariants and cites this file rather than narrating the history inline, so a
+  constant or a guard that looks removable is usually explained here.
 - **`docs/agent-usage-findings.md` — read before touching usage code.** Where the
   5-hour and weekly numbers come from: the two undocumented HTTP endpoints, their
   response shapes, the unit and encoding traps between them, the rules ACT holds

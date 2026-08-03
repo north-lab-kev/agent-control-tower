@@ -1,4 +1,5 @@
 using Act.App.Cards;
+using Act.App.Hosting;
 using Act.Core.Abstractions;
 using Act.Core.Agents;
 using Act.Core.Events;
@@ -13,12 +14,9 @@ namespace Act.App.Sessions;
 // Polled rather than watched, deliberately. A `FileSystemWatcher` on an appended file needs its own
 // debounce and reports late anyway; a read from a stored offset once a second is a few kilobytes.
 //
-// **One way a session's file becomes known, for both agents: the hooks say so.** Codex used to have a
-// second, `CodexRolloutFinder`, which inferred the file from the folder layout and a cwd/timestamp
-// match because its hooks were believed dead. They are not — that was ACT quoting the hook command —
-// so the guessing is gone (2026-07-31) and `ITranscriptFinder` with it. The cost of the deletion,
-// accepted: a user who answers Codex's hook-review screen with *"Continue without trusting"* gets no
-// payloads, so nothing names the transcript and that card reports only what its process can say.
+// **One way a session's file becomes known, for both agents: the hooks say so.** There is no
+// fallback that guesses at it — see `docs/design-notes.md` for the one that was deleted and the
+// cost that acceptance carries for a user who declines Codex's hook-review screen.
 public sealed class TranscriptPump(
     SessionRegistry sessions,
     BoardState board,
@@ -34,15 +32,19 @@ public sealed class TranscriptPump(
     private readonly Dictionary<AgentType, ITranscriptNormalizer> byAgent =
         normalizers.ToDictionary(normalizer => normalizer.Agent);
 
-    private readonly CancellationTokenSource stopping = new();
+    private readonly BackgroundWork work = new(log);
 
     public void Start() => sessions.TranscriptLocated += Attach;
 
-    private void Attach(IAgentSession session, string path) => _ = TailAsync(session, path);
+    private void Attach(IAgentSession session, string path)
+        => work.Start($"Transcript tail for task {session.TaskId}", token => TailAsync(session, path, token));
 
+    // Its own timer rather than `StartLoop`, because the loop ends on the session going away as well
+    // as on shutdown — and one tail per session must not be serialized against the others.
+    //
     // An agent with no transcript normalizer is not an error: it simply reports what its hooks and its
     // process can say.
-    private async Task TailAsync(IAgentSession session, string path)
+    private async Task TailAsync(IAgentSession session, string path, CancellationToken cancellationToken)
     {
         if (Agent(session) is not { } agent || !byAgent.TryGetValue(agent, out var normalizer))
             return;
@@ -51,23 +53,13 @@ public sealed class TranscriptPump(
 
         using var timer = new PeriodicTimer(PollInterval);
 
-        try
+        // Read before the first wait: the file already holds the whole session, and on a restore
+        // that is a session with an hour of numbers in it.
+        do
         {
-            // Read before the first wait: the file already holds the whole session, and on a restore
-            // that is a session with an hour of numbers in it.
-            do
-            {
-                Poll(session, tail);
-            }
-            while (sessions.IsLive(session.TaskId) && await timer.WaitForNextTickAsync(stopping.Token));
+            Poll(session, tail);
         }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception error)
-        {
-            log.LogError(error, "Transcript tail for task {TaskId} stopped.", session.TaskId);
-        }
+        while (sessions.IsLive(session.TaskId) && await timer.WaitForNextTickAsync(cancellationToken));
     }
 
     // A read that throws must not end the tail: the CLI owns this file and a mid-write moment is a
@@ -107,8 +99,6 @@ public sealed class TranscriptPump(
     {
         sessions.TranscriptLocated -= Attach;
 
-        await stopping.CancelAsync();
-
-        stopping.Dispose();
+        await work.DisposeAsync();
     }
 }

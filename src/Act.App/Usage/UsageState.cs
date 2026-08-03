@@ -19,16 +19,28 @@ public sealed class UsageState
         }
     }
 
+    // `Off` is the only outcome that removes rather than records, and the only one that can be
+    // published over and over with nothing to say — an agent switched off is reported on every pass
+    // of the poll loop. So it announces only when it actually took something away; anything else is
+    // news by definition, since a reading carries the instant it was taken.
     public void Publish(UsageProbeResult result)
     {
+        bool changed;
+
         lock (gate)
         {
             if (result.Availability is UsageAvailability.Off)
-                results.Remove(result.Agent);
+            {
+                changed = results.Remove(result.Agent);
+            }
             else
+            {
                 results[result.Agent] = result;
+                changed = true;
+            }
         }
 
-        Changed?.Invoke();
+        if (changed)
+            Changed?.Invoke();
     }
 }

@@ -1,4 +1,5 @@
 using Act.App.Cards;
+using Act.App.Hosting;
 using Act.App.Notifications;
 using Act.Core.Abstractions;
 using Act.Core.Model;
@@ -22,41 +23,44 @@ public sealed class SessionEventPump(
 {
     private static readonly TimeSpan MetricsFlushInterval = TimeSpan.FromSeconds(1);
 
-    private readonly CancellationTokenSource stopping = new();
+    private readonly BackgroundWork work = new(log);
 
     private readonly Lock gate = new();
 
-    private readonly HashSet<Guid> dirty = [];
-
-    private Task? flushing;
+    // The card *instance* the projection last wrote to, not just its id. `BoardState` replaces every
+    // instance on each reload, so by the time the flush runs the board's copy may be a different
+    // object that never saw the increments — see `FlushAsync`.
+    private readonly Dictionary<Guid, Card> dirty = [];
 
     public void Start()
     {
         sessions.Added += Attach;
-        flushing = FlushLoopAsync();
+
+        work.StartLoop("The metrics flush", MetricsFlushInterval, FlushAsync);
     }
 
-    private void Attach(IAgentSession session) => _ = DrainAsync(session);
+    // One drain per session, named after the card so a failure says which one went deaf: the session
+    // and its terminal are unaffected by a pump that dies, so it is reported rather than rethrown.
+    private void Attach(IAgentSession session)
+        => work.Start($"Event pump for task {session.TaskId}", token => DrainAsync(session, token));
 
-    private async Task DrainAsync(IAgentSession session)
+    private async Task DrainAsync(IAgentSession session, CancellationToken cancellationToken)
     {
-        try
-        {
-            await foreach (var observed in session.Events.WithCancellation(stopping.Token))
-                await ApplyAsync(session.TaskId, observed);
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception error)
-        {
-            // A pump that dies takes the board's liveness with it and says nothing. The session and
-            // its terminal are unaffected, so this is reported rather than rethrown.
-            log.LogError(error, "Event pump for task {TaskId} stopped.", session.TaskId);
-        }
+        await foreach (var observed in session.Events.WithCancellation(cancellationToken))
+            await ApplyAsync(session.TaskId, observed, cancellationToken);
+
+        // The stream ends when the agent's process does, and nothing else notices: a session whose
+        // CLI exited on its own would otherwise stay in the registry forever, which reads as *live*
+        // — so the card could not be retried (`CardRetry` asks exactly that), could not be
+        // relaunched, opened onto a frozen terminal, and its pty and hook token were never
+        // released. Matched on the instance, so a restart's replacement is left alone.
+        await sessions.EndAsync(session);
     }
 
-    private async Task ApplyAsync(Guid taskId, Core.Events.AgentEvent observed)
+    private async Task ApplyAsync(
+        Guid taskId,
+        Core.Events.AgentEvent observed,
+        CancellationToken cancellationToken)
     {
         // A card can be deleted while its session is still running its last turn out.
         if (board.Card(taskId) is not { } card)
@@ -79,7 +83,7 @@ public sealed class SessionEventPump(
                 Note = move.Detail,
             });
 
-            await board.UpdateAsync(card, stopping.Token);
+            await board.UpdateAsync(card, cancellationToken);
 
             notifications.Notify(card);
 
@@ -89,27 +93,20 @@ public sealed class SessionEventPump(
         if (touchedMetrics)
         {
             lock (gate)
-                dirty.Add(taskId);
+                dirty[taskId] = card;
         }
     }
 
-    private async Task FlushLoopAsync()
+    // The projected instance carries the numbers; the board's carries everything else. Any write in
+    // the meantime — another card's turn ending, a title edited on the task page — reloads the board
+    // and replaces every instance, so writing back the projected one would clobber whatever else
+    // changed, and writing back the board's one would silently drop a second of tool calls and leave
+    // `lastActivityAt` behind, which is what makes a working card start claiming it has gone quiet.
+    // So the two fields the projection owns are carried across, and the board's copy is what is
+    // saved.
+    private async Task FlushAsync(CancellationToken cancellationToken)
     {
-        using var timer = new PeriodicTimer(MetricsFlushInterval);
-
-        try
-        {
-            while (await timer.WaitForNextTickAsync(stopping.Token))
-                await FlushAsync();
-        }
-        catch (OperationCanceledException)
-        {
-        }
-    }
-
-    private async Task FlushAsync()
-    {
-        Guid[] pending;
+        KeyValuePair<Guid, Card>[] pending;
 
         lock (gate)
         {
@@ -121,10 +118,18 @@ public sealed class SessionEventPump(
             dirty.Clear();
         }
 
-        foreach (var taskId in pending)
+        foreach (var (taskId, projected) in pending)
         {
-            if (board.Card(taskId) is { } card)
-                await board.UpdateAsync(card, stopping.Token);
+            if (board.Card(taskId) is not { } card)
+                continue;
+
+            if (!ReferenceEquals(card, projected))
+            {
+                card.Metrics = projected.Metrics;
+                card.ObservedModel = projected.ObservedModel;
+            }
+
+            await board.UpdateAsync(card, cancellationToken);
         }
     }
 
@@ -132,11 +137,6 @@ public sealed class SessionEventPump(
     {
         sessions.Added -= Attach;
 
-        await stopping.CancelAsync();
-
-        if (flushing is not null)
-            await flushing;
-
-        stopping.Dispose();
+        await work.DisposeAsync();
     }
 }

@@ -21,7 +21,11 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  ├─ ACT-overview.md               # the spec
 │  ├─ ACT-roadmap.md                # the build plan
 │  ├─ repository-structure.md       # this file
-│  └─ ui-preview.html               # UI mockup
+│  ├─ design-notes.md               # how the non-obvious decisions were reached: measurements,
+│  │                                #   rejected shapes, deleted code. The code cites it rather
+│  │                                #   than carrying the history inline
+│  ├─ agent-usage-findings.md       # the two usage endpoints and their traps
+│  └─ codex-hooks-findings.md       # Codex hook discovery, TOML shape, the quoting bug
 │
 ├─ src/
 │  ├─ Act.Core/                     # DOMAIN + APPLICATION — no infra/UI/agent deps
@@ -106,6 +110,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     unavailability) + UsagePump (one poll loop per probe,
 │  │  │                            #     backing off on a failure that cost a request);
 │  │  │                            #     UsageIndicator renders both in the top bar
+│  │  ├─ Hosting/                   #   BackgroundWork: the lifetime every pump shares — one
+│  │  │                            #     cancellation source, the single-flight gate, a guard per
+│  │  │                            #     pass, and a shutdown that waits before it disposes
 │  │  ├─ Settings/                  #   user-settings service + culture
 │  │  ├─ Resources/                 #   .resx strings (en / fr)
 │  │  ├─ wwwroot/                   #   CSS (flight-strip look), assets

@@ -362,7 +362,12 @@ public partial class SessionView(
 
         try
         {
-            await InvokeAsync(() => loaded.InvokeVoidAsync("write", terminalId, text));
+            // `async` and awaited inside, because `InvokeVoidAsync` returns a `ValueTask` and a
+            // lambda handing one straight back binds to the `Action` overload — the interop call
+            // would be dispatched and forgotten, the catches below would never see a disconnected
+            // circuit, and the pty's flush loop would lose the backpressure it gets from awaiting
+            // this handler.
+            await InvokeAsync(async () => await loaded.InvokeVoidAsync("write", terminalId, text));
         }
         catch (JSDisconnectedException)
         {

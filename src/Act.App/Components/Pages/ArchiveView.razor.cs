@@ -113,7 +113,7 @@ public partial class ArchiveView(
 
         return string.Join(
             " · ",
-            new[] { card.Column.ToString(), card.WorkingDir, at, how }
+            new[] { CardVisuals.Column(card.Column), card.WorkingDir, at, how }
                 .Where(part => !string.IsNullOrWhiteSpace(part)));
     }
 }

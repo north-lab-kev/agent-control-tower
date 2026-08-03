@@ -56,7 +56,7 @@ command = "C:\\WINDOWS\\system32\\cmd.exe /c \"C:\\…\\act-hook-forward.cmd\" S
 
 `$CODEX_HOME/hooks.json` **is** auto-discovered with no config key, so a json file is a real
 second way in — but not one ACT uses: that path is the user's file, and ACT will not write it.
-ACT briefly wrote the same json into its own directory, where Codex never looks; that file is
+ACT briefly wrote the same json (`act-hooks.json`) into its own directory, where Codex never looks; that file is
 deleted. Two facts from mapping it are still worth keeping:
 
 - A hooks json **must be BOM-free**. PowerShell's `Out-File -Encoding utf8` writes a BOM and
@@ -380,7 +380,8 @@ Still-useful mechanics, none of them hook-specific:
   an install — and for ACT's task form, whose *Advanced* → agent binary field exists for it.)*
 - **Type-probe the config parser.** It **ignores unknown keys**, so a wrong shape parses in
   silence and buys nothing; giving a candidate key the wrong *type* makes serde name what it
-  wanted (`hooks.state = 1` → "expected a map", `matcher = 1` → "expected a string",
+  wanted (`hooks.state = 1` → "expected a map", `hooks.SessionStart = 1` → "expected a sequence",
+  `matcher = 1` → "expected a string",
   `type = "bogus"` → "unknown variant, expected one of `command`, `prompt`, `agent`"). Absence
   of an error therefore means the key does not exist, which is how Plan mode was ruled out as a
   config key.

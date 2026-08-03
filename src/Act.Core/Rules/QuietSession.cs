@@ -8,14 +8,11 @@ namespace Act.Core.Rules;
 // fact it is. A badge here would claim something no signal supports, and would overwrite the one
 // thing ACT does know.
 //
-// It replaces the `stale` badge and its watchdog, deleted 2026-07-31. See the spec's *No stale
-// badge — the quiet chip instead*.
+// See the spec's *No stale badge — the quiet chip instead*.
 public static class QuietSession
 {
-    // Measured across 2,729 within-turn gaps in real Claude Code transcripts: p50 1.3s, p90 7.2s,
-    // p99 45s, and every gap past three minutes turned out to be a session waiting on its human
-    // rather than working. So this is ~20× the p99 — far outside normal chatter, still short enough
-    // to notice overnight.
+    // ~20× the p99 of real within-turn gaps: far outside normal chatter, still short enough to
+    // notice overnight. `docs/design-notes.md` has the measurement it comes from.
     public static readonly TimeSpan Threshold = TimeSpan.FromMinutes(15);
 
     // Null when there is nothing worth saying. **Executing only**: a card in Your turn is quiet

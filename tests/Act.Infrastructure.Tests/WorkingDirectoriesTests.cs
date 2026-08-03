@@ -1,3 +1,4 @@
+using Act.Core.Abstractions;
 using Act.Infrastructure.FileSystem;
 using AwesomeAssertions;
 

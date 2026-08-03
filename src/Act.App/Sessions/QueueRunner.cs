@@ -1,4 +1,5 @@
 using Act.App.Cards;
+using Act.App.Hosting;
 using Act.App.Settings;
 using Act.App.Usage;
 using Act.Core.Abstractions;
@@ -29,11 +30,9 @@ public sealed class QueueRunner(
     // is what a scheduled instant waits for.
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(20);
 
-    private readonly CancellationTokenSource stopping = new();
+    private readonly BackgroundWork work = new(log);
 
-    private readonly SemaphoreSlim gate = new(1, 1);
-
-    private int pending;
+    private QueueEvaluation latest = new([], new Dictionary<Guid, ReadyHold>(), new Dictionary<Guid, DateTimeOffset>());
 
     // Raised after every pass. The board reads its hold chips from this runner, and the inputs that
     // change them — the pause switch, the cap, a usage reading — are not card writes, so
@@ -47,74 +46,23 @@ public sealed class QueueRunner(
         settings.Changed += OnChanged;
         usage.Changed += OnChanged;
 
-        _ = LoopAsync();
+        work.StartLoop("The queue runner", Interval, _ => work.RunAsync(PassAsync));
     }
 
-    private async Task LoopAsync()
-    {
-        using var timer = new PeriodicTimer(Interval);
+    // Through the same single-flight gate the loop uses: a launch changes the board, which raises
+    // `Changed`, which would otherwise re-enter while the pass that caused it is still deciding what
+    // else to start.
+    private void OnChanged() => work.Request("A queue pass", PassAsync);
 
-        try
-        {
-            do
-            {
-                await RunAsync();
-            }
-            while (await timer.WaitForNextTickAsync(stopping.Token));
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception error)
-        {
-            log.LogError(error, "The queue runner stopped.");
-        }
-    }
+    // What the last pass decided. The board renders its hold chips from this rather than evaluating
+    // for itself: a pass walks every card and resolves a working directory per candidate pair, and
+    // a render happens on every drag-enter and every tick — so asking again per frame cost real
+    // time to re-derive an answer that cannot have changed. Every input that *can* change it
+    // (a board write, a settings change, a usage reading, the backstop timer) already runs a pass,
+    // and `Evaluated` is what tells the board to redraw.
+    public QueueEvaluation Latest => latest;
 
-    // Coalesced, not queued. A pass launches several cards and arms several more, and every one of
-    // those writes raises `Changed` — without this, one pass over five cards would schedule five
-    // more passes that each find nothing left to do.
-    private void OnChanged()
-    {
-        if (Interlocked.Exchange(ref pending, 1) == 0)
-            _ = RunAsync();
-    }
-
-    // Single-flight: a launch changes the board, which raises `Changed`, which would otherwise
-    // re-enter here while the pass that caused it is still deciding what else to start.
-    private async Task RunAsync()
-    {
-        try
-        {
-            await gate.WaitAsync(stopping.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-
-        // Cleared inside the gate, so a change that lands *during* the pass still schedules the
-        // next one — the flag suppresses duplicates, never the news.
-        Interlocked.Exchange(ref pending, 0);
-
-        try
-        {
-            await PassAsync();
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception error)
-        {
-            log.LogError(error, "A queue pass failed.");
-        }
-        finally
-        {
-            gate.Release();
-        }
-    }
-
-    public QueueEvaluation Evaluate() => LaunchQueue.Evaluate(
+    public QueueEvaluation Evaluate() => latest = LaunchQueue.Evaluate(
         board.All,
         settings.QueuePolicy,
         Usage,
@@ -124,7 +72,7 @@ public sealed class QueueRunner(
     private AgentUsage? Usage(AgentType agent)
         => usage.Results.FirstOrDefault(result => result.Agent == agent)?.Usage;
 
-    private async Task PassAsync()
+    private async Task PassAsync(CancellationToken cancellationToken)
     {
         var evaluation = Evaluate();
 
@@ -138,7 +86,7 @@ public sealed class QueueRunner(
 
             card.EligibleAt = at;
 
-            await board.UpdateAsync(card, stopping.Token);
+            await board.UpdateAsync(card, cancellationToken);
 
             log.LogInformation("Card {Number} is armed for {At}.", card.Number, at);
         }
@@ -147,7 +95,7 @@ public sealed class QueueRunner(
         {
             log.LogInformation("Launching card {Number} from the queue.", card.Number);
 
-            var result = await launcher.LaunchAsync(card, geometry.Last, stopping.Token);
+            var result = await launcher.LaunchAsync(card, geometry.Last, cancellationToken);
 
             // Nothing is retried and nothing is moved: a refusal is already recorded on the card by
             // the launcher, and a wait is a hold that will be re-read on the next pass anyway.
@@ -173,17 +121,16 @@ public sealed class QueueRunner(
             sleep.Release();
     }
 
+    // The hold is released only once every pass has finished, or a pass still in flight could take
+    // one back out on its way through `ApplySleep`.
     public async ValueTask DisposeAsync()
     {
         board.Changed -= OnChanged;
         settings.Changed -= OnChanged;
         usage.Changed -= OnChanged;
 
-        await stopping.CancelAsync();
+        await work.DisposeAsync();
 
         sleep.Release();
-
-        stopping.Dispose();
-        gate.Dispose();
     }
 }

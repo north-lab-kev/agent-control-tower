@@ -213,41 +213,43 @@ public sealed class CodexAdapter(
     // ACT never passes `bypass_hook_trust`: the review screen is the user's call, and the card will
     // park on it the first time.
     //
-    // There was a third file, an `act-hooks.json` in ACT's own directory, from when the profile shape
-    // was thought to be a path to one. Codex only auto-discovers that json at `$CODEX_HOME/hooks.json`
-    // — the user's file, which ACT will not write — so ACT's copy was read by nobody. Deleted
-    // 2026-07-31 with the rest of the blind-era scaffolding.
+    // Neither file is worth a session. The profile is the one path ACT writes outside its own data
+    // directory, so it is also the one most likely to be refused — a read-only `~/.codex`, a
+    // locked file — and a launch that died there would cost the user their task to buy ACT some
+    // observability. So a failed write means no `--profile` and no token: the CLI runs, and the
+    // card simply reports only what its process can say.
     private string? InjectHooks(Guid taskId, List<string> arguments)
     {
         if (hooks.UrlFor(Agent) is null)
             return null;
 
-        var token = hooks.Register(taskId);
+        try
+        {
+            // Shared, not per task, and that is the load-bearing part: the forwarder path appears
+            // inside the hook definition Codex hashes, so a per-task path would demand fresh
+            // approval for every card. One file, one hash, one review — ever.
+            var forwarder = configFiles.WriteShared(
+                CodexHookConfig.ForwarderFileName,
+                CodexHookConfig.ComposeForwarder());
 
-        // Shared, not per task, and that is the load-bearing part: the forwarder path appears inside
-        // the hook definition Codex hashes, so a per-task path would demand fresh approval for
-        // every card. One file, one hash, one review — ever.
-        var forwarder = configFiles.WriteShared(
-            CodexHookConfig.ForwarderFileName,
-            CodexHookConfig.ComposeForwarder());
-
-        // The profile declares the handlers as `[[hooks.<Event>]]` tables. It used to write
-        // `hooks = "<path>"`, which this CLI rejects outright — *"invalid type: string … expected
-        // struct HooksToml"* — so every Codex launch died on exit code 1 with an empty terminal
-        // before the shape was re-measured. `CodexHookConfig.ComposeProfile` records how.
-        // Carrying the tail across, because Codex appends `[hooks.state]` — the trust hashes — to this
-        // very file. Rewriting it wholesale threw away the review the user had just answered, so the
-        // nine-hook gate came back on every launch. Comparing the file with ACT's own bytes is not
-        // enough: Codex rewrites the whole thing in its own formatting when it saves, so the block ACT
-        // wrote does not come back byte-identical. Measured 2026-07-31.
-        configFiles.WriteExternalPreservingTail(
-            CodexHookConfig.ProfilePath(CodexHookConfig.ResolveCodexHome()),
-            CodexHookConfig.ComposeProfile(forwarder),
-            CodexHookConfig.TrustStateKey);
+            // The tail is carried across because Codex appends `[hooks.state]` — the trust hashes —
+            // to this very file, and rewriting it wholesale throws away the review the user just
+            // answered, bringing the nine-hook gate back on every launch. Comparing the file against
+            // ACT's own bytes is not enough to detect that: Codex rewrites the whole thing in its own
+            // formatting when it saves, so what ACT wrote does not come back byte-identical.
+            configFiles.WriteExternalPreservingTail(
+                CodexHookConfig.ProfilePath(CodexHookConfig.ResolveCodexHome()),
+                CodexHookConfig.ComposeProfile(forwarder),
+                CodexHookConfig.TrustStateKey);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
 
         arguments.Add("--profile");
         arguments.Add(CodexHookConfig.ProfileName);
 
-        return token;
+        return hooks.Register(taskId);
     }
 }

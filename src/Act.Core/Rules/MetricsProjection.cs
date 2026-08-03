@@ -15,7 +15,7 @@ public static class MetricsProjection
         switch (observed)
         {
             case ActivityObserved activity:
-                metrics.LastActivityAt = activity.At;
+                Touch(metrics, activity.At);
 
                 // Only a named tool is a tool call. `UserPromptSubmit` arrives as activity too, and
                 // counting it would inflate the number the strip shows.
@@ -28,18 +28,20 @@ public static class MetricsProjection
             // would make a card that failed four times look untouched.
             case TurnEnded or TurnFailed:
                 metrics.TurnCount++;
-                metrics.LastActivityAt = observed.At;
+
+                Touch(metrics, observed.At);
 
                 return true;
 
             case CompactingStarted compacting:
                 metrics.Compactions++;
-                metrics.LastActivityAt = compacting.At;
+
+                Touch(metrics, compacting.At);
 
                 return true;
 
             case SessionStarted or CompactingFinished or PermissionRequested or QuestionAsked:
-                metrics.LastActivityAt = observed.At;
+                Touch(metrics, observed.At);
 
                 return true;
 
@@ -78,8 +80,18 @@ public static class MetricsProjection
         if (snapshot.ToolCalls is { } calls)
             metrics.ToolCalls = calls;
 
-        metrics.LastActivityAt = enriched.At;
+        Touch(metrics, enriched.At);
 
         return true;
+    }
+
+    // Monotonic, never a plain assignment. The stamp on an observed event is the *source's* clock —
+    // a transcript line carries its own, and a line ACT cannot read one from falls back to a
+    // sentinel — so an assignment lets "last activity" jump backwards, and everything derived from
+    // it (the quiet chip above all) then describes a session that has not gone quiet at all.
+    private static void Touch(CardMetrics metrics, DateTimeOffset at)
+    {
+        if (metrics.LastActivityAt is not { } last || at > last)
+            metrics.LastActivityAt = at;
     }
 }

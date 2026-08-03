@@ -36,9 +36,9 @@ public partial class BoardView(
 
     private readonly CancellationTokenSource leaving = new();
 
-    private Card? dragging;
-
-    private Card? over;
+    // The gesture, and the whole of what a drop would mean — see `BoardDrag`. The view is left with
+    // carrying the decision out, which is the only part that needs the board and the two services.
+    private readonly BoardDrag drag = new();
 
     private string query = string.Empty;
 
@@ -133,105 +133,48 @@ public partial class BoardView(
     private string ArchiveHref => $"/archive?q={Uri.EscapeDataString(query)}";
 
     // Read from the runner rather than computed here, so the chip a Ready card shows and the
-    // decision the runner acts on are literally the same evaluation.
-    private IReadOnlyDictionary<Guid, ReadyHold> Holds() => queue.Evaluate().Holds;
+    // decision the runner acts on are literally the same evaluation — the one the last pass made,
+    // not a fresh one per render. `queue.Evaluated` is subscribed above, so a pass that changes a
+    // hold redraws the board that shows it.
+    private IReadOnlyDictionary<Guid, ReadyHold> Holds() => queue.Latest.Holds;
 
-    private string ColumnClass(BoardColumn column)
+    private string? DropEdge(Card card) => drag.EdgeOn(card, board.In(card.Column));
+
+    // Both drops decide first and clear the gesture second, so the state is gone before anything
+    // awaits — a drop that takes a moment must not leave a strip looking lifted.
+    private Task DropOnAsync(Card target) => ApplyAsync(drag.OnStrip(target));
+
+    private Task DropIntoAsync(BoardColumn column) => ApplyAsync(drag.IntoLane(column));
+
+    private async Task ApplyAsync(Drop? drop)
     {
-        if (dragging is not { } card || card.Column == column)
-            return "col";
+        drag.End();
 
-        return CanDrop(card, column) ? "col drop-ok" : "col drop-no";
-    }
-
-    private static bool CanDrop(Card card, BoardColumn column)
-        => ManualMove.IsAllowed(card.Column, column)
-            || CardCompletion.CanCompleteInto(card, column)
-            || CardReopen.CanReopenInto(card, column);
-
-    private void OnDragStartAsync(Card card) => dragging = card;
-
-    private void OnDragEndAsync()
-    {
-        dragging = null;
-        over = null;
-    }
-
-    // Hovering a strip is what arms the reorder; hovering the lane itself clears it, so the marker
-    // never outlives the card it was drawn under.
-    private void OnDragOverCard(Card card)
-    {
-        if (dragging is { } moved && moved.Id != card.Id)
-            over = card;
-    }
-
-    private void OnDragOverColumn() => over = null;
-
-    // Reordering is the same gesture as moving, told apart by where it lands: a strip dropped on one
-    // of its own column-mates takes that card's place, and anything else is the column change it
-    // always was — a card crossing columns lands last, not wherever the cursor happened to be.
-    private async Task DropOnAsync(Card target)
-    {
-        var card = dragging;
-
-        OnDragEndAsync();
-
-        if (card is null)
+        if (drop is not { } decided)
             return;
 
-        if (card.Column != target.Column)
+        switch (decided.Action)
         {
-            await DropIntoAsync(card, target.Column);
+            case DropAction.Reorder:
+                await board.ReorderAsync(decided.Card, decided.Target!);
 
-            return;
+                break;
+
+            case DropAction.Complete:
+                await CompleteAsync(decided.Card);
+
+                break;
+
+            case DropAction.Reopen:
+                await ReopenAsync(decided.Card);
+
+                break;
+
+            default:
+                await board.MoveAsync(decided.Card, decided.Column);
+
+                break;
         }
-
-        await board.ReorderAsync(card, target);
-    }
-
-    private Task DropAsync(BoardColumn column)
-    {
-        var card = dragging;
-
-        OnDragEndAsync();
-
-        return card is null ? Task.CompletedTask : DropIntoAsync(card, column);
-    }
-
-    // Which edge of a hovered strip the insertion line is drawn on — asked of the same rule that
-    // will do the move, so the marker cannot promise a position the drop does not deliver.
-    private string? DropEdge(Card card)
-    {
-        if (over?.Id != card.Id || dragging is not { } moved || moved.Column != card.Column)
-            return null;
-
-        return CardOrder.LandsAfter(board.In(card.Column), moved, card) ? "drop-after" : "drop-before";
-    }
-
-    private async Task DropIntoAsync(Card card, BoardColumn column)
-    {
-        // The one drop that is not a move: sign-off stamps the card and ends its session, so it goes
-        // through the completer rather than through `board.MoveAsync`.
-        if (CardCompletion.CanCompleteInto(card, column))
-        {
-            await CompleteAsync(card);
-
-            return;
-        }
-
-        // Nor is the mirror of it: taking the sign-off back un-stamps `completedAt`, which is the
-        // retention clock, so it goes through the reopener for the same reason.
-        if (CardReopen.CanReopenInto(card, column))
-        {
-            await ReopenAsync(card);
-
-            return;
-        }
-
-        if (!ManualMove.IsAllowed(card.Column, column))
-            return;
-
-        await board.MoveAsync(card, column);
     }
 
     // Past the launch boundary a card *is* its session, so opening one goes to its terminal

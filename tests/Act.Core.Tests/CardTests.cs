@@ -53,4 +53,12 @@ public class CardTests
     [Fact]
     public void Context_percent_is_unknown_without_a_window()
         => new CardMetrics { ContextUsed = 142_000 }.ContextPercent.Should().BeNull();
+
+    // The two figures come from different places and can disagree — a limit read off an earlier
+    // transcript line, a model whose effective window is smaller than the one ACT knows. The bar is
+    // drawn straight from this, and one that overflows its track reads as a defect.
+    [Fact]
+    public void Context_percent_stops_at_a_full_window()
+        => new CardMetrics { ContextUsed = 274_000, ContextLimit = 200_000 }
+            .ContextPercent.Should().Be(100);
 }

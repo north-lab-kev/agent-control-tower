@@ -1,3 +1,4 @@
+using Act.App.Hosting;
 using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Core.Model;
@@ -11,9 +12,10 @@ public sealed class UsagePump(
     UsageState state,
     UsageOptions options,
     UserSettingsService settings,
+    IClock clock,
     ILogger<UsagePump> log) : IAsyncDisposable
 {
-    private readonly CancellationTokenSource stopping = new();
+    private readonly BackgroundWork work = new(log);
 
     public void Start()
     {
@@ -21,60 +23,60 @@ public sealed class UsagePump(
             return;
 
         foreach (var probe in probes)
-            _ = PollAsync(probe);
+            work.Start($"Usage polling for {probe.Agent}", token => PollAsync(probe, token));
     }
 
-    private async Task PollAsync(IUsageProbe probe)
+    // Its own loop rather than `StartLoop`, because the wait between passes is the answer to the last
+    // one — `UsageBackoff` lengthens it after a failure that actually reached the network.
+    private async Task PollAsync(IUsageProbe probe, CancellationToken cancellationToken)
     {
         var failures = 0;
         var reported = (UsageAvailability?)null;
 
-        try
+        while (true)
         {
-            while (true)
+            var wait = options.PollInterval;
+
+            // Checked every pass rather than once at startup, so switching an agent off stops the
+            // polling immediately and switching it back on resumes it — without a restart, and
+            // without a second timer to manage.
+            if (settings.EnabledAgents.Contains(probe.Agent))
             {
-                var wait = options.PollInterval;
+                var result = await probe.ReadAsync(cancellationToken);
 
-                // Checked every pass rather than once at startup, so switching an agent off stops the
-                // polling immediately and switching it back on resumes it — without a restart, and
-                // without a second timer to manage.
-                if (settings.EnabledAgents.Contains(probe.Agent))
+                state.Publish(result);
+
+                failures = UsageBackoff.Count(result.Availability, failures);
+                wait = UsageBackoff.Delay(options.PollInterval, failures);
+
+                if (result.Availability != reported)
                 {
-                    var result = await probe.ReadAsync(stopping.Token);
+                    reported = result.Availability;
 
-                    state.Publish(result);
-
-                    failures = UsageBackoff.Count(result.Availability, failures);
-                    wait = UsageBackoff.Delay(options.PollInterval, failures);
-
-                    if (result.Availability != reported)
-                    {
-                        reported = result.Availability;
-
-                        log.LogInformation(
-                            "{Agent} usage is {Availability}; next check in {Wait}.",
-                            probe.Agent,
-                            result.Availability,
-                            wait);
-                    }
+                    log.LogInformation(
+                        "{Agent} usage is {Availability}; next check in {Wait}.",
+                        probe.Agent,
+                        result.Availability,
+                        wait);
                 }
-
-                await Task.Delay(wait, stopping.Token);
             }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception error)
-        {
-            log.LogError(error, "Usage polling for {Agent} stopped.", probe.Agent);
+            else
+            {
+                // Said rather than left unsaid. Skipping the probe stops the polling, but a
+                // reading nobody withdraws is one the state keeps for as long as ACT runs —
+                // so switching the agent back on would answer with an hour-old percentage for
+                // a window that has since rolled over. `Off` is what empties it, and the
+                // failure count goes with it: a re-enabled agent is asked again immediately,
+                // not through a backoff it earned before it was switched off.
+                state.Publish(UsageProbeResult.Unavailable(probe.Agent, UsageAvailability.Off, clock.Now));
+
+                failures = 0;
+                reported = null;
+            }
+
+            await Task.Delay(wait, cancellationToken);
         }
     }
 
-    public async ValueTask DisposeAsync()
-    {
-        await stopping.CancelAsync();
-
-        stopping.Dispose();
-    }
+    public ValueTask DisposeAsync() => work.DisposeAsync();
 }

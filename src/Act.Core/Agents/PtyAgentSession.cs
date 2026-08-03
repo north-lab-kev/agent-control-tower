@@ -11,10 +11,10 @@ namespace Act.Core.Agents;
 // the core at all.
 public sealed class PtyAgentSession : IAgentSession
 {
-    // How long a launch may stay silent before ACT calls it parked. Measured against `claude-code`
-    // on 2026-07-30: a directory the CLI already trusts produces its first hook ~0.8 s after the
-    // spawn, so this is an order of magnitude of headroom. Overshooting costs a slow start two
-    // extra transitions and nothing else — the first real hook is activity and puts the card back.
+    // How long a launch may stay silent before ACT calls it parked: an order of magnitude over the
+    // ~0.8 s a trusted directory takes to produce its first hook. Overshooting costs a slow start
+    // two extra transitions and nothing else — the first real hook is activity and puts the card
+    // back. See `docs/design-notes.md`.
     public static readonly TimeSpan StartupGrace = TimeSpan.FromSeconds(8);
 
     private readonly Channel<AgentEvent> events = Channel.CreateUnbounded<AgentEvent>();

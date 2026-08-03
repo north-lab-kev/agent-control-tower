@@ -11,6 +11,11 @@ namespace Act.App.Sessions;
 
 // Ready → Executing. The one transition that is an ACT *action* rather than a rule, which is
 // why it lives here and not in the rules engine.
+//
+// Four entry points — launch, retry, restore, restart — and they are four sets of *preconditions*
+// over one body. What separates them past those preconditions is a single question, `StartKind`:
+// whether starting a process is a claim about the work. Everything after that answer is shared, and
+// `BeginAsync` is where it lives.
 public sealed class SessionLauncher(
     IEnumerable<IAgentAdapter> adapters,
     SessionRegistry registry,
@@ -22,6 +27,21 @@ public sealed class SessionLauncher(
 {
     private readonly IReadOnlyDictionary<AgentType, IAgentAdapter> byAgent =
         adapters.ToDictionary(adapter => adapter.Agent);
+
+    // Whether a start says anything about the work, and the only axis the entry points differ on.
+    //
+    // A **launch** claims the card: it moves to Executing, stamps `launchedAt`, and if the spawn
+    // fails the card wears that as `error`, because the work really was supposed to start.
+    //
+    // A **resume** claims nothing. The process died — with ACT, with the CLI's own exit, with the
+    // sign-off that ended it — and is coming back into a fresh terminal; moving the card would say
+    // work is running when all that is running is a prompt waiting for its user, and a terminal that
+    // could not be brought back is not a new failure of the work.
+    private enum StartKind
+    {
+        Launch,
+        Resume,
+    }
 
     // Ready is the launch; Executing is a re-attach (a card keeps its binding when ACT restarts
     // but not its process); Your turn is the retry the spec promises for an `error`, and without it
@@ -37,20 +57,17 @@ public sealed class SessionLauncher(
             ? adapter.Resolve(Config(card))
             : null;
 
-    // The card says what to run; this machine's settings say where the CLI is and what it always
-    // gets. Every path to an adapter goes through here, so there is one place the two are joined.
-    private LaunchConfig Config(Card card)
-        => LaunchComposition.Compose(card.LaunchConfig, settings.Defaults(card.AgentType));
-
-    // The card already working in this card's folder, if the guard is on and this card is not
-    // exempt from it. `board.All` rather than a column query: the rule decides for itself what
-    // holding a folder means, and asking it about the whole store keeps that decision in one place.
-    private Card? Blocking(Card card)
-        => WorkingDirConflict.Blocking(card, board.All, directories, settings.PreventConcurrentWorkingDir);
-
     // A failed card is only retriable while its process is gone: a CLI that is still alive is one
     // the user can type into, and ACT types nothing into a live agent.
     public bool CanRetry(Card card) => CardRetry.CanRetry(card, registry.IsLive(card.Id));
+
+    public bool CanRestart(Card card) => SessionRestore.IsResumable(card) && byAgent.ContainsKey(card.AgentType);
+
+    public Task<LaunchResult> LaunchAsync(
+        Card card,
+        TerminalSize size,
+        CancellationToken cancellationToken = default)
+        => StartAsync(card, size, resumeMessage: null, cancellationToken);
 
     // Retry is a launch that carries a message. Not the initial prompt — a session forty turns deep
     // would be told to start over — but a short "you were interrupted, continue", which rides the
@@ -63,144 +80,21 @@ public sealed class SessionLauncher(
             ? StartAsync(card, size, RetryInstruction.Message, cancellationToken)
             : Task.FromResult(LaunchResult.Refused($"A card in {card.Column} cannot be retried."));
 
-    public Task<LaunchResult> LaunchAsync(
+    // The card gets its terminal back and stays exactly where it was — see `StartKind.Resume`. A
+    // Completed card reopened to read its history is not work being resumed, which is why the
+    // resume carries no message.
+    public Task<LaunchResult> RestoreAsync(
         Card card,
         TerminalSize size,
         CancellationToken cancellationToken = default)
-        => StartAsync(card, size, resumeMessage: null, cancellationToken);
-
-    private async Task<LaunchResult> StartAsync(
-        Card card,
-        TerminalSize size,
-        string? resumeMessage,
-        CancellationToken cancellationToken = default)
-    {
-        if (registry.IsLive(card.Id))
-            return LaunchResult.Ok();
-
-        if (!CanLaunch(card))
-            return LaunchResult.Refused($"A card in {card.Column} cannot be launched.");
-
-        // Before anything is spawned and before the card is moved, so a refused launch leaves it
-        // sitting in Ready exactly as it was — the folder frees up on its own, and nothing here
-        // needs undoing when it does.
-        if (Blocking(card) is { } holder)
-            return LaunchResult.Wait(
-                Text.Format(Strings.Launch_WorkingDirBusy, holder.Number, holder.Title));
-
-        if (!byAgent.TryGetValue(card.AgentType, out var adapter))
-            return LaunchResult.Refused($"No adapter is registered for {card.AgentType}.");
-
-        var config = Config(card);
-        var resolution = adapter.Resolve(config);
-        if (!resolution.CanLaunch)
-            return LaunchResult.Refused(string.Join(" ", resolution.Rejections));
-
-        // Pre-minted here so Claude Code can be handed it; Codex ignores it and reports its own
-        // in `SessionStart`, which is why the card's copy is only written when it is real.
-        var sessionId = card.SessionId ?? Guid.NewGuid().ToString();
-
-        IAgentSession session;
-
-        try
-        {
-            session = card.SessionId is null
-                ? await adapter.LaunchAsync(
-                    new AgentLaunchRequest(
-                        card.Id,
-                        sessionId,
-                        card.WorkingDir,
-                        AutoGitInstruction.Append(card.InitialPrompt, card.AutoGit),
-                        config,
-                        size),
-                    cancellationToken)
-                : await adapter.ResumeAsync(
-                    new AgentResumeRequest(
-                        card.Id,
-                        card.SessionId,
-                        card.WorkingDir,
-                        AutoGitInstruction.Append(card.InitialPrompt, card.AutoGit),
-                        resumeMessage,
-                        config,
-                        size),
-                    cancellationToken);
-        }
-        catch (Exception error) when (error is not OperationCanceledException)
-        {
-            // The card must show that the launch failed rather than sitting in Ready looking
-            // untouched, so this routes the same way a crash mid-session would.
-            card.Column = BoardColumn.YourTurn;
-            card.Badge = Badge.Error;
-            card.Transitions.Add(new Transition
-            {
-                At = clock.Now,
-                Column = BoardColumn.YourTurn,
-                Badge = Badge.Error,
-                Reason = TransitionReason.LaunchFailed,
-                Note = error.Message,
-            });
-
-            await board.UpdateAsync(card, cancellationToken);
-
-            notifications.Notify(card);
-
-            return LaunchResult.Refused(error.Message);
-        }
-
-        registry.Add(session);
-
-        card.SessionId = session.SessionId;
-        card.Column = BoardColumn.Executing;
-        card.Badge = Badge.Running;
-        card.LaunchedAt ??= clock.Now;
-
-        // The armed instant belongs to the wait, not to the card: left behind, a card dragged back
-        // to Ready would still be pointing at a window boundary that passed while it was running.
-        card.EligibleAt = null;
-        card.Transitions.Add(new Transition
-        {
-            At = clock.Now,
-            Column = BoardColumn.Executing,
-            Badge = Badge.Running,
-            Reason = (resumeMessage is null, resolution.Adjustments.Count == 0) switch
-            {
-                (true, true) => TransitionReason.Launched,
-                (true, false) => TransitionReason.LaunchedWithAdjustments,
-                (false, true) => TransitionReason.Retried,
-                _ => TransitionReason.RetriedWithAdjustments,
-            },
-            Note = Adjustments(resolution),
-        });
-
-        await board.UpdateAsync(card, cancellationToken);
-
-        return LaunchResult.Ok();
-    }
-
-    // A restore is not a launch. The process died — with ACT, with the CLI's own exit, with the
-    // sign-off that ended it — while the binding in the store did not, so the session id
-    // comes back into a fresh terminal and the card stays exactly where it was. Moving it to
-    // Executing would claim work is running when all that is running is a prompt waiting for its
-    // user, and a Completed card reopened to read its history is not work being resumed; the resume
-    // carries no message for the same reason.
-    public async Task<LaunchResult> RestoreAsync(
-        Card card,
-        TerminalSize size,
-        CancellationToken cancellationToken = default)
-    {
-        if (registry.IsLive(card.Id))
-            return LaunchResult.Ok();
-
-        return await ResumeAsync(card, size, TransitionReason.SessionRestored, cancellationToken);
-    }
-
-    public bool CanRestart(Card card) => SessionRestore.IsResumable(card) && byAgent.ContainsKey(card.AgentType);
+        => registry.IsLive(card.Id)
+            ? Task.FromResult(LaunchResult.Ok())
+            : ResumeAsync(card, size, TransitionReason.SessionRestored, cancellationToken);
 
     // The terminal, not the work. A TUI can become unusable while the session behind it is perfectly
     // healthy — a wedged or garbled screen, a CLI that stopped painting — and the only remedy used to
     // be ending a session that was never the problem. So this tears the pty down and brings the *same*
-    // session id straight back into a fresh one: the card keeps its column, its badge and its binding,
-    // because resuming a session is not a claim about the work.
+    // session id straight back into a fresh one.
     //
     // Unlike `RestoreAsync` it does not bail on a live session — a live-but-useless one is the entire
     // reason it exists.
@@ -217,20 +111,60 @@ public sealed class SessionLauncher(
         return await ResumeAsync(card, size, TransitionReason.TerminalRestarted, cancellationToken);
     }
 
-    private async Task<LaunchResult> ResumeAsync(
+    private Task<LaunchResult> StartAsync(
+        Card card,
+        TerminalSize size,
+        string? resumeMessage,
+        CancellationToken cancellationToken)
+    {
+        if (registry.IsLive(card.Id))
+            return Task.FromResult(LaunchResult.Ok());
+
+        if (!CanLaunch(card))
+            return Task.FromResult(LaunchResult.Refused($"A card in {card.Column} cannot be launched."));
+
+        // Before anything is spawned and before the card is moved, so a refused launch leaves it
+        // sitting in Ready exactly as it was — the folder frees up on its own, and nothing here
+        // needs undoing when it does.
+        if (Blocking(card) is { } holder)
+            return Task.FromResult(LaunchResult.Wait(
+                Text.Format(Strings.Launch_WorkingDirBusy, holder.Number, holder.Title)));
+
+        return BeginAsync(
+            card,
+            StartKind.Launch,
+            resumeMessage,
+            size,
+            resolution => Launched(resumeMessage is not null, resolution.Adjustments.Count > 0),
+            cancellationToken);
+    }
+
+    private Task<LaunchResult> ResumeAsync(
         Card card,
         TerminalSize size,
         TransitionReason reason,
         CancellationToken cancellationToken)
-    {
-        if (!SessionRestore.IsResumable(card))
-            return LaunchResult.Refused($"A card in {card.Column} with no session cannot be restored.");
+        => SessionRestore.IsResumable(card)
+            ? BeginAsync(card, StartKind.Resume, message: null, size, _ => reason, cancellationToken)
+            : Task.FromResult(LaunchResult.Refused(
+                $"A card in {card.Column} with no session cannot be restored."));
 
+    // The body all four entry points share: join the card's config to this machine's, ask the adapter
+    // to resolve it, spawn, and record what happened. `kind` is the whole of what varies.
+    private async Task<LaunchResult> BeginAsync(
+        Card card,
+        StartKind kind,
+        string? message,
+        TerminalSize size,
+        Func<LaunchConfigResolution, TransitionReason> reason,
+        CancellationToken cancellationToken)
+    {
         if (!byAgent.TryGetValue(card.AgentType, out var adapter))
             return LaunchResult.Refused($"No adapter is registered for {card.AgentType}.");
 
         var config = Config(card);
         var resolution = adapter.Resolve(config);
+
         if (!resolution.CanLaunch)
             return LaunchResult.Refused(string.Join(" ", resolution.Rejections));
 
@@ -238,50 +172,130 @@ public sealed class SessionLauncher(
 
         try
         {
-            session = await adapter.ResumeAsync(
-                new AgentResumeRequest(
-                    card.Id,
-                    card.SessionId!,
-                    card.WorkingDir,
-                    AutoGitInstruction.Append(card.InitialPrompt, card.AutoGit),
-                    null,
-                    config,
-                    size),
-                cancellationToken);
+            session = await SpawnAsync(adapter, card, config, message, size, cancellationToken);
         }
         catch (Exception error) when (error is not OperationCanceledException)
         {
-            // Unlike a failed launch this moves nothing: the card is already where the rules put it,
-            // and a terminal that could not be brought back is not a new failure of the work. It is
-            // recorded so the timeline answers why the terminal is empty.
-            card.Transitions.Add(new Transition
-            {
-                At = clock.Now,
-                Column = card.Column,
-                Badge = card.Badge,
-                Reason = TransitionReason.RestoreFailed,
-                Note = error.Message,
-            });
-
-            await board.UpdateAsync(card, cancellationToken);
-
-            return LaunchResult.Refused(error.Message);
+            return await FailedAsync(card, kind, error, cancellationToken);
         }
 
         registry.Add(session);
+
+        if (kind is StartKind.Launch)
+            Claim(card, session);
 
         card.Transitions.Add(new Transition
         {
             At = clock.Now,
             Column = card.Column,
             Badge = card.Badge,
-            Reason = reason,
+            Reason = reason(resolution),
+            Note = Adjustments(resolution),
         });
 
         await board.UpdateAsync(card, cancellationToken);
 
         return LaunchResult.Ok();
     }
+
+    // Which of the adapter's two doors to go through is the *card's* answer, not the caller's: one
+    // that has never bound a session is launched, one that has is resumed. `message` is the only
+    // thing separating a retry from a bare re-attach, and it is null for both restore and restart.
+    private static Task<IAgentSession> SpawnAsync(
+        IAgentAdapter adapter,
+        Card card,
+        LaunchConfig config,
+        string? message,
+        TerminalSize size,
+        CancellationToken cancellationToken)
+    {
+        var prompt = AutoGitInstruction.Append(card.InitialPrompt, card.AutoGit);
+
+        if (card.SessionId is { } sessionId)
+            return adapter.ResumeAsync(
+                new AgentResumeRequest(card.Id, sessionId, card.WorkingDir, prompt, message, config, size),
+                cancellationToken);
+
+        // Pre-minted so Claude Code can be handed it; Codex ignores it and reports its own in
+        // `SessionStart`, which is why the card's copy is only written when it is real — see `Claim`.
+        return adapter.LaunchAsync(
+            new AgentLaunchRequest(
+                card.Id,
+                Guid.NewGuid().ToString(),
+                card.WorkingDir,
+                prompt,
+                config,
+                size),
+            cancellationToken);
+    }
+
+    private void Claim(Card card, IAgentSession session)
+    {
+        card.SessionId = session.SessionId;
+        card.Column = BoardColumn.Executing;
+        card.Badge = Badge.Running;
+        card.LaunchedAt ??= clock.Now;
+
+        // The armed instant belongs to the wait, not to the card: left behind, a card dragged back
+        // to Ready would still be pointing at a window boundary that passed while it was running.
+        card.EligibleAt = null;
+    }
+
+    // A launch that never started is the work failing, so the card shows it rather than sitting in
+    // Ready looking untouched — it routes the same way a crash mid-session would. A resume that
+    // failed moves nothing. Both are recorded, because the timeline is what answers "why is this
+    // pane empty".
+    private async Task<LaunchResult> FailedAsync(
+        Card card,
+        StartKind kind,
+        Exception error,
+        CancellationToken cancellationToken)
+    {
+        var claimed = kind is StartKind.Launch;
+
+        if (claimed)
+        {
+            card.Column = BoardColumn.YourTurn;
+            card.Badge = Badge.Error;
+        }
+
+        card.Transitions.Add(new Transition
+        {
+            At = clock.Now,
+            Column = card.Column,
+            Badge = card.Badge,
+            Reason = claimed ? TransitionReason.LaunchFailed : TransitionReason.RestoreFailed,
+            Note = error.Message,
+        });
+
+        await board.UpdateAsync(card, cancellationToken);
+
+        if (claimed)
+            notifications.Notify(card);
+
+        return LaunchResult.Refused(error.Message);
+    }
+
+    // Four reasons for one event, because the timeline has to say both which kind of start it was
+    // and whether the launch got exactly what the card asked for.
+    private static TransitionReason Launched(bool retried, bool adjusted) => (retried, adjusted) switch
+    {
+        (false, false) => TransitionReason.Launched,
+        (false, true) => TransitionReason.LaunchedWithAdjustments,
+        (true, false) => TransitionReason.Retried,
+        _ => TransitionReason.RetriedWithAdjustments,
+    };
+
+    // The card says what to run; this machine's settings say where the CLI is and what it always
+    // gets. Every path to an adapter goes through here, so there is one place the two are joined.
+    private LaunchConfig Config(Card card)
+        => LaunchComposition.Compose(card.LaunchConfig, settings.Defaults(card.AgentType));
+
+    // The card already working in this card's folder, if the guard is on and this card is not
+    // exempt from it. `board.All` rather than a column query: the rule decides for itself what
+    // holding a folder means, and asking it about the whole store keeps that decision in one place.
+    private Card? Blocking(Card card)
+        => WorkingDirConflict.Blocking(card, board.All, directories, settings.PreventConcurrentWorkingDir);
 
     // Adjustments are recorded on the card rather than only shown once, so "why is this running
     // at a different effort than I asked for" stays answerable later. The field and value names are

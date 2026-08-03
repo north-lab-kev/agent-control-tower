@@ -1,6 +1,5 @@
 using Act.App.Resources;
 using Act.Core.Abstractions;
-using Act.Infrastructure.FileSystem;
 using Microsoft.AspNetCore.Components;
 
 namespace Act.App.Components.Shared;
@@ -34,7 +33,11 @@ public partial class PathPicker(IWorkingDirectories directories)
 
     private bool PickingFiles => Mode is PathPickerMode.File;
 
-    protected override void OnInitialized() => Open(NearestExisting(StartAt));
+    // Where to start is the port's answer, not this component's: resolving a path, knowing what a
+    // root is on this OS and walking to the nearest real folder are all things `IWorkingDirectories`
+    // already does for the launch and the form, and a picker that worked it out with its own
+    // `Directory` calls could only drift from them.
+    protected override void OnInitialized() => Open(directories.NearestDirectory(StartAt));
 
     private void Open(string? path) => listing = directories.List(path, PickingFiles);
 
@@ -43,28 +46,6 @@ public partial class PathPicker(IWorkingDirectories directories)
     private Task ChooseFileAsync(string path) => OnPick.InvokeAsync(path);
 
     private Task CancelAsync() => OnCancel.InvokeAsync();
-
-    // In file mode the start value is itself a file, so the walk has to begin in the folder holding
-    // it rather than at a path that is not a directory at all.
-    private string? NearestExisting(string? path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-            return directories.Home;
-
-        var check = directories.Check(path);
-        if (!check.WellFormed)
-            return directories.Home;
-
-        var candidate = check.Resolved;
-
-        if (PickingFiles && File.Exists(candidate))
-            candidate = Directory.GetParent(candidate)?.FullName ?? string.Empty;
-
-        while (!string.IsNullOrEmpty(candidate) && !Directory.Exists(candidate))
-            candidate = Directory.GetParent(candidate)?.FullName ?? string.Empty;
-
-        return string.IsNullOrEmpty(candidate) ? directories.Home : candidate;
-    }
 
     private static string ErrorText(string error) => error switch
     {

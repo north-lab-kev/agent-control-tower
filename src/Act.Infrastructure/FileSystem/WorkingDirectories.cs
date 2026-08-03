@@ -42,6 +42,28 @@ public sealed class WorkingDirectories : IWorkingDirectories
         return Directory.Exists(resolved) ? PathCheck.Found(resolved) : PathCheck.Missing(resolved);
     }
 
+    public string NearestDirectory(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return Home;
+
+        var check = Check(path);
+
+        if (!check.WellFormed)
+            return Home;
+
+        var candidate = check.Resolved;
+
+        // A file is a perfectly good starting point — it just means the folder holding it.
+        if (File.Exists(candidate))
+            candidate = Parent(candidate) ?? string.Empty;
+
+        while (!string.IsNullOrEmpty(candidate) && !Directory.Exists(candidate))
+            candidate = Parent(candidate) ?? string.Empty;
+
+        return string.IsNullOrEmpty(candidate) ? Home : candidate;
+    }
+
     public DirectoryListing List(string? path, bool includeFiles = false)
     {
         if (string.IsNullOrWhiteSpace(path))
@@ -118,19 +140,4 @@ public sealed class WorkingDirectories : IWorkingDirectories
                     drive.RootDirectory.FullName)),
         ];
     }
-}
-
-// Keys rather than sentences: the UI localizes them, and infrastructure has no business
-// composing user-facing prose.
-public static class PathError
-{
-    public const string Empty = "empty";
-
-    public const string NotAbsolute = "not-absolute";
-
-    public const string Malformed = "malformed";
-
-    public const string Missing = "missing";
-
-    public const string Unreadable = "unreadable";
 }

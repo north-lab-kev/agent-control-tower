@@ -9,7 +9,7 @@
     var holds = Holds();
 }
 
-<div class="board @DensityClass @(dragging is null ? null : "dragging")">
+<div class="board @DensityClass @(drag.IsActive ? "dragging" : null)">
     <div class="filterbar">
         <CardFilter @bind-Query="query" Placeholder="@Strings.Search_Placeholder" />
 
@@ -43,9 +43,9 @@
             var cards = CardsIn(column);
             var hidden = HiddenAttention(column);
 
-            <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" class="@ColumnClass(column)"
+            <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" class="@drag.ColumnClass(column)"
                          @ondragover:preventDefault="true" @ondragenter:preventDefault="true"
-                         @ondrop="() => DropAsync(column)">
+                         @ondrop="() => DropIntoAsync(column)">
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem"
                              class="colhead">
                     <RadzenText TextStyle="TextStyle.Subtitle2" Text="@Label(column)" class="colname" />
@@ -73,7 +73,7 @@
 
                 @* The lane between the strips clears the insertion marker: a strip stops it from
                    bubbling, so this only fires once the cursor is off every card. *@
-                <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" @ondragenter="OnDragOverColumn">
+                <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" @ondragenter="drag.OverLane">
                     @if (cards.Count == 0)
                     {
                         <RadzenText TextStyle="TextStyle.Caption" class="empty"
@@ -86,10 +86,10 @@
                             <FlightStrip Card="card" Density="Density" Blink="BlinkYourTurn"
                                          OnOpen="OpenAsync" OnLaunch="LaunchAsync"
                                          OnRetry="RetryAsync" Retriable="CanRetry(card)"
-                                         OnDragStart="OnDragStartAsync" OnDragEnd="OnDragEndAsync"
-                                         OnDragOver="OnDragOverCard" OnDrop="DropOnAsync"
+                                         OnDragStart="drag.Start" OnDragEnd="drag.End"
+                                         OnDragOver="drag.OverStrip" OnDrop="DropOnAsync"
                                          DropEdge="@DropEdge(card)"
-                                         IsDragging="dragging?.Id == card.Id" IsLaunching="IsLaunching(card)"
+                                         IsDragging="drag.IsLifted(card)" IsLaunching="IsLaunching(card)"
                                          Hold="holds.GetValueOrDefault(card.Id)" />
                         }
                     }

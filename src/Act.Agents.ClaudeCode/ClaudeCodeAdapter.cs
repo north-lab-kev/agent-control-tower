@@ -142,7 +142,8 @@ public sealed class ClaudeCodeAdapter(
     }
 
     // No endpoint means no hooks and a launch that still happens: ingestion is observability, and
-    // losing it must never cost the user their session. The settings file is passed by path so the
+    // losing it must never cost the user their session — which is why a settings file that cannot
+    // be written is the same non-event as no endpoint at all. The file is passed by path so the
     // user's own `.claude/settings.json` is neither read nor written.
     private string? InjectHooks(Guid taskId, List<string> arguments)
     {
@@ -151,10 +152,19 @@ public sealed class ClaudeCodeAdapter(
 
         var token = hooks.Register(taskId);
 
-        var path = configFiles.Write(
-            taskId,
-            ClaudeCodeHookSettings.FileName,
-            ClaudeCodeHookSettings.Compose(url, token));
+        string path;
+
+        try
+        {
+            path = configFiles.Write(
+                taskId,
+                ClaudeCodeHookSettings.FileName,
+                ClaudeCodeHookSettings.Compose(url, token));
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
 
         arguments.Add("--settings");
         arguments.Add(path);

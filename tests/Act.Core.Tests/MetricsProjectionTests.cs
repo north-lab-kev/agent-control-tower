@@ -21,6 +21,24 @@ public class MetricsProjectionTests
         card.Metrics!.LastActivityAt.Should().Be(At);
     }
 
+    // The stamp on an event is the *source's*, not ACT's: a transcript line carries its own, and one
+    // ACT cannot read a timestamp out of falls back to a sentinel. Assigning it would let "last
+    // activity" walk backwards — and a stamp in 1970 makes a working card claim it has been silent
+    // for decades, which is exactly what the quiet chip reads.
+    [Fact]
+    public void An_event_stamped_in_the_past_does_not_drag_the_activity_stamp_back()
+    {
+        var card = new Card();
+
+        MetricsProjection.Apply(card, new ActivityObserved(SessionId, At));
+        MetricsProjection.Apply(card, new TurnFailed(SessionId, DateTimeOffset.UnixEpoch, "no timestamp"));
+
+        card.Metrics!.LastActivityAt.Should().Be(At);
+
+        // Still a turn, still counted — only the stamp is refused.
+        card.Metrics.TurnCount.Should().Be(1);
+    }
+
     // What the quiet chip is measured from, so every event that means "the session is alive" has to
     // move it — an unmoved stamp is a card that claims to have gone silent while it was working.
     [Fact]

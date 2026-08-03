@@ -26,10 +26,6 @@ public sealed class SessionRegistry(IHookEndpoint hooks, IAgentConfigFiles confi
 
     public int LiveCount => sessions.Count;
 
-    // What stops a card from binding to another card's session when both were launched in the same
-    // directory: a file a live card already holds is not a candidate for anyone else.
-    public IReadOnlySet<string> ClaimedTranscripts => transcripts.Values.ToHashSet(StringComparer.OrdinalIgnoreCase);
-
     public IAgentSession? For(Guid cardId) => sessions.GetValueOrDefault(cardId);
 
     public bool IsLive(Guid cardId) => sessions.ContainsKey(cardId);
@@ -55,20 +51,35 @@ public sealed class SessionRegistry(IHookEndpoint hooks, IAgentConfigFiles confi
         TranscriptLocated?.Invoke(session, path);
     }
 
-    public async Task<bool> EndAsync(Guid cardId)
-    {
-        if (!sessions.TryRemove(cardId, out var session))
-            return false;
+    // Ending one is spelled `EndAsync` wherever it is asked for, whatever is known about it. The
+    // second overload is the same operation with the *instance* in hand: a restart ends a session
+    // and starts another for the same card within the same breath, and the outgoing one's own
+    // teardown arrives afterwards — matched on the instance it cannot take the newcomer with it,
+    // and `TryRemove` on the pair is what makes the check and the removal one step.
+    public Task<bool> EndAsync(Guid cardId)
+        => sessions.TryRemove(cardId, out var session)
+            ? EndedAsync(cardId, session)
+            : Task.FromResult(false);
 
+    public Task<bool> EndAsync(IAgentSession session)
+        => sessions.TryRemove(new KeyValuePair<Guid, IAgentSession>(session.TaskId, session))
+            ? EndedAsync(session.TaskId, session)
+            : Task.FromResult(false);
+
+    // Already out of the dictionary by the time this runs — the two overloads differ only in how
+    // they decide that, and this is everything they then do the same.
+    private async Task<bool> EndedAsync(Guid cardId, IAgentSession session)
+    {
         await session.DisposeAsync();
 
-        Retire(cardId);
+        Forget(cardId);
 
         Changed?.Invoke();
 
         return true;
     }
 
+    // No `Changed`, and no reason to raise one: the app is going away with the sessions.
     public async ValueTask DisposeAsync()
     {
         foreach (var cardId in sessions.Keys.ToList())
@@ -77,14 +88,15 @@ public sealed class SessionRegistry(IHookEndpoint hooks, IAgentConfigFiles confi
             {
                 await session.DisposeAsync();
 
-                Retire(cardId);
+                Forget(cardId);
             }
         }
     }
 
-    // A token outliving its session would keep authorizing posts for a card that is no longer
-    // running, and the generated settings file still holds that token — so both go together.
-    private void Retire(Guid cardId)
+    // What ACT was holding on the session's behalf rather than the session itself, which is why it
+    // is a separate verb: a token outliving its session would keep authorizing posts for a card
+    // that is no longer running, and the generated settings file still holds that token.
+    private void Forget(Guid cardId)
     {
         hooks.Release(cardId);
         configFiles.Clear(cardId);

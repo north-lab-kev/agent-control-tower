@@ -1,6 +1,7 @@
 using System.Globalization;
 using Act.App.Cards;
 using Act.App.Resources;
+using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
 using Act.Core.Scheduling;
@@ -9,7 +10,7 @@ using Microsoft.AspNetCore.Components.Web;
 
 namespace Act.App.Components.Board;
 
-public partial class FlightStrip
+public partial class FlightStrip(IClock clock)
 {
     private static CultureInfo Culture => CultureInfo.CurrentCulture;
 
@@ -144,7 +145,7 @@ public partial class FlightStrip
     // Stated beside `running`, never instead of it — the card has gone quiet, and what that means is
     // the user's to judge. Computed at render time from the stored stamp, so it needs no event and no
     // stored state; the board's refresh tick is what makes the number advance.
-    private string? QuietText => QuietSession.QuietFor(Card, DateTimeOffset.UtcNow) is { } quiet
+    private string? QuietText => QuietSession.QuietFor(Card, clock.Now) is { } quiet
         ? quiet.TotalMinutes < 60
             ? Text.Format(Strings.Metrics_QuietMinutes, (int)quiet.TotalMinutes)
             : Text.Format(Strings.Metrics_QuietHours, (int)quiet.TotalHours)
@@ -208,9 +209,10 @@ public partial class FlightStrip
         ? "badge"
         : "badge b-hold";
 
-    private static string Countdown(DateTimeOffset? until)
+    private string Countdown(DateTimeOffset? until)
     {
-        var left = (until ?? DateTimeOffset.UtcNow) - DateTimeOffset.UtcNow;
+        var now = clock.Now;
+        var left = (until ?? now) - now;
 
         if (left < TimeSpan.Zero)
             left = TimeSpan.Zero;

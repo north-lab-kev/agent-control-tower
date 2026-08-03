@@ -157,6 +157,8 @@ public class SessionRestartTests
 
         public PathCheck Check(string workingDir) => PathCheck.Found(workingDir);
 
+        public string NearestDirectory(string? path) => path ?? Home;
+
         public DirectoryListing List(string? path, bool includeFiles = false) => new(path, null, []);
     }
 }

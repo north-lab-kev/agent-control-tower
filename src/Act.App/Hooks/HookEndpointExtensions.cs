@@ -16,11 +16,11 @@ public static class HookEndpointExtensions
     private const string DefaultAppAddress = "http://localhost:5000";
 
     // Two listeners on one host, and Kestrel makes that awkward: configured addresses and explicit
-    // `Listen` endpoints are mutually exclusive, and touching either one discards the other. The
-    // first two attempts at this both moved the whole UI onto the hook port. So the app's own
-    // address is read back out of configuration and re-added alongside the hook one — `urls` is the
-    // key both `applicationUrl` and `UseUrls` end up writing to, which is what makes this work
-    // under `dotnet run` and under the Electron shell alike.
+    // `Listen` endpoints are mutually exclusive, and touching either one discards the other. So the
+    // app's own address is read back out of configuration and re-added alongside the hook one —
+    // `urls` is the key both `applicationUrl` and `UseUrls` end up writing to, which is what makes
+    // this work under `dotnet run` and under the Electron shell alike. `docs/design-notes.md`
+    // records the two attempts that put the whole UI on the hook port instead.
     //
     // Called after `Build` because the port comes from the store, and before `Run` because an
     // adapter must be able to read the url before any agent can launch.

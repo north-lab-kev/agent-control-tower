@@ -28,21 +28,9 @@ public static class RulesEngine
         {
             // A tool running is not the user approving, so it may not clear a permission block. Drawn on
             // `ToolName` because that is the only thing separating the two events: `UserPromptSubmit`
-            // carries none, every tool event does. Measured 2026-07-31 — a Codex card sat on `running`
-            // with a Bash approval still on screen, because a tool event arrived after the
-            // `PermissionRequested` and was indistinguishable from a keystroke. Either the CLI reports
-            // the previous tool late, or the posts race (one `curl` per hook, so ACT sees arrival order,
-            // not emission order); the rule holds for both.
-            //
-            // The cost, chosen deliberately over the alternative: approving a prompt in the terminal
-            // fires no `UserPromptSubmit`, so an approved card keeps saying `needs permission` until the
-            // turn ends. A stale "you are needed" is a wasted glance; a stale `running` hides a session
-            // waiting on a human, which is the one thing the board exists to prevent.
-            //
-            // **`needs answer` is deliberately not covered**, and the asymmetry is the point: a question
-            // is raised by its tool's `PreToolUse` and *answered* at its `PostToolUse`, so there the
-            // tool event really is the user acting. A permission has no such paired event — nothing
-            // reports the approval — which is exactly why only this half needs the guard.
+            // carries none, every tool event does. **`needs answer` is deliberately not covered** —
+            // see *A tool event may not clear a permission block* in `docs/design-notes.md` for the
+            // measurement behind this, the asymmetry, and the stale badge it accepts in exchange.
             ActivityObserved { ToolName: not null } when card.Badge is Badge.NeedsPermission => null,
 
             // The recovery and send-back rule, and the reason activity carries more weight than its

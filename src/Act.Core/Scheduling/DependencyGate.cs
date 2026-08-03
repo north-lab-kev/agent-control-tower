@@ -16,11 +16,12 @@ public static class DependencyGate
         if (card.DependsOn.Count == 0)
             return null;
 
-        var byId = cards.ToDictionary(other => other.Id);
-
+        // Scanned rather than indexed: this is asked once per Ready card in a queue pass, and the
+        // pass runs on every board change, so a dictionary of the whole store per card cost far
+        // more than the handful of ids a `dependsOn` list actually holds.
         foreach (var id in card.DependsOn)
         {
-            if (byId.TryGetValue(id, out var prerequisite)
+            if (cards.FirstOrDefault(other => other.Id == id) is { } prerequisite
                 && prerequisite.Column is not BoardColumn.Completed
                 && !prerequisite.IsDeleted)
                 return prerequisite;

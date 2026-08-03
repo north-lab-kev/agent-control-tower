@@ -19,5 +19,11 @@ public interface IWorkingDirectories
     // the directory walk is the common case and listing files costs real time in a big tree.
     DirectoryListing List(string? path, bool includeFiles = false);
 
+    // Where a walk should open for a path that may be a file, may not exist yet, or may be
+    // nonsense: the nearest ancestor that is a real directory, and `Home` when there is none.
+    // Here rather than in the picker because every step of it — resolution, the Windows root
+    // rule, what counts as a directory — is this port's knowledge.
+    string NearestDirectory(string? path);
+
     string Home { get; }
 }
