@@ -1,10 +1,15 @@
 @* Two lines per window, not three: everything you read on one, the bar under it. The strip's height
    is set by its tallest occupant, and the original stacked meter made the whole shell taller than
    the window controls it sits beside. *@
-@if (Meters.Count > 0 || Notices.Count > 0)
+@* Once per render, not once per access: both are derived from the readings and the clock. *@
+@{
+    var meters = Meters;
+    var notices = Notices;
+}
+@if (meters.Count > 0 || notices.Count > 0)
 {
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.9rem" class="usage">
-        @foreach (var meter in Meters)
+        @foreach (var meter in meters)
         {
             <div class="meter @meter.State" title="@meter.Tooltip">
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
@@ -19,7 +24,7 @@
             </div>
         }
 
-        @foreach (var notice in Notices)
+        @foreach (var notice in notices)
         {
             <div class="meter warn" title="@notice.Tooltip">
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"

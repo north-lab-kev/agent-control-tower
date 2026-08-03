@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Coverage settings. Pass this file to `dotnet test` with its settings switch, alongside the
+  "XPlat Code Coverage" collector; `scripts/build.ps1` does.
+
+  The exclusions are the point of the file. A number that counts generated resource accessors and
+  the Electron shell measures the wrong thing twice: it cannot be improved by any test worth
+  writing, and it hides movement in the code that can. What is left is the code ACT is expected to
+  unit-test, which is the rules, the scheduler, the adapters, the stores and the services.
+
+  What is excluded, and why each one is not a gap:
+
+    * Act.TestSupport            : a fixture, not a subject. The mock adapter exists to drive other
+                                   code; counting it flatters the total.
+    * Act.App.Desktop.*          : the Electron window, tray and native dialogs. Deliberately not
+                                   behind an interface (see repository-structure.md) because one
+                                   quarantined class is cheaper than an abstraction whose only
+                                   consumer would be a mock.
+    * Act.App.Hooks.*            : the ~100 lines that genuinely need ASP.NET, being an address, a
+                                   middleware and two routes. Everything testable about the hook
+                                   endpoint lives in Act.Infrastructure/Hooks and is counted.
+    * ServiceCollectionExtensions, Program
+                                 : composition roots. A test asserting a container registration
+                                   asserts the test's own copy of the wiring.
+    * Act.Infrastructure.Power.* : SetThreadExecutionState and spawned helper processes.
+    * *.g.cs, *.razor            : generated. Razor markup's BuildRenderTree is unreachable from a
+                                   unit test; a component's own logic lives in its .razor.cs and is
+                                   counted. Covering markup needs a component host (bUnit) or a
+                                   browser, which is a separate decision from this metric.
+-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Exclude>[Act.TestSupport]*,[Act.App]Act.App.Desktop.*,[Act.App]Act.App.Hooks.*,[Act.App]Act.App.ServiceCollectionExtensions,[Act.App]Program,[Act.Infrastructure]Act.Infrastructure.Power.*,[Act.Infrastructure]Act.Infrastructure.ServiceCollectionExtensions</Exclude>
+          <ExcludeByFile>**/*.g.cs,**/*.Designer.cs,**/*.razor</ExcludeByFile>
+          <ExcludeByAttribute>Obsolete,GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+          <SkipAutoProps>true</SkipAutoProps>
+          <UseSourceLink>true</UseSourceLink>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

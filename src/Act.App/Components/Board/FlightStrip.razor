@@ -3,7 +3,10 @@
 @* A strip is a drop target as well as a thing that lifts: dropping onto one is how the column is
    ordered. The drop is stopped here rather than left to bubble, so the column below never sees it
    twice — a drop that crosses columns is handed on by the board instead. *@
-<div class="@StripClass" role="button" tabindex="0" title="@Card.Title"
+@{
+    var face = Face;
+}
+<div class="@face.Strip(Blink, Draggable, IsDragging, DropEdge)" role="button" tabindex="0" title="@Card.Title"
      draggable="@(Draggable ? "true" : "false")"
      @ondragstart="OnDragStartAsync" @ondragend="OnDragEndAsync"
      @ondragenter="OnDragOverAsync" @ondragenter:preventDefault="true" @ondragenter:stopPropagation="true"
@@ -16,19 +19,19 @@
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
             <RadzenText TextStyle="TextStyle.Caption" Text="@($"#{Card.Number}")" class="cid" />
             <RadzenText TextStyle="TextStyle.Body2" Text="@Card.Title" class="ttl" />
-            @if (BadgeText is not null)
+            @if (face.BadgeText is not null)
             {
-                <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@BadgeText" class="@FullBadgeClass" />
+                <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.BadgeText" class="@face.FullBadgeClass" />
             }
-            @if (HoldText is not null)
+            @if (face.HoldText is not null)
             {
-                <span title="@HoldTip">
-                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@HoldText" class="@HoldClass" />
+                <span title="@face.HoldTip">
+                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.HoldText" class="@face.HoldClass" />
                 </span>
             }
-            @if (ScheduleText is not null)
+            @if (face.Schedule is not null)
             {
-                <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="@ScheduleText" class="schip" />
+                <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="@face.Schedule" class="schip" />
             }
         </RadzenStack>
     }
@@ -37,15 +40,15 @@
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem">
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
                          JustifyContent="JustifyContent.SpaceBetween" Gap="0.4rem">
-                <RadzenText TextStyle="TextStyle.Caption" Text="@($"#{Card.Number}{AgentSuffix}")" class="cid" />
-                @if (BadgeText is not null)
+                <RadzenText TextStyle="TextStyle.Caption" Text="@face.Identity" class="cid" />
+                @if (face.BadgeText is not null)
                 {
-                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@BadgeText" class="@FullBadgeClass" />
+                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.BadgeText" class="@face.FullBadgeClass" />
                 }
-                @if (HoldText is not null)
+                @if (face.HoldText is not null)
                 {
-                    <span title="@HoldTip">
-                        <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@HoldText" class="@HoldClass" />
+                    <span title="@face.HoldTip">
+                        <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.HoldText" class="@face.HoldClass" />
                     </span>
                 }
             </RadzenStack>
@@ -69,7 +72,7 @@
                               Disabled="IsLaunching" Click="@RetryAsync" @onclick:stopPropagation="true" />
             }
 
-            @if (QuietText is { } quiet)
+            @if (face.Quiet is { } quiet)
             {
                 <RadzenText TextStyle="TextStyle.Caption" Text="@quiet" class="quiet" />
             }
@@ -77,7 +80,7 @@
             @if (Card.Metrics is { } m)
             {
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="0.6rem" Wrap="FlexWrap.Wrap" class="metrics">
-                    @foreach (var metric in Metrics(m))
+                    @foreach (var metric in face.Metrics)
                     {
                         <RadzenText TextStyle="TextStyle.Caption" Text="@metric" />
                     }
@@ -90,7 +93,7 @@
                 }
             }
 
-            @if (ScheduleText is not null || Card.Children.Count > 0)
+            @if (face.Schedule is not null || Card.Children.Count > 0)
             {
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
                              Gap="0.45rem" Wrap="FlexWrap.Wrap">
@@ -99,9 +102,9 @@
                         <RadzenText TextStyle="TextStyle.Caption"
                                     Text="@Text.Format(Strings.Card_Children, Card.Children.Count)" class="lin" />
                     }
-                    @if (ScheduleText is not null)
+                    @if (face.Schedule is not null)
                     {
-                        <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="@ScheduleText" class="schip" />
+                        <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="@face.Schedule" class="schip" />
                     }
                 </RadzenStack>
             }
