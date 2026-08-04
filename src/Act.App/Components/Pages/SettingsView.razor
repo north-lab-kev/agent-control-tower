@@ -1,5 +1,6 @@
 @page "/settings"
 @using Act.Core.Model
+@using Act.Core.Scheduling
 
 <PageTitle>@Strings.Settings_Title</PageTitle>
 
@@ -126,8 +127,21 @@
                                         class="hint" />
                         </RadzenStack>
                         <RadzenNumeric TValue="int" Value="MaxConcurrent"
-                                       Min="MinimumConcurrent" Max="MaximumConcurrent" Step="1"
+                                       Min="ConcurrencySlots.Minimum" Max="ConcurrencySlots.Maximum" Step="1"
                                        Change="@((int value) => OnMaxConcurrentChanged(value))"
+                                       class="control" />
+                    </RadzenStack>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_UsageCeiling" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_UsageCeiling_Hint"
+                                        class="hint" />
+                        </RadzenStack>
+                        <RadzenNumeric TValue="int" Value="UsageCeilingPercent"
+                                       Min="UsageCeiling.Minimum" Max="UsageCeiling.Maximum" Step="1"
+                                       Change="@((int value) => OnUsageCeilingChanged(value))"
                                        class="control" />
                     </RadzenStack>
 

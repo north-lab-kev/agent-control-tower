@@ -57,6 +57,48 @@ public class NewTaskFormTests
         card.LaunchConfig.PermissionMode.Should().Be(PermissionMode.AcceptEdits);
     }
 
+    // The title is optional to *type*, never optional to *have*. The page normally fills it in by
+    // asking the agent, but that goes out to a CLI which can be missing, unauthenticated or out of
+    // quota — so the guarantee lives in the code that writes the card, where nothing can route around
+    // it. An untitled strip is unrecognisable and unsearchable, and no screen repairs it.
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\n\t ")]
+    public void A_blank_title_is_written_from_the_prompt_rather_than_stored_empty(string title)
+    {
+        var card = CardIn(BoardColumn.Ready);
+
+        (Edited() with { Title = title, Prompt = "Consolidate the badge colours across the css files" })
+            .ApplyTo(card);
+
+        card.Title.Should().Be("Consolidate the badge colours across the css files");
+    }
+
+    // Same rule past the launch boundary, where the prompt is frozen but the title is not: an edit
+    // that clears the title must not be the way to strand a running card without a name.
+    [Fact]
+    public void A_launched_card_whose_title_is_cleared_is_renamed_from_its_prompt()
+    {
+        var card = CardIn(BoardColumn.Executing);
+
+        // The prompt the form carries for a launched card is the card's own, read-only copy.
+        (Edited() with { Title = "  ", Prompt = "do the thing" }).ApplyTo(card);
+
+        card.Title.Should().Be("do the thing");
+        card.InitialPrompt.Should().Be("do the thing");
+    }
+
+    [Fact]
+    public void A_typed_title_always_wins_over_the_prompt()
+    {
+        var card = CardIn(BoardColumn.Ready);
+
+        (Edited() with { Title = "  My own words  " }).ApplyTo(card);
+
+        card.Title.Should().Be("My own words");
+    }
+
     private static NewTaskForm Edited() => new()
     {
         Title = "New title",

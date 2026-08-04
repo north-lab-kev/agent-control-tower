@@ -15,10 +15,13 @@ public enum UsagePressure
     RolledOver,
 }
 
+// `ResetsAt` is null for a window whose clock has not started: a 5-hour window with no activity in it
+// reports a percentage and no reset, and dropping it for the missing instant is what once left the top
+// bar showing a weekly meter and no session one. See `docs/agent-usage-findings.md`.
 public sealed record UsageWindow(
     UsageWindowKind Kind,
     int Percent,
-    DateTimeOffset ResetsAt)
+    DateTimeOffset? ResetsAt)
 {
     private const int CriticalPercent = 90;
 
@@ -39,13 +42,18 @@ public sealed record UsageWindow(
         return UsageWindowKind.Monthly;
     }
 
-    public bool HasRolledOver(DateTimeOffset now) => now >= ResetsAt;
+    public bool HasRolledOver(DateTimeOffset now) => ResetsAt is { } at && now >= at;
 
     public int PercentAt(DateTimeOffset now) => HasRolledOver(now) ? 0 : Percent;
 
-    public TimeSpan RemainingAt(DateTimeOffset now)
+    // Null when there is no reset to count down to, which is not the same answer as zero: one window
+    // is about to turn over and the other has not begun.
+    public TimeSpan? RemainingAt(DateTimeOffset now)
     {
-        var left = ResetsAt - now;
+        if (ResetsAt is not { } at)
+            return null;
+
+        var left = at - now;
 
         return left > TimeSpan.Zero ? left : TimeSpan.Zero;
     }

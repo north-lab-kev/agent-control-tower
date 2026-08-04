@@ -27,4 +27,7 @@
   <data name="AutoGit_DraftPullRequest" xml:space="preserve">
     <value>Quand tu as terminé : commite, pousse et crée une pull request brouillon.</value>
   </data>
+  <data name="Title_Instruction" xml:space="preserve">
+    <value>Rédige un titre court pour la demande ci-dessous, afin qu'on la reconnaisse d'un coup d'œil sur un tableau. Vise huit à quinze mots et ne dépasse jamais trente. Nomme l'action et son objet, et garde le détail qui distingue cette tâche d'une tâche voisine ; ne reformule pas toute la demande. Réponds uniquement par le titre — sans guillemets, sans markdown, sans préambule, sans point final. N'utilise aucun outil, ne lis aucun fichier et n'exécute pas la demande elle-même. La demande :</value>
+  </data>
 </root>

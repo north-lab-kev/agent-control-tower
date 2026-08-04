@@ -22,6 +22,7 @@ public partial class TaskView(
     BoardState board,
     SessionRegistry registry,
     IAgentCapabilityCatalog agents,
+    TaskTitles titles,
     UserSettingsService settings,
     IWorkingDirectories directories,
     IClock clock,
@@ -44,6 +45,12 @@ public partial class TaskView(
     private bool deleting;
 
     private bool duplicating;
+
+    private bool titling;
+
+    // Titling outlives no navigation: the answer is for a form that is still on screen, and a CLI
+    // still thinking about a page the user has left is work nobody will read.
+    private CancellationTokenSource? titleRun;
 
     // The form as it was when the page loaded or last saved. Comparing against it is the whole
     // dirty check — `NewTaskForm` is a record, so this is one `!=` rather than a flag per field.
@@ -435,6 +442,9 @@ public partial class TaskView(
     {
         navigationGuard?.Dispose();
 
+        titleRun?.Cancel();
+        titleRun?.Dispose();
+
         if (unsaved is { } module)
         {
             try
@@ -541,6 +551,62 @@ public partial class TaskView(
             form.Draft = false;
     }
 
+    // A title is required; typing it is not. Blank passes only while the prompt can stand in — which
+    // is the same condition `NewTaskForm.ApplyTo` falls back on, so what the field permits and what
+    // the card ends up with cannot drift apart. With both blank the message names the title, because
+    // that is the field the user is looking at.
+    private bool TitleSatisfied
+        => !string.IsNullOrWhiteSpace(form.Title) || !string.IsNullOrWhiteSpace(form.Prompt);
+
+    // Explicit intent, so it overwrites: a user who clicks this while a title is already there is
+    // asking for a different one, and refusing would leave the button doing nothing on the very card
+    // where it was pressed. Their own text is one Escape-free `Ctrl+Z` away in the box either way.
+    private bool CanGenerateTitle => !titling && !saving && !string.IsNullOrWhiteSpace(form.Prompt);
+
+    private async Task GenerateTitleAsync()
+    {
+        if (!CanGenerateTitle)
+            return;
+
+        var suggestion = await TitleAsync();
+
+        // The one place a failure is worth a word. The user asked a question here, and a box that
+        // fills with the prompt's opening words with no explanation looks like a bug rather than a
+        // fallback.
+        if (suggestion is { Generated: false })
+            notifications.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = Strings.NewTask_GenerateTitleFailed,
+                Detail = Strings.NewTask_GenerateTitleFallback,
+                Duration = 8000,
+            });
+
+        if (suggestion is { } result)
+            form.Title = result.Title;
+    }
+
+    private async Task<TaskTitles.Result?> TitleAsync()
+    {
+        titling = true;
+
+        titleRun?.Dispose();
+        titleRun = new CancellationTokenSource();
+
+        try
+        {
+            return await titles.SuggestAsync(form.Prompt, form.Agent, titleRun.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+        finally
+        {
+            titling = false;
+        }
+    }
+
     private async Task OnSubmitAsync(NewTaskForm _)
     {
         if (saving)
@@ -550,6 +616,11 @@ public partial class TaskView(
 
         try
         {
+            // Silent here, unlike the button: the user was saving, not asking for a title, and a
+            // toast about how the title was arrived at is an interruption they did not invite.
+            if (string.IsNullOrWhiteSpace(form.Title) && await TitleAsync() is { } suggestion)
+                form.Title = suggestion.Title;
+
             if (card is { } existing)
             {
                 form.ApplyTo(existing);

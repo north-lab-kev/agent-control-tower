@@ -76,6 +76,9 @@ public class AgentBinaryCheckTests
 
         public Task<IAgentSession> ResumeAsync(AgentResumeRequest request, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
+
+        public Task<string?> QueryAsync(AgentQueryRequest request, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
     }
 
     private sealed class Probe : IExecutableProbe

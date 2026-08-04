@@ -15,13 +15,23 @@ namespace Act.Core.Abstractions;
 //
 // `DesktopHandoff` lets the UI decide whether to show that action before any session exists
 // to build a url from.
+//
+// `UtilityModel` is the one model the *user* never chooses: the cheapest thing the agent offers, for
+// the questions ACT asks on its own account rather than as the user's work. It is separate from
+// `DefaultModel` because the two answer opposite questions — the default is what the work should run
+// on when nobody said, and this is what a throwaway is allowed to cost.
 public sealed record AgentCapabilities(
     IReadOnlyList<AgentModel> Models,
     string? DefaultModel,
     IReadOnlyList<PermissionMode> PermissionModes,
-    bool DesktopHandoff = false)
+    bool DesktopHandoff = false,
+    string? UtilityModel = null)
 {
     public bool Supports(PermissionMode mode) => PermissionModes.Contains(mode);
+
+    // Falls back to the default rather than to nothing: an agent that has not named a cheap model
+    // still has to be able to answer, and the launch resolver would fill a null in anyway.
+    public AgentModel? Utility => Model(UtilityModel) ?? Model(DefaultModel) ?? Models.FirstOrDefault();
 
     public AgentModel? Model(string? slug) => slug is null
         ? null

@@ -308,7 +308,7 @@ public class CodexHookInjectionTests
         IHookEndpoint endpoint,
         IAgentConfigFiles files,
         Guid? taskId = null)
-        => new CodexAdapter(pty, new TestClock(), endpoint, files).LaunchAsync(new AgentLaunchRequest(
+        => new CodexAdapter(pty, new StubCommandHost(), new TestClock(), endpoint, files).LaunchAsync(new AgentLaunchRequest(
             taskId ?? TaskId,
             "ignored-by-codex",
             "C:/repo",

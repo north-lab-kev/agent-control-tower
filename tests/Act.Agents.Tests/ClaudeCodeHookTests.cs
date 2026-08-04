@@ -102,7 +102,7 @@ public class ClaudeCodeHookInjectionTests
         StubPtyHost pty,
         IHookEndpoint endpoint,
         IAgentConfigFiles files)
-        => new ClaudeCodeAdapter(pty, new TestClock(), endpoint, files).LaunchAsync(new AgentLaunchRequest(
+        => new ClaudeCodeAdapter(pty, new StubCommandHost(), new TestClock(), endpoint, files).LaunchAsync(new AgentLaunchRequest(
             TaskId,
             SessionId,
             "C:/repo",

@@ -9,6 +9,7 @@ namespace Act.App.Usage;
 
 public sealed class UsagePump(
     IEnumerable<IUsageProbe> probes,
+    IEnumerable<IUsageRefresher> refreshers,
     UsageState state,
     UsageOptions options,
     UserSettingsService settings,
@@ -16,6 +17,9 @@ public sealed class UsagePump(
     ILogger<UsagePump> log) : IAsyncDisposable
 {
     private readonly BackgroundWork work = new(log);
+
+    private readonly IReadOnlyDictionary<AgentType, IUsageRefresher> byAgent =
+        refreshers.ToDictionary(refresher => refresher.Agent);
 
     public void Start()
     {
@@ -32,6 +36,7 @@ public sealed class UsagePump(
     {
         var failures = 0;
         var reported = (UsageAvailability?)null;
+        var nudged = (DateTimeOffset?)null;
 
         while (true)
         {
@@ -43,6 +48,34 @@ public sealed class UsagePump(
             if (settings.EnabledAgents.Contains(probe.Agent))
             {
                 var result = await probe.ReadAsync(cancellationToken);
+
+                // An expired token is the one unavailable outcome ACT can act on: the CLI owns the
+                // file and refreshes it on use, so the fix is to make the CLI run — never to perform
+                // the OAuth exchange here, which would race a rotating refresh token and could cost
+                // the user their login. Rate-limited on its own clock rather than the poll interval,
+                // because a refresh token that is genuinely dead would otherwise spawn a process
+                // every pass for as long as ACT runs.
+                if (options.RefreshOnExpiry
+                    && UsageRefresh.Answers(result.Availability)
+                    && UsageRefresh.Due(clock.Now, nudged, options.RefreshCooldown)
+                    && byAgent.TryGetValue(probe.Agent, out var refresher))
+                {
+                    nudged = clock.Now;
+
+                    var delivered = await refresher.TryRefreshAsync(cancellationToken);
+
+                    // Only worth a second reading if the nudge actually ran: a CLI ACT could not
+                    // start changed nothing, and the endpoint is undocumented enough that a request
+                    // which cannot tell us anything new should not be made.
+                    if (delivered)
+                        result = await probe.ReadAsync(cancellationToken);
+
+                    log.LogInformation(
+                        "{Agent} usage token had expired; the refresh nudge {Outcome} and usage now reads {Availability}.",
+                        probe.Agent,
+                        delivered ? "ran" : "could not be delivered",
+                        result.Availability);
+                }
 
                 state.Publish(result);
 
@@ -72,6 +105,7 @@ public sealed class UsagePump(
 
                 failures = 0;
                 reported = null;
+                nudged = null;
             }
 
             await Task.Delay(wait, cancellationToken);

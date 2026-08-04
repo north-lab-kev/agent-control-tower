@@ -25,6 +25,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │                                #   rejected shapes, deleted code. The code cites it rather
 │  │                                #   than carrying the history inline
 │  ├─ agent-usage-findings.md       # the two usage endpoints and their traps
+│  ├─ agent-title-findings.md       # the one-shot query: measured flags per CLI, the stdin and
+│  │                                #   stream-splitting traps, why --bare breaks auth
 │  └─ codex-hooks-findings.md       # Codex hook discovery, TOML shape, the quoting bug
 │
 ├─ src/
@@ -33,7 +35,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ Events/                    #   normalized event types (the adapter vocabulary)
 │  │  ├─ Agents/                    #   PtyAgentSession/Terminal, launch-config resolution,
 │  │  │                            #     agent process environment, TranscriptTail (offset +
-│  │  │                            #     running snapshot) — all shared by both adapters
+│  │  │                            #     running snapshot), TaskTitleQuery (the title ACT asks an
+│  │  │                            #     agent for, and the shaping of what comes back) — all
+│  │  │                            #     shared by both adapters
 │  │  ├─ Rules/                     #   the rules engine, manual-move validity, sign-off and
 │  │  │                            #     reopen validity,
 │  │  │                            #     where a card sits in its column (CardOrder — the board's
@@ -50,7 +54,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ Resources/                 #   CoreStrings (+ .fr) — localised text the CORE writes,
 │  │  │                            #     e.g. the autoGit sentence appended to a prompt
 │  │  └─ Abstractions/              #   INTERFACES: IAgentAdapter, IAgentSession,
-│  │                               #     IAgentTerminal, IPtyHost, IAgentEventSink,
+│  │                               #     IAgentTerminal, IPtyHost, ICommandHost, IAgentEventSink,
 │  │                               #     ITranscriptReader, ITranscriptNormalizer,
 │  │                               #     IUsageProbe, IUsageDialect, ITextFileReader,
 │  │                               #     IAgentCapabilityCatalog, ICardStore, INotifier, IClock…
@@ -64,7 +68,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ Power/                     #   ISleepInhibitor: SetThreadExecutionState (Windows),
 │  │  │                            #     caffeinate (macOS), systemd-inhibit (Linux)
 │  │  ├─ Terminal/                  #   IPtyHost over Porta.Pty: spawn, incremental UTF-8 decode,
-│  │  │                            #     batched flush, capped scrollback, resize, kill
+│  │  │                            #     batched flush, capped scrollback, resize, kill.
+│  │  │                            #     Also ICommandHost — the same PATH walk with no terminal:
+│  │  │                            #     one short run, both streams captured, stdin closed, a
+│  │  │                            #     deadline, and a cmd /c shim for a .cmd install
 │  │  ├─ Hooks/                     #   hook endpoint + per-session token + kept-port store and
 │  │  │                            #     binder + guard rule + generated agent config files.
 │  │  │                            #     No ASP.NET: the routing/middleware half is Act.App/Hooks/
@@ -92,7 +99,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ Cards/                     #   BoardState — owns every card incl. archived ones, and
 │  │  │                            #     decides what may see which; RetentionPump (the hourly
 │  │  │                            #     auto-archive sweep); task form model; capability
-│  │  │                            #     catalog built from the registered adapters
+│  │  │                            #     catalog built from the registered adapters;
+│  │  │                            #     TaskTitles (ask the task's agent to name it, and always
+│  │  │                            #       answer — the prompt's opening words are the floor)
 │  │  ├─ Sessions/                  #   SessionRegistry (the live sessions), SessionLauncher
 │  │  │                            #     (launch + restore), SessionRestorer (startup re-attach),
 │  │  │                            #     CardCompleter / CardReopener (the two hand-driven moves
@@ -294,6 +303,20 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   dependency between two projects that are both supposed to point *inward*, and it
   would drag `Porta.Pty` into every adapter. It also keeps the contract suite
   process-free: a fake `IPtyHost` is all a test needs.
+- **`ICommandHost` is the pty port's mirror image, and lands the same way — added
+  2026-08-03.** Starting a process and capturing what it said is agent-agnostic
+  plumbing, exactly like spawning one under a pty, so the port lives in
+  `Act.Core/Abstractions` and its implementation beside `PtyHost` in
+  `Act.Infrastructure/Terminal/` — they share the `PATH` walk and nothing else.
+  What it exists for is the questions ACT asks a CLI **on its own account** rather
+  than on the user's: today just "name this task". `QueryAsync` is on
+  `IAgentAdapter` for the usual reason — the command line is agent-shaped — and the
+  cheapest model to ask is declared as `AgentCapabilities.UtilityModel`, a second
+  default the user never chooses. `StubCommandHost` keeps the adapter suites off the
+  process table the way `StubPtyHost` does; `CommandHostTests` is the one suite that
+  starts real processes, because a closed stdin, an undeadlocked stderr and a
+  deadline that actually kills are properties of the OS and a fake would only prove
+  the fake works. The shell it drives is the platform's own, never an agent CLI.
 - **The contract suite covers only the process-free surface.** `AgentAdapterContract`
   in `Act.Agents.Tests` asserts identity, capabilities and launch-config resolution —
   never a live session — because ACT deliberately runs no real CLI in automated
@@ -350,6 +373,16 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   than by a migration. The first release is what makes that stop being an option. Collection names live in one place (`ActCollections`), and
   the friendly card `number` comes from a counter document that seeds itself
   above any card already stored.
+- **Backward compatibility is a migration, never a mapper.** A read-time shim — a
+  tolerant converter, a fallback property, a "temporary" mapper for what an older
+  build wrote — is the one shape this store does not allow, and the rule is in
+  `CLAUDE.md` as a hard one. Nothing ever tells you the last old document is gone,
+  so the shim outlives the data it was written for and the store carries two shapes
+  indefinitely. A `Migrations` entry that rewrites the documents at startup leaves
+  exactly one shape on disk. **A version that was bumped by a shim and then had the
+  shim removed leaves a store no build can open** — `CurrentVersion` goes backwards
+  while the stored version does not, and the only way out is deleting `act.db`,
+  which is what happened on 2026-08-03 (schema 2 against a build back down at 1).
 - **No sample data.** `Act.App/Seeding/` existed so the board had something to render
   before tasks could be created, along with a compile-time gate to keep it out of Release.
   Creating a real task is now a page and a Save, so the demo cards, the `#if DEBUG` call

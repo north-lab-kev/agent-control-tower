@@ -1,6 +1,7 @@
 @page "/card/new"
 @page "/card/{CardId:guid}/edit"
 @using Act.App.Cards
+@using Act.Core.Agents
 @using Act.Core.Model
 
 <PageTitle>@PageHeading</PageTitle>
@@ -50,8 +51,27 @@ else
                     <RadzenStack Gap="1rem">
                         <RadzenStack Gap="0.3rem">
                             <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Title" />
-                            <RadzenTextBox Name="Title" @bind-Value="form.Title" MaxLength="200" class="wide" />
-                            <RadzenRequiredValidator Component="Title" Text="@Strings.NewTask_Required" />
+
+                            @* Required, but the prompt is allowed to answer for it: a plain
+                               `RadzenRequiredValidator` would refuse the save before `OnSubmitAsync`
+                               ever ran, which is where the title gets written. So the rule is stated
+                               as what it actually is — a title must exist by the time the card is
+                               saved, and blank is only acceptable while there is a prompt to derive
+                               one from. *@
+                            <div class="titlerow">
+                                <RadzenTextBox Name="Title" @bind-Value="form.Title"
+                                               MaxLength="@TaskTitleQuery.MaxLength"
+                                               Placeholder="@Strings.NewTask_Title_Placeholder" class="wide" />
+                                <RadzenButton Icon="auto_awesome" ButtonStyle="ButtonStyle.Base"
+                                              Variant="Variant.Outlined" Size="ButtonSize.Small"
+                                              ButtonType="ButtonType.Button" Click="GenerateTitleAsync"
+                                              Disabled="@(!CanGenerateTitle)" IsBusy="titling"
+                                              title="@Strings.NewTask_GenerateTitle"
+                                              aria-label="@Strings.NewTask_GenerateTitle" />
+                            </div>
+                            <RadzenCustomValidator Component="Title" Validator="@(() => TitleSatisfied)"
+                                                   Text="@Strings.NewTask_Title_Required" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Title_Hint" class="hint" />
                         </RadzenStack>
 
                         <RadzenStack Gap="0.3rem">
@@ -248,8 +268,11 @@ else
                         <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
                                       Size="ButtonSize.Small" ButtonType="ButtonType.Button" Click="BackToBoard"
                                       title="@Strings.NewTask_Cancel" aria-label="@Strings.NewTask_Cancel" />
+                        @* Busy, not just disabled: a save that has to write a title first waits on a
+                           CLI for a few seconds, and a button that only greys out reads as a hang. *@
                         <RadzenButton Icon="save" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat"
                                       Size="ButtonSize.Small" ButtonType="ButtonType.Submit" Disabled="saving"
+                                      IsBusy="saving"
                                       title="@Strings.NewTask_Save" aria-label="@Strings.NewTask_Save" />
                     </RadzenStack>
                 </div>

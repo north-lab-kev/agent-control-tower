@@ -19,13 +19,7 @@ public static class AgentEnvironment
         string? hookToken = null,
         string? hookEndpoint = null)
     {
-        var environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var entry in Environment.GetEnvironmentVariables().Cast<System.Collections.DictionaryEntry>())
-        {
-            if (entry.Key is string key && entry.Value is string value)
-                environment[key] = value;
-        }
+        var environment = Inherited();
 
         environment["TERM"] = "xterm-256color";
         environment[ActTaskId] = taskId.ToString("d");
@@ -38,6 +32,33 @@ public static class AgentEnvironment
 
         foreach (var entry in overrides)
             environment[entry.Key] = entry.Value;
+
+        return environment;
+    }
+
+    // A query is not a session, and the difference is the whole of what is missing here. No task id
+    // and no hook variables, because there is nothing to correlate and nothing that should report;
+    // no `TERM`, because there is no terminal. The install's own overrides still apply — they are how
+    // a machine says where its credentials or its proxy live.
+    public static IReadOnlyDictionary<string, string> ForQuery(IDictionary<string, string> overrides)
+    {
+        var environment = Inherited();
+
+        foreach (var entry in overrides)
+            environment[entry.Key] = entry.Value;
+
+        return environment;
+    }
+
+    private static Dictionary<string, string> Inherited()
+    {
+        var environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var entry in Environment.GetEnvironmentVariables().Cast<System.Collections.DictionaryEntry>())
+        {
+            if (entry.Key is string key && entry.Value is string value)
+                environment[key] = value;
+        }
 
         return environment;
     }

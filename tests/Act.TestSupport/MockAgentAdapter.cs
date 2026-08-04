@@ -80,6 +80,27 @@ public sealed class MockAgentAdapter(
             new MockAgentSession(request.TaskId, request.SessionId, Script, clock));
     }
 
+    // Whatever a test needs a query to come back with. Null is the failure shape — a CLI that is not
+    // there — and it is the one every caller has to survive, so it stays easy to ask for.
+    public string? Answer { get; set; } = "Mock title";
+
+    public List<AgentQueryRequest> Queries { get; } = [];
+
+    // Separate from `Fails`, which is about a spawn: a query has a failure of its own — a binary that
+    // is not there at all — and its callers are supposed to survive that rather than propagate it.
+    public Exception? QueryFails { get; set; }
+
+    public Task<string?> QueryAsync(
+        AgentQueryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        Queries.Add(request);
+
+        return QueryFails is { } failure
+            ? Task.FromException<string?>(failure)
+            : Task.FromResult(Answer);
+    }
+
     private void Refuse(LaunchConfig config)
     {
         if (Fails is { } failure)

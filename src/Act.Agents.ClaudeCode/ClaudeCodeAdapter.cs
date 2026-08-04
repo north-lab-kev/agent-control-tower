@@ -11,6 +11,7 @@ namespace Act.Agents.ClaudeCode;
 // swallows whatever arrives before it is.
 public sealed class ClaudeCodeAdapter(
     IPtyHost pty,
+    ICommandHost commands,
     IClock clock,
     IHookEndpoint hooks,
     IAgentConfigFiles configFiles) : IAgentAdapter
@@ -139,6 +140,63 @@ public sealed class ClaudeCodeAdapter(
             cancellationToken);
 
         return new PtyAgentSession(taskId, sessionId, process, clock);
+    }
+
+    // `-p` is the whole of what makes this cheap; the rest is turning off everything a session wants
+    // and a question does not. Measured against 2.1.220: stdout is exactly the answer text, with no
+    // banner and no escape codes, so there is nothing to parse.
+    //
+    //   * `--safe-mode` drops CLAUDE.md, skills, plugins, hooks, MCP servers, custom commands and
+    //     agents — every one of which is context this question has no use for and tokens the user
+    //     would pay for. `--bare` looks like the better switch and is a trap: it makes auth *strictly*
+    //     `ANTHROPIC_API_KEY`/`apiKeyHelper` and never reads OAuth or the keychain, so it would fail
+    //     outright for a subscription user. See `docs/agent-title-findings.md`.
+    //   * `--no-session-persistence` keeps a throwaway out of the user's `/resume` picker.
+    //   * The prompt goes on **stdin**, not positionally, so no quoting rule anywhere between here
+    //     and the CLI can bite — see `CommandStartInfo.Input`.
+    //
+    // No `--permission-mode`: print mode cannot prompt, so there is nothing for one to answer.
+    //
+    // `--tools ""` is the single biggest saving here and is measured, not assumed: **~30,000 tokens a
+    // title without it, ~5,000 with** — the tool schemas are most of what the CLI sends, and a question
+    // that must not touch the disk has no use for any of them. It also turns "do not use any tools"
+    // from a request in the prompt into a fact about the run. It is only usable because the prompt
+    // travels on stdin: `--tools` is variadic, so a positional prompt after it would be swallowed as a
+    // tool name. Keep it **last**, and keep the prompt off the command line.
+    public async Task<string?> QueryAsync(
+        AgentQueryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var model = Capabilities.Utility;
+
+        List<string> arguments = ["-p", "--safe-mode", "--no-session-persistence"];
+
+        if (model is { } utility)
+        {
+            arguments.Add("--model");
+            arguments.Add(utility.Slug);
+
+            if (utility.Efforts.FirstOrDefault() is { } cheapest)
+            {
+                arguments.Add("--effort");
+                arguments.Add(cheapest);
+            }
+        }
+
+        arguments.Add("--tools");
+        arguments.Add(string.Empty);
+
+        var result = await commands.RunAsync(
+            new CommandStartInfo(
+                request.Machine?.Binary is { Length: > 0 } binary ? binary.Trim() : DefaultBinary,
+                arguments,
+                configFiles.ScratchDirectory(),
+                AgentEnvironment.ForQuery(request.Machine?.Env ?? new Dictionary<string, string>()),
+                request.Prompt,
+                request.Timeout),
+            cancellationToken);
+
+        return result.Succeeded ? result.Output : null;
     }
 
     // No endpoint means no hooks and a launch that still happens: ingestion is observability, and

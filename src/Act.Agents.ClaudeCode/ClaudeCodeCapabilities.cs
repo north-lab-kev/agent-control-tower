@@ -37,5 +37,9 @@ public static class ClaudeCodeCapabilities
         ],
         "sonnet",
         Modes,
-        DesktopHandoff: true);
+        DesktopHandoff: true,
+
+        // The cheapest of the four, and the only one whose context window is not a million tokens —
+        // which is exactly right for the questions ACT asks itself, none of which need one.
+        UtilityModel: "haiku");
 }

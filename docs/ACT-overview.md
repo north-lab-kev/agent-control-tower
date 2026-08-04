@@ -449,7 +449,9 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
     it later is non-breaking. Whether it's ever needed comes down to Codex
     fork/restart behavior — the managed model resumes on the same
     `sessionId`.
-- `title` — the task's name.
+- `title` — the task's name. **Optional to type, never optional to have** — see
+  *Auto-generated titles* below. Editable for the life of the card, unlike the
+  prompt, because a name is not part of the run.
 - `initialPrompt` — the **immutable** opening instruction, set in Preparing.
   Preserved verbatim across all later turns (enables re-run-from-scratch and
   auditing what was originally asked). Subsequent inputs — answers, permission
@@ -713,6 +715,63 @@ joins the two on the way to the adapter and is the only place they meet.
 user's existing `settings.json` (CLI flags > project > user > built-in
 defaults). A project deny list still applies underneath — ACT does **not** fully
 own permissions.
+
+### Auto-generated titles — added 2026-08-03
+
+Nobody should have to name a task twice. The prompt already says what the work is,
+so `title` stopped being a field the user must fill in: it is **written from the
+prompt by the task's own agent**, on demand from a button beside the box and
+automatically on a save that leaves it blank. Typing one still wins — the box is
+first, editable, and never overwritten except by an explicit click.
+
+The title is the *only* reason ACT ever runs a CLI on its own account, and the
+whole design is about making that cost nothing:
+
+- **A query, not a session.** `ICommandHost` is the second way ACT starts a
+  process: one short-lived run, both streams captured separately, no terminal, no
+  session, no hooks, no card. It sits beside `IPtyHost` as a Core port for the same
+  reasons, and `CommandHost` implements it. This is **not** the rejected stream-json
+  control protocol below — no interactive session is replaced, because none is
+  involved.
+- **The cheapest thing the agent has.** `AgentCapabilities.UtilityModel` is a
+  second default the user never chooses — Claude Code's `haiku`, Codex's
+  `gpt-5.4-mini` — run at the bottom rung of that model's own effort ladder. The
+  caller cannot make it expensive: `AgentQueryRequest` carries no model, no effort
+  and no permission mode, and the machine's `extraFlags` are deliberately ignored
+  so a stray `--model` cannot redirect it.
+- **Nowhere to run, and nothing to run with.** Both CLIs read the directory they
+  start in — CLAUDE.md, AGENTS.md, project settings, the enclosing repo — so a query
+  runs in an empty ACT-owned scratch directory with every customization switched off
+  (`--safe-mode`; `--ignore-user-config`) and, on Claude Code, **every tool disabled**
+  (`--tools ""`). None of that context is worth paying for to name a sentence, and
+  the tool schemas alone were **~25,000 of the ~30,000 tokens** a title used to cost.
+- **A title costs ~5,000–7,000 tokens, and the prompt is not what drives it** — the
+  CLI's own preamble is. Prompt sizes from 5 to 1,080 words moved the total by around
+  1,500 tokens, so a long prompt is never truncated before asking. The measured
+  breakdown per agent is in `docs/agent-title-findings.md`.
+- **It never fails.** A missing CLI, a refusal, an expired login, an exhausted
+  quota, a timeout or an unusable answer falls back to the prompt's own opening
+  words. A save refused over a field ACT offered to fill in would be worse than the
+  form that made the user type a title. The button says so with a toast; a save
+  does it silently, because the user was saving rather than asking a question.
+- **`title` is still required — it is only optional to *type*.** The field carries
+  a validator that accepts blank *while there is a prompt to derive one from*, and
+  refuses the save when both are empty; a plain required validator would have
+  refused before the code that writes the title ever ran. The guarantee itself sits
+  one level deeper, in `NewTaskForm.ApplyTo` alongside the launch-boundary gate,
+  because the code that writes the card is the only place that can promise it. So
+  the empty string is a value a stored `title` can never hold, whatever the CLI
+  did — an untitled strip is unrecognisable and unsearchable, and no screen repairs
+  it. `TaskTitleQuery.FromPrompt` therefore answers for **any** prompt with a
+  character in it, including one made entirely of the punctuation it would
+  otherwise strip.
+- **What comes back is not trusted.** `TaskTitleQuery` strips the quotes, markdown,
+  bullets, preamble and trailing period a chatty model wraps a one-line answer in,
+  then caps it at thirty words and the form's own 200 characters.
+
+The measured flag sets, the traps behind each one (notably why `claude --bare`
+would break auth, and why Codex's prompt must go on stdin), and the re-test
+checklist are in `docs/agent-title-findings.md`.
 
 ---
 
@@ -1452,15 +1511,31 @@ a 20-second backstop tick.
   not a process count — which is why *Keep-awake*, which really is about processes,
   draws its line one badge tighter.
 - **Usage backpressure (safety net)** — if an eligible task's usage window is
-  exhausted it **waits for the reset** rather than erroring. A window reporting
-  its own exhaustion names itself and the **latest** such reset wins (launching
-  at the 5-hour boundary against a spent weekly quota would only fail again); the
+  spent it **waits for the reset** rather than erroring. A window at or above the
+  ceiling names itself and the **latest** such reset wins (launching at the
+  5-hour boundary against a spent weekly quota would only fail again); the
   account-level `limit_reached` flag names no window, so the **soonest** reset is
   taken, since being wrong there costs one re-check rather than days. A reading
-  held past its own reset is not a limit, and **no reading is not a limit
-  either** — an unreadable credential file must not freeze an overnight run, so
-  the queue launches and lets the CLI be the one to refuse. So `schedule` is
-  *intent*; cap and backpressure are *reality*.
+  held past its own reset is not a limit, a window that has not started is not a
+  limit, and **no reading is not a limit either** — an unreadable credential file
+  must not freeze an overnight run, so the queue launches and lets the CLI be the
+  one to refuse. So `schedule` is *intent*; cap and backpressure are *reality*.
+- **Spent is 98%, not 100% — and it is a setting.** *Hold the queue at* (default
+  **98**, any percentage 1–100, `UsageCeiling`) is the percentage **at or above
+  which** a window counts as spent: at the default a card launches at 0%, at 49%
+  and at 97%, and waits from 98% up. It is one threshold, not a band — nothing is
+  held below it. 100 is the wrong place to stop for three compounding reasons: the
+  percentage ACT holds is up to `Usage:PollSeconds` old (180 s by default), a
+  5-hour window moves about a third of a percent a minute, and the vendor rounds
+  to a whole percent before ACT ever sees it — so a reading of 99 can be a window
+  that is already full. And a task launched into the last of a quota does not fail
+  cleanly: it starts, burns the remainder and stops **mid-run**, which costs more
+  than waiting for the reset would have. How much quota to leave for interactive
+  work is the user's call, so a low ceiling is honoured rather than second-guessed;
+  the bounds only keep the number a percentage, and the floor is 1 rather than 0
+  because a ceiling of zero would hold every card forever — which is what the
+  master switch already says plainly. Manual launches are unaffected — this is a
+  rule about what ACT starts on its own.
 - **The queue is the Ready column, read top to bottom** — see *Ordering a
   column*. Nothing weighs one task against another: a queue that reorders itself
   is a queue nobody can predict. A due instant decides *whether* a card is in the

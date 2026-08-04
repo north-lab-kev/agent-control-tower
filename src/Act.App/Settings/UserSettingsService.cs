@@ -33,13 +33,16 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
 
     public bool AutoExecutionPaused => current.AutoExecutionPaused;
 
+    public int UsageCeilingPercent => UsageCeiling.Clamp(current.UsageCeilingPercent);
+
     // Everything the queue reads, in one object, so the runner and the board ask the same question
     // of the same values rather than each assembling their own.
     public QueuePolicy QueuePolicy => new(
         MaxConcurrent,
         current.AutoExecutionPaused,
         current.PreventConcurrentWorkingDir,
-        EnabledAgents.ToHashSet());
+        EnabledAgents.ToHashSet(),
+        UsageCeilingPercent);
 
     public bool AutoArchiveCompleted => current.AutoArchiveCompleted;
 
@@ -170,6 +173,16 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
             return;
 
         Update(settings => settings.MaxConcurrent = clamped);
+    }
+
+    public void SetUsageCeilingPercent(int percent)
+    {
+        var clamped = UsageCeiling.Clamp(percent);
+
+        if (clamped == current.UsageCeilingPercent)
+            return;
+
+        Update(settings => settings.UsageCeilingPercent = clamped);
     }
 
     public void SetAutoExecutionPaused(bool paused)

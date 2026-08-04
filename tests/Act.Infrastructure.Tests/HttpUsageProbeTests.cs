@@ -47,6 +47,19 @@ public class HttpUsageProbeTests
         handler.Calls.Should().Be(0);
     }
 
+    // Told apart from `Expired` because the remedy differs: one renews itself once the CLI runs, the
+    // other needs the user to sign in. Neither spends a request, since both are read off the file.
+    [Fact]
+    public async Task A_lapsed_refresh_token_asks_for_a_new_sign_in_without_spending_a_request()
+    {
+        var handler = new Handler(HttpStatusCode.OK, "{}");
+
+        var result = await Probe(handler, token: UsageToken.Lapsed).ReadAsync();
+
+        result.Availability.Should().Be(UsageAvailability.SignInRequired);
+        handler.Calls.Should().Be(0);
+    }
+
     [Theory]
     [InlineData(HttpStatusCode.Unauthorized)]
     [InlineData(HttpStatusCode.Forbidden)]

@@ -28,6 +28,10 @@ public sealed class UserSettings
     // are unaffected: pausing stops ACT from starting things, not the user.
     public bool AutoExecutionPaused { get; set; }
 
+    // Where a quota window counts as spent. Under 100 on purpose — see `UsageCeiling`, which owns the
+    // default and the bounds.
+    public int UsageCeilingPercent { get; set; } = 98;
+
     // One entry per agent, holding what its install looks like on this machine. A list rather than
     // a property per agent, so adding an adapter does not mean touching the settings model.
     public IList<AgentDefaults> Agents { get; set; } = [];

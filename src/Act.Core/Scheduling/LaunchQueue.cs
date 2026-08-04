@@ -99,7 +99,7 @@ public static class LaunchQueue
         if (!policy.EnabledAgents.Contains(card.AgentType))
             return new ReadyHold(LaunchHold.AgentDisabled);
 
-        if (UsageBackpressure.Blocking(usage(card.AgentType), now) is { } window)
+        if (UsageBackpressure.Blocking(usage(card.AgentType), now, policy.UsageCeilingPercent) is { } window)
             return new ReadyHold(LaunchHold.UsageLimit, Until: window.ResetsAt);
 
         // Against the cards already picked this pass as well as the board, since each of those is

@@ -21,6 +21,17 @@ public class ClaudeCodeUsageDialectTests
          "member_dashboard_available":false}
         """;
 
+    // A 5-hour window nothing has run in yet. Reconstructed rather than measured: the `session` entry is
+    // the measured one with the reset nulled, which is the shape `weekly_scoped` carries in the body
+    // above — a real idle body was not captured because reaching the endpoint starts the window.
+    private const string SessionNotStarted = """
+        {"five_hour":{"utilization":0,"resets_at":null,"limit_dollars":null},
+         "seven_day":{"utilization":24.0,"resets_at":"2026-08-08T16:59:59.284078+00:00","limit_dollars":null},
+         "limits":[
+           {"kind":"session","group":"session","percent":0,"severity":"normal","resets_at":null,"scope":null,"is_active":false},
+           {"kind":"weekly_all","group":"weekly","percent":24,"severity":"normal","resets_at":"2026-08-08T16:59:59.284078+00:00","scope":null,"is_active":true}]}
+        """;
+
     private const string WithoutLimits = """
         {"five_hour":{"utilization":16.0,"resets_at":"2026-07-31T07:59:59.088971+00:00"},
          "seven_day":{"utilization":29.0,"resets_at":"2026-08-01T17:00:00.088993+00:00"}}
@@ -35,14 +46,40 @@ public class ClaudeCodeUsageDialectTests
             .Should().Equal((UsageWindowKind.Session, 16), (UsageWindowKind.Weekly, 29));
     }
 
-    // `weekly_scoped` is a per-model window that reports no reset at all, so there is nothing to
-    // count down to and nothing to render.
+    // `weekly_scoped` is a per-model window, and ACT names windows by the account-level pair. It is
+    // skipped on its `kind`, not on its null reset — a null reset is a state the account windows reach
+    // too, and skipping on it is what once hid the session meter entirely.
     [Fact]
-    public void A_scoped_window_without_a_reset_is_skipped()
+    public void A_per_model_scoped_window_is_skipped()
     {
         var usage = new ClaudeCodeUsageDialect().Parse(Measured, Now);
 
         usage!.Windows.Should().HaveCount(2);
+    }
+
+    // The 5-hour clock starts on the first request, so an idle account reports the window at 0% with no
+    // reset. It is still a window, and reading it as absent left the top bar with a weekly meter and no
+    // session one — which reads as ACT being unable to see the session quota at all.
+    [Fact]
+    public void A_window_that_has_not_started_is_read_as_zero_with_no_reset()
+    {
+        var usage = new ClaudeCodeUsageDialect().Parse(SessionNotStarted, Now);
+
+        usage!.Windows.Select(window => (window.Kind, window.Percent))
+            .Should().Equal((UsageWindowKind.Session, 0), (UsageWindowKind.Weekly, 24));
+
+        usage.Of(UsageWindowKind.Session)!.ResetsAt.Should().BeNull();
+    }
+
+    [Fact]
+    public void A_named_window_without_a_reset_is_kept_as_well()
+    {
+        const string body = """{"five_hour":{"utilization":0,"resets_at":null}}""";
+
+        var usage = new ClaudeCodeUsageDialect().Parse(body, Now);
+
+        usage!.Of(UsageWindowKind.Session)!.ResetsAt.Should().BeNull();
+        usage.Of(UsageWindowKind.Weekly)!.Percent.Should().Be(0);
     }
 
     [Fact]
@@ -65,6 +102,38 @@ public class ClaudeCodeUsageDialectTests
             .Should().Equal((UsageWindowKind.Session, 16), (UsageWindowKind.Weekly, 29));
     }
 
+    // A read that succeeded answers with both account windows whatever the body left out: which entries
+    // are present is a property of the account's activity, not of what ACT managed to see.
+    [Fact]
+    public void A_body_that_names_one_window_still_reports_the_pair()
+    {
+        const string body = """
+            {"limits":[{"kind":"weekly_all","percent":24,"resets_at":"2026-08-08T16:59:59+00:00"}]}
+            """;
+
+        var usage = new ClaudeCodeUsageDialect().Parse(body, Now);
+
+        usage!.Windows.Select(window => (window.Kind, window.Percent))
+            .Should().Equal((UsageWindowKind.Session, 0), (UsageWindowKind.Weekly, 24));
+
+        usage.Of(UsageWindowKind.Session)!.ResetsAt.Should().BeNull();
+    }
+
+    // The named pair fills what `limits` omits rather than being discarded whole, so a partial array
+    // never costs a window the body actually reported.
+    [Fact]
+    public void The_named_pair_fills_a_window_the_limits_array_left_out()
+    {
+        const string body = """
+            {"five_hour":{"utilization":16.0,"resets_at":"2026-07-31T07:59:59+00:00"},
+             "limits":[{"kind":"weekly_all","percent":24,"resets_at":"2026-08-08T16:59:59+00:00"}]}
+            """;
+
+        new ClaudeCodeUsageDialect().Parse(body, Now)!.Windows
+            .Select(window => (window.Kind, window.Percent))
+            .Should().Equal((UsageWindowKind.Session, 16), (UsageWindowKind.Weekly, 24));
+    }
+
     [Fact]
     public void A_body_that_is_not_a_usage_response_reads_as_nothing()
     {
@@ -80,13 +149,56 @@ public class ClaudeCodeUsageDialectTests
             .Should().Be(UsageToken.Present("sk-ant-oat01-EXAMPLE"));
     }
 
-    // ACT never refreshes the token — Claude Code owns that file — so an expired one is never spent on
-    // a request that can only 401. It is reported as *expired* rather than as missing, because the top
-    // bar has to be able to say which of the two it is.
+    // ACT never performs the refresh itself — Claude Code owns that file — so an expired one is never
+    // spent on a request that can only 401. It is reported as *expired* rather than as missing, because
+    // the top bar has to be able to say which of the two it is.
     [Fact]
     public void An_expired_token_is_not_offered_and_says_it_expired()
     {
         var credentials = Credentials(Now.AddMinutes(-1).ToUnixTimeMilliseconds());
+
+        new ClaudeCodeUsageDialect().Token(credentials, Now).Should().Be(UsageToken.Expired);
+    }
+
+    // The second clock in the file, and the one that decides whether waiting helps: the access token
+    // lasts 8 hours and the refresh token about 21 days, so both expired means no amount of running
+    // the CLI will fix it and only an interactive sign-in will.
+    [Fact]
+    public void An_expired_token_beside_a_lapsed_refresh_token_reads_as_lapsed()
+    {
+        var credentials = Credentials(
+            Now.AddMinutes(-1).ToUnixTimeMilliseconds(),
+            Now.AddDays(-1).ToUnixTimeMilliseconds());
+
+        new ClaudeCodeUsageDialect().Token(credentials, Now).Should().Be(UsageToken.Lapsed);
+    }
+
+    // The ordering that makes the guard correct rather than merely present. The request ACT is about to
+    // make uses the *access* token, so a refresh token that has lapsed while the access token is still
+    // good is not a problem yet — reading the refresh clock first would blank a working meter for the
+    // last hours of a login that happens to be near its end.
+    [Fact]
+    public void A_lapsed_refresh_token_does_not_withhold_an_access_token_that_still_works()
+    {
+        var credentials = Credentials(
+            Now.AddHours(1).ToUnixTimeMilliseconds(),
+            Now.AddDays(-1).ToUnixTimeMilliseconds());
+
+        new ClaudeCodeUsageDialect().Token(credentials, Now)
+            .Should().Be(UsageToken.Present("sk-ant-oat01-EXAMPLE"));
+    }
+
+    // A CLI old enough not to write the field says nothing about whether the refresh token is good, and
+    // "no reason to think it has lapsed" is the reading that keeps the free nudge in play.
+    [Fact]
+    public void A_file_that_does_not_state_the_refresh_expiry_stays_merely_expired()
+    {
+        var credentials = """
+            {"claudeAiOauth":{"accessToken":"sk-ant-oat01-EXAMPLE","refreshToken":"sk-ant-ort01-EXAMPLE",
+             "expiresAt":EXPIRES,"subscriptionType":"team"}}
+            """.Replace(
+            "EXPIRES",
+            Now.AddMinutes(-1).ToUnixTimeMilliseconds().ToString(CultureInfo.InvariantCulture));
 
         new ClaudeCodeUsageDialect().Token(credentials, Now).Should().Be(UsageToken.Expired);
     }
@@ -104,11 +216,20 @@ public class ClaudeCodeUsageDialectTests
             .Should().EndWith(Path.Combine(".claude", ".credentials.json"));
     }
 
-    private static string Credentials(long expiresAt)
+    // Shaped after the measured file (2026-08-04, claude-code 2.1.220), which carries both clocks.
+    // The refresh expiry defaults to alive, so a test that says nothing about it is asking about the
+    // access token alone.
+    private static string Credentials(long expiresAt, long? refreshTokenExpiresAt = null)
         => """
             {"claudeAiOauth":{"accessToken":"sk-ant-oat01-EXAMPLE","refreshToken":"sk-ant-ort01-EXAMPLE",
-             "expiresAt":EXPIRES,"subscriptionType":"team","rateLimitTier":"default_claude_max_5x"}}
-            """.Replace("EXPIRES", expiresAt.ToString(CultureInfo.InvariantCulture));
+             "expiresAt":EXPIRES,"refreshTokenExpiresAt":REFRESH,"subscriptionType":"team",
+             "rateLimitTier":"default_claude_max_5x"}}
+            """
+            .Replace("EXPIRES", expiresAt.ToString(CultureInfo.InvariantCulture))
+            .Replace(
+                "REFRESH",
+                (refreshTokenExpiresAt ?? Now.AddDays(21).ToUnixTimeMilliseconds())
+                    .ToString(CultureInfo.InvariantCulture));
 }
 
 public class CodexUsageDialectTests

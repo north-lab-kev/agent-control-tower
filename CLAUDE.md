@@ -27,6 +27,10 @@ Instructions for Claude Code when working in this repository.
   response shapes, the unit and encoding traps between them, the rules ACT holds
   itself to around the CLIs' credential files, and the alternatives that were
   measured and rejected.
+- **`docs/agent-title-findings.md` — read before touching one-shot queries or the
+  auto-generated title.** The measured flag set for each CLI's non-interactive mode,
+  the traps between them (stdin must be closed; Codex splits its streams; `claude
+  --bare` silently breaks OAuth auth), and the checklist to re-test on a CLI bump.
 - **`docs/codex-hooks-findings.md` — read before touching Codex hook wiring.**
   Codex hooks do not fire on the pinned CLI, so that code is written blind; the
   file records what was measured, what ACT assumed, and the checklist to re-test
@@ -61,6 +65,20 @@ Instructions for Claude Code when working in this repository.
   A prior request to commit/push does not carry over — each one requires its
   own explicit ask. "Fix it" / "address this" / reporting a problem is **not**
   permission to commit or push.
+
+## Store compatibility (HARD RULE)
+
+- **Never write a temporary mapper, a tolerant BSON converter, or any read-time
+  shim to cope with data an older build wrote.** They read as harmless and then
+  become permanent: nothing tells you when the last old document is gone, so the
+  shim stays, and the store quietly holds two shapes forever.
+- **Migrate the database instead.** Add an entry to `ActSchema.Migrations` that
+  really rewrites the stored documents at startup and bumps the version. After it
+  runs, only the new shape exists on disk, and the loading code knows exactly one
+  shape.
+- Until the first release, starting from a fresh `act.db` is still an acceptable
+  answer for a breaking change — but say so out loud, because it costs my board.
+  Once ACT has shipped, a migration is the only option.
 
 ## Communication
 

@@ -51,6 +51,24 @@
   <data name="NewTask_Title" xml:space="preserve">
     <value>Title</value>
   </data>
+  <data name="NewTask_Title_Placeholder" xml:space="preserve">
+    <value>Written from the prompt if you leave it blank</value>
+  </data>
+  <data name="NewTask_Title_Hint" xml:space="preserve">
+    <value>Yours to write. Leave it blank and saving fills it in from the prompt.</value>
+  </data>
+  <data name="NewTask_Title_Required" xml:space="preserve">
+    <value>Write a title, or a prompt to take one from</value>
+  </data>
+  <data name="NewTask_GenerateTitle" xml:space="preserve">
+    <value>Write a title from the prompt</value>
+  </data>
+  <data name="NewTask_GenerateTitleFailed" xml:space="preserve">
+    <value>Could not reach the agent</value>
+  </data>
+  <data name="NewTask_GenerateTitleFallback" xml:space="preserve">
+    <value>The title was taken from the start of the prompt instead. Edit it as you like.</value>
+  </data>
   <data name="NewTask_Prompt" xml:space="preserve">
     <value>Prompt</value>
   </data>
@@ -319,7 +337,10 @@
     <value>not signed in</value>
   </data>
   <data name="Usage_Unavailable_Expired" xml:space="preserve">
-    <value>token expired</value>
+    <value>renewing token</value>
+  </data>
+  <data name="Usage_Unavailable_SignInRequired" xml:space="preserve">
+    <value>sign in again</value>
   </data>
   <data name="Usage_Unavailable_Unauthorized" xml:space="preserve">
     <value>token refused</value>
@@ -337,7 +358,10 @@
     <value>ACT found no credentials for this CLI, so sign in by running it once</value>
   </data>
   <data name="Usage_Cause_Expired" xml:space="preserve">
-    <value>the CLI's access token has expired, and only the CLI itself can renew it</value>
+    <value>the CLI's access token has expired, so ACT has asked the CLI to renew it — the numbers come back on their own</value>
+  </data>
+  <data name="Usage_Cause_SignInRequired" xml:space="preserve">
+    <value>this CLI's login has lapsed after too long unused, so run `claude auth login` once to sign in again</value>
   </data>
   <data name="Usage_Cause_Unauthorized" xml:space="preserve">
     <value>the endpoint refused the token, which usually means the login has to be renewed</value>
@@ -368,6 +392,12 @@
   </data>
   <data name="Settings_MaxConcurrent_Hint" xml:space="preserve">
     <value>How many tasks the queue keeps working at the same time. Each one holds a live agent and its terminal, so this is a real ceiling on the machine. A task waiting to be signed off does not count.</value>
+  </data>
+  <data name="Settings_UsageCeiling" xml:space="preserve">
+    <value>Hold the queue at</value>
+  </data>
+  <data name="Settings_UsageCeiling_Hint" xml:space="preserve">
+    <value>Once a 5-hour or weekly quota reaches this much, auto-execution waits for the window to reset. Below that, tasks launch as usual. Under 100% on purpose: the reading is up to three minutes old and rounded to a whole percent, and a task launched into the last of a quota stops mid-run rather than failing cleanly. Set it lower to keep more of the quota for your own sessions. Manual launches are never held.</value>
   </data>
   <data name="Settings_Group_Retention" xml:space="preserve">
     <value>Retention</value>
@@ -846,6 +876,9 @@
   <data name="Usage_AfterReset" xml:space="preserve">
     <value>· reset · no activity</value>
   </data>
+  <data name="Usage_NotStarted" xml:space="preserve">
+    <value>· not started</value>
+  </data>
   <data name="Usage_DaysHours" xml:space="preserve">
     <value>{0}d {1}h</value>
   </data>
@@ -857,6 +890,9 @@
   </data>
   <data name="Usage_Tooltip" xml:space="preserve">
     <value>{0} — {1} window · resets {2}</value>
+  </data>
+  <data name="Usage_Tooltip_NotStarted" xml:space="preserve">
+    <value>{0} — {1} window · nothing has run in it yet, so no reset is scheduled</value>
   </data>
   <data name="Search_Placeholder" xml:space="preserve">
     <value>Filter by number, title, folder or prompt</value>

@@ -73,19 +73,28 @@ public static class UsageMeters
         // nothing ran in between and the stale percentage describes a window that no longer exists.
         var percent = window.PercentAt(now);
 
+        // Three cases, not two: a window can also have no reset at all, which is a 5-hour window nothing
+        // has run in yet. It reads as *not started* rather than as a countdown, and it is still drawn —
+        // dropping the meter for a missing instant read as "ACT cannot see your session quota".
         var reset = rolled
             ? Strings.Usage_AfterReset
-            : Format(Strings.Usage_ResetsIn, Left(window.RemainingAt(now)));
+            : window.RemainingAt(now) is { } left
+                ? Format(Strings.Usage_ResetsIn, Left(left))
+                : Strings.Usage_NotStarted;
+
+        var tooltip = window.ResetsAt is { } at
+            ? Format(
+                Strings.Usage_Tooltip,
+                Name(reading.Agent),
+                Name(window.Kind),
+                at.ToLocalTime().ToString("g", CultureInfo.CurrentCulture))
+            : Format(Strings.Usage_Tooltip_NotStarted, Name(reading.Agent), Name(window.Kind));
 
         return new UsageMeter(
             $"{Name(reading.Agent)} {Name(window.Kind)}",
             Format(Strings.Usage_Percent, percent),
             reset,
-            Format(
-                Strings.Usage_Tooltip,
-                Name(reading.Agent),
-                Name(window.Kind),
-                window.ResetsAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)),
+            tooltip,
             percent,
             State(window.PressureAt(now, reading.LimitReached)));
     }
@@ -112,6 +121,7 @@ public static class UsageMeters
     {
         UsageAvailability.NotSignedIn => Strings.Usage_Unavailable_NotSignedIn,
         UsageAvailability.Expired => Strings.Usage_Unavailable_Expired,
+        UsageAvailability.SignInRequired => Strings.Usage_Unavailable_SignInRequired,
         UsageAvailability.Unauthorized => Strings.Usage_Unavailable_Unauthorized,
         UsageAvailability.Unreachable => Strings.Usage_Unavailable_Unreachable,
         _ => Strings.Usage_Unavailable_Failed,
@@ -121,6 +131,7 @@ public static class UsageMeters
     {
         UsageAvailability.NotSignedIn => Strings.Usage_Cause_NotSignedIn,
         UsageAvailability.Expired => Strings.Usage_Cause_Expired,
+        UsageAvailability.SignInRequired => Strings.Usage_Cause_SignInRequired,
         UsageAvailability.Unauthorized => Strings.Usage_Cause_Unauthorized,
         UsageAvailability.Unreachable => Strings.Usage_Cause_Unreachable,
         _ => Strings.Usage_Cause_Failed,

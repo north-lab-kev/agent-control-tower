@@ -33,6 +33,11 @@
     flex: 0 0 auto;
 }
 
+/* A quantity reads against the spinner it is changed with, not against the label it is far from. */
+::deep .control.rz-numeric input {
+    text-align: right;
+}
+
 /* Type-or-pick, the same pairing the task form uses for a working directory. */
 ::deep .dirrow {
     display: flex;

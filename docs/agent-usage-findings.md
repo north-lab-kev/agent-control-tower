@@ -21,6 +21,7 @@ Companion reading: *Usage indicator* in `ACT-overview.md`, and the usage rows in
 | Auth | `Authorization: Bearer <access token>` | `Authorization: Bearer <access token>` |
 | Other headers | **none required** | **none required** |
 | Credentials | `~/.claude/.credentials.json` → `claudeAiOauth.accessToken` | `$CODEX_HOME/auth.json` → `tokens.access_token` |
+| Expiry stated | `expiresAt` **and** `refreshTokenExpiresAt`, both ms epoch | neither — buried in the JWT |
 | Path override | `CLAUDE_CONFIG_DIR` | `CODEX_HOME` |
 
 Neither endpoint is documented or promised. Both are read-only, and every failure
@@ -81,8 +82,45 @@ here (16.0, 29.0, agreeing with `limits[].percent`), even though the CLI binary
 contains `used_percentage: utilization * 100` for its statusline payload — so the
 named pair is kept only as a fallback for a response without `limits`.
 
-`weekly_scoped` is a per-model window that reports `resets_at: null`. There is
-nothing to count down to, so ACT skips it.
+`weekly_scoped` is a per-model window ACT does not name, so it is skipped — on its
+`kind`, **not** on its null reset. See the next section for why that distinction is
+load-bearing.
+
+### `resets_at: null` — a window that has not started
+
+Measured 2026-08-03. **The 5-hour clock starts on the first request of a window**, so
+an account that has been idle reports the session window at 0% with **no reset at
+all** — Claude's own usage panel shows `5-hour limit 0%` with a reset time beside the
+weekly row and nothing beside the 5-hour one. The same body proves the shape is real:
+`weekly_scoped` carries `"percent": 0, "resets_at": null` in every response.
+
+The first version required a reset instant per window and skipped any entry without
+one, which produced the bug this section exists to record: the top bar showed a Claude
+**weekly** meter and no **5-hour** meter, twice, reading as though ACT could not see the
+session quota when in fact the quota was simply untouched. The rules now are:
+
+- **`UsageWindow.ResetsAt` is nullable.** Null means *not started*, which is a
+  different reading from a countdown of zero (*about to turn over*) — the meter says
+  `· not started` rather than a span, and `HasRolledOver` is false because there is no
+  boundary to have crossed.
+- **A read that succeeded reports both account windows.** Which entries the body
+  carries is a property of the account's activity, not of what ACT managed to see, so
+  the Claude dialect completes the pair: a window neither `limits[]` nor the named pair
+  mentions is reported at 0% with no reset. `limits[]` still wins per window where both
+  describe the same one, and the named pair now *fills* what the array omits instead of
+  being discarded whole. Only a body where neither surface is recognisable is *nothing*.
+- **A window that has not started cannot block the queue.** `UsageBackpressure`
+  returns an instant to wait for, so it ignores windows without one — the queue
+  launches and the CLI refuses, which is the same choice ACT makes for no reading at
+  all.
+
+The observation was verified against the live endpoint: `five_hour.resets_at` came back
+as exactly the first-request minute plus five hours, which is why the value is present
+whenever ACT is polling during a session and absent when nothing has run.
+
+Codex is left reporting only the windows its plan declares — a free login genuinely has
+one 30-day window, and there is no way to tell a paid account's idle weekly window from
+a free account's absent one without a measured paid body.
 
 `severity` is carried in the response but its vocabulary beyond `"normal"` has not
 been observed, so ACT does not map it. Colour thresholds are ACT's own.
@@ -154,18 +192,115 @@ The response also carries `email`, `user_id` and `account_id`. **ACT lifts the
   no way to tell "you have used nothing" from "ACT has been locked out since this
   morning". `Off` (switched off in configuration) is the one outcome that shows
   nothing, because the user asked for nothing.
-- **Read-only, and never refresh.** Each CLI owns its own credential file and
-  refreshes it on use. ACT re-reads before each poll and picks up whatever is
-  current. It never writes, and never attempts a refresh: OAuth refresh tokens
-  rotate and are typically single-use, so racing the CLI's refresh could invalidate
-  the user's login. An expired Claude token is detected from `expiresAt` and skipped
-  without spending a request.
+- **Read-only, and ACT never performs the refresh itself.** Each CLI owns its own
+  credential file and refreshes it on use. ACT re-reads before each poll and picks up
+  whatever is current. It never writes a credential and never performs the OAuth
+  exchange: refresh tokens rotate and are typically single-use, so racing the CLI's
+  own refresh could invalidate the user's login. An expired Claude token is detected
+  from `expiresAt` and skipped without spending a request — and then *nudged*, which
+  is the next section.
 - **A rolled-over window reports zero, not the last number it saw.** A reading held
   past its own `resets_at` describes a window that no longer exists. ACT polls, so
   nothing ran in between, and zero is the honest answer — rendered subdued, because
   it is inferred from local knowledge only. Usage from another machine, the web, or
   an IDE extension counts against the same quota and is invisible here.
 - **The token is never logged, never persisted, and goes nowhere but the vendor.**
+
+## The expiry nudge — asking the CLI to refresh its own token
+
+Measured 2026-08-04 against **claude-code 2.1.220**.
+
+`Expired` used to be a dead end: the meter went dark and stayed dark until the user
+happened to run the CLI again. That is a real state to be in — a subscription user who
+works in the *desktop app* rather than the terminal can leave `~/.claude/.credentials.json`
+untouched for weeks — and it reads as though ACT had been locked out when in fact the
+login is perfectly good and merely stale.
+
+**The file states two clocks, and ACT reads both.** Measured on a real `team` login:
+
+| Field | Lifetime | Measured |
+|---|---|---|
+| `expiresAt` | **8 h** | issued 06:37:49, expires 14:37:49 the same day |
+| `refreshTokenExpiresAt` | **~21 days** | 21.11 d from issue |
+
+So an expired access token beside a live refresh token is the normal resting state of an
+install nobody has used today, and the fix is not a new credential — it is to make the CLI
+notice. Every Claude Code frontend shares that one file and refreshes it on use, which
+is why the measured file on this machine carried a token minted hours earlier despite
+the *terminal* CLI not having been run in weeks.
+
+The second clock is what makes the difference between two states ACT used to conflate,
+and both are read locally without spending a request:
+
+- **`Expired`** — access token stale, refresh token still good. Recoverable *without the
+  user*: nudge the CLI and the numbers come back. The chip says `renewing token`.
+- **`SignInRequired`** — both clocks run out, which takes about three weeks of touching
+  no Claude Code frontend at all. No nudge is attempted, because ACT knows for a fact
+  that none can help; only `claude auth login` will. The chip says `sign in again`.
+
+Rendering both as `token expired` was the earlier bug: the second case sends the user
+looking for a fault in ACT when what they need is a login.
+
+⚠️ **The order of the two checks is load-bearing.** The refresh clock is read *only* when
+the access token has already expired. The request ACT is about to make uses the access
+token, so a refresh token that lapsed while the access token is still valid is not a
+problem yet — checking it first would blank a working meter for the final hours of a
+login that merely happens to be near its end. A test pins this
+(`A_lapsed_refresh_token_does_not_withhold_an_access_token_that_still_works`).
+
+`refreshTokenExpiresAt` absent — a CLI old enough not to write it — reads as *no reason to
+think it has lapsed*, which keeps the free nudge in play and lets the truth arrive on the
+next poll. `rateLimitTier` (`default_claude_max_5x` on the measured file) is also present
+and deliberately unread: it names a plan, and every number ACT shows comes from the
+endpoint instead.
+
+So when the probe answers `Expired`, `UsagePump` runs:
+
+```
+claude auth status --json
+```
+
+and, if that exits 0, **re-reads the credential file and probes once more** in the same
+pass. `UsageRefresh` (in `Act.Core/Rules`) owns both halves of the decision, and both
+are pure: which availability a nudge answers, and whether the cooldown has passed.
+
+Four properties make this safe to run unattended, and each is the reason for a rule:
+
+- **It costs nothing.** `auth status` reads the credential file and makes no model
+  call — exit 0 in **~0 s** with a small JSON body. This is the whole reason the nudge
+  is allowed on a timer at all. The obvious alternative, reusing the `-p` query path
+  from `agent-title-findings.md`, refreshes just as well but costs **~5,000 tokens a
+  go**; a background loop that quietly spends the user's quota to light up a meter is
+  not a trade worth making, and a test pins `-p` as absent.
+- **ACT still performs no OAuth exchange and writes no credential.** The CLI does
+  both, on its own file, as its own single owner. The rule above is intact — what
+  changed is that ACT now asks rather than waiting to be asked.
+- **It is rate-limited on its own clock.** `Usage:RefreshCooldownSeconds` defaults to
+  **900** (15 min), clamped to **[60, 86400]**, tracked per agent and independent of the
+  poll interval — because `Expired` deliberately does *not* back off (it costs no
+  request), so without a cooldown a genuinely dead refresh token would spawn a process
+  every 3 minutes for as long as ACT runs. Set `Usage:RefreshOnExpiry` to `false` to
+  switch the whole thing off.
+- **A nudge that could not be delivered does not spend a request.** The re-probe only
+  happens when the command actually ran; a missing or broken CLI changed nothing, and
+  the endpoint is undocumented enough that a request which cannot tell ACT anything new
+  should not be made.
+
+**Claude Code only, and that asymmetry is the point.** `Expired` is a fact ACT reads out
+of `expiresAt` locally. Codex states neither expiry (trap 3 above), so it reaches the same
+situation as `Unauthorized` — which is indistinguishable from a revoked login, and
+spawning a process on the guess would be a shot in the dark that also costs a request.
+`NotSignedIn` and `SignInRequired` are excluded for the opposite reason: both need
+`claude auth login`, which needs a terminal ACT has not got.
+
+⚠️ **One half of this is inferred rather than observed.** That the CLI refreshes on use
+is measured, and that `auth status` is free and reads the credential file is measured.
+That `auth status` *specifically* performs the refresh for an already-expired token was
+**not** observed directly — proving it needs an expired access token, and forcing one by
+copying the credentials to a scratch `CLAUDE_CONFIG_DIR` risks consuming the rotating
+refresh token and logging the real install out. The comment in
+`ClaudeCodeUsageRefresher.TryRefreshAsync` flags this. If it turns out `auth status` does
+not refresh, the fix is that one argument list — not the seam.
 
 ## Rejected alternatives
 
@@ -187,6 +322,18 @@ The response also carries `email`, `user_id` and `account_id`. **ACT lifts the
 - **`anthropic-ratelimit-unified-*` / `x-codex-*` response headers.** Real, but ACT
   does not make the API calls; only `--debug api` surfaces them, into the pty the
   user is watching.
+- **Borrowing the Claude *desktop app's* token when the CLI's has expired.** The
+  tempting fallback: the desktop app is signed in, so read its token and retry. Rejected
+  on three counts, and the third is the one that settles it. (1) It is a *different OAuth
+  client*, so its token may carry neither the audience nor the scope
+  `/api/oauth/usage` wants, and a 401 is the likeliest outcome. (2) It is not a plaintext
+  JSON file: an Electron app keeps a secret in the OS credential store via `safeStorage`,
+  so reading it means DPAPI decryption and a Windows-only code path — and code that hunts
+  through another application's credential store is indistinguishable from credential
+  theft to any reader, EDR included. (3) **It is unnecessary.** Every Claude Code frontend
+  shares `~/.claude/.credentials.json`, and the refresh token in it outlives the 8-hour
+  access token by a wide margin, so the login ACT already has is not stale — it is merely
+  unrefreshed. The nudge above fixes it for free and stays inside the one-owner rule.
 
 ## Re-testing
 
@@ -198,3 +345,16 @@ The response also carries `email`, `user_id` and `account_id`. **ACT lifts the
    `CodexUsageDialectTests`.
 4. Confirm Claude still returns `limits[]` with `kind` values `session` and
    `weekly_all`.
+5. After five idle hours, confirm the session window still comes back with
+   `resets_at: null` rather than disappearing from `limits[]` — and that the top bar
+   draws it as `0% · not started` either way.
+6. `claude auth status --json` — still a subcommand, still exits 0, still makes no
+   model call? Time it: anything but ~instant means it has started doing more than
+   reading the credential file.
+7. **Settle the inferred half of the nudge.** With an access token that has genuinely
+   expired — easiest after a full day away from every Claude Code frontend, so no copy
+   of the credential file is involved — note `claudeAiOauth.expiresAt`, run
+   `claude auth status --json`, and check whether `expiresAt` moved forward. If it did
+   not, `auth status` does not refresh: switch `ClaudeCodeUsageRefresher` to the `-p`
+   query path from `agent-title-findings.md` and re-read the cost note above, because
+   the nudge stops being free and the cooldown becomes a budget rather than a courtesy.

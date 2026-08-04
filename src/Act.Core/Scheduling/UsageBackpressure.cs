@@ -12,20 +12,26 @@ namespace Act.Core.Scheduling;
 // freeze an overnight run, so the queue launches and lets the CLI be the one to refuse.
 public static class UsageBackpressure
 {
-    private const int ExhaustedPercent = 100;
-
-    // The window a card must wait for, or null when nothing is in the way.
-    public static UsageWindow? Blocking(AgentUsage? usage, DateTimeOffset now)
+    // The window a card must wait for, or null when nothing is in the way. `ceilingPercent` is where
+    // the user has set the quota to count as spent — see `UsageCeiling` for why that is not 100.
+    public static UsageWindow? Blocking(AgentUsage? usage, DateTimeOffset now, int ceilingPercent)
     {
         if (usage is null)
             return null;
 
-        var live = usage.Windows.Where(window => !window.HasRolledOver(now)).ToList();
+        // A window with no reset instant is one nothing has run in yet, and what this returns is an
+        // instant to wait for — so it cannot be the answer even if it somehow reported exhaustion. The
+        // queue then launches and lets the CLI refuse, which is the same choice as for no reading at all.
+        var live = usage.Windows
+            .Where(window => window.ResetsAt is not null && !window.HasRolledOver(now))
+            .ToList();
 
-        // A window reporting its own exhaustion names itself, and the **latest** such reset is the
-        // one to wait for: launching at the 5-hour boundary against a spent weekly quota would only
-        // fail again, and the chip would be counting to the wrong instant.
-        var spent = live.Where(window => window.Percent >= ExhaustedPercent).ToList();
+        var ceiling = UsageCeiling.Clamp(ceilingPercent);
+
+        // A window at or above the ceiling names itself, and the **latest** such reset is the one to
+        // wait for: launching at the 5-hour boundary against a spent weekly quota would only fail
+        // again, and the chip would be counting to the wrong instant.
+        var spent = live.Where(window => window.Percent >= ceiling).ToList();
 
         if (spent.Count > 0)
             return spent.MaxBy(window => window.ResetsAt);

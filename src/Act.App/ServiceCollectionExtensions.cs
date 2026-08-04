@@ -7,6 +7,7 @@ using Act.App.Sessions;
 using Act.App.Settings;
 using Act.App.Usage;
 using Act.Core.Abstractions;
+using Act.Core.Model;
 using Act.Infrastructure;
 using Act.Infrastructure.Storage;
 using Act.Infrastructure.Usage;
@@ -73,6 +74,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<UserSettingsService>();
         services.AddSingleton<AgentInstallDiscovery>();
         services.AddSingleton<BoardState>();
+        services.AddSingleton<TaskTitles>();
         services.AddSingleton<RetentionPump>();
         services.AddSingleton<CardCompleter>();
         services.AddSingleton<CardReopener>();
@@ -89,6 +91,14 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IUsageProbe>(provider => Probe(provider, new ClaudeCodeUsageDialect()));
         services.AddSingleton<IUsageProbe>(provider => Probe(provider, new CodexUsageDialect()));
+
+        // Claude Code only: its credential file states an expiry, so `Expired` is a fact ACT knows
+        // locally and can do something about. Codex buries expiry in the JWT and reaches the same
+        // state as `Unauthorized`, which no local nudge can tell apart from a revoked login.
+        services.AddSingleton<IUsageRefresher>(provider => new ClaudeCodeUsageRefresher(
+            provider.GetRequiredService<ICommandHost>(),
+            provider.GetRequiredService<IAgentConfigFiles>(),
+            () => provider.GetRequiredService<UserSettingsService>().Defaults(AgentType.ClaudeCode)));
 
         services.AddSingleton<UsageState>();
         services.AddSingleton<UsagePump>();

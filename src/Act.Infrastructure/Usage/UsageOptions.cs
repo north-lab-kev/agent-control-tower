@@ -10,14 +10,26 @@ public sealed class UsageOptions
 
     private const int LongestPollSeconds = 3600;
 
+    private const int ShortestRefreshSeconds = 60;
+
+    private const int LongestRefreshSeconds = 86400;
+
     public bool Enabled { get; init; } = true;
 
     public int PollSeconds { get; init; } = 180;
+
+    public bool RefreshOnExpiry { get; init; } = true;
+
+    public int RefreshCooldownSeconds { get; init; } = 900;
 
     public Dictionary<string, UsageAgentOptions> Agents { get; init; } = [];
 
     public TimeSpan PollInterval
         => TimeSpan.FromSeconds(Math.Clamp(PollSeconds, ShortestPollSeconds, LongestPollSeconds));
+
+    public TimeSpan RefreshCooldown
+        => TimeSpan.FromSeconds(
+            Math.Clamp(RefreshCooldownSeconds, ShortestRefreshSeconds, LongestRefreshSeconds));
 
     public UsageAgentOptions For(AgentType agent)
     {

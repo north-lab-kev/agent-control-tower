@@ -20,6 +20,7 @@ public class UsageBackoffTests
     [InlineData(UsageAvailability.Off)]
     [InlineData(UsageAvailability.NotSignedIn)]
     [InlineData(UsageAvailability.Expired)]
+    [InlineData(UsageAvailability.SignInRequired)]
     public void An_outcome_that_spent_no_request_keeps_the_base_interval(UsageAvailability availability)
     {
         UsageBackoff.Backs(availability).Should().BeFalse();

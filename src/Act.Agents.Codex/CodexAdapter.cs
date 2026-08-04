@@ -16,6 +16,7 @@ namespace Act.Agents.Codex;
 //     better: it is in place before the TUI paints, so there is no race with the prompt line.
 public sealed class CodexAdapter(
     IPtyHost pty,
+    ICommandHost commands,
     IClock clock,
     IHookEndpoint hooks,
     IAgentConfigFiles configFiles) : IAgentAdapter
@@ -205,6 +206,67 @@ public sealed class CodexAdapter(
             cancellationToken);
 
         return new PtyAgentSession(taskId, sessionId, process, clock);
+    }
+
+    // `codex exec` is Codex's own non-interactive mode, and it splits its streams exactly the way this
+    // needs: measured against 0.146.0-alpha.3.1, **stdout is precisely the final message** while the
+    // banner, the echoed prompt and the token count all go to stderr. So there is nothing to parse and
+    // no `--output-last-message` temp file to manage.
+    //
+    //   * `--ignore-user-config` skips `$CODEX_HOME/config.toml` while auth still resolves from
+    //     `CODEX_HOME`, which is the whole trick: no profile, no hooks, no MCP servers, no project
+    //     instructions — and the user's credentials intact. It is also why no `--profile` is passed
+    //     here, unlike a launch.
+    //   * `--ephemeral` writes no session file, `--sandbox read-only` refuses the tools the
+    //     instruction already forbids, and `--skip-git-repo-check` is required because the scratch
+    //     directory deliberately is not a repository.
+    //   * `-` for the prompt reads it from stdin. Not an optimisation like it is for Claude Code but a
+    //     requirement: Codex appends piped stdin to a positional prompt as a `<stdin>` block, so with
+    //     stdin redirected — which it must be, or the process waits on it forever — the prompt has to
+    //     come from there too.
+    public async Task<string?> QueryAsync(
+        AgentQueryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var scratch = configFiles.ScratchDirectory();
+        var model = Capabilities.Utility;
+
+        List<string> arguments = ["exec"];
+
+        if (model is { } utility)
+        {
+            arguments.Add("--model");
+            arguments.Add(utility.Slug);
+
+            if (utility.Efforts.FirstOrDefault() is { } cheapest)
+            {
+                arguments.Add("-c");
+                arguments.Add($"model_reasoning_effort=\"{cheapest}\"");
+            }
+        }
+
+        arguments.AddRange([
+            "--sandbox",
+            "read-only",
+            "--skip-git-repo-check",
+            "--ephemeral",
+            "--ignore-user-config",
+            "--cd",
+            scratch,
+            "-",
+        ]);
+
+        var result = await commands.RunAsync(
+            new CommandStartInfo(
+                request.Machine?.Binary is { Length: > 0 } binary ? binary.Trim() : DefaultBinary,
+                arguments,
+                scratch,
+                AgentEnvironment.ForQuery(request.Machine?.Env ?? new Dictionary<string, string>()),
+                request.Prompt,
+                request.Timeout),
+            cancellationToken);
+
+        return result.Succeeded ? result.Output : null;
     }
 
     // Two files: the forwarder ACT's hook definitions point at, and the profile that declares them.

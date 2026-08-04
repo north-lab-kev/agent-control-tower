@@ -39,5 +39,6 @@ public static class CodexCapabilities
         ],
         "gpt-5.6-terra",
         Modes,
-        DesktopHandoff: false);
+        DesktopHandoff: false,
+        UtilityModel: "gpt-5.4-mini");
 }

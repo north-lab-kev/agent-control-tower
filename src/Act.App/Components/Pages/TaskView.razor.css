@@ -79,13 +79,15 @@
     color: var(--act-dim);
 }
 
-.dirrow {
+.dirrow,
+.titlerow {
     display: flex;
     align-items: center;
     gap: var(--act-s2);
 }
 
-.dirrow ::deep .wide {
+.dirrow ::deep .wide,
+.titlerow ::deep .wide {
     flex: 1 1 auto;
     min-width: 0;
 }

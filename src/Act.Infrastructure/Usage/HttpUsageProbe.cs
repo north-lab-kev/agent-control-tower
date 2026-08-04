@@ -35,6 +35,15 @@ public sealed class HttpUsageProbe(
 
         var token = dialect.Token(credentials, clock.Now);
 
+        if (token.State is UsageTokenState.Lapsed)
+        {
+            log.LogDebug(
+                "The {Agent} refresh token has lapsed as well; only an interactive sign-in renews it.",
+                Agent);
+
+            return Unavailable(UsageAvailability.SignInRequired);
+        }
+
         if (token.State is UsageTokenState.Expired)
         {
             log.LogDebug("The {Agent} access token has expired; usage unavailable.", Agent);

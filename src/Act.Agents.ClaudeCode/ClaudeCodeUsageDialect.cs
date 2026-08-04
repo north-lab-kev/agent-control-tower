@@ -36,9 +36,20 @@ public sealed class ClaudeCodeUsageDialect : IUsageDialect
         if (!root.TryGetProperty("claudeAiOauth", out var oauth) || oauth.ValueKind is not JsonValueKind.Object)
             return UsageToken.Missing;
 
-        if (Number(oauth, "expiresAt") is { } expiresAt
-            && DateTimeOffset.FromUnixTimeMilliseconds(expiresAt) <= now)
-            return UsageToken.Expired;
+        // Two clocks, and the file states both: the access token lasts 8 hours, the refresh token
+        // beside it about 21 days. Only the second one decides whether the situation is recoverable,
+        // and it is read *inside* this branch rather than before it on purpose — a lapsed refresh
+        // token beside an access token that is still valid is not a problem at all, because the
+        // request ACT is about to make uses the access token. Checking it first would blank a working
+        // meter for the last few hours of a login that is about to need renewing anyway.
+        if (Expires(oauth, "expiresAt", now))
+        {
+            // Absent on a CLI old enough not to write it, which reads as "no reason to think it has
+            // lapsed" — the nudge then costs one free process and the truth arrives next poll.
+            return Expires(oauth, "refreshTokenExpiresAt", now)
+                ? UsageToken.Lapsed
+                : UsageToken.Expired;
+        }
 
         return Text(oauth, "accessToken") is { Length: > 0 } token
             ? UsageToken.Present(token)
@@ -50,13 +61,32 @@ public sealed class ClaudeCodeUsageDialect : IUsageDialect
         if (Document(response) is not { } root)
             return null;
 
-        var windows = FromLimits(root) ?? FromNamedWindows(root);
+        var limits = FromLimits(root);
+        var named = FromNamedWindows(root);
 
-        if (windows.Count == 0)
+        // Either surface identifies the body as a usage response; only an unrecognisable one is nothing.
+        if (limits is null && named is null)
             return null;
 
-        return new AgentUsage(Agent, windows, takenAt, windows.Any(window => window.Percent >= 100), null);
+        // `limits` first, so it wins per window where both describe the same one — `kind` names the
+        // window explicitly and `percent` is unambiguously 0–100. The named pair fills what it omits.
+        var pair = Pair([.. limits ?? [], .. named ?? []]);
+
+        return new AgentUsage(Agent, pair, takenAt, pair.Any(window => window.Percent >= 100), null);
     }
+
+    // A read that succeeded always answers with both account windows. Whether an entry is in the body is
+    // a property of the account's activity, not of what ACT could see: the 5-hour clock starts on the
+    // first request, and a missing entry means nothing has run — which is a meter reading 0%, not a
+    // reason to leave a gap where the session quota should be.
+    private static IReadOnlyList<UsageWindow> Pair(IReadOnlyList<UsageWindow> windows)
+        =>
+        [
+            windows.FirstOrDefault(window => window.Kind is UsageWindowKind.Session) ?? Idle(UsageWindowKind.Session),
+            windows.FirstOrDefault(window => window.Kind is UsageWindowKind.Weekly) ?? Idle(UsageWindowKind.Weekly),
+        ];
+
+    private static UsageWindow Idle(UsageWindowKind kind) => new(kind, 0, null);
 
     private static IReadOnlyList<UsageWindow>? FromLimits(JsonElement root)
     {
@@ -77,23 +107,23 @@ public sealed class ClaudeCodeUsageDialect : IUsageDialect
                 _ => (UsageWindowKind?)null,
             };
 
-            if (kind is null || Moment(limit, "resets_at") is not { } resetsAt)
+            if (kind is null)
                 continue;
 
-            windows.Add(new UsageWindow(kind.Value, Percent(limit, "percent"), resetsAt));
+            windows.Add(new UsageWindow(kind.Value, Percent(limit, "percent"), Moment(limit, "resets_at")));
         }
 
-        return windows.Count > 0 ? windows : null;
+        return windows;
     }
 
-    private static IReadOnlyList<UsageWindow> FromNamedWindows(JsonElement root)
+    private static IReadOnlyList<UsageWindow>? FromNamedWindows(JsonElement root)
     {
         var windows = new List<UsageWindow>();
 
         Add(windows, root, "five_hour", UsageWindowKind.Session);
         Add(windows, root, "seven_day", UsageWindowKind.Weekly);
 
-        return windows;
+        return windows.Count > 0 ? windows : null;
     }
 
     private static void Add(List<UsageWindow> windows, JsonElement root, string name, UsageWindowKind kind)
@@ -101,10 +131,7 @@ public sealed class ClaudeCodeUsageDialect : IUsageDialect
         if (!root.TryGetProperty(name, out var window) || window.ValueKind is not JsonValueKind.Object)
             return;
 
-        if (Moment(window, "resets_at") is not { } resetsAt)
-            return;
-
-        windows.Add(new UsageWindow(kind, Percent(window, "utilization"), resetsAt));
+        windows.Add(new UsageWindow(kind, Percent(window, "utilization"), Moment(window, "resets_at")));
     }
 
     private static JsonElement? Document(string text)
@@ -138,6 +165,10 @@ public sealed class ClaudeCodeUsageDialect : IUsageDialect
 
         return (int)Math.Clamp(Math.Round(number), 0, 100);
     }
+
+    private static bool Expires(JsonElement element, string name, DateTimeOffset now)
+        => Number(element, name) is { } milliseconds
+            && DateTimeOffset.FromUnixTimeMilliseconds(milliseconds) <= now;
 
     private static long? Number(JsonElement element, string name)
         => element.TryGetProperty(name, out var value)

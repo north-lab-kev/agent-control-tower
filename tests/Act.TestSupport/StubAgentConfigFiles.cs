@@ -33,6 +33,10 @@ public sealed class StubAgentConfigFiles : IAgentConfigFiles
 
     public void WriteExternal(string absolutePath, string content) => External[absolutePath] = content;
 
+    // Named, not created: nothing runs in the fast suite, so a real empty directory would be a
+    // side effect bought for an assertion about a string.
+    public string ScratchDirectory() => Path.Combine(SharedRoot, "scratch");
+
     public void WriteExternalPreservingTail(string absolutePath, string content, string tailMarker)
     {
         var tail = External.TryGetValue(absolutePath, out var existing)

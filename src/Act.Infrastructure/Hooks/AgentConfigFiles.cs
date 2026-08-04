@@ -7,6 +7,8 @@ public sealed class AgentConfigFiles(string dataDirectory) : IAgentConfigFiles
 {
     public const string DirectoryName = "agent-config";
 
+    public const string ScratchName = "scratch";
+
     // No BOM, deliberately and everywhere: Codex's hooks json parser rejects one outright
     // ("expected value at line 1 column 1"), and nothing else here wants it either.
     private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false);
@@ -26,6 +28,17 @@ public sealed class AgentConfigFiles(string dataDirectory) : IAgentConfigFiles
         File.WriteAllText(path, content, Utf8);
 
         return path;
+    }
+
+    // Created rather than only named: a CLI handed a working directory that does not exist fails at
+    // spawn. Nothing is ever written into it — being empty is the whole of what it is for.
+    public string ScratchDirectory()
+    {
+        var directory = Path.Combine(dataDirectory, ScratchName);
+
+        Directory.CreateDirectory(directory);
+
+        return directory;
     }
 
     public void WriteExternal(string absolutePath, string content)

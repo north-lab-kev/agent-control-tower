@@ -67,12 +67,13 @@ public class UsageMetersTests
         var notice = UsageMeters.Notices(readings, Both).Should().ContainSingle().Subject;
 
         notice.Label.Should().Be("Claude");
-        notice.Reason.Should().Be("token expired");
+        notice.Reason.Should().Be("renewing token");
     }
 
     [Theory]
     [InlineData(UsageAvailability.NotSignedIn, "not signed in")]
-    [InlineData(UsageAvailability.Expired, "token expired")]
+    [InlineData(UsageAvailability.Expired, "renewing token")]
+    [InlineData(UsageAvailability.SignInRequired, "sign in again")]
     [InlineData(UsageAvailability.Unauthorized, "token refused")]
     [InlineData(UsageAvailability.Unreachable, "no connection")]
     [InlineData(UsageAvailability.Failed, "unreadable reply")]
@@ -111,6 +112,28 @@ public class UsageMetersTests
         meter.Value.Should().Be("0%");
         meter.State.Should().Be("rolled");
         meter.Reset.Should().Be("· reset · no activity");
+    }
+
+    // A read that succeeded shows its meters. A 5-hour window nothing has run in yet has no reset to
+    // count down to, and hiding the meter for that reads as ACT being unable to see the quota at all.
+    [Fact]
+    public void A_window_that_has_not_started_is_drawn_without_a_countdown()
+    {
+        var reading = UsageProbeResult.Of(new AgentUsage(
+            AgentType.ClaudeCode,
+            [new UsageWindow(UsageWindowKind.Session, 0, null),
+             new UsageWindow(UsageWindowKind.Weekly, 24, Now.AddDays(3))],
+            Now,
+            LimitReached: false,
+            Plan: null));
+
+        var meters = UsageMeters.For([reading], Both, Now);
+
+        meters.Select(meter => meter.Label).Should().Equal("Claude 5h", "Claude week");
+        meters[0].Value.Should().Be("0%");
+        meters[0].Reset.Should().Be("· not started");
+        meters[0].State.Should().Be("low");
+        meters[0].Tooltip.Should().NotContain("resets");
     }
 
     [Theory]

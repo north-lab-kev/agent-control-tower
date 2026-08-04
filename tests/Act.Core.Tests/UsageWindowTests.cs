@@ -65,6 +65,19 @@ public class UsageWindowTests
         window.RemainingAt(Now).Should().Be(TimeSpan.FromHours(37));
     }
 
+    // A window whose clock has not started has nothing to count down to, and that is not the same
+    // reading as a countdown of zero: one has not begun and the other is about to turn over.
+    [Fact]
+    public void A_window_that_has_not_started_has_no_countdown_and_has_not_rolled_over()
+    {
+        var window = new UsageWindow(UsageWindowKind.Session, 0, null);
+
+        window.RemainingAt(Now).Should().BeNull();
+        window.HasRolledOver(Now).Should().BeFalse();
+        window.PercentAt(Now).Should().Be(0);
+        window.PressureAt(Now, false).Should().Be(UsagePressure.Normal);
+    }
+
     [Theory]
     [InlineData(0, UsagePressure.Normal)]
     [InlineData(74, UsagePressure.Normal)]

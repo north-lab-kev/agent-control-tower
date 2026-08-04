@@ -1,3 +1,4 @@
+using Act.Core.Agents;
 using Act.Core.Model;
 using Act.Core.Rules;
 
@@ -87,7 +88,7 @@ public sealed record NewTaskForm
     // was rendered disabled.
     public void ApplyTo(Card card)
     {
-        card.Title = Title.Trim();
+        card.Title = Titled();
 
         if (TaskEditing.CanEditLaunchInputs(card))
         {
@@ -117,6 +118,16 @@ public sealed record NewTaskForm
             PermissionMode = Permission,
         };
     }
+
+    // A card is never written untitled, and the guarantee lives here rather than only in the page for
+    // the same reason the launch-boundary gate does: the *code that writes the card* is the only place
+    // that can promise it. The title is optional to type because the page offers to write one from the
+    // prompt — but that goes out to a CLI, and a CLI can be missing, unauthenticated, out of quota or
+    // simply slow. When it is, this is what the board gets: the prompt's own opening words, which is
+    // what the page would have shown anyway. An empty string is the one value a title must never be,
+    // because a nameless strip is unrecognisable and unsearchable and there is no screen that repairs it.
+    private string Titled()
+        => Title.Trim() is { Length: > 0 } typed ? typed : TaskTitleQuery.FromPrompt(Prompt);
 
     private DateTimeOffset? ScheduledAt()
         => WantsDateTime && ScheduledFor is { } when

@@ -8,4 +8,5 @@ public sealed record QueuePolicy(
     int MaxConcurrent,
     bool AutoExecutionPaused,
     bool PreventConcurrentWorkingDir,
-    IReadOnlySet<AgentType> EnabledAgents);
+    IReadOnlySet<AgentType> EnabledAgents,
+    int UsageCeilingPercent = UsageCeiling.Default);

@@ -88,10 +88,10 @@ public class AgentInstallDiscoveryTests
     }
 
     private static ClaudeCodeAdapter Claude()
-        => new(new StubPtyHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
+        => new(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
 
     private static CodexAdapter Codex()
-        => new(new StubPtyHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
+        => new(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
 
     private sealed class FakeProbe : IExecutableProbe
     {

@@ -27,5 +27,12 @@ public interface IAgentConfigFiles
 
     void DeleteExternal(string absolutePath);
 
+    // An empty ACT-owned directory, for a query that must run *nowhere*. Both CLIs read the
+    // directory they start in — CLAUDE.md, AGENTS.md, project settings, the enclosing git repo — and
+    // for a question about a task's own text every one of those is context nobody asked to pay for.
+    // Empty is therefore the requirement rather than a tidiness preference, which is why it is not
+    // the user's working directory and not the task's.
+    string ScratchDirectory();
+
     void Clear(Guid taskId);
 }

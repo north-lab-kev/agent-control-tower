@@ -29,4 +29,12 @@ public interface IAgentAdapter
     Task<IAgentSession> ResumeAsync(
         AgentResumeRequest request,
         CancellationToken cancellationToken = default);
+
+    // One question ACT asks for itself, answered off to the side: no session, no terminal, no
+    // hooks, no working directory of the user's, and the cheapest model the agent offers. Null when
+    // there is no answer — the CLI is missing, refused, or took too long — because nothing ACT asks
+    // for itself is worth surfacing an error the user did not ask a question to get.
+    Task<string?> QueryAsync(
+        AgentQueryRequest request,
+        CancellationToken cancellationToken = default);
 }
