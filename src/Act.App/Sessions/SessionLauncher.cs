@@ -6,6 +6,7 @@ using Act.Core.Abstractions;
 using Act.Core.Agents;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Infrastructure.Logging;
 
 namespace Act.App.Sessions;
 
@@ -23,7 +24,8 @@ public sealed class SessionLauncher(
     NotificationDispatcher notifications,
     UserSettingsService settings,
     IWorkingDirectories directories,
-    IClock clock)
+    IClock clock,
+    ILogger<SessionLauncher> log)
 {
     private readonly IReadOnlyDictionary<AgentType, IAgentAdapter> byAgent =
         adapters.ToDictionary(adapter => adapter.Agent);
@@ -76,9 +78,15 @@ public sealed class SessionLauncher(
         Card card,
         TerminalSize size,
         CancellationToken cancellationToken = default)
-        => CanRetry(card)
-            ? StartAsync(card, size, RetryInstruction.Message, cancellationToken)
-            : Task.FromResult(LaunchResult.Refused($"A card in {card.Column} cannot be retried."));
+    {
+        if (CanRetry(card))
+            return StartAsync(card, size, RetryInstruction.Message, cancellationToken);
+
+        using (log.BeginTaskScope(card.Number, card.SessionId))
+            log.LogInformation("Not retried: a card in {Column} cannot be retried.", card.Column);
+
+        return Task.FromResult(LaunchResult.Refused($"A card in {card.Column} cannot be retried."));
+    }
 
     // The card gets its terminal back and stays exactly where it was — see `StartKind.Resume`. A
     // Completed card reopened to read its history is not work being resumed, which is why the
@@ -104,33 +112,54 @@ public sealed class SessionLauncher(
         CancellationToken cancellationToken = default)
     {
         if (!CanRestart(card))
+        {
+            using (log.BeginTaskScope(card.Number, card.SessionId))
+                log.LogInformation("Not restarted: a card in {Column} has no session.", card.Column);
+
             return LaunchResult.Refused($"A card in {card.Column} with no session cannot be restarted.");
+        }
 
         await registry.EndAsync(card.Id);
 
         return await ResumeAsync(card, size, TransitionReason.TerminalRestarted, cancellationToken);
     }
 
-    private Task<LaunchResult> StartAsync(
+    // The scope every line below inherits, and the reason these two are `async` rather than
+    // Task-returning: a scope disposed when the method returns would be gone before the work it
+    // names has started.
+    private async Task<LaunchResult> StartAsync(
         Card card,
         TerminalSize size,
         string? resumeMessage,
         CancellationToken cancellationToken)
     {
+        using var scope = log.BeginTaskScope(card.Number, card.SessionId);
+
         if (registry.IsLive(card.Id))
-            return Task.FromResult(LaunchResult.Ok());
+            return LaunchResult.Ok();
 
         if (!CanLaunch(card))
-            return Task.FromResult(LaunchResult.Refused($"A card in {card.Column} cannot be launched."));
+        {
+            log.LogInformation("Not launched: a card in {Column} cannot be launched.", card.Column);
+
+            return LaunchResult.Refused($"A card in {card.Column} cannot be launched.");
+        }
 
         // Before anything is spawned and before the card is moved, so a refused launch leaves it
         // sitting in Ready exactly as it was — the folder frees up on its own, and nothing here
         // needs undoing when it does.
         if (Blocking(card) is { } holder)
-            return Task.FromResult(LaunchResult.Wait(
-                Text.Format(Strings.Launch_WorkingDirBusy, holder.Number, holder.Title)));
+        {
+            log.LogInformation(
+                "Not launched: task {Holder} is still working in {WorkingDir}.",
+                holder.Number,
+                card.WorkingDir);
 
-        return BeginAsync(
+            return LaunchResult.Wait(
+                Text.Format(Strings.Launch_WorkingDirBusy, holder.Number, holder.Title));
+        }
+
+        return await BeginAsync(
             card,
             StartKind.Launch,
             resumeMessage,
@@ -139,15 +168,23 @@ public sealed class SessionLauncher(
             cancellationToken);
     }
 
-    private Task<LaunchResult> ResumeAsync(
+    private async Task<LaunchResult> ResumeAsync(
         Card card,
         TerminalSize size,
         TransitionReason reason,
         CancellationToken cancellationToken)
-        => SessionRestore.IsResumable(card)
-            ? BeginAsync(card, StartKind.Resume, message: null, size, _ => reason, cancellationToken)
-            : Task.FromResult(LaunchResult.Refused(
-                $"A card in {card.Column} with no session cannot be restored."));
+    {
+        using var scope = log.BeginTaskScope(card.Number, card.SessionId);
+
+        if (!SessionRestore.IsResumable(card))
+        {
+            log.LogInformation("Not resumed: a card in {Column} has no session to resume.", card.Column);
+
+            return LaunchResult.Refused($"A card in {card.Column} with no session cannot be restored.");
+        }
+
+        return await BeginAsync(card, StartKind.Resume, message: null, size, _ => reason, cancellationToken);
+    }
 
     // The body all four entry points share: join the card's config to this machine's, ask the adapter
     // to resolve it, spawn, and record what happened. `kind` is the whole of what varies.
@@ -160,13 +197,25 @@ public sealed class SessionLauncher(
         CancellationToken cancellationToken)
     {
         if (!byAgent.TryGetValue(card.AgentType, out var adapter))
+        {
+            log.LogError("No adapter is registered for {Agent}.", card.AgentType);
+
             return LaunchResult.Refused($"No adapter is registered for {card.AgentType}.");
+        }
 
         var config = Config(card);
         var resolution = adapter.Resolve(config);
 
         if (!resolution.CanLaunch)
+        {
+            log.LogWarning(
+                "{Kind} refused for {Agent}: {Rejections}",
+                kind,
+                card.AgentType,
+                string.Join(" ", resolution.Rejections));
+
             return LaunchResult.Refused(string.Join(" ", resolution.Rejections));
+        }
 
         IAgentSession session;
 
@@ -183,6 +232,16 @@ public sealed class SessionLauncher(
 
         if (kind is StartKind.Launch)
             Claim(card, session);
+
+        log.LogInformation(
+            "{Kind} of {Agent} started in {WorkingDir}, session {StartedSession}.",
+            kind,
+            card.AgentType,
+            card.WorkingDir,
+            session.SessionId);
+
+        if (Adjustments(resolution) is { } adjusted)
+            log.LogWarning("The launch config was adjusted: {Adjustments}", adjusted);
 
         card.Transitions.Add(new Transition
         {
@@ -252,6 +311,8 @@ public sealed class SessionLauncher(
         CancellationToken cancellationToken)
     {
         var claimed = kind is StartKind.Launch;
+
+        log.LogError(error, "{Kind} failed.", kind);
 
         if (claimed)
         {

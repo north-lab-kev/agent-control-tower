@@ -7,6 +7,7 @@ using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Infrastructure.Logging;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
@@ -30,7 +31,8 @@ public partial class TaskView(
     NavigationManager navigation,
     NotificationService notifications,
     IDesktopBridge desktop,
-    IJSRuntime js) : IAsyncDisposable
+    IJSRuntime js,
+    ILogger<TaskView> log) : IAsyncDisposable
 {
     private NewTaskForm form = new();
 
@@ -343,6 +345,9 @@ public partial class TaskView(
         }
         catch (InvalidOperationException error)
         {
+            using (log.BeginTaskScope(existing.Number, existing.SessionId))
+                log.LogError(error, "Archiving the task failed (with children: {IncludeChildren}).", includeChildren);
+
             notifications.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Error,
@@ -368,6 +373,8 @@ public partial class TaskView(
         catch (Exception error) when (error is IOException or UnauthorizedAccessException
             or ArgumentException or NotSupportedException)
         {
+            log.LogError(error, "Creating the working directory {WorkingDir} failed.", form.WorkingDir);
+
             notifications.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Error,

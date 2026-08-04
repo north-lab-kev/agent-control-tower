@@ -9,7 +9,6 @@ using Act.App.Usage;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Infrastructure;
-using Act.Infrastructure.Storage;
 using Act.Infrastructure.Usage;
 using ElectronNET.API;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -21,7 +20,10 @@ public static class ServiceCollectionExtensions
 {
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
 
-    public static IServiceCollection AddActApp(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddActApp(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string dataDirectory)
     {
         services.AddRazorComponents()
             .AddInteractiveServerComponents();
@@ -33,8 +35,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<UiPresence>();
         services.AddSingleton<DeepLinkRouter>();
         services.AddSingleton<NotificationDispatcher>();
-        services.AddActInfrastructure(
-            ActDataDirectory.Resolve(configuration[ActDataDirectory.OverrideKey]));
+        services.AddActInfrastructure(dataDirectory);
 
         return services
             .AddActAgents()
@@ -96,8 +97,7 @@ public static class ServiceCollectionExtensions
         // locally and can do something about. Codex buries expiry in the JWT and reaches the same
         // state as `Unauthorized`, which no local nudge can tell apart from a revoked login.
         services.AddSingleton<IUsageRefresher>(provider => new ClaudeCodeUsageRefresher(
-            provider.GetRequiredService<ICommandHost>(),
-            provider.GetRequiredService<IAgentConfigFiles>(),
+            () => provider.GetServices<IAgentAdapter>().Single(a => a.Agent == AgentType.ClaudeCode),
             () => provider.GetRequiredService<UserSettingsService>().Defaults(AgentType.ClaudeCode)));
 
         services.AddSingleton<UsageState>();

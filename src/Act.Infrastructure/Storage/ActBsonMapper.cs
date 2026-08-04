@@ -12,7 +12,7 @@ internal static class ActBsonMapper
 
     public static BsonMapper Create()
     {
-        var mapper = new BsonMapper();
+        var mapper = new BsonMapper { EmptyStringToNull = false };
 
         mapper.RegisterType<DateTimeOffset>(
             value => value.ToString(RoundTrip, CultureInfo.InvariantCulture),

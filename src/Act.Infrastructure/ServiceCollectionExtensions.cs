@@ -7,6 +7,7 @@ using Act.Infrastructure.Terminal;
 using Act.Infrastructure.Transcripts;
 using LiteDB;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Act.Infrastructure;
 
@@ -20,7 +21,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ICommandHost, CommandHost>();
         services.AddSingleton<IExecutableProbe, ExecutableProbe>();
         services.AddSingleton<ISleepInhibitor, SleepInhibitor>();
-        services.AddSingleton<ILiteDatabase>(_ => ActDatabase.Open(dataDirectory));
+        services.AddSingleton<ILiteDatabase>(provider => ActDatabase.Open(
+            dataDirectory,
+            provider.GetService<ILoggerFactory>()?.CreateLogger(typeof(ActDatabase))));
         services.AddSingleton<ISettingsStore, LiteDbSettingsStore>();
         services.AddSingleton<ICardStore, LiteDbCardStore>();
         services.AddSingleton<ITranscriptReader, TranscriptReader>();

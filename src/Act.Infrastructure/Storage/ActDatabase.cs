@@ -1,4 +1,6 @@
 using LiteDB;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.Infrastructure.Storage;
 
@@ -6,7 +8,7 @@ internal static class ActDatabase
 {
     private const string FileName = "act.db";
 
-    public static ILiteDatabase Open(string dataDirectory)
+    public static ILiteDatabase Open(string dataDirectory, ILogger? log = null)
     {
         var directory = Directory.CreateDirectory(Path.GetFullPath(dataDirectory));
 
@@ -16,7 +18,7 @@ internal static class ActDatabase
 
         try
         {
-            ActSchema.Apply(database, mapper);
+            ActSchema.Apply(database, mapper, log ?? NullLogger.Instance);
         }
         catch
         {

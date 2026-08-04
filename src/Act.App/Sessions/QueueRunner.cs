@@ -5,6 +5,7 @@ using Act.App.Usage;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Scheduling;
+using Act.Infrastructure.Logging;
 
 namespace Act.App.Sessions;
 
@@ -33,6 +34,12 @@ public sealed class QueueRunner(
     private readonly BackgroundWork work = new(log);
 
     private QueueEvaluation latest = new([], new Dictionary<Guid, ReadyHold>(), new Dictionary<Guid, DateTimeOffset>());
+
+    // The hold last written to the log per card. A pass runs every 20 seconds and on every board,
+    // settings and usage change, so logging the holds each pass would bury everything else in a
+    // steady restatement of a board that has not moved — only a hold that *appears or changes* is
+    // news. Cleared silently when a card stops being held, because the launch line already says so.
+    private readonly Dictionary<Guid, LaunchHold> reportedHolds = [];
 
     // Raised after every pass. The board reads its hold chips from this runner, and the inputs that
     // change them — the pause switch, the cap, a usage reading — are not card writes, so
@@ -88,24 +95,76 @@ public sealed class QueueRunner(
 
             await board.UpdateAsync(card, cancellationToken);
 
-            log.LogInformation("Card {Number} is armed for {At}.", card.Number, at);
+            using (log.BeginTaskScope(card.Number))
+                log.LogInformation("Armed for {At}.", at);
         }
+
+        ReportHolds(evaluation);
 
         foreach (var card in evaluation.Launch)
         {
-            log.LogInformation("Launching card {Number} from the queue.", card.Number);
+            using (log.BeginTaskScope(card.Number))
+                log.LogInformation("Launching from the queue.");
 
             var result = await launcher.LaunchAsync(card, geometry.Last, cancellationToken);
 
             // Nothing is retried and nothing is moved: a refusal is already recorded on the card by
             // the launcher, and a wait is a hold that will be re-read on the next pass anyway.
             if (!result.Launched)
-                log.LogInformation("Card {Number} did not start: {Message}", card.Number, result.Message);
+            {
+                using (log.BeginTaskScope(card.Number))
+                    log.LogInformation("Did not start: {Message}", result.Message);
+            }
         }
 
         ApplySleep();
 
         Evaluated?.Invoke();
+    }
+
+    private void ReportHolds(QueueEvaluation evaluation)
+    {
+        foreach (var stale in reportedHolds.Keys.Where(id => !evaluation.Holds.ContainsKey(id)).ToList())
+            reportedHolds.Remove(stale);
+
+        foreach (var (id, hold) in evaluation.Holds)
+        {
+            if (reportedHolds.TryGetValue(id, out var already) && already == hold.Reason)
+                continue;
+
+            reportedHolds[id] = hold.Reason;
+
+            if (board.Card(id) is not { } card)
+                continue;
+
+            using (log.BeginTaskScope(card.Number))
+                Report(hold);
+        }
+    }
+
+    // One line carrying only the field its reason actually defines — the others are null or zero for
+    // every hold that says nothing about them, and a null property renders as the word "null", so a
+    // single template for all six would read `until null, 0 of 0 slots in use` most of the time.
+    private void Report(ReadyHold hold)
+    {
+        switch (hold.Reason)
+        {
+            case LaunchHold.WorkingDir or LaunchHold.Dependency when hold.Blocker is { } blocker:
+                log.LogInformation("Held by {Hold}, behind task {Blocker}.", hold.Reason, blocker.Number);
+                break;
+
+            case LaunchHold.UsageLimit when hold.Until is { } until:
+                log.LogInformation("Held by {Hold} until {Until}.", hold.Reason, until);
+                break;
+
+            case LaunchHold.Slot:
+                log.LogInformation("Held by {Hold}: {Used} of {Cap} slots in use.", hold.Reason, hold.Used, hold.Cap);
+                break;
+
+            default:
+                log.LogInformation("Held by {Hold}.", hold.Reason);
+                break;
+        }
     }
 
     private void ApplySleep()

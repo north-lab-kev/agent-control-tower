@@ -92,7 +92,10 @@ public class SessionLifetimeTests
     [Fact]
     public async Task Ending_a_replaced_session_leaves_its_successor_alone()
     {
-        var registry = new SessionRegistry(new StubHookEndpoint(), new StubAgentConfigFiles());
+        var registry = new SessionRegistry(
+            new StubHookEndpoint(),
+            new StubAgentConfigFiles(),
+            NullLogger<SessionRegistry>.Instance);
         var adapter = new MockAgentAdapter(AgentType.ClaudeCode, clock: new FrozenClock(Now))
         {
             Script = AgentScript.Empty(),
@@ -127,7 +130,10 @@ public class SessionLifetimeTests
         var clock = new FrozenClock(Now);
         var hooks = new StubHookEndpoint();
         var adapter = new MockAgentAdapter(AgentType.ClaudeCode, clock: clock) { Script = script };
-        var registry = new SessionRegistry(hooks, new StubAgentConfigFiles());
+        var registry = new SessionRegistry(
+            hooks,
+            new StubAgentConfigFiles(),
+            NullLogger<SessionRegistry>.Instance);
         var board = new BoardState(new FakeCardStore([card]), clock);
         var settings = new UserSettingsService(new FakeSettingsStore(), new AppCulture());
         var notifications = TestNotifications.Dispatcher(settings, new RecordingNotifier());
@@ -141,7 +147,8 @@ public class SessionLifetimeTests
             notifications,
             settings,
             new AnyDirectory(),
-            clock);
+            clock,
+            NullLogger<SessionLauncher>.Instance);
 
         var pump = new SessionEventPump(
             registry,

@@ -1,5 +1,6 @@
 using Act.App.Cards;
 using Act.Core.Abstractions;
+using Act.Infrastructure.Logging;
 
 namespace Act.App.Sessions;
 
@@ -16,14 +17,20 @@ public sealed class SessionRestorer(
 {
     public async Task RestoreAllAsync(CancellationToken cancellationToken = default)
     {
-        foreach (var card in board.RestorableUnattended)
+        var restorable = board.RestorableUnattended.ToList();
+
+        log.LogInformation("Restoring {Count} unattended terminal(s).", restorable.Count);
+
+        foreach (var card in restorable)
         {
+            using var scope = log.BeginTaskScope(card.Number, card.SessionId);
+
             try
             {
                 var result = await launcher.RestoreAsync(card, TerminalSize.Default, cancellationToken);
 
                 if (result.Message is { } refused)
-                    log.LogWarning("Task {Number}: terminal not restored — {Reason}", card.Number, refused);
+                    log.LogWarning("Terminal not restored — {Reason}", refused);
             }
             catch (OperationCanceledException)
             {
@@ -31,7 +38,7 @@ public sealed class SessionRestorer(
             }
             catch (Exception error)
             {
-                log.LogError(error, "Task {Number}: restoring the terminal failed.", card.Number);
+                log.LogError(error, "Restoring the terminal failed.");
             }
         }
     }

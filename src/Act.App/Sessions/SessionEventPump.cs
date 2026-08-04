@@ -4,6 +4,7 @@ using Act.App.Notifications;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Infrastructure.Logging;
 
 namespace Act.App.Sessions;
 
@@ -71,6 +72,19 @@ public sealed class SessionEventPump(
 
         if (move is not null && move.ChangesAnything(card))
         {
+            using (log.BeginTaskScope(card.Number, card.SessionId))
+            {
+                log.LogInformation(
+                    "{From} → {To} ({Badge}), because {Reason}.",
+                    card.Column,
+                    move.Column,
+                    move.Badge,
+                    move.Reason);
+
+                if (move.Detail is { } detail)
+                    log.LogDebug("What the move reported: {Detail}", detail);
+            }
+
             card.Column = move.Column;
             card.Badge = move.Badge;
 

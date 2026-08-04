@@ -37,6 +37,7 @@ public sealed class UsagePump(
         var failures = 0;
         var reported = (UsageAvailability?)null;
         var nudged = (DateTimeOffset?)null;
+        var nudgeFailures = 0;
 
         while (true)
         {
@@ -52,12 +53,15 @@ public sealed class UsagePump(
                 // An expired token is the one unavailable outcome ACT can act on: the CLI owns the
                 // file and refreshes it on use, so the fix is to make the CLI run — never to perform
                 // the OAuth exchange here, which would race a rotating refresh token and could cost
-                // the user their login. Rate-limited on its own clock rather than the poll interval,
-                // because a refresh token that is genuinely dead would otherwise spawn a process
-                // every pass for as long as ACT runs.
+                // the user their login. The nudge is a measured ~5,000 tokens (see
+                // `docs/agent-usage-findings.md`), so it is rate-limited on its own clock rather than
+                // the poll interval, and that clock lengthens after a nudge that changed nothing.
                 if (options.RefreshOnExpiry
                     && UsageRefresh.Answers(result.Availability)
-                    && UsageRefresh.Due(clock.Now, nudged, options.RefreshCooldown)
+                    && UsageRefresh.Due(
+                        clock.Now,
+                        nudged,
+                        UsageRefresh.Delay(options.RefreshCooldown, nudgeFailures))
                     && byAgent.TryGetValue(probe.Agent, out var refresher))
                 {
                     nudged = clock.Now;
@@ -70,11 +74,14 @@ public sealed class UsagePump(
                     if (delivered)
                         result = await probe.ReadAsync(cancellationToken);
 
+                    nudgeFailures = UsageRefresh.Count(result.Availability, nudgeFailures);
+
                     log.LogInformation(
-                        "{Agent} usage token had expired; the refresh nudge {Outcome} and usage now reads {Availability}.",
+                        "{Agent} usage token had expired; the refresh nudge {Outcome} and usage now reads {Availability}. Next nudge no sooner than {Cooldown}.",
                         probe.Agent,
                         delivered ? "ran" : "could not be delivered",
-                        result.Availability);
+                        result.Availability,
+                        UsageRefresh.Delay(options.RefreshCooldown, nudgeFailures));
                 }
 
                 state.Publish(result);
@@ -106,6 +113,7 @@ public sealed class UsagePump(
                 failures = 0;
                 reported = null;
                 nudged = null;
+                nudgeFailures = 0;
             }
 
             await Task.Delay(wait, cancellationToken);

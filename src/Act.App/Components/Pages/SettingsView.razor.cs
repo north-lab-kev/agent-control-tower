@@ -5,6 +5,7 @@ using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Infrastructure.Logging;
 using Microsoft.AspNetCore.Components;
 
 namespace Act.App.Components.Pages;
@@ -16,6 +17,8 @@ public partial class SettingsView(
     IEnumerable<IAgentAdapter> adapters,
     IExecutableProbe probe,
     IDesktopBridge desktop,
+    ActLogLocation logs,
+    ILogger<SettingsView> log,
     NavigationManager navigation)
 {
     private static SettingChoice<LanguagePreference>[] LanguageChoices =>
@@ -120,6 +123,26 @@ public partial class SettingsView(
     }
 
     private void OpenTemplates() => navigation.NavigateTo("/templates");
+
+    private string LogDirectory => logs.Directory;
+
+    private bool logsFailed;
+
+    private async Task OpenLogFolder()
+    {
+        try
+        {
+            await desktop.OpenFolderAsync(logs.Directory);
+
+            logsFailed = false;
+        }
+        catch (Exception error)
+        {
+            logsFailed = true;
+
+            log.LogWarning(error, "Opening the log folder {Directory} failed.", logs.Directory);
+        }
+    }
 
     // On `Change` rather than on every keystroke: this writes to LiteDB, and a path is typed one
     // character at a time.

@@ -44,4 +44,42 @@ public class UsageRefreshTests
     [Fact]
     public void The_cooldown_boundary_itself_is_due()
         => UsageRefresh.Due(Now, Now - UsageRefresh.Cooldown, UsageRefresh.Cooldown).Should().BeTrue();
+
+    // The nudge costs a measured ~5,000 tokens, so one that left the token expired has spent the
+    // user's money for nothing — and the likeliest cause, a refresh token revoked while its stated
+    // expiry is still in the future, never heals. Spending is what backs off here.
+    [Fact]
+    public void A_nudge_that_left_the_token_expired_counts_as_a_failure()
+        => UsageRefresh.Count(UsageAvailability.Expired, 0).Should().Be(1);
+
+    [Fact]
+    public void A_nudge_that_restored_the_reading_clears_the_count()
+        => UsageRefresh.Count(UsageAvailability.Available, 4).Should().Be(0);
+
+    // A refresh token that lapsed outright is not a failed nudge — no nudge is attempted at all, and
+    // the count has nothing to say about a state that is waiting on the user.
+    [Fact]
+    public void A_lapsed_login_clears_the_count_rather_than_growing_it()
+        => UsageRefresh.Count(UsageAvailability.SignInRequired, 3).Should().Be(0);
+
+    [Fact]
+    public void Each_wasted_nudge_doubles_the_wait()
+    {
+        UsageRefresh.Delay(UsageRefresh.Cooldown, 0).Should().Be(UsageRefresh.Cooldown);
+        UsageRefresh.Delay(UsageRefresh.Cooldown, 1).Should().Be(TimeSpan.FromMinutes(30));
+        UsageRefresh.Delay(UsageRefresh.Cooldown, 2).Should().Be(TimeSpan.FromHours(1));
+    }
+
+    [Fact]
+    public void The_wait_never_passes_the_ceiling()
+        => UsageRefresh.Delay(UsageRefresh.Cooldown, UsageRefresh.MostDoublings)
+            .Should().Be(UsageRefresh.Ceiling);
+
+    [Fact]
+    public void A_cooldown_slower_than_the_ceiling_is_never_shortened_by_a_failure()
+    {
+        var daily = TimeSpan.FromHours(6);
+
+        UsageRefresh.Delay(daily, 3).Should().Be(daily);
+    }
 }

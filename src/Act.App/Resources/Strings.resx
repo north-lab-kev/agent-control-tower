@@ -358,7 +358,7 @@
     <value>ACT found no credentials for this CLI, so sign in by running it once</value>
   </data>
   <data name="Usage_Cause_Expired" xml:space="preserve">
-    <value>the CLI's access token has expired, so ACT has asked the CLI to renew it — the numbers come back on their own</value>
+    <value>the CLI's access token has expired, so ACT has asked the CLI to renew it</value>
   </data>
   <data name="Usage_Cause_SignInRequired" xml:space="preserve">
     <value>this CLI's login has lapsed after too long unused, so run `claude auth login` once to sign in again</value>
@@ -995,5 +995,20 @@
   </data>
   <data name="Settings_Templates_Manage" xml:space="preserve">
     <value>Manage templates</value>
+  </data>
+  <data name="Settings_Group_Diagnostics" xml:space="preserve">
+    <value>Diagnostics</value>
+  </data>
+  <data name="Settings_Logs" xml:space="preserve">
+    <value>Log files</value>
+  </data>
+  <data name="Settings_Logs_Hint" xml:space="preserve">
+    <value>One file per day, kept for two weeks. Attach the newest one when you report a problem.</value>
+  </data>
+  <data name="Settings_Logs_Open" xml:space="preserve">
+    <value>Open log folder</value>
+  </data>
+  <data name="Settings_Logs_OpenFailed" xml:space="preserve">
+    <value>ACT could not open {0}.</value>
   </data>
 </root>

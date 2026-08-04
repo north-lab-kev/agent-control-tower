@@ -254,37 +254,62 @@ next poll. `rateLimitTier` (`default_claude_max_5x` on the measured file) is als
 and deliberately unread: it names a plan, and every number ACT shows comes from the
 endpoint instead.
 
-So when the probe answers `Expired`, `UsagePump` runs:
+So when the probe answers `Expired`, `UsagePump` runs the **`-p` query path** —
+the same measured command line `agent-title-findings.md` documents, reached through
+`IAgentAdapter.QueryAsync` so the flag set keeps exactly one owner — and, if it answers,
+**re-reads the credential file and probes once more** in the same pass. `UsageRefresh`
+(in `Act.Core/Rules`) owns the decisions, and all of them are pure: which availability a
+nudge answers, whether the cooldown has passed, and how far a wasted nudge lengthens it.
 
-```
-claude auth status --json
-```
+### `auth status` was measured and rejected
 
-and, if that exits 0, **re-reads the credential file and probes once more** in the same
-pass. `UsageRefresh` (in `Act.Core/Rules`) owns both halves of the decision, and both
-are pure: which availability a nudge answers, and whether the cooldown has passed.
+**Measured 2026-08-04 against a genuinely expired access token** (the honest test: the
+real install, its own file, a refresh token still valid for 20 days — no copied
+credentials, so nothing could consume the user's refresh token):
 
-Four properties make this safe to run unattended, and each is the reason for a rule:
+| Command | Elapsed | `expiresAt` after | File rewritten |
+|---|---|---|---|
+| `claude auth status --json` | 466 ms | **unchanged** | no |
+| `claude -p --safe-mode … --tools ""` | 4,042 ms | **moved forward 8 h** | yes |
 
-- **It costs nothing.** `auth status` reads the credential file and makes no model
-  call — exit 0 in **~0 s** with a small JSON body. This is the whole reason the nudge
-  is allowed on a timer at all. The obvious alternative, reusing the `-p` query path
-  from `agent-title-findings.md`, refreshes just as well but costs **~5,000 tokens a
-  go**; a background loop that quietly spends the user's quota to light up a meter is
-  not a trade worth making, and a test pins `-p` as absent.
-- **ACT still performs no OAuth exchange and writes no credential.** The CLI does
-  both, on its own file, as its own single owner. The rule above is intact — what
-  changed is that ACT now asks rather than waiting to be asked.
-- **It is rate-limited on its own clock.** `Usage:RefreshCooldownSeconds` defaults to
-  **900** (15 min), clamped to **[60, 86400]**, tracked per agent and independent of the
-  poll interval — because `Expired` deliberately does *not* back off (it costs no
-  request), so without a cooldown a genuinely dead refresh token would spawn a process
-  every 3 minutes for as long as ACT runs. Set `Usage:RefreshOnExpiry` to `false` to
-  switch the whole thing off.
-- **A nudge that could not be delivered does not spend a request.** The re-probe only
-  happens when the command actually ran; a missing or broken CLI changed nothing, and
+`auth status` **reads** the credential file; it does not refresh it. It exits 0 and
+reports `loggedIn: true` while leaving the stale token exactly where it was — so a nudge
+built on it logs success and fixes nothing. That was this feature's first shape, and the
+live symptom was a chip stuck on `renewing token` with the probe logging
+`access token has expired` every three minutes.
+
+The 4 s versus 466 ms gap is the tell: only one of them makes a network round trip.
+
+**So the nudge is not free**, and the cost is the whole design constraint:
+
+- **~5,000 tokens per refresh** (≈ $0.008–0.010), per the cost table in
+  `agent-title-findings.md`. In steady state that is *one* nudge per 8-hour token
+  lifetime — a few cents a month — because a successful refresh buys 8 hours of
+  `Available`.
+- **`Usage:RefreshOnExpiry`** (default `true`) switches it off entirely for anyone who
+  would rather the meter stay dark than spend a token on it.
+- **`Usage:RefreshCooldownSeconds`** defaults to **900** (15 min), clamped to
+  **[60, 86400]** and tracked per agent, and it **doubles after every nudge that left the
+  token expired**, up to a 2-hour ceiling. That escalation is the important half: the
+  realistic failure is a refresh token revoked server-side while its stated expiry is
+  still in the future, which never heals, and a fixed cooldown would spend 5,000 tokens
+  against it four times an hour forever. `UsageBackoff` throttles requests to someone
+  else's endpoint; `UsageRefresh` throttles *spending*.
+
+Two properties survive from the first shape unchanged:
+
+- **ACT still performs no OAuth exchange and writes no credential.** The CLI does both,
+  on its own file, as its single owner. What changed is that ACT asks rather than waiting
+  to be asked.
+- **A nudge that could not be delivered does not spend a request.** The re-probe happens
+  only when the command actually answered; a missing or broken CLI changed nothing, and
   the endpoint is undocumented enough that a request which cannot tell ACT anything new
   should not be made.
+
+**Still untested, and worth trying at the next natural expiry:** `claude doctor` makes no
+model call and might touch auth on the way to reporting install health. If it refreshes,
+the nudge becomes free again and the cooldown reverts to a courtesy rather than a budget.
+It could not be measured here because the decisive test above had just refreshed the token.
 
 **Claude Code only, and that asymmetry is the point.** `Expired` is a fact ACT reads out
 of `expiresAt` locally. Codex states neither expiry (trap 3 above), so it reaches the same
@@ -293,14 +318,20 @@ spawning a process on the guess would be a shot in the dark that also costs a re
 `NotSignedIn` and `SignInRequired` are excluded for the opposite reason: both need
 `claude auth login`, which needs a terminal ACT has not got.
 
-⚠️ **One half of this is inferred rather than observed.** That the CLI refreshes on use
-is measured, and that `auth status` is free and reads the credential file is measured.
-That `auth status` *specifically* performs the refresh for an already-expired token was
-**not** observed directly — proving it needs an expired access token, and forcing one by
-copying the credentials to a scratch `CLAUDE_CONFIG_DIR` risks consuming the rotating
-refresh token and logging the real install out. The comment in
-`ClaudeCodeUsageRefresher.TryRefreshAsync` flags this. If it turns out `auth status` does
-not refresh, the fix is that one argument list — not the seam.
+### Refresh tokens really do rotate — and the window does not slide
+
+Measured across the refresh above: `refreshTokenExpiresAt` went `1787664070979` →
+`1787664070697`. A **new refresh token was issued**, which settles the assumption the
+"never refresh" rule was written on — and retroactively justifies refusing to run the
+forced-expiry test against a copied credential file, since that would have consumed the
+real install's refresh token and could have logged the user out.
+
+The **deadline barely moved** (282 ms, against the ~9.7 hours it would have shifted if the
+window restarted). So the ~21-day refresh window is anchored to the *original login* and
+does **not** extend on use. A user who never signs in again will hit `SignInRequired`
+about three weeks after their last real `claude auth login`, however actively they use
+ACT in between — which is exactly why that state earns its own chip and its own message
+rather than being folded into `Expired`.
 
 ## Rejected alternatives
 
@@ -348,13 +379,13 @@ not refresh, the fix is that one argument list — not the seam.
 5. After five idle hours, confirm the session window still comes back with
    `resets_at: null` rather than disappearing from `limits[]` — and that the top bar
    draws it as `0% · not started` either way.
-6. `claude auth status --json` — still a subcommand, still exits 0, still makes no
-   model call? Time it: anything but ~instant means it has started doing more than
-   reading the credential file.
-7. **Settle the inferred half of the nudge.** With an access token that has genuinely
-   expired — easiest after a full day away from every Claude Code frontend, so no copy
-   of the credential file is involved — note `claudeAiOauth.expiresAt`, run
-   `claude auth status --json`, and check whether `expiresAt` moved forward. If it did
-   not, `auth status` does not refresh: switch `ClaudeCodeUsageRefresher` to the `-p`
-   query path from `agent-title-findings.md` and re-read the cost note above, because
-   the nudge stops being free and the cooldown becomes a budget rather than a courtesy.
+6. **Re-confirm the nudge still refreshes.** With an access token that has genuinely
+   expired — wait for it rather than copying the credential file, since a refresh
+   consumes the rotating refresh token — note `claudeAiOauth.expiresAt`, let ACT nudge
+   (or run the `-p` line by hand), and confirm `expiresAt` moves forward. A CLI version
+   that stops refreshing on a print-mode run turns the whole feature into a silent
+   token spend.
+7. **Retry the free candidates.** At the same expiry, before letting the `-p` nudge run:
+   does `claude doctor` move `expiresAt`? (`claude auth status --json` was measured and
+   does not — see the table above.) Anything that refreshes without a model call makes
+   the nudge free and lets the cooldown go back to being a courtesy.

@@ -213,6 +213,93 @@ and the next tick tries again.
 
 ---
 
+## Logging
+
+### Four traps between MEL and Serilog — measured 2026-08-04
+
+ACT logs through `Microsoft.Extensions.Logging` and keeps Serilog behind
+`Act.Infrastructure/Logging/`. Getting that boundary to actually hold turned up four things,
+none of them visible from the code that remains.
+
+**`AddSerilog()` takes the level config away from `appsettings.json`.** It does
+`AddFilter<SerilogLoggerProvider>(null, LogLevel.Trace)`, which is deliberate on Serilog's part —
+its own `MinimumLevel` becomes the single authority — and is exactly backwards for a codebase whose
+whole reason for using MEL is that the provider is replaceable. So `AddActFileLog` registers
+`SerilogLoggerProvider` itself, the Serilog logger sits at `MinimumLevel.Verbose()`, and
+`Logging:LogLevel` does all the filtering. **`MinimumLevel.Verbose()` is not a debug leftover** —
+lower it and `appsettings.json` silently stops being able to raise the level.
+
+**`ILoggingBuilder.AddProvider(instance)` leaks the file handle.** The container never disposes an
+instance it did not create, so the sink is never flushed or closed; the tell was a test whose
+`TempDirectory` could not delete the log file. Registering through a factory
+(`AddSingleton<ILoggerProvider>(_ => new SerilogLoggerProvider(logger, dispose: true))`) makes the
+container the owner, and the shutdown lines really do reach the file.
+
+**`{Message:lj}` quotes strings.** The `j` wins for value rendering, so a template argument came out
+as `"ClaudeCode": found on PATH.` where the console showed `ClaudeCode`. Only `l` (literal) belongs
+on the message. And `{Properties:j}` renders `{}` on every line that has no scope, which is most of
+them — which is why `ActLogFormatter` exists instead of an output template: it writes the context
+group only when there is context. It composes two `MessageTemplateTextFormatter`s around that group
+rather than re-implementing rendering, and it derives the group by subtracting the message
+template's own property names, so a scope key added later needs no change here.
+
+**A `null` property renders as the word `null`, and `"l"` throws on a non-string.**
+`ScalarValue.ToString("l", null)` is a `FormatException` for an `int` (`l` is only meaningful for
+Serilog's string scalars) — and the file sink swallows formatter exceptions, so the symptom was a
+line that simply stopped mid-write. Hence the string special-case in `WriteValue`. The `null`
+rendering is why `QueueRunner.Report` switches on the hold reason instead of using one template:
+`ReadyHold`'s fields are null or zero for every hold that says nothing about them, so a single line
+would read `until null, 0 of 0 slots in use` most of the time.
+
+### The log file is UTF-8 **with** a BOM — decided 2026-08-04
+
+Serilog's file sink defaults to UTF-8 without one, and the content is correct either way. The BOM is
+for the readers: without it every Windows tool that falls back to the ANSI codepage — PowerShell
+5.1's `Get-Content`, older editors — turns non-ASCII into mojibake, and non-ASCII does reach this
+file. `QueueRunner` logs the sentence it showed the user, which is localised, and a Windows profile
+name can carry accents. It cost one parameter.
+
+### Four layers catch an unhandled exception — verified 2026-08-04
+
+Worth writing down because only two of them are ACT's code, and the reflex on reading
+`StartupLog` is to assume the other two are missing.
+
+| Escapes from | Caught by | Level |
+|---|---|---|
+| Any thread, nothing above it | `AppDomain.CurrentDomain.UnhandledException` (`StartupLog`) | `Critical` |
+| A `Task` nobody awaited | `TaskScheduler.UnobservedTaskException` (`StartupLog`) | `Error` |
+| An HTTP request | ASP.NET's own middleware — `DeveloperExceptionPageMiddleware` in Development, `ExceptionHandlerMiddleware` in Production | `Error` |
+| A Blazor component or event handler | `RemoteRenderer` then `CircuitHost` | `Warning` then `Error` |
+
+The bottom two are ASP.NET's own loggers, which reach the file because they are ordinary
+`ILogger` categories — and they survive the `Microsoft.AspNetCore: Warning` floor in
+`appsettings.json` because they log at `Warning` and `Error`. **Raising that floor to
+`Error` would silence the renderer's line** (the one that names the failing component)
+while leaving the circuit's; raising it past `Error` would lose every unhandled exception
+in the UI, which is most of them in a Blazor app.
+
+All four were triggered on purpose rather than reasoned about: a throwing minimal-API route
+in both environments, and a throwing button handler on the settings page. Each produced a
+full stack trace, and ASP.NET's request scope (`TraceId`, `RequestPath`, `ConnectionId`)
+renders in the context group for free — `ActLogFormatter` names no keys of its own, so any
+scope the framework pushes comes through.
+
+### The correlation scope is `Task` + `Session`, and it nests
+
+The spec asks for the session id as a correlation id; `ActLogScope` adds the **card number** beside
+it, because that is the identifier a user reads off a strip. Two consequences worth knowing:
+
+- **The scope has to outlive the call, so the method has to be `async`.** `SessionLauncher.StartAsync`
+  and `ResumeAsync` were expression-bodied and Task-returning; a `using var scope` in a method that
+  returns a task disposes the scope *before* the work it names begins. They are `async` now for that
+  reason and no other.
+- **Nesting is unavoidable and harmless.** `SessionRestorer` scopes a card and then calls the
+  launcher, which scopes it again. The provider adds each scope property only if absent, so the pair
+  collapses to one — `A_repeated_scope_is_not_written_twice` pins it, because the alternative
+  (`[Task=1031 Task=1031]`) is the sort of thing nobody notices until a log is unreadable.
+
+---
+
 ## The store
 
 ### The first migration: `TaskDefaults` → `Templates` — 2026-08-04
@@ -258,6 +345,31 @@ for itself in as many days.
 was stranded. Had the user's board been at 2, the honest answer would have been a `2 → 3` entry
 stamping the key — *not* leaning on LiteDB filling the property from its initializer, which is a
 read-time shim wearing a default value's clothes.
+
+### Empty strings were stored as null — measured 2026-08-04
+
+`BsonMapper.EmptyStringToNull` **defaults to `true`** in LiteDB 5. Every empty string ACT ever
+wrote went to disk as BSON null and came back as `null`, so a property declared
+`public string Name { get; set; } = string.Empty;` was non-null in a fresh object and null after a
+round trip. Nothing in the type says so, and nothing had dereferenced one until
+`UserSettingsService.Seeded` reached for `template.Name.Length` — which crashed the app on the
+**second** start of *any* store, fresh ones included. The first start had no settings document to
+read; the first start's own write is what broke the second.
+
+`ActBsonMapper` now sets the flag to `false`, and `NullFieldsBecomeDefaults` (schema 2 → 3) repairs
+what the old default wrote.
+
+**The migration removes a null field instead of rewriting it, and the two are not
+interchangeable.** Writing `""` over every null would need to know, per property, whether the type
+declares it nullable — `Model` and `Effort` are `string?` and mean something by being null, while
+`Name` and `Title` are not — which is `NullabilityInfoContext` reflection over every stored type.
+Removing the field instead leaves deserialization to skip it, so the property keeps **its own
+initializer**: `string.Empty` where the declaration is non-nullable, `null` where it is nullable.
+The type stays the single source of truth and the migration needs no per-type knowledge, which is
+also why it can walk every collection generically rather than naming one.
+
+This is not the read-time shim the store rule forbids: the nulls are gone from disk after it runs,
+and a build that later drops the migration still reads exactly one shape.
 
 ---
 

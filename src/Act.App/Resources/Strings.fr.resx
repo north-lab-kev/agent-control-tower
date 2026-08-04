@@ -358,7 +358,7 @@
     <value>ACT n&apos;a trouvé aucun identifiant pour ce CLI ; lancez-le une fois pour vous connecter</value>
   </data>
   <data name="Usage_Cause_Expired" xml:space="preserve">
-    <value>le jeton d&apos;accès du CLI a expiré ; ACT a demandé au CLI de le renouveler — les chiffres reviendront d&apos;eux-mêmes</value>
+    <value>le jeton d&apos;accès du CLI a expiré ; ACT a demandé au CLI de le renouveler</value>
   </data>
   <data name="Usage_Cause_SignInRequired" xml:space="preserve">
     <value>la connexion de ce CLI a expiré après une trop longue inutilisation ; lancez `claude auth login` une fois pour vous reconnecter</value>
@@ -995,5 +995,20 @@
   </data>
   <data name="Settings_Templates_Manage" xml:space="preserve">
     <value>Gérer les modèles</value>
+  </data>
+  <data name="Settings_Group_Diagnostics" xml:space="preserve">
+    <value>Diagnostic</value>
+  </data>
+  <data name="Settings_Logs" xml:space="preserve">
+    <value>Fichiers journaux</value>
+  </data>
+  <data name="Settings_Logs_Hint" xml:space="preserve">
+    <value>Un fichier par jour, conservé deux semaines. Joignez le plus récent lorsque vous signalez un problème.</value>
+  </data>
+  <data name="Settings_Logs_Open" xml:space="preserve">
+    <value>Ouvrir le dossier des journaux</value>
+  </data>
+  <data name="Settings_Logs_OpenFailed" xml:space="preserve">
+    <value>ACT n’a pas pu ouvrir {0}.</value>
   </data>
 </root>

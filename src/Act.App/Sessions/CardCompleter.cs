@@ -2,6 +2,7 @@ using Act.App.Cards;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Infrastructure.Logging;
 
 namespace Act.App.Sessions;
 
@@ -11,14 +12,26 @@ namespace Act.App.Sessions;
 // The card is stamped and persisted *before* the terminal is torn down, and that order is deliberate:
 // the engine governs only the machine region, so a card that is already Completed absorbs anything the
 // dying session still emits instead of being dragged back into Your turn by it.
-public sealed class CardCompleter(BoardState board, SessionRegistry registry, IClock clock)
+public sealed class CardCompleter(
+    BoardState board,
+    SessionRegistry registry,
+    IClock clock,
+    ILogger<CardCompleter> log)
 {
     public bool CanComplete(Card card) => CardCompletion.CanComplete(card);
 
     public async Task<bool> CompleteAsync(Card card, CancellationToken cancellationToken = default)
     {
+        using var scope = log.BeginTaskScope(card.Number, card.SessionId);
+
         if (!CanComplete(card))
+        {
+            log.LogInformation("Not completed: a card in {Column} cannot be signed off.", card.Column);
+
             return false;
+        }
+
+        log.LogInformation("Signed off by hand from {Column}.", card.Column);
 
         card.Column = BoardColumn.Completed;
         card.Badge = null;

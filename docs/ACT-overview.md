@@ -119,9 +119,18 @@ Standards to build against — not optional polish. Specifics named for the
 
 ### Observability & operational
 
-- **Structured logging** via **Serilog**, with a **per-session correlation id**
-  (the `sessionId`) so a task's whole trace is filterable — near-essential when
-  orchestrating opaque subprocesses.
+- **Structured logging** through `Microsoft.Extensions.Logging`, written to a **daily
+  rolling file** in ACT's own data directory (`<data>/logs/act-YYYYMMDD.log`, kept a
+  fortnight, reachable from Settings → *Diagnostics*). **Serilog** is the provider and is
+  confined to one folder, so `appsettings.json`'s `Logging:LogLevel` stays the only level
+  config and the provider is genuinely replaceable — a test enforces the boundary.
+  - **The correlation id is a log scope**, so a task's whole trace is filterable —
+    near-essential when orchestrating opaque subprocesses. It carries the `sessionId`
+    the spec asks for *and* the card number, because the number is the identifier a user
+    can read off a strip and quote back. What is instrumented is session lifetime and
+    every failure path: startup facts, schema migrations, launch/retry/restore/restart
+    with their refusals, rules-engine moves, sign-off and reopen, queue arms and holds,
+    session end, and an unhandled-exception catch-all.
 - **No silent failures** — matches the spec's ethos (explicit fallbacks: the
   `to review` status fallback, error→retry, resume→fresh-seed). Surface errors to
   the card/badge, never swallow.

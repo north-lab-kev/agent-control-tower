@@ -28,6 +28,16 @@
     color: var(--act-dim);
 }
 
+::deep .path {
+    font-family: var(--act-mono);
+    word-break: break-all;
+}
+
+::deep .logrow .rz-button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
 ::deep .control {
     width: var(--act-control-w);
     flex: 0 0 auto;

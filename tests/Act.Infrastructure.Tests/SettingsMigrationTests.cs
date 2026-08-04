@@ -76,6 +76,66 @@ public class SettingsMigrationTests
         settings.Density.Should().Be(BoardDensity.Compact);
     }
 
+    // Schema 2 → 3. What made this necessary is that LiteDB's mapper wrote every empty string as
+    // null, so a property the type declares non-nullable came back null and the first line to
+    // dereference one threw — on the second start of any store, not just an old one.
+    [Fact]
+    public void An_empty_string_survives_a_round_trip_through_the_store()
+    {
+        using var temp = new TempDirectory();
+
+        using (var provider = Provider(temp.Path))
+        {
+            var store = provider.GetRequiredService<ISettingsStore>();
+            var settings = new UserSettings();
+
+            settings.Templates.Add(new TaskTemplate { Id = Guid.NewGuid(), IsDefault = true });
+
+            store.Save(settings);
+        }
+
+        using (var provider = Provider(temp.Path))
+        {
+            var template = provider.GetRequiredService<ISettingsStore>().Load()
+                .Templates.Should().ContainSingle().Subject;
+
+            template.Name.Should().BeEmpty();
+            template.Title.Should().BeEmpty();
+            template.Prompt.Should().BeEmpty();
+            template.WorkingDir.Should().BeEmpty();
+        }
+    }
+
+    [Fact]
+    public void A_stored_null_is_read_back_as_the_types_own_default()
+    {
+        using var temp = new TempDirectory();
+
+        WriteSettings(temp.Path, version: 2, new BsonDocument
+        {
+            ["Templates"] = new BsonArray
+            {
+                new BsonDocument
+                {
+                    ["_id"] = Guid.NewGuid(),
+                    ["IsDefault"] = true,
+                    ["Name"] = BsonValue.Null,
+                    ["Title"] = BsonValue.Null,
+                    ["Model"] = BsonValue.Null,
+                },
+            },
+        });
+
+        var template = Migrated(temp.Path).Templates.Should().ContainSingle().Subject;
+
+        template.Name.Should().BeEmpty();
+        template.Title.Should().BeEmpty();
+        template.Model.Should().BeNull("the type declares it nullable, so its own default is null");
+
+        StoredSettings(temp.Path)["Templates"].AsArray[0].AsDocument
+            .ContainsKey("Name").Should().BeFalse("the migration removes the field, it does not rewrite it");
+    }
+
     private static UserSettings Migrated(string dataDirectory)
     {
         using var provider = Provider(dataDirectory);
@@ -84,12 +144,15 @@ public class SettingsMigrationTests
     }
 
     private static void WriteSchemaOneSettings(string dataDirectory, BsonDocument settings)
+        => WriteSettings(dataDirectory, version: 1, settings);
+
+    private static void WriteSettings(string dataDirectory, int version, BsonDocument settings)
     {
         Directory.CreateDirectory(dataDirectory);
 
         using var database = new LiteDatabase(DatabasePath(dataDirectory));
 
-        database.GetCollection("schema").Upsert(new BsonDocument { ["_id"] = 1, ["Version"] = 1 });
+        database.GetCollection("schema").Upsert(new BsonDocument { ["_id"] = 1, ["Version"] = version });
 
         database.GetCollection("settings").Upsert(new BsonDocument
         {

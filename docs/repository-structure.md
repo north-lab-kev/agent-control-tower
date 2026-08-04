@@ -63,6 +63,12 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  ├─ Act.Agents.Codex/             # Codex adapter
 │  ├─ Act.Infrastructure/           # LiteDB store, localhost hook + mcp host, transcript tailer,
 │  │  │                            #   process supervision, Serilog wiring
+│  │  ├─ Logging/                   #   THE ONLY PLACE THAT NAMES SERILOG (a test enforces it):
+│  │  │                            #     ActLogging (the provider + rolling file sink),
+│  │  │                            #     ActLogFormatter (the line shape), ActLogDirectory /
+│  │  │                            #     ActLogLocation (where the files are, Serilog-free so a
+│  │  │                            #     page can ask), ActLogScope (the Task/Session correlation
+│  │  │                            #     scope every call site shares — MEL only)
 │  │  ├─ Storage/                   #   act.db open + BsonMapper, schema version, card/settings stores
 │  │  ├─ FileSystem/                #   IWorkingDirectories: ~ expansion, path validation, browsing
 │  │  ├─ Power/                     #   ISleepInhibitor: SetThreadExecutionState (Windows),
@@ -125,7 +131,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     UsageIndicator renders both in the top bar
 │  │  ├─ Hosting/                   #   BackgroundWork: the lifetime every pump shares — one
 │  │  │                            #     cancellation source, the single-flight gate, a guard per
-│  │  │                            #     pass, and a shutdown that waits before it disposes
+│  │  │                            #     pass, and a shutdown that waits before it disposes.
+│  │  │                            #     StartupLog: the facts a log file has to open with
+│  │  │                            #     (version, mode, data dir, hook port) plus the
+│  │  │                            #     unhandled-exception catch-all
 │  │  ├─ Settings/                  #   user-settings service + culture
 │  │  ├─ Resources/                 #   .resx strings (en / fr)
 │  │  ├─ wwwroot/                   #   CSS (flight-strip look), assets
@@ -370,14 +379,34 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   `/electronPort` argument itself to decide whether to run as a desktop shell. Views
   are free of the timing question because `IDesktopBridge.IsDesktop` is a constant
   per implementation, fixed by the registration.
+- **Logging is `Microsoft.Extensions.Logging` everywhere and Serilog in exactly one
+  folder.** Every call site takes `ILogger<T>` through the constructor and says what it
+  means with a message template; `Act.Infrastructure/Logging/` is the only place that
+  names the provider, and `ActLoggingTests` fails the build if anything else does — the
+  same trick `ElectronBoundaryTests` plays on ElectronNET, and it caught a *comment*
+  naming Serilog within the hour. Swapping provider is one file plus one package
+  reference.
+  - **`appsettings.json`'s `Logging:LogLevel` stays the only level config**, which is
+    what makes that swap real. It also rules out `AddSerilog()`: that extension installs
+    its own `LogLevel.Trace` filter for its provider, deliberately making Serilog's
+    `MinimumLevel` the authority and bypassing the `Logging` section entirely. ACT
+    registers `SerilogLoggerProvider` itself instead — see *Logging* in
+    `docs/design-notes.md`, which also records why it goes through a DI factory rather
+    than `ILoggingBuilder.AddProvider`.
+  - **The correlation id is a scope, not a message field.** `ActLogScope.BeginTaskScope`
+    is the one spelling of `Task` (the card number a user reads) and `Session` (the id
+    the spec names), so a task's whole trace is greppable and no call site invents its
+    own key. `ActLogFormatter` renders whatever scope is present as a bracketed group and
+    writes nothing when there is none.
 - **The store owns its own conventions.** `Storage/` keeps one entry point
   (`ActDatabase.Open`) that configures the `BsonMapper` and applies the schema —
   a **version document plus an ordered migration list**, so `CurrentVersion` is
   derived from that list and a store written by a newer build is rejected instead
-  of silently mangled. The list holds **one** entry — schema 1 → 2, `UserSettings.TaskDefaults`
-  becoming `UserSettings.Templates` (2026-08-04). Every earlier breaking change was handled by
-  starting a fresh `act.db`, which the pre-release rule still allows; the first release is what
-  makes that stop being an option. Collection names live in one place (`ActCollections`), and
+  of silently mangled. The list holds **two** entries — schema 1 → 2, `UserSettings.TaskDefaults`
+  becoming `UserSettings.Templates`, and schema 2 → 3, dropping the null fields LiteDB's
+  `EmptyStringToNull` default had written in place of empty strings (both 2026-08-04). Every earlier
+  breaking change was handled by starting a fresh `act.db`, which the pre-release rule still allows;
+  the first release is what makes that stop being an option. Collection names live in one place (`ActCollections`), and
   the friendly card `number` comes from a counter document that seeds itself
   above any card already stored.
 - **Backward compatibility is a migration, never a mapper.** A read-time shim — a
@@ -399,6 +428,11 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
     store has no settings document at all, so the invariant the new shape carries (there is
     always one default template) is seeded by `UserSettingsService` on the way in and the
     migration only rewrites what it finds.
+  - **The mapper's defaults are part of the on-disk shape.** `EmptyStringToNull` defaults to
+    `true`, which silently turned every stored empty string into null and every non-nullable
+    string property into null on the way back — see *Empty strings were stored as null* in
+    `docs/design-notes.md`. `ActBsonMapper` is the one place those defaults are decided, and a
+    change to one of them is a store change needing a migration like any other.
   **A version that was bumped by a shim and then had the
   shim removed leaves a store no build can open** — `CurrentVersion` goes backwards
   while the stored version does not, and the only way out is deleting `act.db`,

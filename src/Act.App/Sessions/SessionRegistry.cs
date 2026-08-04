@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Act.Core.Abstractions;
+using Act.Infrastructure.Logging;
 
 namespace Act.App.Sessions;
 
@@ -7,7 +8,10 @@ namespace Act.App.Sessions;
 // a child of the board: navigating to a card has to find the process that is already running
 // for it, not start a second one. Sessions outlive every component that shows them and die
 // with the app, which is why this is a singleton and why it disposes what it still holds.
-public sealed class SessionRegistry(IHookEndpoint hooks, IAgentConfigFiles configFiles) : IAsyncDisposable
+public sealed class SessionRegistry(
+    IHookEndpoint hooks,
+    IAgentConfigFiles configFiles,
+    ILogger<SessionRegistry> log) : IAsyncDisposable
 {
     private readonly ConcurrentDictionary<Guid, IAgentSession> sessions = new();
 
@@ -73,6 +77,9 @@ public sealed class SessionRegistry(IHookEndpoint hooks, IAgentConfigFiles confi
         await session.DisposeAsync();
 
         Forget(cardId);
+
+        using (log.BeginTaskScope(session: session.SessionId))
+            log.LogInformation("Session ended for task {TaskId}; {Live} still live.", cardId, sessions.Count);
 
         Changed?.Invoke();
 

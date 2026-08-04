@@ -7,6 +7,7 @@ using Act.Core.Agents;
 using Act.Core.Model;
 using Act.TestSupport;
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.App.UiTests;
 
@@ -180,7 +181,10 @@ public class SessionLaunchTests
     {
         var clock = new FrozenClock(Now);
         var adapter = new MockAgentAdapter(AgentType.ClaudeCode, clock: clock);
-        var registry = new SessionRegistry(new StubHookEndpoint(), new StubAgentConfigFiles());
+        var registry = new SessionRegistry(
+            new StubHookEndpoint(),
+            new StubAgentConfigFiles(),
+            NullLogger<SessionRegistry>.Instance);
         var board = new BoardState(new FakeCardStore(cards), clock);
         var settings = new UserSettingsService(new FakeSettingsStore(), new AppCulture());
         var notifier = new RecordingNotifier();
@@ -194,7 +198,8 @@ public class SessionLaunchTests
             TestNotifications.Dispatcher(settings, notifier),
             settings,
             new PassThroughDirectories(),
-            clock);
+            clock,
+            NullLogger<SessionLauncher>.Instance);
 
         return (launcher, registry, adapter, notifier);
     }

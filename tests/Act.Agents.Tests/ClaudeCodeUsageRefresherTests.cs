@@ -6,8 +6,10 @@ using AwesomeAssertions;
 
 namespace Act.Agents.Tests;
 
-// The nudge that answers an expired token, held to the property that makes it safe to put on a timer:
-// it asks the CLI about its own login and nothing else. The measured behaviour is in
+// The nudge that answers an expired token. It goes through the adapter's own query path rather than
+// composing a command line of its own, so the measured flag set has exactly one owner — and the run
+// it produces is the one `AgentQueryTests` already holds to being cheap. `auth status` was measured
+// and rejected here: it reads the credential file without refreshing it. See
 // `docs/agent-usage-findings.md`.
 public class ClaudeCodeUsageRefresherTests
 {
@@ -16,24 +18,43 @@ public class ClaudeCodeUsageRefresherTests
     {
         var commands = new StubCommandHost();
 
-        return (
-            new ClaudeCodeUsageRefresher(commands, new StubAgentConfigFiles(), () => machine),
-            commands);
+        var adapter = new ClaudeCodeAdapter(
+            new StubPtyHost(),
+            commands,
+            new TestClock(),
+            new StubHookEndpoint(),
+            new StubAgentConfigFiles());
+
+        return (new ClaudeCodeUsageRefresher(() => adapter, () => machine), commands);
     }
 
-    // The whole reason this is allowed to run unattended: `auth status` reads the credential file and
-    // makes no model call, so a nudge on a timer cannot spend the user's quota. A prompt anywhere in
-    // here would make it billable.
+    // Print mode with every customisation off, which is what makes a run ACT asks for on its own
+    // account affordable: measured ~5,000 tokens rather than ~30,000.
     [Fact]
-    public async Task It_asks_the_CLI_about_its_own_login_and_nothing_else()
+    public async Task It_refreshes_through_the_cheap_print_mode_query()
     {
         var (refresher, commands) = Create();
 
         await refresher.TryRefreshAsync();
 
-        commands.Last.Arguments.Should().Equal("auth", "status", "--json");
-        commands.Last.Input.Should().BeNull();
-        commands.Last.Arguments.Should().NotContain("-p");
+        commands.Last.Arguments.Should().Contain("-p");
+        commands.Last.Arguments.Should().Contain("--safe-mode");
+        commands.Last.Arguments.Should().Contain("--no-session-persistence");
+        commands.Last.Arguments[^2].Should().Be("--tools");
+        commands.Last.Arguments[^1].Should().BeEmpty();
+    }
+
+    // `auth status` is the command this used to run. It exits 0 in under half a second and leaves
+    // `expiresAt` exactly where it was, so a nudge built on it reported success and fixed nothing.
+    [Fact]
+    public async Task It_does_not_rely_on_auth_status_which_does_not_refresh()
+    {
+        var (refresher, commands) = Create();
+
+        await refresher.TryRefreshAsync();
+
+        commands.Last.Arguments.Should().NotContain("auth");
+        commands.Last.Arguments.Should().NotContain("status");
     }
 
     // Never `auth login` and never `auth logout`: one needs a terminal ACT has not got, and the other
@@ -49,18 +70,10 @@ public class ClaudeCodeUsageRefresherTests
         commands.Last.Arguments.Should().NotContain("logout");
     }
 
+    // Nobody is waiting on this one, unlike a title, so it gets a deadline of its own rather than the
+    // query's default — a refresh has a network round trip in it that a cached answer does not.
     [Fact]
-    public async Task It_runs_in_the_scratch_directory()
-    {
-        var (refresher, commands) = Create();
-
-        await refresher.TryRefreshAsync();
-
-        commands.Last.WorkingDir.Should().Be(new StubAgentConfigFiles().ScratchDirectory());
-    }
-
-    [Fact]
-    public async Task It_carries_a_deadline_of_its_own()
+    public async Task It_carries_its_own_background_deadline()
     {
         var (refresher, commands) = Create();
 
@@ -90,11 +103,11 @@ public class ClaudeCodeUsageRefresherTests
     }
 
     [Fact]
-    public async Task A_run_that_succeeded_reports_the_nudge_as_delivered()
+    public async Task A_run_that_answered_reports_the_nudge_as_delivered()
     {
         var (refresher, commands) = Create();
 
-        commands.Result = new CommandResult(0, "{\"loggedIn\":true}", string.Empty);
+        commands.Result = new CommandResult(0, "ok", string.Empty);
 
         (await refresher.TryRefreshAsync()).Should().BeTrue();
     }

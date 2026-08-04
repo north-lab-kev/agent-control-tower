@@ -1749,3 +1749,20 @@ shipping cross-platform means a build per target:
 Note the CI-cost angle while private: macOS runners bill at 10× minutes, Windows
 at 2× — a reason to defer the Linux/macOS legs until actually needed or until
 go-public. (ACT's stated floor is "Windows + Linux at least.")
+
+## Deferred — git worktree support
+
+Let a card run in its own git worktree instead of the repository working
+directory, so two cards on the same repo cannot fight over the same files.
+
+- [ ] **Claude Code** — the CLI supports worktrees natively; ACT would mainly
+  need to decide where the worktree lives, pass it as the session working
+  directory, and clean it up when the card completes.
+- [ ] **Codex** — no native support; requires an external wrapper
+  (`agentree`, `nymbalyst`, or equivalent), which means an extra dependency ACT
+  cannot assume is installed. Needs a probe + a clear "unavailable" path.
+
+Deferred because the two adapters would diverge sharply: one is a working-
+directory change, the other is a third-party tool dependency with its own
+lifecycle. Revisit once the per-card working directory is a first-class
+setting.

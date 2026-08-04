@@ -2,6 +2,7 @@ using Act.App.Cards;
 using Act.App.Sessions;
 using Act.Core.Model;
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.App.UiTests;
 
@@ -72,7 +73,7 @@ public class CardReopenerTests
 
         await board.LoadAsync();
 
-        return new CardReopener(board, new FrozenClock(Now));
+        return new CardReopener(board, new FrozenClock(Now), NullLogger<CardReopener>.Instance);
     }
 
     private static Card Completed() => new()

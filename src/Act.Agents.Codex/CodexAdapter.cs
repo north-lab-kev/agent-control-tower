@@ -1,6 +1,8 @@
 using Act.Core.Abstractions;
 using Act.Core.Agents;
 using Act.Core.Model;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.Agents.Codex;
 
@@ -19,9 +21,12 @@ public sealed class CodexAdapter(
     ICommandHost commands,
     IClock clock,
     IHookEndpoint hooks,
-    IAgentConfigFiles configFiles) : IAgentAdapter
+    IAgentConfigFiles configFiles,
+    ILogger<CodexAdapter>? log = null) : IAgentAdapter
 {
     public const string DefaultBinary = "codex";
+
+    private readonly ILogger log = log ?? NullLogger<CodexAdapter>.Instance;
 
     public AgentType Agent => AgentType.Codex;
 
@@ -283,7 +288,15 @@ public sealed class CodexAdapter(
     private string? InjectHooks(Guid taskId, List<string> arguments)
     {
         if (hooks.UrlFor(Agent) is null)
+        {
+            log.LogWarning(
+                "No hook endpoint for {Agent}; task {TaskId} launches without hooks and will report "
+                    + "only what its own process says.",
+                Agent,
+                taskId);
+
             return null;
+        }
 
         try
         {
@@ -306,6 +319,13 @@ public sealed class CodexAdapter(
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
+            log.LogError(
+                error,
+                "Could not write the {Agent} hook profile; task {TaskId} launches without hooks and "
+                    + "will report only what its own process says.",
+                Agent,
+                taskId);
+
             return null;
         }
 

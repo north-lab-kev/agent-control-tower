@@ -12,8 +12,12 @@ Expected dependencies to attribute (fill in as they are added):
 - Radzen.Blazor — MIT
 - Electron.NET — MIT
 - LiteDB — MIT
-- Serilog — Apache 2.0
 - Porta.Pty — MIT (<https://github.com/tomlm/Porta.Pty>) — the pseudo-terminal host
+- Serilog — Apache 2.0, © Serilog Contributors (<https://github.com/serilog/serilog>) —
+  the logging provider, added 2026-08-04. Three packages: `Serilog`,
+  `Serilog.Extensions.Logging`, `Serilog.Sinks.File`. Nothing is vendored, so the notices
+  travel with the packages; versions are pinned in `Directory.Packages.props` rather than
+  restated here.
 - xUnit, AwesomeAssertions / Shouldly, NSubstitute (test-only) — Apache 2.0 / MIT
 
 **Vendored (source-committed, not a package reference)** — these ship as files in

@@ -5,6 +5,7 @@ using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.TestSupport;
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.App.UiTests;
 
@@ -111,7 +112,10 @@ public class SessionRestartTests
     {
         var clock = new FrozenClock(Now);
         var adapter = new MockAgentAdapter(AgentType.ClaudeCode, clock: clock);
-        var registry = new SessionRegistry(new StubHookEndpoint(), new StubAgentConfigFiles());
+        var registry = new SessionRegistry(
+            new StubHookEndpoint(),
+            new StubAgentConfigFiles(),
+            NullLogger<SessionRegistry>.Instance);
         var board = new BoardState(new FakeCardStore(cards), clock);
         var settings = new UserSettingsService(new MemorySettingsStore(), new AppCulture());
 
@@ -124,7 +128,8 @@ public class SessionRestartTests
             TestNotifications.Dispatcher(settings, new RecordingNotifier()),
             settings,
             new PassThroughDirectories(),
-            clock), registry, adapter);
+            clock,
+            NullLogger<SessionLauncher>.Instance), registry, adapter);
     }
 
     private static Card Executing() => new()

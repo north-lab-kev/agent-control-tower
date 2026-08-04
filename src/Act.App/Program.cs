@@ -5,12 +5,19 @@ using Act.App.Sessions;
 using Act.App.Settings;
 using Act.App.Usage;
 using Act.App.Hooks;
+using Act.App.Hosting;
+using Act.Infrastructure.Logging;
+using Act.Infrastructure.Storage;
 using ElectronNET.API;
 using AppRoot = Act.App.Components.App;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddActApp(builder.Configuration);
+var dataDirectory = ActDataDirectory.Resolve(builder.Configuration[ActDataDirectory.OverrideKey]);
+
+builder.Logging.AddActFileLog(dataDirectory);
+
+builder.Services.AddActApp(builder.Configuration, dataDirectory);
 
 var launchedByElectron = args.Any(a => a.StartsWith("/electronPort", StringComparison.OrdinalIgnoreCase));
 var runElectron = launchedByElectron
@@ -28,6 +35,8 @@ if (runElectron)
 var app = builder.Build();
 
 host = app;
+
+StartupLog.Report(app, dataDirectory, runElectron);
 
 app.BindActHookEndpoint();
 

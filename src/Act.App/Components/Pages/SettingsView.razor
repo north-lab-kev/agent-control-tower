@@ -294,6 +294,32 @@
                     }
                 </RadzenStack>
             </RadzenFieldset>
+
+            <RadzenFieldset Text="@Strings.Settings_Group_Diagnostics">
+                <RadzenStack Gap="1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem" class="logrow">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Logs" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Logs_Hint" class="hint" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@LogDirectory" class="hint path" />
+                        </RadzenStack>
+                        <RadzenButton Icon="folder_open" Text="@Strings.Settings_Logs_Open"
+                                      Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                      Variant="Variant.Outlined" Click="OpenLogFolder" />
+                    </RadzenStack>
+
+                    @if (logsFailed)
+                    {
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                     Gap="0.5rem" class="binwarn">
+                            <RadzenIcon Icon="error_outline" />
+                            <RadzenText TextStyle="TextStyle.Caption"
+                                        Text="@Text.Format(Strings.Settings_Logs_OpenFailed, LogDirectory)" />
+                        </RadzenStack>
+                    }
+                </RadzenStack>
+            </RadzenFieldset>
         </RadzenStack>
     </div>
 </div>

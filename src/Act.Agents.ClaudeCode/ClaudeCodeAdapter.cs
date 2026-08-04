@@ -1,6 +1,8 @@
 using Act.Core.Abstractions;
 using Act.Core.Agents;
 using Act.Core.Model;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.Agents.ClaudeCode;
 
@@ -14,9 +16,12 @@ public sealed class ClaudeCodeAdapter(
     ICommandHost commands,
     IClock clock,
     IHookEndpoint hooks,
-    IAgentConfigFiles configFiles) : IAgentAdapter
+    IAgentConfigFiles configFiles,
+    ILogger<ClaudeCodeAdapter>? log = null) : IAgentAdapter
 {
     public const string DefaultBinary = "claude";
+
+    private readonly ILogger log = log ?? NullLogger<ClaudeCodeAdapter>.Instance;
 
     public AgentType Agent => AgentType.ClaudeCode;
 
@@ -206,7 +211,15 @@ public sealed class ClaudeCodeAdapter(
     private string? InjectHooks(Guid taskId, List<string> arguments)
     {
         if (hooks.UrlFor(Agent) is not { } url)
+        {
+            log.LogWarning(
+                "No hook endpoint for {Agent}; task {TaskId} launches without hooks and will report "
+                    + "only what its own process says.",
+                Agent,
+                taskId);
+
             return null;
+        }
 
         var token = hooks.Register(taskId);
 
@@ -221,6 +234,13 @@ public sealed class ClaudeCodeAdapter(
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
+            log.LogError(
+                error,
+                "Could not write the {Agent} hook settings; task {TaskId} launches without hooks and "
+                    + "will report only what its own process says.",
+                Agent,
+                taskId);
+
             return null;
         }
 
