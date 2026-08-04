@@ -1,0 +1,14 @@
+.asktemplate {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 2px;
+}
+
+::deep .wide {
+    width: 100%;
+}
+
+.actions {
+    margin-top: 0.25rem;
+}

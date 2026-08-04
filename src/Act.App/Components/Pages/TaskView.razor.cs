@@ -48,6 +48,8 @@ public partial class TaskView(
 
     private bool titling;
 
+    private bool templating;
+
     // Titling outlives no navigation: the answer is for a form that is still on screen, and a CLI
     // still thinking about a page the user has left is work nobody will read.
     private CancellationTokenSource? titleRun;
@@ -72,6 +74,12 @@ public partial class TaskView(
 
     [Parameter]
     public Guid? CardId { get; set; }
+
+    // Which saved starting point a create begins from. A query parameter rather than a route of its
+    // own: it narrows `/card/new` rather than naming a different destination, and an id that no
+    // longer exists falls back to the default instead of 404ing a page whose job is to make a task.
+    [SupplyParameterFromQuery(Name = "template")]
+    private Guid? TemplateId { get; set; }
 
     private bool IsDirty => !missing && form != baseline;
 
@@ -103,15 +111,9 @@ public partial class TaskView(
 
             var offered = enabled.Contains(form.Agent) ? enabled : [.. enabled, form.Agent];
 
-            return [.. offered.Select(agent => new SettingChoice<AgentType>(agent, AgentLabel(agent)))];
+            return [.. offered.Select(agent => new SettingChoice<AgentType>(agent, TaskLabels.Agent(agent)))];
         }
     }
-
-    private static string AgentLabel(AgentType agent) => agent switch
-    {
-        AgentType.Codex => Strings.Agent_Codex,
-        _ => Strings.Agent_ClaudeCode,
-    };
 
     // Whatever the chosen agent declares, in its order — the same rule the model and effort lists
     // follow. Codex offers five and Claude Code six, and neither the form nor this list knows why.
@@ -127,36 +129,13 @@ public partial class TaskView(
                 ? offered
                 : [.. offered, form.Permission];
 
-            return [.. modes.Select(mode => new SettingChoice<PermissionMode>(mode, Label(mode)))];
+            return [.. modes.Select(mode => new SettingChoice<PermissionMode>(mode, TaskLabels.Permission(mode)))];
         }
     }
 
-    private static string Label(PermissionMode mode) => mode switch
-    {
-        PermissionMode.Default => Strings.Permission_Default,
-        PermissionMode.Plan => Strings.Permission_Plan,
-        PermissionMode.AcceptEdits => Strings.Permission_AcceptEdits,
-        PermissionMode.Auto => Strings.Permission_Auto,
-        PermissionMode.DontAsk => Strings.Permission_DontAsk,
-        PermissionMode.Bypass => Strings.Permission_Bypass,
-        _ => mode.ToString(),
-    };
+    private static SettingChoice<TaskSchedule>[] ScheduleChoices => TaskLabels.Schedules(withDateTime: true);
 
-    private static SettingChoice<TaskSchedule>[] ScheduleChoices =>
-    [
-        new(TaskSchedule.Manual, Strings.ScheduleOption_Manual),
-        new(TaskSchedule.Now, Strings.ScheduleOption_Now),
-        new(TaskSchedule.NextWindow, Strings.ScheduleOption_NextWindow),
-        new(TaskSchedule.SpecificDateTime, Strings.ScheduleOption_DateTime),
-    ];
-
-    private static SettingChoice<GitAction?>[] GitChoices =>
-    [
-        new(GitAction.Commit, Strings.GitAction_Commit),
-        new(GitAction.Push, Strings.GitAction_Push),
-        new(GitAction.PullRequest, Strings.GitAction_PullRequest),
-    ];
-
+    private static SettingChoice<GitAction?>[] GitChoices => TaskLabels.GitActions();
 
     // Keeps a stored model visible even when the agent no longer offers it — otherwise editing
     // a card would show an empty dropdown for a value it is still carrying.
@@ -300,6 +279,47 @@ public partial class TaskView(
         }
     }
 
+    // The form rather than the saved card, unlike Duplicate: a template is not a run, so it is the
+    // shape of what is on screen — which is also what lets one be captured on a task that has never
+    // been saved. The name is asked for because nothing else on the form describes a *kind* of task;
+    // the title names this one.
+    private async Task SaveAsTemplateAsync()
+    {
+        if (templating)
+            return;
+
+        templating = true;
+
+        try
+        {
+            var name = await dialogService.OpenAsync<TemplateNameDialog>(
+                Strings.Task_SaveAsTemplate,
+                new Dictionary<string, object?>
+                {
+                    [nameof(TemplateNameDialog.Suggested)] = form.Title.Trim(),
+                },
+                new DialogOptions { Width = "460px", CloseDialogOnOverlayClick = true, CssClass = "act-dialog" });
+
+            // Null when dismissed with the X or the overlay, which means the same as Cancel.
+            if (name is not string named || string.IsNullOrWhiteSpace(named))
+                return;
+
+            settings.SaveTemplate(form.ToTemplate(named));
+
+            notifications.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = Strings.Task_SaveAsTemplate_Saved,
+                Detail = Text.Format(Strings.Task_SaveAsTemplate_SavedDetail, named.Trim()),
+                Duration = 6000,
+            });
+        }
+        finally
+        {
+            templating = false;
+        }
+    }
+
     // Kills first, on purpose: archiving the card while its process ran would leave an agent
     // working in a directory with nothing on the board pointing at it — the one state ACT exists
     // to prevent. Archiving is reversible; the process it was driving is not, so the session ends
@@ -358,16 +378,7 @@ public partial class TaskView(
         }
     }
 
-    private string PermissionHint => form.Permission switch
-    {
-        PermissionMode.Default => Strings.Permission_Default_Hint,
-        PermissionMode.Plan => Strings.Permission_Plan_Hint,
-        PermissionMode.AcceptEdits => Strings.Permission_AcceptEdits_Hint,
-        PermissionMode.Auto => Strings.Permission_Auto_Hint,
-        PermissionMode.DontAsk => Strings.Permission_DontAsk_Hint,
-        PermissionMode.Bypass => Strings.Permission_Bypass_Hint,
-        _ => string.Empty,
-    };
+    private string PermissionHint => TaskLabels.PermissionHint(form.Permission);
 
     // A route can be reached with a stale id — a bookmark, a back button after a delete — which
     // a modal opened from a card in hand never could. Hence the not-found branch.
@@ -382,7 +393,7 @@ public partial class TaskView(
         {
             card = null;
             missing = false;
-            form = NewTaskForm.From(settings.TaskDefaults);
+            form = NewTaskForm.From(settings.TemplateOrDefault(TemplateId));
             baseline = form with { };
             discarded = false;
 
@@ -399,7 +410,9 @@ public partial class TaskView(
         }
 
         missing = card is null;
-        form = card is { } existing ? NewTaskForm.From(existing) : NewTaskForm.From(settings.TaskDefaults);
+        form = card is { } existing
+            ? NewTaskForm.From(existing)
+            : NewTaskForm.From(settings.TemplateOrDefault(TemplateId));
         baseline = form with { };
         discarded = false;
     }

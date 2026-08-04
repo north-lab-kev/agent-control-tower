@@ -35,18 +35,43 @@ public sealed record NewTaskForm
 
     public bool WantsDateTime => Schedule is TaskSchedule.SpecificDateTime;
 
-    // A new task starts as the settings template — everything but the title and the prompt, which
-    // are the task itself and must be typed.
-    public static NewTaskForm From(TaskDefaults defaults) => new()
+    // A new task starts as a template. The title comes across when the template carries one, and a
+    // template that leaves it blank falls through to the usual answer — written from the prompt on
+    // save, or whatever the user types first.
+    public static NewTaskForm From(TaskTemplate template) => new()
     {
-        WorkingDir = defaults.WorkingDir,
-        Agent = defaults.Agent,
-        Model = defaults.Model,
-        Effort = defaults.Effort,
-        Permission = defaults.PermissionMode,
-        Schedule = defaults.Schedule,
-        SelectedGitAction = defaults.GitAction,
-        Draft = defaults.Draft,
+        Title = template.Title,
+        Prompt = template.Prompt,
+        WorkingDir = template.WorkingDir,
+        Agent = template.Agent,
+        Model = template.Model,
+        Effort = template.Effort,
+        Permission = template.PermissionMode,
+        Schedule = template.Schedule,
+        SelectedGitAction = template.GitAction,
+        Draft = template.Draft,
+        AllowConcurrentWorkingDir = template.AllowConcurrentWorkingDir,
+    };
+
+    // The fields on screen rather than the saved card, unlike Duplicate: a copy has to be the run
+    // that was saved, but a template is not a run — it is the shape of the form in front of you, and
+    // it can be captured on a task that has never been saved at all. The one thing dropped is the
+    // schedule's specific datetime, which is a moment rather than a habit: a template holding one
+    // would arm every task it made for a time that has already passed.
+    public TaskTemplate ToTemplate(string name) => new()
+    {
+        Name = name.Trim(),
+        Title = Title.Trim(),
+        Prompt = Prompt.Trim(),
+        WorkingDir = WorkingDir.Trim(),
+        Agent = Agent,
+        Model = Cleaned(Model),
+        Effort = Cleaned(Effort),
+        PermissionMode = Permission,
+        Schedule = WantsDateTime ? TaskSchedule.Manual : Schedule,
+        GitAction = SelectedGitAction,
+        Draft = Draft && SelectedGitAction is GitAction.PullRequest,
+        AllowConcurrentWorkingDir = AllowConcurrentWorkingDir,
     };
 
     public static NewTaskForm From(Card card) => new()

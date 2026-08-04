@@ -9,6 +9,7 @@ using Act.Core.Rules;
 using Act.Core.Scheduling;
 using Microsoft.AspNetCore.Components;
 using Radzen;
+using Radzen.Blazor;
 
 namespace Act.App.Components.Pages;
 
@@ -184,7 +185,17 @@ public partial class BoardView(
             ? $"/card/{card.Id}/edit"
             : $"/card/{card.Id}/terminal");
 
+    // The default is left out: the button itself is what starts a task from it, so listing it in the
+    // button's own menu offers the same thing twice.
+    private IReadOnlyList<TaskTemplate> PickableTemplates
+        => [.. settings.Templates.Where(template => !template.IsDefault)];
+
     private void OpenNewTask() => navigation.NavigateTo("/card/new");
+
+    // The item is null when the button itself was clicked rather than one of its menu entries, which
+    // is the plain "new task from the default template" the board has always had.
+    private void OnNewTaskPicked(RadzenSplitButtonItem? item)
+        => navigation.NavigateTo(item?.Value is { Length: > 0 } id ? $"/card/new?template={id}" : "/card/new");
 
     private bool IsLaunching(Card card) => launching.Contains(card.Id);
 

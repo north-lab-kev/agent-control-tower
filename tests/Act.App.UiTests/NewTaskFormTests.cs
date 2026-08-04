@@ -99,6 +99,58 @@ public class NewTaskFormTests
         card.Title.Should().Be("My own words");
     }
 
+    // A template that names its tasks is the point of having a title on one: the form opens with it
+    // already in the box, so it is a *typed* title as far as the save is concerned and wins over the
+    // prompt.
+    [Fact]
+    public void A_template_title_reaches_the_card()
+    {
+        var card = CardIn(BoardColumn.Ready);
+
+        NewTaskForm.From(new TaskTemplate { Title = "Nightly dependency sweep", Prompt = "Update the packages" })
+            .ApplyTo(card);
+
+        card.Title.Should().Be("Nightly dependency sweep");
+    }
+
+    // Blank is the old behaviour and has to stay reachable: without a title the card is named from
+    // the prompt, which is what a task with nothing typed already gets.
+    [Fact]
+    public void A_template_with_no_title_leaves_the_card_named_from_its_prompt()
+    {
+        var card = CardIn(BoardColumn.Ready);
+
+        NewTaskForm.From(new TaskTemplate { Prompt = "Update the packages" }).ApplyTo(card);
+
+        card.Title.Should().Be("Update the packages");
+    }
+
+    // The write side of the same field. A template is the shape of the form in front of you, so the
+    // title travels with everything else — and the template's own *name* is a separate thing.
+    [Fact]
+    public void Saving_a_template_from_a_form_captures_its_title()
+    {
+        var template = (Edited() with { Title = "  Fix the login bug  " }).ToTemplate("  Bugfix  ");
+
+        template.Name.Should().Be("Bugfix");
+        template.Title.Should().Be("Fix the login bug");
+        template.Prompt.Should().Be("something else entirely");
+    }
+
+    // A moment is not a habit: a template holding one would arm every task it made for a time that
+    // has already passed.
+    [Fact]
+    public void Saving_a_template_drops_a_specific_datetime_schedule()
+    {
+        var form = Edited() with
+        {
+            Schedule = TaskSchedule.SpecificDateTime,
+            ScheduledFor = new DateTime(2026, 1, 1, 9, 0, 0),
+        };
+
+        form.ToTemplate("Bugfix").Schedule.Should().Be(TaskSchedule.Manual);
+    }
+
     private static NewTaskForm Edited() => new()
     {
         Title = "New title",

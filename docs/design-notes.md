@@ -210,3 +210,107 @@ disagreeing on the two things that matter, and both disagreements were bugs:
 `Act.App/Hosting/BackgroundWork` now owns all of it: cancel, wait for what was started, then
 dispose — and a guard around each *pass* rather than around the loop, so a failed pass is reported
 and the next tick tries again.
+
+---
+
+## The store
+
+### The first migration: `TaskDefaults` → `Templates` — 2026-08-04
+
+Templates replaced the single *New task defaults* block, which is a breaking store change: a
+field became a list, and one document's sub-object became that list's first entry. Two things
+about how it is written are worth keeping, because neither is visible from the code.
+
+**It is a migration, not a fresh `act.db`.** The pre-release rule still allowed wiping the store,
+and the reason it was not used is that this change is entirely mechanical — the old document has
+every value the new one needs, under the same names — so the only thing wiping would have cost is
+the user's board, for nothing.
+
+**It writes through the mapper, and the reason is `_id`.** The first draft hand-built the
+template's `BsonDocument` key by key, which is wrong twice over: LiteDB's entity mapper treats an
+`Id` property as the id field and serializes it as **`_id` even on a nested object** (so
+`["Id"] = …` round-trips as `Guid.Empty`, giving every migrated install a default template the
+New-task picker can name but never resolve), and an enum's on-disk encoding is the mapper's choice
+rather than a fact you can assume. So `ActSchema.Apply` now takes the `BsonMapper` that
+`ActDatabase` opened the database with, and the migration deserializes the old sub-document
+straight into `TaskTemplate` — their fields overlap by name — then writes it back with
+`ToDocument`. Nothing in either type's declaration says any of this, which is why
+`SettingsStoreTests` pins the id round-trip rather than trusting it.
+
+**The invariant is seeded outside the migration.** Every reader assumes exactly one template is
+the default, and a migration cannot promise that: a fresh install has no settings document to
+rewrite. `UserSettingsService` seeds it while loading, before anything can read a settings object
+without one, so the migration is free to be a no-op on a document it does not recognise.
+
+### Adding `TaskTemplate.Title` needed no schema bump — 2026-08-04
+
+Templates gained a `title` the day after they landed, which normally means a second migration: the
+documents schema 2 wrote have no such key, and *two shapes on disk* is the thing the store rule
+exists to forbid. It did not, for two reasons worth separating.
+
+**The migration writes through the mapper, so its output tracks the type.** `1 → 2` serializes a
+real `TaskTemplate` with `ToDocument`, so the moment the property existed the migration started
+emitting it — no edit, and no store that has run the migration is missing the key. A hand-built
+`BsonDocument` would have needed a `2 → 3` to catch up, which is the second time that choice paid
+for itself in as many days.
+
+**No real store was at schema 2 yet.** Only this session's scratch stores had run it, so nothing
+was stranded. Had the user's board been at 2, the honest answer would have been a `2 → 3` entry
+stamping the key — *not* leaning on LiteDB filling the property from its initializer, which is a
+read-time shim wearing a default value's clothes.
+
+---
+
+## Styling against Radzen
+
+Two bugs found on 2026-08-04 while making the New task picker presentable. Both had been in the app
+since the shell was built, both were invisible in code review, and both were found the same way:
+reading `getComputedStyle` off the real page rather than trusting the CSS to mean what it says.
+
+### The whole app was set in Times New Roman
+
+`html`, `body` and even `.act-root` computed `font-family: "Times New Roman"`. Radzen sets its
+typeface on its **own components** and never on the document, so everything ACT styles with a plain
+class of its own inherited the browser default. That covered every page's title in its top bar and
+every title in a row-list — the archive and the templates page — and the terminal was unaffected only
+because xterm sets its own font.
+
+It survived this long because Radzen's widgets hid it. A label beside a control is a `RadzenText`, so
+the two sat side by side in different families and read as a weight difference rather than a bug; the
+mono readouts have `--act-mono` explicitly and looked correct. The fix is one line beside the `color`
+anchor that was already there for the same class of reason — `font-family: var(--rz-text-font-family)`
+on `html, body` — which also settles every popup Radzen mounts outside `.act-root`.
+
+### An outlined button's edge is a box-shadow, not a border
+
+Every secondary button in the app was ringed in `#c9cacd`, near-white on a near-black board: the
+board's chips, *Browse*, the archive's row actions, the New task button. The colour is
+`--rz-base-300`, read straight off Radzen's raw ramp, and it is drawn as `box-shadow: inset 0 0 0 1px`
+— the buttons' `border-width` is **`0`**.
+
+That last detail is why it lasted. `BoardView.razor.css` had been setting `border-color:
+var(--act-line2)` on the New task button since it was written; the declaration was valid, applied,
+and painted nothing, so the CSS looked like it was already handling the case. Two further traps came
+with it:
+
+- **The theme names the shade.** Its rule is `.rz-button.rz-variant-outlined.rz-base.rz-shade-default`,
+  so a three-class override loses on specificity and changes nothing. The same trick was needed for the
+  button's `color`, which had also been silently losing — the `+` glyph was rendering at full
+  `--act-ink` while the CSS asked for `--act-dim`.
+- **Two of those rings meeting is a seam.** A split button is two buttons in a wrapper, so the pair
+  drew two lines down the middle and hovering one lit half a box. The ring moves to the wrapper and
+  the halves give theirs up.
+
+Remapping `--rz-base-300` itself was rejected for the reason `app.css` already records for the
+`--rz-base-*` ramp: the slot also draws the gauge scale, the timeline point and the upload widget,
+none of which want a hairline.
+
+### How to find the next one
+
+`dotnet build` cannot see any of this, and neither can a screenshot at 1× on a dark theme. What found
+both was **3× zoomed captures driven over CDP** — the in-app preview pane does not composite, so it
+cannot screenshot at all (see the memory note on verifying xterm) — followed by `getComputedStyle` on
+the specific element to name the colour, then a search for that literal among the `--rz-*` custom
+properties to find who owns it. Enumerating `document.styleSheets` to find the *rule* is not worth
+attempting: it failed three times here on selectors the CSSOM reports in a form `Element.matches`
+rejects.

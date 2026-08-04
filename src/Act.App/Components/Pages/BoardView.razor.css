@@ -132,16 +132,63 @@
     border-color: color-mix(in srgb, var(--act-wait) 45%, transparent);
 }
 
+/* Two shapes wear this class: a plain button while the default template is the only one, and a split
+   button once there is a choice. So everything below targets the `.rz-button`s rather than the
+   element carrying the class — a split button's class lands on a wrapper `div`, where padding and a
+   border colour style nothing and leave both halves at Radzen's defaults.
+   `.rz-variant-outlined.rz-base` is in the selector to outweigh the theme's own four-class button
+   rule, the same reason `.rz-badge` is in the count's selector above. Without it the dim rest colour
+   silently lost and the glyph rendered at full `--act-ink` — which it had been doing all along, back
+   when this class sat on a plain button and nothing was here to notice. */
 ::deep .newtaskbtn {
     margin-left: auto;
     min-width: 0;
-    padding: 0 0.3rem;
-    color: var(--act-dim);
-    border-color: var(--act-line2);
 }
 
-::deep .newtaskbtn:hover {
+::deep .newtaskbtn.rz-button.rz-variant-outlined.rz-base,
+::deep .newtaskbtn .rz-button.rz-variant-outlined.rz-base {
+    padding: 0 0.3rem;
+    min-width: 0;
+    color: var(--act-dim);
+}
+
+::deep .newtaskbtn.rz-button.rz-variant-outlined.rz-base:hover,
+::deep .newtaskbtn .rz-button.rz-variant-outlined.rz-base:hover {
     color: var(--act-ink);
+}
+
+/* One control, not two buttons that happen to touch. An outlined button's edge is an inset shadow
+   (see `app.css`), so two of them meeting draw two lines at the seam and hovering one lights half a
+   box. The ring therefore moves to the wrapper and the halves give theirs up: one edge around the
+   pair, one hairline down the middle. */
+::deep .newtaskbtn.rz-splitbutton {
+    box-shadow: inset 0 0 0 1px var(--act-line2);
+    border-radius: var(--act-radius);
+}
+
+::deep .newtaskbtn.rz-splitbutton:hover {
+    box-shadow: inset 0 0 0 1px var(--act-dim);
+}
+
+::deep .newtaskbtn.rz-splitbutton .rz-button.rz-variant-outlined.rz-base,
+::deep .newtaskbtn.rz-splitbutton .rz-button.rz-variant-outlined.rz-base:hover {
+    box-shadow: none;
+}
+
+/* The caret is a hint; the `+` is the action — so it takes about half the width. Qualified like the
+   rule above and for the same reason: the toggle is a `.rz-button.rz-variant-outlined.rz-base` too,
+   so an unqualified padding here loses to the theme and the caret ends up *wider* than the `+`. */
+::deep .newtaskbtn .rz-splitbutton-menubutton.rz-variant-outlined.rz-base {
+    border-left: 1px solid var(--act-line2);
+    padding: 0 0.1rem;
+}
+
+/* Two measurements, because an icon-only button sizes its glyph twice: `font-size` draws it (20px at
+   Small) and a fixed `width` reserves the box around it. Shrinking only the first leaves a 14px
+   caret centred in a 20px hole. */
+::deep .newtaskbtn .rz-splitbutton-menubutton .rzi {
+    font-size: var(--act-t6);
+    width: auto;
 }
 
 ::deep .empty {

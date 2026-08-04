@@ -268,10 +268,88 @@ body {
    text, which on a dark dropdown panel is invisible rather than merely dim. Anchoring the document
    to Radzen's own text token fixes each of them at once and follows the theme automatically,
    including an explicit light/dark override, because `ThemeMedia` switches which Radzen sheet
-   defines it. */
+   defines it.
+   The font is here for a related reason and a wider one: Radzen sets its typeface on its own
+   components, never on the document, so anything ACT styles with a plain class of its own inherited
+   the browser default — **Times New Roman** — and had been doing so unnoticed since the shell was
+   built. Every page's title in its top bar, and every title in a row-list (archive, templates), was
+   serif. Radzen's own widgets hid it: the label beside a control is a `RadzenText`, so the two sat
+   side by side in different families and read as a weight difference rather than a bug. */
 html,
 body {
     color: var(--rz-text-color);
+    font-family: var(--rz-text-font-family);
+}
+
+/* An outlined button's edge is not a border — it is an **inset box-shadow**, and its colour comes
+   straight off Radzen's raw ramp as `--rz-base-300`, `#c9cacd`. So every secondary button in the app
+   was ringed in near-white on a near-black board: the board's chips, Browse, the archive's row
+   actions, the New task button. It hid in plain sight because the buttons' `border-width` is `0`, so
+   a `border-color` in ACT's own CSS looked like it was doing the job and silently did nothing.
+   Fixed here rather than by pointing `--rz-base-300` at a token, because that is a step on the ramp
+   the block above deliberately does not touch — the same slot also draws the gauge scale, the
+   timeline point and the upload widget, none of which want a hairline. Hover brightens to `--act-dim`
+   so the affordance survives, which is what the near-white was overshooting.
+   `.rz-shade-default` is in the selector only to carry weight: the theme's own rule names the shade,
+   so a three-class version of this loses to it and changes nothing. */
+.rz-button.rz-variant-outlined.rz-base.rz-shade-default {
+    box-shadow: inset 0 0 0 1px var(--act-line2);
+}
+
+.rz-button.rz-variant-outlined.rz-base.rz-shade-default:hover {
+    box-shadow: inset 0 0 0 1px var(--act-dim);
+}
+
+/* The New task picker's menu, global for the same reason the rule above is: Radzen mounts a split
+   button's popup at <body>, so the board's scoped CSS cannot reach it and it arrived at the
+   framework's defaults — a flat panel with no elevation, prose-sized rows, and a saturated blue
+   highlight bar that is the one colour on this board reserved for *review*. Anchoring it to the
+   surface tokens makes it read as part of the column header it drops out of. */
+.rz-splitbutton-menu {
+    background: var(--act-surface2);
+    border: 1px solid var(--act-line2);
+    border-radius: var(--act-radius);
+    box-shadow: 0 6px 18px #0006;
+    padding: var(--act-s1) 0;
+    overflow: hidden;
+}
+
+.rz-splitbutton-menu .rz-menuitem-text,
+.rz-splitbutton-menu .rz-menuitem-link {
+    font-size: var(--act-t5);
+    color: var(--act-ink);
+}
+
+.rz-splitbutton-menu .rz-menuitem-link {
+    padding: var(--act-s1) var(--act-s3);
+    line-height: var(--act-lh-dense);
+}
+
+/* Radzen marks the first item `rz-state-highlight` on open, so hover and that state have to agree —
+   otherwise the menu opens with a row already lit and the cursor lighting a second one. A tint of
+   the surface, because a template is not an alert. */
+.rz-splitbutton-menu .rz-menuitem-link:hover,
+.rz-splitbutton-menu .rz-menuitem.rz-state-highlight > .rz-menuitem-link {
+    background: var(--act-line);
+    color: var(--act-ink);
+}
+
+/* Opening the menu focuses the list, and while it holds focus the highlighted `li` is filled with a
+   saturated blue — `rgba(56, 113, 255, 0.2)`, off-palette entirely, on a board where blue means
+   *review* and nothing else. It only appears under genuine keyboard focus, which is why it survived
+   the styling above and shows up in a real browser but not when a script opens the menu. The `li` is
+   the frame around the row rather than the row itself, so it has nothing to say: the fill on the link
+   inside it is already the cursor, and it moves with the keyboard. */
+.rz-splitbutton-menu .rz-menuitem,
+.rz-splitbutton-menu .rz-menu-list:focus .rz-menuitem,
+.rz-splitbutton-menu .rz-menu-list:focus-visible .rz-menuitem {
+    background: transparent;
+    outline: none;
+
+    /* Radzen insets each item by 2px/4px, which leaves the cursor's fill floating inside the panel
+       with a margin on every side rather than reading as the row it marks. The panel's own padding is
+       what holds the list off its rounded corners. */
+    padding: 0;
 }
 
 /* Keep a tall dialog clear of the window edges; Radzen's own max-height is 100%. */

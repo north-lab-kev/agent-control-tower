@@ -65,9 +65,30 @@
                        appears is also where you ask for one. *@
                     @if (column is BoardColumn.Preparing)
                     {
-                        <RadzenButton Icon="add" ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
-                                      Size="ButtonSize.Small" Click="OpenNewTask" class="newtaskbtn"
-                                      title="@Strings.Shell_NewTask" aria-label="@Strings.Shell_NewTask" />
+                        @* A split button only once there is something else to start from: the button
+                           itself is the default template, so with nothing but that the caret would
+                           drop a menu repeating the button it hangs off. *@
+                        @if (PickableTemplates is [_, ..] templates)
+                        {
+                            <RadzenSplitButton Icon="add" ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
+                                               Size="ButtonSize.Small" Click="OnNewTaskPicked" class="newtaskbtn"
+                                               title="@Strings.Board_NewTaskFrom"
+                                               aria-label="@Strings.Board_NewTaskFrom">
+                                <ChildContent>
+                                    @foreach (var template in templates)
+                                    {
+                                        <RadzenSplitButtonItem Text="@TaskLabels.Template(template)"
+                                                               Value="@template.Id.ToString()" />
+                                    }
+                                </ChildContent>
+                            </RadzenSplitButton>
+                        }
+                        else
+                        {
+                            <RadzenButton Icon="add" ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
+                                          Size="ButtonSize.Small" Click="OpenNewTask" class="newtaskbtn"
+                                          title="@Strings.Shell_NewTask" aria-label="@Strings.Shell_NewTask" />
+                        }
                     }
                 </RadzenStack>
 

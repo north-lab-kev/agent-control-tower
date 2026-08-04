@@ -10,11 +10,13 @@ internal static class ActDatabase
     {
         var directory = Directory.CreateDirectory(Path.GetFullPath(dataDirectory));
 
-        var database = new LiteDatabase(Path.Combine(directory.FullName, FileName), ActBsonMapper.Create());
+        var mapper = ActBsonMapper.Create();
+
+        var database = new LiteDatabase(Path.Combine(directory.FullName, FileName), mapper);
 
         try
         {
-            ActSchema.Apply(database);
+            ActSchema.Apply(database, mapper);
         }
         catch
         {

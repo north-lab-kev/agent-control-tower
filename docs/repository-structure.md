@@ -85,7 +85,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ Components/
 │  │  │  ├─ Pages/                  #     EVERY @page component and nothing else:
 │  │  │  │                          #       BoardView "/", TaskView, SessionView,
-│  │  │  │                          #       ArchiveView, SettingsView, Error, NotFound
+│  │  │  │                          #       ArchiveView, TemplatesView, TemplateView,
+│  │  │  │                          #       SettingsView, Error, NotFound
 │  │  │  ├─ Board/                  #     non-routable board parts (FlightStrip)
 │  │  │  ├─ Shared/                 #     CardTabs (Task|Terminal|Timeline), FolderPicker,
 │  │  │  │                         #       EscapeKey (renders nothing; binds Escape for a page)
@@ -98,7 +99,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     place allowed to name ElectronNET (a test enforces it)
 │  │  ├─ Cards/                     #   BoardState — owns every card incl. archived ones, and
 │  │  │                            #     decides what may see which; RetentionPump (the hourly
-│  │  │                            #     auto-archive sweep); task form model; capability
+│  │  │                            #     auto-archive sweep); task form model (NewTaskForm, and
+│  │  │                            #       its conversions to a Card and to a TaskTemplate);
+│  │  │                            #     TaskLabels — the label/choice vocabulary every form
+│  │  │                            #       that describes a task shares; capability
 │  │  │                            #     catalog built from the registered adapters;
 │  │  │                            #     TaskTitles (ask the task's agent to name it, and always
 │  │  │                            #       answer — the prompt's opening words are the floor)
@@ -198,6 +202,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   | `/card/{id}/terminal` | `SessionView` |
   | `/card/{id}/timeline` | `TimelineView` |
   | `/archive` | `ArchiveView` |
+  | `/templates` | `TemplatesView` |
+  | `/template/new` · `/template/{id}` | `TemplateView` |
   | `/settings` | `SettingsView` |
   | `/Error` · `/not-found` | `Error` · `NotFound` |
 
@@ -368,9 +374,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   (`ActDatabase.Open`) that configures the `BsonMapper` and applies the schema —
   a **version document plus an ordered migration list**, so `CurrentVersion` is
   derived from that list and a store written by a newer build is rejected instead
-  of silently mangled. The list is **empty**: nothing has shipped yet, so every
-  breaking store change so far was handled by starting a fresh `act.db` rather
-  than by a migration. The first release is what makes that stop being an option. Collection names live in one place (`ActCollections`), and
+  of silently mangled. The list holds **one** entry — schema 1 → 2, `UserSettings.TaskDefaults`
+  becoming `UserSettings.Templates` (2026-08-04). Every earlier breaking change was handled by
+  starting a fresh `act.db`, which the pre-release rule still allows; the first release is what
+  makes that stop being an option. Collection names live in one place (`ActCollections`), and
   the friendly card `number` comes from a counter document that seeds itself
   above any card already stored.
 - **Backward compatibility is a migration, never a mapper.** A read-time shim — a
@@ -379,7 +386,20 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   `CLAUDE.md` as a hard one. Nothing ever tells you the last old document is gone,
   so the shim outlives the data it was written for and the store carries two shapes
   indefinitely. A `Migrations` entry that rewrites the documents at startup leaves
-  exactly one shape on disk. **A version that was bumped by a shim and then had the
+  exactly one shape on disk.
+  - **A migration writes through the mapper, never by hand.** The shape it has to produce is
+    whatever the *new* type serializes to, and the two things LiteDB does not take verbatim —
+    `Id` becomes `_id` even on a nested object, and an enum's encoding is the mapper's choice —
+    are exactly what a hand-built `BsonDocument` gets wrong. So `ActSchema.Apply` takes the
+    `BsonMapper` `ActDatabase` built the database with, and the first migration reads the old
+    sub-document straight into the new type (their field names overlap) and writes the result
+    back with `ToDocument`. A round-trip test in `SettingsStoreTests` is what pins the `_id`
+    half of that, because nothing in the type declaration says it.
+  - **A migration must be a no-op on a document it does not recognise**, not a throw: a fresh
+    store has no settings document at all, so the invariant the new shape carries (there is
+    always one default template) is seeded by `UserSettingsService` on the way in and the
+    migration only rewrites what it finds.
+  **A version that was bumped by a shim and then had the
   shim removed leaves a store no build can open** — `CurrentVersion` goes backwards
   while the stored version does not, and the only way out is deleting `act.db`,
   which is what happened on 2026-08-03 (schema 2 against a build back down at 1).

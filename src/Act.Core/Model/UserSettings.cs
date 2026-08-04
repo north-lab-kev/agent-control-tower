@@ -44,8 +44,10 @@ public sealed class UserSettings
 
     public int AutoArchiveCompletedAfterDays { get; set; } = 10;
 
-    // What a new task is pre-filled with. Never null, so the form can read it unconditionally.
-    public TaskDefaults TaskDefaults { get; set; } = new();
+    // The saved starting points a new task can be created from. Exactly one of them carries
+    // `IsDefault`: it is what the plain New task button uses and the one entry that cannot be
+    // deleted. `UserSettingsService` guarantees it exists, so every reader can assume one.
+    public IList<TaskTemplate> Templates { get; set; } = [];
 
     // Where the desktop window was last left. Null until the shell has run once.
     public WindowBounds? Window { get; set; }

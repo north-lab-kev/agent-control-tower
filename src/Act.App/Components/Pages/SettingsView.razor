@@ -158,75 +158,16 @@
                 </RadzenStack>
             </RadzenFieldset>
 
-            @* Everything the new-task form asks for except the title and the prompt — those are the
-               task itself, and pre-filling them would mean creating the same task twice by
-               accident. *@
-            <RadzenFieldset Text="@Strings.Settings_Group_TaskDefaults">
-                <RadzenStack Gap="1rem">
-                    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_TaskDefaults_Hint" class="hint" />
-
-                    <RadzenStack Gap="0.3rem">
-                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_WorkingDir" />
-
-                        <div class="dirrow">
-                            <RadzenTextBox Value="@defaults.WorkingDir" class="wide"
-                                           Placeholder="@Strings.NewTask_WorkingDir_Placeholder"
-                                           Change="@(value => OnDefaultWorkingDirChanged(value))" />
-                            <RadzenButton Icon="folder_open" Text="@Strings.Picker_Browse"
-                                          Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
-                                          Variant="Variant.Outlined" ButtonType="ButtonType.Button"
-                                          Click="@(() => browsingDefaultDir = !browsingDefaultDir)" />
-                        </div>
-
-                        @if (browsingDefaultDir)
-                        {
-                            <PathPicker StartAt="@defaults.WorkingDir" OnPick="OnDefaultWorkingDirPicked"
-                                        OnCancel="@(() => browsingDefaultDir = false)" />
-                        }
-                    </RadzenStack>
-
-                    <div class="row">
-                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Agent" />
-                        <RadzenDropDown TValue="AgentType" Value="defaults.Agent" ValueChanged="OnDefaultAgentChanged"
-                                        Data="DefaultAgentChoices" TextProperty="Text" ValueProperty="Value"
-                                        AllowClear="false" class="control" />
-                    </div>
-
-                    <div class="row">
-                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Model" />
-                        <RadzenDropDown TValue="string" Value="defaults.Model" ValueChanged="OnDefaultModelChanged"
-                                        Data="DefaultModels" AllowClear="true"
-                                        Placeholder="@Strings.NewTask_AgentDefault" class="control" />
-                    </div>
-
-                    <div class="row">
-                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Effort" />
-                        <RadzenDropDown TValue="string" Value="defaults.Effort" ValueChanged="OnDefaultEffortChanged"
-                                        Data="DefaultEfforts" AllowClear="true"
-                                        Placeholder="@Strings.NewTask_AgentDefault" class="control" />
-                    </div>
-
-                    <div class="row">
-                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Permission" />
-                        <RadzenDropDown TValue="PermissionMode" Value="defaults.PermissionMode"
-                                        ValueChanged="OnDefaultPermissionChanged" Data="DefaultPermissionChoices"
-                                        TextProperty="Text" ValueProperty="Value" AllowClear="false" class="control" />
-                    </div>
-
-                    <div class="row">
-                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Schedule" />
-                        <RadzenDropDown TValue="TaskSchedule" Value="defaults.Schedule"
-                                        ValueChanged="OnDefaultScheduleChanged" Data="DefaultScheduleChoices"
-                                        TextProperty="Text" ValueProperty="Value" AllowClear="false" class="control" />
-                    </div>
-
-                    <div class="row">
-                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AutoGit" />
-                        <RadzenDropDown TValue="GitAction?" Value="defaults.GitAction"
-                                        ValueChanged="OnDefaultGitActionChanged" Data="DefaultGitChoices"
-                                        TextProperty="Text" ValueProperty="Value" AllowClear="true"
-                                        Placeholder="@Strings.NewTask_NoGitAction" class="control" />
-                    </div>
+            @* What a new task starts from used to be one unnamed block of defaults here. It is a
+               managed list now, so this is a pointer to the page that owns it rather than a second
+               place to edit the same thing. *@
+            <RadzenFieldset Text="@Strings.Settings_Group_Templates">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                             JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Templates_Hint" class="hint" />
+                    <RadzenButton Icon="bookmarks" Text="@Strings.Settings_Templates_Manage"
+                                  Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                  Variant="Variant.Outlined" Click="OpenTemplates" />
                 </RadzenStack>
             </RadzenFieldset>
 

@@ -441,12 +441,6 @@
   <data name="Settings_AgentBinary_Found" xml:space="preserve">
     <value>Found.</value>
   </data>
-  <data name="Settings_Group_TaskDefaults" xml:space="preserve">
-    <value>New task defaults</value>
-  </data>
-  <data name="Settings_TaskDefaults_Hint" xml:space="preserve">
-    <value>What a new task starts as. The title and the prompt are always yours to write.</value>
-  </data>
   <data name="Settings_Agents_Hint" xml:space="preserve">
     <value>How each CLI is installed on this machine. These apply to every task using that agent, and take effect on its next launch.</value>
   </data>
@@ -917,5 +911,89 @@
   </data>
   <data name="Board_Density_Tip" xml:space="preserve">
     <value>How much detail each flight strip shows. Click to switch.</value>
+  </data>
+  <data name="Templates_Title" xml:space="preserve">
+    <value>Task templates</value>
+  </data>
+  <data name="Templates_Hint" xml:space="preserve">
+    <value>What a new task can start from. The default one is used by the New task button and cannot be deleted.</value>
+  </data>
+  <data name="Templates_Default" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="Templates_DefaultLocked" xml:space="preserve">
+    <value>This is what the New task button starts from. It cannot be renamed or deleted, and it carries no title or prompt — those are the task itself, and every new task writes its own.</value>
+  </data>
+  <data name="Templates_New" xml:space="preserve">
+    <value>New template</value>
+  </data>
+  <data name="Templates_Edit" xml:space="preserve">
+    <value>Edit template</value>
+  </data>
+  <data name="Templates_Delete" xml:space="preserve">
+    <value>Delete template</value>
+  </data>
+  <data name="Templates_DeleteConfirm" xml:space="preserve">
+    <value>Delete the template “{0}”? Tasks already created from it are not affected.</value>
+  </data>
+  <data name="Templates_DeleteYes" xml:space="preserve">
+    <value>Delete it</value>
+  </data>
+  <data name="Templates_NoPrompt" xml:space="preserve">
+    <value>no prompt</value>
+  </data>
+  <data name="Templates_Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Templates_Name_Hint" xml:space="preserve">
+    <value>How it reads in the New task picker.</value>
+  </data>
+  <data name="Templates_Prompt_Hint" xml:space="preserve">
+    <value>The starting point for the task's prompt. Leave it empty to write one each time.</value>
+  </data>
+  <data name="Templates_TaskTitle_Hint" xml:space="preserve">
+    <value>The name every task from this template starts with. Leave it empty and each task is named from its prompt.</value>
+  </data>
+  <data name="Templates_TaskTitle_Placeholder" xml:space="preserve">
+    <value>Named from the prompt</value>
+  </data>
+  <data name="Templates_TitleMeta" xml:space="preserve">
+    <value>titled “{0}”</value>
+  </data>
+  <data name="Templates_Group_Template" xml:space="preserve">
+    <value>Template</value>
+  </data>
+  <data name="TemplateView_NewTitle" xml:space="preserve">
+    <value>New template</value>
+  </data>
+  <data name="Template_NotFound" xml:space="preserve">
+    <value>That template no longer exists.</value>
+  </data>
+  <data name="Templates_Back" xml:space="preserve">
+    <value>Back to templates</value>
+  </data>
+  <data name="Board_NewTaskFrom" xml:space="preserve">
+    <value>New task from a template</value>
+  </data>
+  <data name="Task_SaveAsTemplate" xml:space="preserve">
+    <value>Save as a template</value>
+  </data>
+  <data name="Task_SaveAsTemplate_Prompt" xml:space="preserve">
+    <value>Name the template. It will start a new task with everything on this form except the title.</value>
+  </data>
+  <data name="Task_SaveAsTemplate_Saved" xml:space="preserve">
+    <value>Template saved</value>
+  </data>
+  <data name="Task_SaveAsTemplate_SavedDetail" xml:space="preserve">
+    <value>“{0}” is now in the New task picker.</value>
+  </data>
+  <data name="Settings_Group_Templates" xml:space="preserve">
+    <value>Task templates</value>
+  </data>
+  <data name="Settings_Templates_Hint" xml:space="preserve">
+    <value>What a new task starts from now lives on its own page, so you can keep more than one.</value>
+  </data>
+  <data name="Settings_Templates_Manage" xml:space="preserve">
+    <value>Manage templates</value>
   </data>
 </root>

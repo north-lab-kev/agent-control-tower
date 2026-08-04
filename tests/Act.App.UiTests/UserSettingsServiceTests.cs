@@ -1,3 +1,4 @@
+using Act.App.Cards;
 using Act.App.Settings;
 using Act.Core.Model;
 using Act.Core.Rules;
@@ -126,17 +127,241 @@ public class UserSettingsServiceTests
         settings.Defaults(AgentType.Codex).Binary.Should().Be("codex.exe");
     }
 
+    // The invariant every reader of a template leans on: there is always exactly one default, so
+    // nothing has to handle its absence. A fresh install has no settings document at all, which is why
+    // it is seeded on the way in rather than by the schema migration.
     [Fact]
-    public void Task_defaults_are_handed_out_as_a_copy()
+    public void A_fresh_install_already_has_one_default_template()
+    {
+        var (settings, store) = ServiceOf();
+
+        var template = settings.Templates.Should().ContainSingle().Subject;
+
+        template.IsDefault.Should().BeTrue();
+        template.Id.Should().NotBeEmpty();
+
+        store.Load().Templates.Should().ContainSingle();
+    }
+
+    // The default's name is *not stored*: it is not the user's to change, and a stored translation
+    // would freeze the language it was written in. What it reads as comes from the resources, so the
+    // only thing worth pinning here is that the two halves agree.
+    [Fact]
+    public void The_default_templates_name_is_rendered_rather_than_stored()
     {
         var (settings, _) = ServiceOf();
 
-        settings.SetTaskDefaults(new TaskDefaults { WorkingDir = "/dev/act" });
+        var template = settings.DefaultTemplate;
 
-        var borrowed = settings.TaskDefaults;
+        template.Name.Should().BeEmpty();
+        TaskLabels.Template(template).Should().NotBeNullOrWhiteSpace();
+    }
+
+    // The default is what the bare New task button starts from, so a title or a prompt on it would
+    // make every task begin as a copy of the last. Enforced in the store rather than only by the page
+    // that hides the fields, and re-applied on load so a store an earlier build wrote is corrected.
+    [Fact]
+    public void The_default_template_cannot_be_given_a_name_title_or_prompt()
+    {
+        var (settings, store) = ServiceOf();
+
+        var edited = settings.DefaultTemplate;
+
+        edited.Name = "Renamed";
+        edited.Title = "Nightly sweep";
+        edited.Prompt = "Update the packages";
+        edited.WorkingDir = "C:/dev/act";
+
+        settings.SaveTemplate(edited);
+
+        var saved = settings.DefaultTemplate;
+
+        saved.Name.Should().BeEmpty();
+        saved.Title.Should().BeEmpty();
+        saved.Prompt.Should().BeEmpty();
+
+        // Everything else about it is still the user's to set — that is what the template is for.
+        saved.WorkingDir.Should().Be("C:/dev/act");
+        store.Load().Templates.Should().ContainSingle().Which.Name.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void A_default_a_previous_build_let_keep_a_title_is_cleared_on_the_way_in()
+    {
+        var store = new FakeSettingsStore();
+
+        store.Save(new UserSettings
+        {
+            Templates =
+            [
+                new TaskTemplate
+                {
+                    Id = Guid.NewGuid(),
+                    IsDefault = true,
+                    Name = "Default",
+                    Title = "test",
+                    Prompt = "do the thing",
+                    WorkingDir = "C:/dev/act",
+                },
+                new TaskTemplate { Id = Guid.NewGuid(), Name = "Bugfix", Title = "Fix it" },
+            ],
+        });
+
+        var settings = new UserSettingsService(store, new AppCulture());
+
+        var restricted = settings.DefaultTemplate;
+
+        restricted.Name.Should().BeEmpty();
+        restricted.Title.Should().BeEmpty();
+        restricted.Prompt.Should().BeEmpty();
+        restricted.WorkingDir.Should().Be("C:/dev/act");
+
+        // Only the default is restricted; a named template keeps both.
+        var named = settings.Templates.Single(template => !template.IsDefault);
+
+        named.Name.Should().Be("Bugfix");
+        named.Title.Should().Be("Fix it");
+
+        // And the correction is persisted, not re-applied on every load.
+        store.Load().Templates.Single(template => template.IsDefault).Title.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Templates_are_handed_out_as_copies()
+    {
+        var (settings, _) = ServiceOf();
+
+        var borrowed = settings.DefaultTemplate;
         borrowed.WorkingDir = "/tampered";
 
-        settings.TaskDefaults.WorkingDir.Should().Be("/dev/act");
+        settings.DefaultTemplate.WorkingDir.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void A_saved_template_gets_an_id_and_joins_the_list()
+    {
+        var (settings, store) = ServiceOf();
+
+        settings.SaveTemplate(new TaskTemplate { Name = "Bugfix", WorkingDir = "/dev/act" });
+
+        var saved = settings.Templates.Should().HaveCount(2).And
+            .ContainSingle(template => template.Name == "Bugfix").Subject;
+
+        saved.Id.Should().NotBeEmpty();
+        saved.IsDefault.Should().BeFalse();
+        store.Load().Templates.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void Saving_a_template_twice_replaces_rather_than_duplicates()
+    {
+        var (settings, _) = ServiceOf();
+
+        settings.SaveTemplate(new TaskTemplate { Name = "Bugfix" });
+
+        var saved = settings.Templates.Single(template => !template.IsDefault);
+
+        saved.Name = "Bugfix v2";
+        settings.SaveTemplate(saved);
+
+        settings.Templates.Should().HaveCount(2)
+            .And.ContainSingle(template => template.Name == "Bugfix v2");
+    }
+
+    // Which template is the default is the store's business, not a form's: a save that carried the
+    // flag would let the editor promote a template by round-tripping it, and there is deliberately no
+    // other way to move it — the shipped default is the default for good.
+    [Fact]
+    public void Saving_a_template_cannot_change_which_one_is_the_default()
+    {
+        var (settings, _) = ServiceOf();
+
+        var original = settings.DefaultTemplate;
+
+        settings.SaveTemplate(new TaskTemplate { Name = "Bugfix", IsDefault = true });
+
+        settings.DefaultTemplate.Id.Should().Be(original.Id);
+        settings.Templates.Should().ContainSingle(template => template.IsDefault);
+    }
+
+    // Sorted by name, not by creation: this list is read to *find* a template, and insertion order is
+    // an order only the person who made them knows. Case folds, so a lower-cased name is not exiled
+    // to the end.
+    [Fact]
+    public void Templates_are_listed_alphabetically_whatever_their_case()
+    {
+        var (settings, _) = ServiceOf();
+
+        settings.SaveTemplate(new TaskTemplate { Name = "zebra" });
+        settings.SaveTemplate(new TaskTemplate { Name = "Alpha" });
+        settings.SaveTemplate(new TaskTemplate { Name = "beta" });
+
+        // The shipped default is left out of the expectation rather than positioned in it: its name is
+        // localised, so where it sorts depends on the language and is not what this pins.
+        settings.Templates.Select(template => template.Name)
+            .Where(name => name is "Alpha" or "beta" or "zebra")
+            .Should().Equal("Alpha", "beta", "zebra");
+    }
+
+    // It sorts on the name the user *reads*, which for the default is not the empty string it stores —
+    // otherwise it would pin itself to the top of every list whatever it is called.
+    [Fact]
+    public void The_default_sorts_by_the_name_it_renders_as()
+    {
+        var (settings, _) = ServiceOf();
+
+        settings.SaveTemplate(new TaskTemplate { Name = "aaa" });
+
+        settings.Templates.Select(TaskLabels.Template)
+            .Should().Equal("aaa", TaskLabels.Template(settings.DefaultTemplate));
+    }
+
+    // A board whose New task button has nothing to start from is not a state to offer, so the refusal
+    // lives here rather than only in the page that hides the button.
+    [Fact]
+    public void The_default_template_cannot_be_deleted()
+    {
+        var (settings, _) = ServiceOf();
+
+        settings.DeleteTemplate(settings.DefaultTemplate.Id);
+
+        settings.Templates.Should().ContainSingle().Which.IsDefault.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Any_other_template_can_be_deleted()
+    {
+        var (settings, store) = ServiceOf();
+
+        settings.SaveTemplate(new TaskTemplate { Name = "Bugfix" });
+
+        settings.DeleteTemplate(settings.Templates.Single(template => template.Name == "Bugfix").Id);
+
+        settings.Templates.Should().ContainSingle();
+        store.Load().Templates.Should().ContainSingle();
+    }
+
+    // What `/card/new?template=…` resolves with. An id that no longer names anything falls back to
+    // the default rather than leaving the page with nothing to pre-fill from.
+    [Fact]
+    public void An_unknown_template_id_falls_back_to_the_default()
+    {
+        var (settings, _) = ServiceOf();
+
+        settings.TemplateOrDefault(Guid.NewGuid()).Id.Should().Be(settings.DefaultTemplate.Id);
+        settings.TemplateOrDefault(null).Id.Should().Be(settings.DefaultTemplate.Id);
+    }
+
+    [Fact]
+    public void A_known_template_id_resolves_to_that_template()
+    {
+        var (settings, _) = ServiceOf();
+
+        settings.SaveTemplate(new TaskTemplate { Name = "Bugfix" });
+
+        var bugfix = settings.Templates.Single(template => template.Name == "Bugfix");
+
+        settings.TemplateOrDefault(bugfix.Id).Name.Should().Be("Bugfix");
     }
 
     [Fact]

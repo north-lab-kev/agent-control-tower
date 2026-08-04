@@ -112,6 +112,8 @@ public partial class MainLayout(
             ThemeMedia.Dark(appliedTheme));
     });
 
+    private void OpenTemplates() => navigation.NavigateTo("/templates");
+
     private void OpenArchive() => navigation.NavigateTo("/archive");
 
     private void OpenSettings() => navigation.NavigateTo("/settings");

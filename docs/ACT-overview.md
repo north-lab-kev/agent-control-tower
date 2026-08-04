@@ -716,13 +716,118 @@ user's existing `settings.json` (CLI flags > project > user > built-in
 defaults). A project deny list still applies underneath — ACT does **not** fully
 own permissions.
 
+### Task templates — added 2026-08-04
+
+A **template** is a saved starting point for a new task: everything the task form asks
+for. It replaced *Settings → New task defaults*, which was the same
+idea allowed only one instance of itself — one unnamed block describing one kind of work,
+on a board whose whole point is that there are several.
+
+- **A named template carries the prompt and the title; the default still carries neither.** The
+  old defaults carried neither either, and that was the right call *for a default* — pre-filling
+  them means creating the same task twice by accident — but the wrong one for a template you ask
+  for by name, where they are most of the value. "Bugfix on repo X, Codex, accept-edits" is a
+  prompt skeleton with a launch config attached, not a launch config with a prompt bolted on. So
+  the split is by *which* template: both fields are optional on a named one and absent from the
+  default, which means a fresh install behaves exactly as it did before templates existed.
+- **The title is templated too, and optional** — decided 2026-08-04, reversing the first cut.
+  The argument against it was that a title names *one* task, so a template carrying one would
+  put the same name on every card it made. That is a reason to make it **optional**, not to
+  refuse it: a recurring task genuinely wants a fixed name ("Nightly dependency sweep"), and
+  the field is where a user would look for it. So a template's `title` is copied into the
+  form's title box, which makes it a *typed* title as far as the save is concerned and wins
+  over the prompt — and a template that leaves it blank falls straight through to the existing
+  answer, the title written from the prompt on save (see *Auto-generated titles*). One
+  consequence worth having: a template with a title costs **no CLI call** to create a task
+  from, because there is nothing left to derive.
+  - **The template's `name` and the task's `title` are different fields, and both stay.** The
+    name is how the template reads in the picker and the list — and what the list sorts on; the
+    title is what the cards are called. *Save as a template* asks for the name in its dialog and
+    suggests the task's title for it, and separately carries that title into the template, so the
+    two can coincide on the way in and be pulled apart afterwards. Merging them was considered
+    and dropped: they diverge the moment a template called *Nightly sweep* should produce cards
+    named *Nightly dependency sweep*, or a template deliberately leaves the title blank so each
+    card is named from its own prompt.
+- **`schedule`'s specific datetime is the one thing dropped.** A moment is not a habit, and a
+  template holding one would arm every task it created for a time that has already passed. The
+  other three schedules (`manual` / `now` / `next-window`) are relative and template fine, and
+  the template editor simply does not offer the fourth.
+- **Exactly one template is the default, and it is a restricted one.** It is what the plain
+  **New task** button uses, so a store without one is a board whose New-task button has nothing
+  to start from — `UserSettingsService` seeds it on the way in rather than leaving it to the
+  pages that rely on it, because a fresh install has no settings document at all and the schema
+  migration only rewrites documents it finds. Three things about it are not the user's:
+  - **It cannot be deleted.**
+  - **It cannot be renamed, and its name is not stored.** It reads as *Default* / *Par défaut*
+    from the resources (`TaskLabels.Template`), so it follows the UI language instead of freezing
+    whichever one the install first ran in — *anything stored is a code* applied to the one
+    template name ACT writes rather than the user. Every *other* template requires a name, so
+    that is the only case with nothing stored to show.
+  - **It carries no title and no prompt.** Those are the task itself, and pre-filling either on
+    the template the bare `+` starts from means every task begins as a copy of the last — which
+    is exactly why the settings block this replaced carried neither. A *named* template is asked
+    for by name, so it may carry both.
+  All three are enforced in `SaveTemplate` (and re-applied on load, so a store an earlier build
+  wrote is corrected), not only by the editor that hides the three fields: the code that writes
+  the store is the only place that can promise it. The editor shows **one notice** in place of
+  them rather than three boxes nobody may fill in.
+  - **Which template is the default never moves.** There was a *Use as the default* action on
+    every other row; it is **gone (2026-08-04)** along with `SetDefaultTemplate`. It bought one
+    thing — moving what the bare `+` starts from — and cost a state nothing else could produce: a
+    demoted default carrying a name and prompt it was never allowed to have. Editing the
+    default's own fields does the same job without the hole, and `SaveTemplate` ignores an
+    `isDefault` it is handed so a round-trip through the editor cannot promote anything.
+- **The list is sorted by name**, case-folded and culture-aware, on both surfaces that show it.
+  It is read to *find* a template, and creation order is an order only the person who made them
+  knows. The default sorts among the rest rather than being pinned — a row that jumps to the top
+  for a reason the eye cannot see is worse than one in the place its name puts it.
+  - **Nothing badges the default — removed 2026-08-04.** It briefly carried a *DEFAULT* pill, and
+    the row says the same thing twice without it: the name *is* *Default*, unchangeably, and it is
+    the one row with no delete button. The pill also cost the row its layout, inflating the title's
+    line box until the metadata line under it clipped.
+- **Two surfaces, both pages.** `/templates` is the list — the same dense-row shape the
+  archive uses, and for the same reason: a template is not work in progress. `/template/new`
+  and `/template/{id}` are the editor: the task form with the name added, the specific-datetime
+  schedule removed, three fields hidden on the default, and a
+  **Save** rather than settings' apply-as-you-type, because `/template/new` has nothing to
+  apply to until the user commits it. Reached from a **bookmarks icon in the top bar**, beside
+  the archive, with a pointer left in Settings where the defaults used to be.
+  - **The list row reads *titled "…"* when a template pins one**, because "what will my cards be
+    called" is the question the list cannot otherwise answer — the row's own headline is the
+    template's name, which is a different string.
+- **Creating from one is a split button on the board.** The `+` in Preparing keeps its plain
+  click — new task from the default — and grows a menu of the **other** templates, which
+  navigates to `/card/new?template={id}`. A **query parameter, not a route**: it narrows
+  `/card/new` rather than naming a different destination, and an id that no longer exists falls
+  back to the default instead of 404ing the one page whose job is to make a task.
+  - **The default is deliberately not in the menu**, and the caret only appears once something
+    else is. The button *is* the default template, so listing it under its own caret offers the
+    same thing twice — and on a fresh install that menu would have held exactly one entry
+    duplicating the button it hangs off.
+- **Creating a template from a task reads the form, not the card** — the opposite of
+  *Duplicate*, deliberately. A copy has to be the run that was saved; a template is not a run,
+  it is the shape of the fields in front of you. So *Save as a template* sits in the task
+  page's footer beside Duplicate and works on **`/card/new` too**, before any card exists. It
+  asks for a name in a **dialog**, by the dialogs-are-forks rule: it interrupts a save already
+  under way and there is no url meaning "name the template I am about to make".
+- **Stored in the settings document, not a collection of their own** (`UserSettings.Templates`).
+  They are the user's choices, they are read on a render path — the board's picker draws one per
+  template — and the settings document is already loaded once at startup. A collection would
+  have bought a port, a store, a cache and an async load for a list that is a handful of items
+  long.
+- **`TaskDefaults` → `Templates` is the store's first real migration** (schema 1 → 2), rather
+  than the fresh-`act.db` answer the pre-release rule still allows: the change is mechanical and
+  the board it would have cost is the user's. See `docs/design-notes.md` for how it is written.
+
 ### Auto-generated titles — added 2026-08-03
 
 Nobody should have to name a task twice. The prompt already says what the work is,
 so `title` stopped being a field the user must fill in: it is **written from the
 prompt by the task's own agent**, on demand from a button beside the box and
 automatically on a save that leaves it blank. Typing one still wins — the box is
-first, editable, and never overwritten except by an explicit click.
+first, editable, and never overwritten except by an explicit click. A **template**
+that carries a title fills the box the same way typing would, so creating from one
+of those costs nothing at all (see *Task templates*).
 
 The title is the *only* reason ACT ever runs a CLI on its own account, and the
 whole design is about making that cost nothing:
@@ -2111,7 +2216,7 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     the same kind of thing rather than one modal and one route. Clicking a card opens
     whichever face applies: the form in Preparing / Ready, the terminal past the
     launch boundary. **Every surface is a page** — the board, the task form, the
-    terminal, the archive and settings.
+    terminal, the archive, the templates and settings.
   - **The title strip never dims.** The OS draws the window buttons *above* all web content, so
     a mask over the whole window dims everything except them and leaves them stranded in a bright
     block. Nothing in CSS can reach them, so the mask stops below the strip instead and the strip
@@ -2120,8 +2225,11 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     stay live, because closing the window must always work.
   - **Dialogs are for forks, not for places.** A page is somewhere you go and can link to;
     a dialog interrupts an action already under way and has no meaning on its own. So the
-    only modals are the two destructive prompts — archiving a card with follow-ups, and
-    emptying the archive. The completion/git prompt that was to be the third was cut with
+    modals are the two destructive prompts — archiving a card with follow-ups, and
+    emptying the archive — plus **naming a template** on the way out of *Save as a template*,
+    which is the same shape without being destructive: it interrupts a save already under way,
+    and there is no url that means "name the template I am about to make". The completion/git
+    prompt that was to be the third was cut with
     the spawned git task (see *Git integration*), so sign-off is a plain drag. Anything that is a
     *destination* is a route. Corollary learned the hard way: a decision that changes tasks
     other than the one on screen does not belong in a footer strip, however tidy.
@@ -2208,15 +2316,13 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   **pause automatic execution** and **tasks running at once** (*Execution*),
   **Agents** — one section per registered adapter carrying that CLI's **enabled** switch,
   executable, extra flags and environment (see *Launch config*; these are properties of
-  the install, which is why they are here and not on the task form) — and
-  **New task defaults**, the template a new card starts from. Still to land:
-  - **New task defaults** covers everything the task form asks for **except the title and the
-    prompt**: working directory, agent, model, effort, permission mode, schedule and
-    git-when-done. Those two are the task itself, and pre-filling them would mean creating the
-    same task twice by accident. Changing the default agent clears a model or effort the new one
-    does not offer, and moves the permission mode to one it does, rather than storing a default
-    that would be rejected at launch.
+  the install, which is why they are here and not on the task form). Still to land:
   Weekly-reset time.
+  - **New task defaults is gone — removed 2026-08-04.** It was one unnamed block describing
+    one kind of work, and it became *Task templates*, a managed list on its own page (see
+    *Task templates*). What is left here is a **pointer** to that page rather than a second
+    place to edit the same thing — a setting the user goes looking for in Settings should
+    still be findable there.
   - **Desktop notifications** (*System*, on by default, **desktop only**) is the single switch
     that replaced the planned per-event matrix — see *Native OS notifications* for why. It is
     hidden in browser mode for the same reason close-to-tray is: a switch that governs nothing
@@ -2323,9 +2429,6 @@ direction*, *Scheduling*, *Persistence*, *Native OS notifications*. Roadmap step
   suffix, ACT runs the git / host-CLI operations **itself** to save tokens (a
   commit is deterministic work not worth spending LLM tokens on). An optimization
   over the in-session git integration, which is the default.
-- **Task templates / presets** — save a reusable launch config + prompt skeleton
-  (e.g. "bugfix on repo X with these tools/model/permission mode") so creating a
-  common task is one click instead of filling every field.
 - **Remote access** — check in on the board from a phone while away (the overnight
   use case begs for it): at minimum a read-only view of which cards need you.
   Answering remotely means shipping the *terminal* to the phone (xterm.js already

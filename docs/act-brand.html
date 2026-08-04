@@ -8,9 +8,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
+  /* Styling for this sheet only — NOT the UI palette. `src/Act.App/wwwroot/app.css` owns the
+     shipped tokens (--act-bg, --act-amber, --act-run, --act-line, --act-ink); the few repeated
+     here exist so the sheet can draw itself and define the wordmark. Change a UI colour there. */
   :root{
     --bg:#0d1217; --panel:#141d25; --line:#26333f; --ink:#dbe4ec; --dim:#8091a0; --faint:#55636e;
-    --amber:#f2a93b; --teal:#35c7b4;
+    --amber:#f2a93b;
     --sans:'Space Grotesk',system-ui,sans-serif; --mono:'IBM Plex Mono',monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -21,9 +24,7 @@
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:26px}
   .label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:18px}
 
-  /* reusable icon */
-  .rings{fill:none;stroke:var(--amber)}
-  /* hero lockup */
+  /* the wordmark is defined here and nowhere else — it is not implemented in the app */
   .hero{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
   .wordmark{display:flex;flex-direction:column;gap:6px}
   .wordmark .mk{font-weight:700;font-size:58px;letter-spacing:.16em;line-height:1;color:var(--ink)}
@@ -38,7 +39,6 @@
   .light{background:#eef2f5;border-color:#d3dbe2}
   .light .label{color:#8a97a3}
   .light .wordmark .mk{color:#0d1217}
-  .light .wordmark .tag{color:#5c6b78}
 
   .lockrow{display:flex;align-items:center;gap:16px}
   .lockrow .mk{font-weight:700;font-size:30px;letter-spacing:.16em;color:var(--ink)}
@@ -49,61 +49,17 @@
 </style>
 </head>
 <body>
-<!-- ===== reusable symbols ===== -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <radialGradient id="bg" cx="50%" cy="36%" r="78%">
-      <stop offset="0%" stop-color="#17242f"/><stop offset="100%" stop-color="#0d1217"/>
-    </radialGradient>
-    <linearGradient id="sweep" x1="0.35" y1="1" x2="0.9" y2="0.15">
-      <stop offset="0%" stop-color="#35c7b4" stop-opacity="0"/><stop offset="100%" stop-color="#35c7b4" stop-opacity="0.5"/>
-    </linearGradient>
-    <radialGradient id="blip" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#ffd889"/><stop offset="100%" stop-color="#f2a93b" stop-opacity="0"/>
-    </radialGradient>
-
-    <!-- full icon (app tile) -->
-    <symbol id="act" viewBox="0 0 512 512">
-      <rect x="16" y="16" width="480" height="480" rx="116" fill="url(#bg)" stroke="#26333f" stroke-width="2"/>
-      <g fill="none" stroke="#f2a93b" stroke-width="7">
-        <circle cx="256" cy="256" r="176" opacity="0.32"/>
-        <circle cx="256" cy="256" r="118" opacity="0.52"/>
-        <circle cx="256" cy="256" r="60" opacity="0.8"/>
-      </g>
-      <g stroke="#f2a93b" stroke-width="4" opacity="0.22">
-        <line x1="256" y1="66" x2="256" y2="446"/><line x1="66" y1="256" x2="446" y2="256"/>
-      </g>
-      <path d="M256 256 L256 74 A182 182 0 0 1 413.6 165 Z" fill="url(#sweep)"/>
-      <line x1="256" y1="256" x2="413.6" y2="165" stroke="#35c7b4" stroke-width="6.5" stroke-linecap="round"/>
-      <circle cx="360" cy="176" r="34" fill="url(#blip)"/>
-      <circle cx="360" cy="176" r="9" fill="#ffd889"/>
-      <circle cx="256" cy="256" r="15" fill="#f2a93b"/>
-    </symbol>
-
-    <!-- simplified mark for tiny sizes / favicon (2 rings, bold) -->
-    <symbol id="act-fav" viewBox="0 0 512 512">
-      <rect x="16" y="16" width="480" height="480" rx="116" fill="#0d1217" stroke="#26333f" stroke-width="2"/>
-      <g fill="none" stroke="#f2a93b" stroke-width="16">
-        <circle cx="256" cy="256" r="150" opacity="0.5"/>
-        <circle cx="256" cy="256" r="78" opacity="0.85"/>
-      </g>
-      <line x1="256" y1="256" x2="410" y2="150" stroke="#35c7b4" stroke-width="18" stroke-linecap="round"/>
-      <circle cx="256" cy="256" r="26" fill="#f2a93b"/>
-    </symbol>
-  </defs>
-</svg>
-
 <div class="sheet">
   <div>
     <h1>ACT · brand</h1>
-    <p class="sub">Radar-sweep mark, drawn from the air-traffic-control-tower identity. Amber rings (the scope), a teal sweep (the moment of <em>action</em>), a blip that's found a target. Scalable SVG; swap in your own type later if you want.</p>
+    <p class="sub">Radar-sweep mark, drawn from the air-traffic-control-tower identity. Amber rings (the scope), a teal sweep (the moment of <em>action</em>), a blip that&rsquo;s found a target. Both marks are referenced from their own files rather than copied in, so this sheet cannot drift from the assets it documents.</p>
   </div>
 
   <!-- hero lockup -->
   <div class="panel">
     <div class="label">Primary lockup</div>
     <div class="hero">
-      <svg width="132" height="132"><use href="#act"/></svg>
+      <img src="act-icon.svg" width="132" height="132" alt="ACT icon">
       <div class="wordmark">
         <div class="mk"><b>A</b>CT</div>
         <div class="tag">Agent&nbsp;Control&nbsp;Tower</div>
@@ -115,24 +71,24 @@
   <div class="panel">
     <div class="label">Icon · scalability</div>
     <div class="sizes">
-      <div class="size"><svg width="128" height="128"><use href="#act"/></svg><span class="cap">128</span></div>
-      <div class="size"><svg width="64" height="64"><use href="#act"/></svg><span class="cap">64</span></div>
-      <div class="size"><svg width="40" height="40"><use href="#act"/></svg><span class="cap">40</span></div>
-      <div class="size"><svg width="24" height="24"><use href="#act-fav"/></svg><span class="cap">24 · fav</span></div>
-      <div class="size"><svg width="16" height="16"><use href="#act-fav"/></svg><span class="cap">16 · fav</span></div>
+      <div class="size"><img src="act-icon.svg" width="128" height="128" alt=""><span class="cap">128</span></div>
+      <div class="size"><img src="act-icon.svg" width="64" height="64" alt=""><span class="cap">64</span></div>
+      <div class="size"><img src="act-icon.svg" width="40" height="40" alt=""><span class="cap">40 · floor</span></div>
+      <div class="size"><img src="act-icon-small.svg" width="24" height="24" alt=""><span class="cap">24 · small</span></div>
+      <div class="size"><img src="act-icon-small.svg" width="16" height="16" alt=""><span class="cap">16 · small</span></div>
     </div>
-    <p class="mono-note" style="margin-top:18px">The full mark holds down to ~40px. Below that, use the simplified favicon variant (<code>#act-fav</code>) — 2 heavier rings + sweep — so it stays legible.</p>
+    <p class="mono-note" style="margin-top:18px"><b>The full mark holds down to ~40px.</b> Below that use <code>act-icon-small.svg</code> — two heavier rings, no crosshair, no afterglow wedge, no blip, flat tile — because each of those reads as mud at 16px.</p>
   </div>
 
   <!-- dark vs light -->
   <div class="split">
     <div class="panel">
       <div class="label">On dark</div>
-      <div class="lockrow"><svg width="56" height="56"><use href="#act"/></svg><span class="mk"><b>A</b>CT</span></div>
+      <div class="lockrow"><img src="act-icon.svg" width="56" height="56" alt=""><span class="mk"><b>A</b>CT</span></div>
     </div>
     <div class="panel light">
       <div class="label">On light</div>
-      <div class="lockrow"><svg width="56" height="56"><use href="#act"/></svg><span class="mk"><b>A</b>CT</span></div>
+      <div class="lockrow"><img src="act-icon.svg" width="56" height="56" alt=""><span class="mk" style="color:#0d1217"><b>A</b>CT</span></div>
     </div>
   </div>
 
@@ -140,7 +96,7 @@
   <div class="panel">
     <div class="label">Horizontal lockup · README header</div>
     <div class="lockrow">
-      <svg width="48" height="48"><use href="#act"/></svg>
+      <img src="act-icon.svg" width="48" height="48" alt="">
       <span class="mk" style="font-size:26px"><b>A</b>CT</span>
       <span style="font-family:var(--mono);font-size:12px;color:var(--dim);letter-spacing:.06em">— a control tower for your coding-agent sessions</span>
     </div>
@@ -148,10 +104,17 @@
 
   <div>
     <p class="mono-note">
-      Assets: <code>act-icon.svg</code> is the full app-tile mark (this sheet's <code>#act</code>).
-      For a favicon, export <code>#act-fav</code> at 16/32/48.
-      The wordmark uses <b>Space Grotesk</b> — for a fully portable logo file, outline the text
-      in a vector editor (Illustrator/Inkscape/Figma) so it doesn't depend on the font.
+      <b>Assets.</b> <code>act-icon.svg</code> is the full app-tile mark; <code>act-icon-small.svg</code>
+      is the 16–24px variant, and the source for a favicon export at 16/32/48. The shipped
+      <code>src/Act.App/wwwroot/favicon.png</code> and <code>src/Act.App/icon.ico</code> are raster
+      exports — regenerate them from these two files, never by redrawing.
+      <br><br>
+      <b>Colours live in code.</b> <code>src/Act.App/wwwroot/app.css</code> is authoritative for every
+      UI token. Editing a hex in this sheet changes nothing the user sees.
+      <br><br>
+      <b>The wordmark is not implemented anywhere.</b> This sheet is its only definition —
+      <b>Space Grotesk</b> 700, <code>.16em</code> tracking, amber <code>A</code>. For a portable logo
+      file, outline the text in a vector editor so it stops depending on the font.
     </p>
   </div>
 </div>

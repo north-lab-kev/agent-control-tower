@@ -1,3 +1,4 @@
+using Act.App.Cards;
 using Act.App.Desktop;
 using Act.App.Resources;
 using Act.App.Settings;
@@ -13,7 +14,6 @@ namespace Act.App.Components.Pages;
 public partial class SettingsView(
     UserSettingsService settings,
     IEnumerable<IAgentAdapter> adapters,
-    IAgentCapabilityCatalog capabilities,
     IExecutableProbe probe,
     IDesktopBridge desktop,
     NavigationManager navigation)
@@ -74,51 +74,7 @@ public partial class SettingsView(
     // model holds a list rather than a property per agent for the same reason.
     private List<AgentDefaultsForm> AgentForms { get; } = [];
 
-    private static string AgentName(AgentType agent) => agent switch
-    {
-        AgentType.Codex => Strings.Agent_Codex,
-        _ => Strings.Agent_ClaudeCode,
-    };
-
-    private TaskDefaults defaults = new();
-
-    private IReadOnlyList<SettingChoice<AgentType>> DefaultAgentChoices
-        => [.. adapters.Select(adapter => adapter.Agent)
-            .Select(agent => new SettingChoice<AgentType>(agent, AgentName(agent)))];
-
-    private IReadOnlyList<string> DefaultModels
-        => [.. capabilities.For(defaults.Agent).Models.Select(model => model.Slug)];
-
-    private IReadOnlyList<string> DefaultEfforts => capabilities.For(defaults.Agent).EffortsFor(defaults.Model);
-
-    private IReadOnlyList<SettingChoice<PermissionMode>> DefaultPermissionChoices
-        => [.. capabilities.For(defaults.Agent).PermissionModes
-            .Select(mode => new SettingChoice<PermissionMode>(mode, PermissionLabel(mode)))];
-
-    private static SettingChoice<TaskSchedule>[] DefaultScheduleChoices =>
-    [
-        new(TaskSchedule.Manual, Strings.ScheduleOption_Manual),
-        new(TaskSchedule.Now, Strings.ScheduleOption_Now),
-        new(TaskSchedule.NextWindow, Strings.ScheduleOption_NextWindow),
-    ];
-
-    private static SettingChoice<GitAction?>[] DefaultGitChoices =>
-    [
-        new(GitAction.Commit, Strings.GitAction_Commit),
-        new(GitAction.Push, Strings.GitAction_Push),
-        new(GitAction.PullRequest, Strings.GitAction_PullRequest),
-    ];
-
-    private static string PermissionLabel(PermissionMode mode) => mode switch
-    {
-        PermissionMode.Default => Strings.Permission_Default,
-        PermissionMode.Plan => Strings.Permission_Plan,
-        PermissionMode.AcceptEdits => Strings.Permission_AcceptEdits,
-        PermissionMode.Auto => Strings.Permission_Auto,
-        PermissionMode.DontAsk => Strings.Permission_DontAsk,
-        PermissionMode.Bypass => Strings.Permission_Bypass,
-        _ => mode.ToString(),
-    };
+    private static string AgentName(AgentType agent) => TaskLabels.Agent(agent);
 
     protected override void OnInitialized()
     {
@@ -130,8 +86,6 @@ public partial class SettingsView(
 
             AgentForms.Add(form);
         }
-
-        defaults = settings.TaskDefaults;
     }
 
     private static string? BinaryWarning(AgentDefaultsForm agent) => agent.State switch
@@ -165,55 +119,7 @@ public partial class SettingsView(
         settings.SetDefaults(agent.ToDefaults());
     }
 
-    private bool browsingDefaultDir;
-
-    private void OnDefaultWorkingDirChanged(string value) => SaveDefaults(() => defaults.WorkingDir = value);
-
-    // The picked path is absolute and real, so it replaces whatever was typed and the picker
-    // closes — the same behaviour as the task form's.
-    private void OnDefaultWorkingDirPicked(string path)
-    {
-        browsingDefaultDir = false;
-
-        OnDefaultWorkingDirChanged(path);
-    }
-
-    // Model and effort are agent-specific, so switching agent drops values the new one may not
-    // offer rather than leaving a default that would be rejected at launch.
-    private void OnDefaultAgentChanged(AgentType agent) => SaveDefaults(() =>
-    {
-        defaults.Agent = agent;
-        defaults.Model = null;
-        defaults.Effort = null;
-
-        var offered = capabilities.For(agent).PermissionModes;
-
-        if (!offered.Contains(defaults.PermissionMode))
-            defaults.PermissionMode = offered.Count > 0 ? offered[0] : PermissionMode.Default;
-    });
-
-    private void OnDefaultModelChanged(string? model) => SaveDefaults(() =>
-    {
-        defaults.Model = model;
-
-        if (defaults.Effort is { } effort && !capabilities.For(defaults.Agent).EffortsFor(model).Contains(effort))
-            defaults.Effort = null;
-    });
-
-    private void OnDefaultEffortChanged(string? effort) => SaveDefaults(() => defaults.Effort = effort);
-
-    private void OnDefaultPermissionChanged(PermissionMode mode) => SaveDefaults(() => defaults.PermissionMode = mode);
-
-    private void OnDefaultScheduleChanged(TaskSchedule schedule) => SaveDefaults(() => defaults.Schedule = schedule);
-
-    private void OnDefaultGitActionChanged(GitAction? action) => SaveDefaults(() => defaults.GitAction = action);
-
-    private void SaveDefaults(Action change)
-    {
-        change();
-
-        settings.SetTaskDefaults(defaults);
-    }
+    private void OpenTemplates() => navigation.NavigateTo("/templates");
 
     // On `Change` rather than on every keystroke: this writes to LiteDB, and a path is typed one
     // character at a time.

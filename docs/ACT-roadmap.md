@@ -850,6 +850,21 @@ verifiable, and leaves something runnable.
       model or effort it does not offer and moves the permission mode into range, so the template can
       never hold a value that would be rejected at launch. Verified live: a default working directory
       appeared on `/card/new` with title and prompt still empty.
+      - ⚠️ **Superseded 2026-08-04 — it is a managed list now, on its own pages.** `TaskDefaults`
+        became `TaskTemplate`, one block became `UserSettings.Templates`, and the settings section
+        became a pointer to `/templates`. A template also carries the **prompt and the title**, which
+        the defaults deliberately did not: the argument against pre-filling either is about a
+        *default*, and they are most of the value of a template. Both are optional, and a template
+        with a title needs no CLI call to name the cards it makes. The list is sorted by name, the name
+        is required, and the shipped default is named *Default* and is the default for good — there is
+        no promote action. Dressing the picker also turned up two app-wide styling bugs that had been
+        there since the shell was built: everything ACT styles itself was set in **Times New Roman**,
+        and every outlined button was ringed in near-white off Radzen's raw ramp. Both are in
+        `design-notes.md` → *Styling against Radzen*. The store change is the migration
+        list's first real entry
+        (schema 1 → 2). See the spec's *Task templates* and `design-notes.md` → *The store*.
+        Verified live against a hand-written schema-1 store: the old defaults came back as the
+        default template with the rest of the settings document untouched.
   - [x] **Retry — built 2026-08-01, and three of the spec's assumptions were dropped on the way.**
     `Act.Core/Rules/CardRetry` is the predicate; `SessionLauncher.RetryAsync` the action, sharing the
     launch path so there is one place a session is started. The button lives on the **flight strip**,

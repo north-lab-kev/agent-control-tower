@@ -259,6 +259,15 @@ else
                                           Click="DuplicateAsync"
                                           title="@Strings.Task_Duplicate" aria-label="@Strings.Task_Duplicate" />
                         }
+
+                        @* Offered on an unsaved task too: a template is made of the fields on the
+                           form rather than of a card, so there is nothing to save first. *@
+                        <RadzenButton Icon="bookmark_add" ButtonStyle="ButtonStyle.Base"
+                                      Variant="Variant.Text" Size="ButtonSize.Small"
+                                      ButtonType="ButtonType.Button" Disabled="templating"
+                                      Click="SaveAsTemplateAsync"
+                                      title="@Strings.Task_SaveAsTemplate"
+                                      aria-label="@Strings.Task_SaveAsTemplate" />
                     </div>
 
                     <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End"
