@@ -400,6 +400,30 @@ full stack trace, and ASP.NET's request scope (`TraceId`, `RequestPath`, `Connec
 renders in the context group for free — `ActLogFormatter` names no keys of its own, so any
 scope the framework pushes comes through.
 
+**Crash telemetry rides on this table, and learned it the hard way — 2026-08-05.**
+`TelemetryPump` originally subscribed to the top two rows directly, which looks like the
+obvious way to catch a crash and misses **most of them**: a throwing button handler is row
+four, and Blazor's renderer swallows it into an `ILogger` without ever raising
+`AppDomain.UnhandledException`. The symptom was `app_started` arriving and `app_error` never
+doing so, from an app that was throwing on purpose. `TelemetryErrorBridge` is an
+`ILoggerProvider` instead — the one place all four rows converge — and the two direct
+subscriptions are gone, because `StartupLog` already logs those rows with the exception
+attached and keeping both would have reported them twice.
+
+Its rule is **any record at `Error` or above that carries an `Exception`**, which is
+deliberately wider than "a crash": a failed launch in `SessionLauncher` qualifies, and a
+maintainer wants to know that agent spawns fail on some installs. Records without an
+exception are ignored, because a message is a sentence and a sentence is the thing that must
+not leave.
+
+**It is not the telemetry-over-logging shape that was rejected** in *Telemetry is not a log*.
+That objection was that every call site becomes a payload; here nothing of the record is read
+except `Exception` — never the message, the state, or the formatter — so the localised
+sentences and working directories that make this log useful cannot reach the wire.
+`The_log_message_never_reaches_the_payload` pins it, and it was also confirmed end-to-end by
+driving a real `CircuitHost` category through a real `ILoggerFactory` with a path in the
+message: what came out was the type, `Program.&lt;Main&gt;$ (Program.cs:23)`, and nothing else.
+
 ### The correlation scope is `Task` + `Session`, and it nests
 
 The spec asks for the session id as a correlation id; `ActLogScope` adds the **card number** beside
@@ -413,6 +437,317 @@ it, because that is the identifier a user reads off a strip. Two consequences wo
   launcher, which scopes it again. The provider adds each scope property only if absent, so the pair
   collapses to one — `A_repeated_scope_is_not_written_twice` pins it, because the alternative
   (`[Task=1031 Task=1031]`) is the sort of thing nobody notices until a log is unreadable.
+
+### Which level a swallowed exception gets — settled 2026-08-05
+
+A review of every `catch` that logs and carries on found the levels had drifted, and the fix is a rule
+rather than a sweep, because two of the sites that look wrong are right.
+
+**The shipped level is `Information`** (`appsettings.json`), so **`Debug` means invisible on an
+install.** That is the whole question: a swallowed exception logged at `Debug` is one nobody will ever
+read. So `Debug` is correct *only* where the event is normal operation rather than an anomaly.
+
+**`Warning`, not `Error`, when the user's work is unaffected.** `Error` in this codebase means work
+failed — `SessionLauncher.FailedAsync`, a session that died. A lost metric, a timeline that will not
+enrich, a usage percentage that cannot be read: none of those are the user's work failing, and
+ranking them alongside a failed launch is how an error log stops being worth reading. `Warning` is
+visible at the shipped default, which is the actual requirement. `AgentInstallDiscovery.Locate` was
+already the precedent.
+
+**Frequency is part of the level.** Two sites stayed at `Debug` for this reason and one gained a
+guard:
+
+- `TranscriptPump`'s **`IOException`** is the transient the loop is built around — the CLI holds the
+  file open and a mid-write moment is expected — and it polls at **one second**. It is normal
+  operation, and raising it would write 3,600 lines an hour per session against a 32 MB × 14-file
+  retention.
+- `TranscriptPump`'s **`UnauthorizedAccessException`** is the opposite: a permission or antivirus lock
+  does not heal, and the symptom is a card whose token and context figures silently never fill in. It
+  is `Warning`, but **only on the first occurrence per tail** — the flag rides the loop rather than the
+  pump, because one tail runs per live session. The tail keeps polling after saying it, since a
+  scanner's hold can still let go.
+- `HttpUsageProbe`'s network failure and timeout stayed at `Debug` because **something else already
+  reports them at `Information`**: `UsagePump` logs `"{Agent} usage is {Availability}"` guarded by
+  `if (result.Availability != reported)`, so going offline writes one visible `Unreachable` line per
+  transition — and the UI shows it too, and `UsageBackoff` lengthens the interval. The probe's line is
+  the redundant detail (which exception, with its stack). Promoting it would add an entry every poll,
+  per agent, for a condition already stated once.
+
+---
+
+## Telemetry
+
+### Telemetry is not a log — rejected 2026-08-05
+
+The obvious way to send usage metrics from a codebase that already logs through
+`Microsoft.Extensions.Logging` is a second `ILoggerProvider` beside the file sink. It genuinely
+works and it genuinely cannot disturb the file: `ILoggerFactory` fans each record out to every
+provider independently, each with its own level filter, so a cloud provider confined by
+`AddFilter<T>` leaves `AddActFileLog` untouched. It was still rejected, for one reason that matters
+and two that follow from it.
+
+**Every `ILogger` call site would become a potential payload.** ACT's log deliberately carries the
+things the switch promises never leave — prompts, working directories, the localised sentence the
+queue showed the user, agent output. Confining that to one category is a *filter configuration*,
+which means the promise on the Diagnostics page would be one `appsettings.json` line away from
+being false, with nothing failing and nothing to notice. `ITelemetrySink` has no such surface:
+nothing leaves that a call site did not hand over by name, and the set of things a call site *can*
+hand over is a single file (`TelemetryEvents`).
+
+The two that follow: a message template plus a `state` object is the wrong shape for `event` +
+`distinct_id` + typed properties, and reconstructing one from the other is work the compiler cannot
+check; and `ILogger` has no vocabulary for consent read at runtime or for a guaranteed final flush,
+which provider disposal is the wrong hook for.
+
+MEL is still involved, in one direction only: the sink logs *its own* failures to the disk log
+through `ILogger<PostHogTelemetrySink>`, the same way `HttpUsageProbe` does. Never the reverse.
+
+### What telemetry may carry
+
+**First, how much of it there should be — trimmed 2026-08-05.** The first cut shipped a
+`task_completed` event carrying `turn_count`, `tool_calls`, `tokens_total`, `compactions`,
+`transition_count` and a duration, and it was wrong in a way that is worth naming because it is the
+easy mistake: those are measurements of **the agent's work**, not of ACT's use. They are also already
+on the card, visible in the UI, and useful there. Sending them buys a solo maintainer nothing they
+would act on, while making the payload something a user has to read carefully — which is exactly the
+cost the opt-out is supposed to avoid paying.
+
+The scope that survived is **the app and its settings, never a card's own progress**. `task_launched`
+stayed, because which agent, and whether autoGit, a schedule or attachments were involved, are facts
+about which of ACT's *features* get used, not about how the work went.
+
+**And it fires on a launch only, which is a volume decision as much as a scope one.** The first cut
+reported every start with a `resumed` flag, and that inflates the count without adding a fact:
+`SessionRestorer` replays one per live card on **every** startup, and a terminal restart is the same
+session coming back into a fresh pty — so a card ACT restarted five times would read as five starts,
+and the launches that actually happened would be buried under them. The guard is
+`kind is StartKind.Launch`, and the flag is gone with the event that needed it. A **retry** still
+counts, deliberately: the launcher's own model treats it as a launch — it claims the card and moves it
+to Executing — so it is a start the user asked for rather than a re-attach ACT performed.
+`SessionLaunchTelemetryTests` pins all four entry points.
+
+**`agent_discovered` went the same day, for the volume reason rather than the scope one.** It fired
+once per adapter on every startup, and its one useful fact — which agents this install actually uses —
+is already in the settings snapshot as `enabled_agents`. What it added over that was on-`PATH` versus
+an explicit path, which is not a question worth an event per adapter per run.
+
+**`app_stopped` went too, and it is the plainest case of the three:** an uptime figure nobody was
+going to act on. Shutdown still runs — it just flushes now, because a queued batch that never left
+would take the run's events with it.
+
+**And `settings_snapshot` was folded into `app_started` rather than dropped, which is a different
+lesson: the meter counts events, not bytes.** PostHog bills ingested events, so sending the run in one
+event and its settings in a second doubled what every startup cost to say exactly one thing. Merging
+them also reads better in the tool — a run can be broken down by any setting without joining two
+events together. It is worth carrying that the other way too: when a new fact is wanted, the first
+question is which existing event it belongs *on*, not what to call the new one.
+
+Three events is where this landed, and the direction is worth stating: **prefer removing an event to
+adding one.** Every payload here is something a user has to be willing to send, and each one that
+earns its place makes the switch easier to say yes to. The first cut had seven; four rounds of "do I
+care about this one?" took it to three, and none of the answers were close.
+
+`Nothing_reports_a_cards_own_progress` pins the removals by name, and
+`Every_declared_property_is_actually_emitted_by_something` catches the litter a trim like this leaves
+behind — a declared key nobody sends is a key a reviewer has to reason about for nothing. It has
+already earned itself twice.
+
+Then two belts, and the second exists because the first is a convention.
+
+`TelemetryEvents` is the only place a payload is constructed — call sites pass typed arguments and
+never a property bag — so the whole sendable surface is one reviewable file. Two of its factories
+are handed a `Card` and a `UserSettings`, which is deliberate: seven loose arguments read worse and
+drift faster than one object read narrowly. What comes off them is counts, flags and enum names.
+Nothing else. A card holds the prompt, the title and the working directory; settings hold every
+template's text and every agent's binary path.
+
+`TelemetryPayload.Sanitize` is the belt under that. An event whose name is not declared never
+leaves, a property whose key is not declared never leaves, and a value that is not a bounded scalar
+never leaves — bool, `int`/`long`/`double`, an enum reduced to its name, a short symbol string, or a
+capped list of them. The forbidden characters (`/ \ ~ " ' CR LF TAB`) are chosen for **what they
+mark, not what they are**: a path separator, a home shortcut, a quote or a newline is what
+distinguishes a leaked prompt or command line from the version strings and enum names this is meant
+to carry. `Microsoft Windows NT 10.0.26200.0` survives; `C:\Users\…` does not.
+
+Crash reports are held to the same rule and are the closest call in the set, because the natural
+payload is exactly the one that leaks. `Exception.Message` is never read — it routinely names a
+working directory or quotes a prompt — and `TelemetryFrames` asks `StackTrace` for
+`fNeedFileInfo: false`, so a frame is `Type.Method` with no source path and no line number.
+
+### The switch has two gates, because one is not enough
+
+`ConsentedTelemetrySink` reads `UserSettings.Telemetry` on **every** capture rather than once at
+startup. Read once, turning it back on would need a restart, and a user who opts back in should not
+have to discover that. It is the same reason `UsagePump` re-checks `EnabledAgents` every pass.
+
+That front gate alone would still have left a gap of up to one flush interval: it stops new events
+being queued, but the client holds a batch of its own and its timer would deliver a batch queued
+*before* the switch moved. So the vendor options also carry a `BeforeSend` hook wired to the same
+predicate. PostHog drops an event whose `BeforeSend` returns null (verified against
+`PostHogClient.CaptureBatchAsync`, 2.12.2 — hence the `null!`, which is the contract rather than an
+oversight). Together they make "off" true of the queue as well as of the call sites.
+
+### What a crash report may carry, and what the first one didn't — fixed 2026-08-05
+
+The first real `app_error` to arrive said `System.AggregateException`, `fatal: false`, and nothing
+else. No frames at all. Two separate faults, and neither was the sanitizer being too strict.
+
+**The wrapper was being reported as the failure.** `TaskScheduler.UnobservedTaskException` hands the
+handler an `AggregateException`; the real exception is inside it, and the wrapper carries no stack of
+its own — so `TelemetryFrames.Of` returned an empty array, `TelemetryPayload` dropped the empty list,
+and the key vanished. Every distinct fault in the app would have grouped under one useless heading.
+`TelemetryFault` now unwraps (`AggregateException.Flatten()`, then `InnerException`, capped at five
+deep): `exception` is the **innermost** type, `exception_chain` shows the wrapper when there was one,
+and frames come from the innermost exception that *has* any, falling outward.
+
+**The frames had no file or line, and they safely can.** This is the distinction worth keeping
+straight, because it is the one that decides what a crash report is allowed to say:
+
+- `Exception.Message` is **runtime data from the user's machine**, and in this app it routinely names
+  the file that failed. It never leaves. That is also why `CaptureException` cannot be used (below).
+- A **source file name and line number are facts about ACT's own source**, resolved from the PDB that
+  ships beside the binary. They describe this repository, not anything of the user's. The sentence on
+  the switch is about *their* paths.
+
+So a frame is now `Namespace.Type.Method (File.cs:42)`. Base name only, never `abs_path`: the absolute
+path is the build machine's and adds nothing — and `IsSymbol` rejects separators, so a full path would
+have taken the whole frame down with it rather than being trimmed. Two measurements behind this:
+`Act.App.pdb` does ship in the packaged installer (`resources/bin/`, beside the DLL), and file and
+line still resolve under a **Release** build, which is what
+`A_frame_carries_the_source_file_and_line` pins by regex. Inlining can still merge or drop a frame;
+that is a property of optimized builds, not of this code.
+
+### `CaptureException` is not usable here — measured 2026-08-05
+
+The SDK has a `CaptureException` that feeds PostHog's Error Tracking product — grouping, issues,
+occurrence counts — and `app_error` looks exactly like the thing that should be using it. It cannot,
+and the reason is worth writing down because the suggestion will come back.
+
+Measured against 2.12.2 by intercepting the payload in `BeforeSend` rather than reading about it, an
+`IOException` produced:
+
+```json
+"$exception_message": "Could not read C:\\Users\\kev\\private-project\\prompt.md",
+"$exception_list": [{
+  "value": "Could not read C:\\Users\\kev\\private-project\\prompt.md",
+  "stacktrace": { "frames": [{
+    "abs_path": "C:\\Dev\\north-lab-kev\\...\\TranscriptPump.cs",
+    "lineno": 37,
+    "context_line": "            throw new IOException(...);",
+    "pre_context": [ "…five surrounding lines of real source…" ]
+  }]}
+}]
+```
+
+Three leaks, and they are not equally serious. `abs_path`, `lineno` and the source snippets come from
+the **build** machine through the PDB — on an install those files do not exist, so the context comes
+back empty and the paths describe this repo rather than the user's disk. The one that matters is
+**`$exception_message`, which is runtime data from the user's machine**, and in this app it reliably
+names a file: the `IOException` and `UnauthorizedAccessException` in `TranscriptPump` both carry the
+path that failed. That is a flat contradiction of the sentence on the switch.
+
+**Scrubbing it in `BeforeSend` was considered and rejected** — it means allowlisting inside a
+vendor-defined nested structure that can change shape on any SDK bump, which is the same fails-open
+trade as `ILogger`-as-transport above, and rejected for the same reason. A guarantee that silently
+stops holding is worse than one that was never claimed.
+
+**The route that stays open, if Error Tracking is ever wanted:** it ingests any event named
+`$exception`, and `CaptureException` is only a convenience wrapper. Per PostHog's manual-installation
+docs, `filename`, `lineno` and source context are **optional** — the required shape is `type`,
+`value`, `mechanism`, and frames carrying `platform: "custom"`, `lang` and `function`, all of which
+`TelemetryFrames` already produces. Renaming `app_error` to `$exception` with a hand-built
+`$exception_list` (type as both `type` and `value`, no message, no paths) plus an explicit
+`$exception_fingerprint` would land in Error Tracking with every byte still constructed in
+`TelemetryEvents`. It was not done, because it trades a shape the SDK maintains for one we own and
+must re-verify on every bump, and grouped crash reports are not worth that yet.
+
+### The consent gate must not outlive its provider — crashed 2026-08-05
+
+First real shutdown after telemetry went live threw `ObjectDisposedException: IServiceProvider` out of
+`PostHogClient.ApplyBeforeSend`. The gate was written as `Func<IServiceProvider, bool>` and resolved
+`UserSettingsService` **on every check**, which is fine until you notice where the check runs.
+
+The order at shutdown, which is the whole lesson:
+
+1. `ServiceProvider.Dispose()` begins, and the provider refuses further resolution *while* it is
+   disposing — not after.
+2. Singletons are disposed in reverse **instantiation** order. `TelemetryPump` is built first (from
+   `Program`), and the client is built lazily on the first `Capture`, which happens *inside*
+   `pump.Start()`. So the client is disposed first.
+3. The client flushes its last batch as it disposes. That flush calls `BeforeSend`. The gate reaches
+   for a provider that is already refusing, and the closing batch dies with the exception.
+
+So the gate has to **hold** what it needs rather than go looking for it: the factory is now
+`Func<IServiceProvider, Func<bool>>`, resolved once while the container is alive, returning a
+predicate that closes over the instance. `UserSettingsService` holds nothing disposable, so a closure
+outliving the provider is safe — asking the provider at that point is not.
+
+Two things fell out of it worth keeping:
+
+- **The gate fails closed.** It runs inside the client's batch send, where a throw both loses the
+  batch and surfaces from a stack no call site owns. A consent check that cannot answer now means "do
+  not send", never "send anyway" — and `A_gate_that_cannot_answer_drops_rather_than_throws` is written
+  the buggy way on purpose, which is also what gives the two regression tests beside it their teeth.
+- **The client's own dispose is what delivers the closing batch**, not `TelemetryPump.DisposeAsync`.
+  By the ordering above the pump flushes a client that is already gone; measured, that call completes
+  silently rather than throwing, so it costs nothing and logs nothing. It stays as insurance against
+  an SDK that stops flushing on dispose — but it is not what is currently saving the events, and
+  anyone reasoning about the shutdown path should know which of the two is load-bearing.
+
+### The token is encoded, and that is not security — decided 2026-08-05
+
+The project key reaches a release through a `POSTHOG_PROJECT_TOKEN` GitHub secret: the `gate` job
+fails if it is empty or does not start with `phc_`, and the `package` job base64-encodes it into
+`appsettings.json` before publishing. `TelemetryOptions` accepts either encoding, told apart by that
+same prefix — `_` is not in the base64 alphabet, so a plain key can never be read as an encoded one,
+and a local run can paste the real thing with nothing to configure.
+
+**What the encoding buys is that the key is not sitting in clear in a shipped file. That is all it
+buys, and the distinction has to survive in writing, because the next person to read the pipeline
+will see an encoded credential and infer a secret store.** Base64 is an encoding. The value sits next
+to a property named `ProjectToken`; anyone who wonders what it is has it back in seconds. It was
+argued against on those grounds and adopted anyway as a deliberate call — the cost is one small
+method and a prefix check, and the appearance of a key in an installer is a fair thing to not want.
+
+So the rule that goes with it: **nothing that is genuinely secret may be put through this path on the
+strength of it being encoded.** A PostHog project key is safe to ship because it is *write-only by
+design* — PostHog publishes it in the script tag of every site that uses them — not because of the
+base64. A personal API key (`phx_`) can read and delete, and must never reach a client in any
+encoding; the `gate` check exists to catch exactly that paste. If the key is ever abused, the answer
+is a spend cap and a rotation, both of which cost one value in the next release. That is the real
+protection, and it is why keeping the key cheap and replaceable beats trying to keep it hidden.
+
+Two things kept honest by tests rather than by intent: `What_the_pipeline_stamps_is_what_the_app_binds`
+runs the pipeline's own encoding through the section the app binds, so a renamed section fails here
+even though the pipeline's read-back would pass; and `Anything_that_is_not_a_project_key_leaves_it_
+unconfigured` makes a malformed value mean *no client* rather than a client that fails every batch
+silently at the far end.
+
+### `PostHog`, not `PostHog.AspNetCore` — decided 2026-08-05
+
+`PostHog.AspNetCore` 2.8.2 depends on `PostHog >= 2.12.2` plus `Microsoft.FeatureManagement`, and
+everything it adds over the core package is feature-flags-in-a-web-request:
+`IPostHogFeatureFlagContextProvider`, the `<feature />` tag helper, `FeatureGateAttribute`,
+request-scoped flag caching. ACT is a single-user desktop shell with no per-request identity and no
+feature flags, so that is a dependency for nothing — and the core package is what does the work in
+either case: batching, retry, compression and the flush timer are all its.
+
+Adding it later, if flags are ever wanted, is a `PackageReference` and one registration line.
+Nothing else changes, because everything above the vendor is `ITelemetrySink`.
+
+Two consequences of using the SDK at all, both handled in `Act.Infrastructure/Telemetry/`:
+`AddPostHog()` would normally be called from the app's DI extensions, which is what
+`Only_the_telemetry_folder_names_posthog` exists to prevent — the registration lives behind
+`AddActTelemetryClient` instead, exactly as `AddActFileLog` hides its own vendor. And the SDK binds
+its own `"PostHog"` configuration section, which ACT does not use: one `"Telemetry"` section owns
+`Enabled`, the token, the host and the flush knobs, and `ActTelemetry` maps them onto
+`PostHogOptions` explicitly. One section named for what it does beats two that half-overlap.
+
+**`Configured` is both halves.** A build needs the switch *and* a token before anything is wired;
+without them the sink is `NullTelemetrySink` and no client exists at all. That is what makes a fresh
+clone and the whole test suite silent by construction rather than by anyone remembering to turn
+something off — and `appsettings.Development.json` sets `Enabled: false`, so a dev run and an agent's
+sandbox never reach the project either.
 
 ---
 
@@ -444,6 +779,16 @@ straight into `TaskTemplate` — their fields overlap by name — then writes it
 the default, and a migration cannot promise that: a fresh install has no settings document to
 rewrite. `UserSettingsService` seeds it while loading, before anything can read a settings object
 without one, so the migration is free to be a no-op on a document it does not recognise.
+
+**`InstallId` is seeded too, and that is not the store rule being bent — 2026-08-05.** The
+telemetry `distinct_id` looked like it wanted a migration entry, and it does not. A migration exists
+to stop *two shapes* living on disk; an identity generated once when it is absent is a **seed**, not
+a second shape — after `Seeded` runs there is exactly one shape and no code path that has to ask
+whether the field is there. The same `Seeded` already owns the default-template invariant for
+exactly this reason, so it is one more line in a place that is already tested rather than a schema
+bump that would rewrite every install's settings document to add a GUID. It is random and never
+derived from the machine: the switch promises anonymous data, and a hardware-derived id would tie
+every install to a device.
 
 ### Adding `TaskTemplate.Title` needed no schema bump — 2026-08-04
 

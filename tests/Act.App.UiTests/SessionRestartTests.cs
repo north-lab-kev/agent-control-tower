@@ -130,6 +130,7 @@ public class SessionRestartTests
             new PassThroughDirectories(),
             new FakeAttachmentStore(),
             clock,
+            new RecordingTelemetrySink(),
             NullLogger<SessionLauncher>.Instance), registry, adapter);
     }
 

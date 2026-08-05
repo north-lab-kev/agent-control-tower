@@ -57,6 +57,8 @@ public partial class SettingsView(
 
     private bool Telemetry => settings.Telemetry;
 
+    private string InstallId => settings.InstallId;
+
     private bool PreventConcurrentWorkingDir => settings.PreventConcurrentWorkingDir;
 
     private bool AutoExecutionPaused => settings.AutoExecutionPaused;

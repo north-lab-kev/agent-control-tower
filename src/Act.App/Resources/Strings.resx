@@ -1077,6 +1077,12 @@
   <data name="Settings_Telemetry_Hint" xml:space="preserve">
     <value>Send anonymous usage data and crash reports. Never your prompts, task text, file paths or agent output.</value>
   </data>
+  <data name="Settings_InstallId" xml:space="preserve">
+    <value>Install ID</value>
+  </data>
+  <data name="Settings_InstallId_Hint" xml:space="preserve">
+    <value>The anonymous identifier the usage data is grouped under. Generated on first launch, tied to nothing else, and safe to quote in a bug report.</value>
+  </data>
   <data name="Settings_Logs" xml:space="preserve">
     <value>Log files</value>
   </data>

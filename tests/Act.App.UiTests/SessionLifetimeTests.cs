@@ -155,6 +155,7 @@ public class SessionLifetimeTests
             new AnyDirectory(),
             new FakeAttachmentStore(),
             clock,
+            new RecordingTelemetrySink(),
             NullLogger<SessionLauncher>.Instance);
 
         var pump = new SessionEventPump(

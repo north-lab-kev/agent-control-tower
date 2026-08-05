@@ -51,13 +51,22 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     ordered launch list + a hold per Ready card), ScheduleArming,
 │  │  │                            #     ConcurrencySlots, DependencyGate, UsageBackpressure,
 │  │  │                            #     SleepPolicy, QueuePolicy/LaunchHold
+│  │  ├─ Telemetry/                 #   what the cloud metrics may say, as pure logic: TelemetryEvents
+│  │  │                            #     (the ONLY place a payload is built — three factories taking
+│  │  │                            #     typed values, never a property bag; the app and its settings,
+│  │  │                            #     never how a card went), TelemetryProperties
+│  │  │                            #     (the declared keys), TelemetryPayload (drops any undeclared
+│  │  │                            #     name/key or unbounded value), TelemetryFault (unwraps to the
+│  │  │                            #     exception that actually failed; frames as Type.Method
+│  │  │                            #     (File.cs:42) — ACT's own source, never the message)
 │  │  ├─ Resources/                 #   CoreStrings (+ .fr) — localised text the CORE writes,
 │  │  │                            #     e.g. the autoGit sentence appended to a prompt
 │  │  └─ Abstractions/              #   INTERFACES: IAgentAdapter, IAgentSession,
 │  │                               #     IAgentTerminal, IPtyHost, ICommandHost, IAgentEventSink,
 │  │                               #     ITranscriptReader, ITranscriptNormalizer,
 │  │                               #     IUsageProbe, IUsageDialect, ITextFileReader,
-│  │                               #     IAgentCapabilityCatalog, ICardStore, INotifier, IClock…
+│  │                               #     IAgentCapabilityCatalog, ICardStore, INotifier, IClock,
+│  │                               #     ITelemetrySink…
 │  ├─ Act.Agents.ClaudeCode/        # Claude Code adapter (pty command line, hook + mcp settings,
 │  │                               #   claude:// handoff, mappings)
 │  ├─ Act.Agents.Codex/             # Codex adapter
@@ -87,9 +96,17 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ Transcripts/               #   ITranscriptReader over a JSONL the agent still holds open:
 │  │  │                            #     read from an offset, leave a partial line, restart on
 │  │  │                            #     truncation
-│  │  └─ Usage/                     #   HttpUsageProbe: credential file → bearer → GET → dialect.
-│  │                               #     UsageOptions binds the "Usage" appsettings section
-│  │                               #     (poll interval, per-agent path/endpoint overrides)
+│  │  ├─ Usage/                     #   HttpUsageProbe: credential file → bearer → GET → dialect.
+│  │  │                            #     UsageOptions binds the "Usage" appsettings section
+│  │  │                            #     (poll interval, per-agent path/endpoint overrides)
+│  │  └─ Telemetry/                 #   THE ONLY PLACE THAT NAMES POSTHOG (a test enforces it):
+│  │                               #     ActTelemetry (the client registration, and the BeforeSend
+│  │                               #     gate that drops an already-queued event once consent is
+│  │                               #     withdrawn), PostHogTelemetrySink (sanitize → capture, and
+│  │                               #     every failure swallowed into the disk log),
+│  │                               #     NullTelemetrySink (what a build with no token gets),
+│  │                               #     TelemetryOptions binds the "Telemetry" section — the
+│  │                               #     switch AND a token are both required before a client exists
 │  ├─ Act.App/                      # Blazor Server UI + Electron desktop host (ElectronNET.Core)
 │  │  ├─ Components/
 │  │  │  ├─ Pages/                  #     EVERY @page component and nothing else:
@@ -144,6 +161,13 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     unavailability) + UsagePump (one poll loop per probe,
 │  │  │                            #     backing off on a failure that cost a request);
 │  │  │                            #     UsageIndicator renders both in the top bar
+│  │  ├─ Telemetry/                 #   ConsentedTelemetrySink (the front gate: the switch read on
+│  │  │                            #     every capture, never once at startup), TelemetryPump (one
+│  │  │                            #     app_started carrying the settings; a dispose that only
+│  │  │                            #     flushes), TelemetryErrorBridge (an ILoggerProvider — where
+│  │  │                            #     all four unhandled-exception layers converge, incl. Blazor's;
+│  │  │                            #     reads the Exception and nothing else) + CrashReports (the cap
+│  │  │                            #     and the last-chance flush, counted once)
 │  │  ├─ Hosting/                   #   BackgroundWork: the lifetime every pump shares — one
 │  │  │                            #     cancellation source, the single-flight gate, a guard per
 │  │  │                            #     pass, and a shutdown that waits before it disposes.
@@ -427,6 +451,15 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
     the spec names), so a task's whole trace is greppable and no call site invents its
     own key. `ActLogFormatter` renders whatever scope is present as a bracketed group and
     writes nothing when there is none.
+- **The cloud metrics are the same shape, one layer over.** `ITelemetrySink` is the port,
+  `Act.Infrastructure/Telemetry/` is the only place that names PostHog, and
+  `TelemetryContainmentTests` fails the build if anything else does — it caught two comments
+  and a leaking extension-method name on the day it was written. What separates it from
+  logging is that the payload is *closed*: `Act.Core/Telemetry/TelemetryEvents` is the only
+  place a payload is built and `TelemetryPayload` drops anything undeclared, so the promise
+  on the Diagnostics switch is enforced in Core rather than trusted at the call sites.
+  **Telemetry is deliberately not an `ILogger` provider** — see *Telemetry* in
+  `docs/design-notes.md` for why that was rejected, and for the two gates the opt-out needs.
 - **The store owns its own conventions.** `Storage/` keeps one entry point
   (`ActDatabase.Open`) that configures the `BsonMapper` and applies the schema —
   a **version document plus an ordered migration list**, so `CurrentVersion` is

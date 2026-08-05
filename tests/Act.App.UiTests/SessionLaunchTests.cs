@@ -235,6 +235,7 @@ public class SessionLaunchTests
             new PassThroughDirectories(),
             new FakeAttachmentStore(),
             clock,
+            new RecordingTelemetrySink(),
             NullLogger<SessionLauncher>.Instance);
 
         return (launcher, registry, adapter, notifier);

@@ -53,25 +53,33 @@ public sealed class TranscriptPump(
 
         using var timer = new PeriodicTimer(PollInterval);
 
+        // Carried through the loop rather than held on the pump: one of these runs per live session,
+        // and "already said" is a fact about this tail.
+        var denied = false;
+
         // Read before the first wait: the file already holds the whole session, and on a restore
         // that is a session with an hour of numbers in it.
         do
         {
-            Poll(session, tail);
+            denied = Poll(session, tail, denied);
         }
         while (sessions.IsLive(session.TaskId) && await timer.WaitForNextTickAsync(cancellationToken));
     }
 
     // A read that throws must not end the tail: the CLI owns this file and a mid-write moment is a
     // transient, so the next tick tries again from the same offset.
-    private void Poll(IAgentSession session, TranscriptTail tail)
+    //
+    // Returns whether an access failure has already been reported, which is what keeps a file ACT
+    // cannot read to one line: at a one-second interval, saying it every pass would be 3,600 an hour
+    // per session and would roll the log off its own retention.
+    private bool Poll(IAgentSession session, TranscriptTail tail, bool denied)
     {
         try
         {
             var update = tail.Advance();
 
             if (update.IsNothing)
-                return;
+                return denied;
 
             foreach (var observed in update.Events)
                 sink.Publish(session.TaskId, observed);
@@ -82,14 +90,31 @@ public sealed class TranscriptPump(
                 sink.Publish(
                     session.TaskId,
                     new SessionEnriched(session.SessionId ?? string.Empty, clock.Now, snapshot));
+
+            return denied;
         }
+        // The transient this loop is built around: the CLI is mid-write and the next tick reads the
+        // same offset again. Debug on purpose — at one pass a second this is normal operation, not an
+        // anomaly, and it is the one catch here that must stay quiet.
         catch (IOException error)
         {
             log.LogDebug(error, "Transcript read for task {TaskId} was skipped.", session.TaskId);
+
+            return denied;
         }
+        // Not a transient: a permission or an antivirus lock does not heal on the next tick, and the
+        // symptom the user sees is a task whose token and context figures never fill in — with nothing
+        // to explain it at the shipped log level. So it is said once, at a level an install can see.
+        // The tail keeps polling anyway: a scanner's hold on the file can still let go.
         catch (UnauthorizedAccessException error)
         {
-            log.LogDebug(error, "Transcript read for task {TaskId} was skipped.", session.TaskId);
+            if (!denied)
+                log.LogWarning(
+                    error,
+                    "Transcript for task {TaskId} cannot be read; its token and context figures will stay empty. Later attempts are not reported.",
+                    session.TaskId);
+
+            return true;
         }
     }
 

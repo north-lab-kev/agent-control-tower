@@ -6,6 +6,7 @@ using Act.Core.Abstractions;
 using Act.Core.Agents;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Core.Telemetry;
 using Act.Infrastructure.FileSystem;
 using Act.Infrastructure.Logging;
 
@@ -27,6 +28,7 @@ public sealed class SessionLauncher(
     IWorkingDirectories directories,
     IAttachmentStore attachments,
     IClock clock,
+    ITelemetrySink telemetry,
     ILogger<SessionLauncher> log)
 {
     private readonly IReadOnlyDictionary<AgentType, IAgentAdapter> byAgent =
@@ -257,6 +259,13 @@ public sealed class SessionLauncher(
         });
 
         await board.UpdateAsync(card, cancellationToken);
+
+        // Launches only. A resume is not a use of the app worth counting — `SessionRestorer` replays
+        // one per live card on every startup, and a terminal restart is the same session coming back
+        // into a fresh pty — so counting them would say a card was started several times over and
+        // bury the launches that actually happened underneath restarts.
+        if (kind is StartKind.Launch)
+            telemetry.Capture(TelemetryEvents.TaskLaunched(card));
 
         return LaunchResult.Ok();
     }

@@ -114,18 +114,28 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    // Bound here rather than inside `AddActPostHog` for the same reason `AddActUsage` binds its own
-    // section: configuration is the app's, and infrastructure takes the answer.
+    // Bound here rather than inside `AddActTelemetryClient` for the same reason `AddActUsage` binds
+    // its own section: configuration is the app's, and infrastructure takes the answer.
     //
     // The sink is composed in two layers on purpose — the transport knows how to send, the gate knows
-    // whether it may. `Act.App` never names PostHog; `ActTelemetry` never reads the user's switch.
+    // whether it may. Nothing here names the vendor; `ActTelemetry` never reads the user's switch.
     private static IServiceCollection AddTelemetry(this IServiceCollection services, IConfiguration configuration)
     {
         var options = configuration.GetSection(TelemetryOptions.SectionName).Get<TelemetryOptions>()
             ?? new TelemetryOptions();
 
         services.AddSingleton(options);
-        services.AddActPostHog(options, provider => provider.GetRequiredService<UserSettingsService>().Telemetry);
+
+        // Resolved once here, not on each check: the predicate is called from the client's send path,
+        // and the run's last send happens while the container is going away. `UserSettingsService`
+        // holds nothing disposable, so the closure outliving the provider is safe — asking the
+        // provider at that point is not.
+        services.AddActTelemetryClient(options, provider =>
+        {
+            var settings = provider.GetRequiredService<UserSettingsService>();
+
+            return () => settings.Telemetry;
+        });
 
         services.AddSingleton<ITelemetrySink>(provider => new ConsentedTelemetrySink(
             ActTelemetry.Transport(
@@ -134,7 +144,14 @@ public static class ServiceCollectionExtensions
                 provider.GetRequiredService<UserSettingsService>().InstallId),
             provider.GetRequiredService<UserSettingsService>()));
 
+        services.AddSingleton<CrashReports>();
         services.AddSingleton<TelemetryPump>();
+
+        // A method group, so nothing is resolved until a record actually arrives: resolving the sink
+        // eagerly here would have it ask for its own `ILogger` while the logger factory is still
+        // assembling the providers — one of which is this.
+        services.AddSingleton<ILoggerProvider>(provider =>
+            new TelemetryErrorBridge(provider.GetRequiredService<CrashReports>));
 
         return services;
     }

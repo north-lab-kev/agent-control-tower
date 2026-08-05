@@ -2586,11 +2586,59 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     rather than a matrix, for the same reason notifications are one switch. In
     *Diagnostics* beside the log folder, since that is where a user already goes to answer
     "what does ACT know about my run".
-    - **The switch shipped before the sink.** `UserSettings.Telemetry` is stored and
-      honoured by nothing yet — no client, no endpoint, no payload. The opt-out exists
-      first so there is never a build where data could leave without a way to refuse.
-      What is sendable is bounded by what the setting promises: never prompts, task text,
-      titles, file paths or agent output.
+    - **The sink is PostHog, behind a port.** `ITelemetrySink` is the interface; the vendor
+      lives in `Act.Infrastructure/Telemetry/` and is named nowhere else (a test enforces it,
+      the same way one holds Serilog to `Logging/`). One `"Telemetry"` configuration section
+      owns the switch, the project token and the host, and **both** the switch and a token
+      are required before any client exists — without them the sink is `NullTelemetrySink`,
+      which is what makes a fresh clone and the test suite silent by construction.
+      `appsettings.Development.json` turns it off, so a dev run never reaches the project.
+    - **The key is stamped by the release, never committed.** `appsettings.json` ships an
+      empty token; the pipeline writes the real one from a GitHub secret at package time,
+      base64-encoded so it is not in clear in the installer, and the app accepts either
+      encoding (`phc_…` marks the plain form). The encoding is convenience, **not**
+      protection — a project key is write-only by design and safe to ship, and nothing
+      genuinely secret may travel this path. See *The token is encoded, and that is not
+      security* in `docs/design-notes.md`.
+    - **What is sendable is a single file.** `TelemetryEvents` builds every payload; call
+      sites pass typed values and never a property bag. Three events: the run starting —
+      carrying the settings it ran under, in that same event — a launch, and a crash. Under it
+      `TelemetryPayload` drops any event name, property key or value shape that was not
+      declared, so the setting's promise (never prompts, task text, titles, file paths or
+      agent output) is enforced rather than intended. Shutdown sends nothing of its own; it
+      only flushes what the run already queued.
+    - **A crash report says where, never what.** It carries the *innermost* exception type
+      (an unobserved task hands over an `AggregateException`, and the wrapper is the wrong
+      thing to group by), the wrapper chain when there was one, and frames as
+      `Namespace.Type.Method (File.cs:42)`. The **message never leaves** — it is runtime data
+      from the user's machine and in this app it routinely names the file that failed. The
+      file name and line do, because they come from ACT's own PDB and describe this
+      repository, not the user's disk; base name only, never an absolute path.
+    - **Events are the quota, so they are spent carefully.** An analytics plan meters events
+      ingested rather than payload size, which is why the settings ride on `app_started`
+      instead of a `settings_snapshot` of their own: two events cost twice as much to say one
+      thing. It also reads better — a run can be broken down by any setting without joining
+      two events together.
+    - **The scope is the app, not the work.** These answer what ACT is used *with* and where
+      it breaks — never how a given card went. A `task_completed` carrying turn counts, tool
+      calls, token totals and compactions was built and removed the same day (2026-08-05):
+      that measures the agent's work rather than the app's use of it, and it is the kind of
+      per-run detail this switch should not be buying. `task_launched` stays, because which
+      agent, and whether autoGit or a schedule or attachments were involved, are facts about
+      how ACT's own features get used.
+      - **Launches only, never resumes.** A restore or a terminal restart sends nothing:
+        `SessionRestorer` replays one per live card on every startup, so counting them would
+        report a card as started several times over and bury the real launches underneath
+        restarts. A **retry** does count — the launcher claims the card and moves it to
+        Executing, so it is a start the user asked for rather than a re-attach ACT performed.
+    - **The opt-out has two gates.** The switch is read on *every* capture, not once at
+      startup, so turning it off stops the next event and turning it back on needs no
+      restart. Because the client also holds a batch of its own, the vendor's `BeforeSend`
+      hook is wired to the same predicate — off means nothing leaves, queued or not.
+    - **Install ID** (*Diagnostics*, read-only) is the anonymous `distinct_id` the data is
+      grouped under: a random GUID, never machine-derived, seeded on first launch and never
+      rewritten. It is shown beside the log folder and stored even when telemetry is off,
+      because it is also the id a bug report quotes.
 - **Localization:** the UI is translatable — **English and French**, defaulting to
   the **OS language** (anything other than French falls back to English). Strings
   live in `.resx` under `Act.App/Resources/`, reached through the SDK's

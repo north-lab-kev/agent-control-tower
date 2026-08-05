@@ -488,6 +488,32 @@ public class UserSettingsServiceTests
         settings.MaxConcurrent.Should().Be(9);
     }
 
+    // Seeded rather than migrated: a fresh install has no settings document for a migration to find,
+    // so the id is established on the way in and every reader can assume it.
+    [Fact]
+    public void A_fresh_install_is_given_an_install_id_and_keeps_it()
+    {
+        var store = new FakeSettingsStore();
+
+        var first = new UserSettingsService(store, new AppCulture()).InstallId;
+
+        Guid.TryParse(first, out _).Should().BeTrue();
+        store.Load().InstallId.Should().Be(first);
+
+        new UserSettingsService(store, new AppCulture()).InstallId.Should().Be(first);
+    }
+
+    [Fact]
+    public void Turning_telemetry_off_does_not_take_the_install_id_away()
+    {
+        var (settings, store) = ServiceOf();
+
+        settings.SetTelemetry(false);
+
+        settings.InstallId.Should().NotBeEmpty();
+        store.Load().InstallId.Should().Be(settings.InstallId);
+    }
+
     private static (UserSettingsService, FakeSettingsStore) ServiceOf()
     {
         var store = new FakeSettingsStore();

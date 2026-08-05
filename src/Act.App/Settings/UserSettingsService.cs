@@ -3,6 +3,7 @@ using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
 using Act.Core.Scheduling;
+using Act.Core.Telemetry;
 
 namespace Act.App.Settings;
 
@@ -29,6 +30,14 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
     public bool CloseToTray => current.CloseToTray;
 
     public bool Telemetry => current.Telemetry;
+
+    public string InstallId => current.InstallId;
+
+    // The startup event carries the settings, so it is assembled through here rather than in the pump:
+    // `current` stays private, and the factory reads counts, flags and enum names off it and nothing
+    // else — see `TelemetryEvents`.
+    public TelemetryEvent TelemetryStarted(string appVersion, string operatingSystem, string locale)
+        => TelemetryEvents.AppStarted(appVersion, operatingSystem, locale, current);
 
     public bool PreventConcurrentWorkingDir => current.PreventConcurrentWorkingDir;
 
@@ -163,16 +172,28 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
     private static TaskTemplate? Stored(UserSettings settings, Guid id)
         => settings.Templates.FirstOrDefault(template => template.Id == id);
 
-    // The invariant every reader of a template leans on: there is always exactly one default, so
-    // nothing has to handle its absence. A fresh install has no settings document at all and the
-    // schema migration only rewrites the documents it finds, so this seeds it on the way in, before
-    // anything can read a settings object without one — and re-applies `Restrict`, which is what
-    // clears a name, title or prompt an earlier build let the default keep.
+    // The invariants every reader leans on, seeded before anything can read a settings object without
+    // them: exactly one default template, and an install id.
+    //
+    // A fresh install has no settings document at all and the schema migration only rewrites the
+    // documents it finds, so both are established here rather than in a migration — an id generated
+    // when it is missing is a seed, not a second stored shape, and after this runs there is no code
+    // path that has to ask whether it is there. It also re-applies `Restrict`, which is what clears a
+    // name, title or prompt an earlier build let the default template keep.
     private static UserSettings Seeded(ISettingsStore store)
     {
         var settings = store.Load();
 
         var dirty = false;
+
+        // Random, never derived from the machine: the promise on the switch is that the data is
+        // anonymous, and a hardware-derived id would tie every install of every user to one device.
+        if (string.IsNullOrEmpty(settings.InstallId))
+        {
+            settings.InstallId = Guid.NewGuid().ToString();
+
+            dirty = true;
+        }
 
         if (!settings.Templates.Any(template => template.IsDefault))
         {
