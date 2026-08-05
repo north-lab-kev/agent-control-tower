@@ -52,8 +52,10 @@ public sealed class SessionLauncher(
     // a failed launch would be a dead end — the failure itself moves the card there. Preparing and
     // Completed are refused: the terminal is reachable from any card now that the two faces toggle,
     // and reaching it must not become a way to skip Ready.
+    // An archived card is refused whatever column it left the board in — see `TaskEditing`.
     public bool CanLaunch(Card card)
-        => card.Column is BoardColumn.Ready or BoardColumn.Executing or BoardColumn.YourTurn
+        => card.IsOnBoard
+            && card.Column is BoardColumn.Ready or BoardColumn.Executing or BoardColumn.YourTurn
             && byAgent.ContainsKey(card.AgentType);
 
     public LaunchConfigResolution? Preview(Card card)

@@ -6,4 +6,3 @@
 6. make repo public and configure permission
 
 test in-between new prompt while agent is working
-initial prompt in claude no longer works with an attached file

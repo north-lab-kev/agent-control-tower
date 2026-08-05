@@ -58,6 +58,38 @@ Instructions for Claude Code when working in this repository.
   shell instead: `dotnet run --project src/Act.App --launch-profile electron`.
 - Stop your instance when you no longer need it, so the port is free for me.
 
+### My board is not your test data (HARD RULE)
+
+**The `Act.App` configuration shares my live store.** It runs the http profile, so
+`ASPNETCORE_ENVIRONMENT=Development`, so `ActDataDirectory` resolves to
+`%LOCALAPPDATA%\ACT.Development` — the *same* root my own app uses, on the *same* port. Your
+instance and mine are then one database, one archive and one attachments folder.
+
+**Never run a destructive action against it.** Emptying the archive, deleting cards, purging
+— these act on *every* matching row, not the ones you made. On 2026-08-05 a session emptied
+the archive several times without reading it and lost an attachment off a live task; whatever
+else was archived went with it, and none of it is recoverable.
+
+So: **anything that writes or deletes goes in a sandbox store of its own.** Verified route —
+run it yourself with an explicit data directory and a port that is not 5210, then point the
+browser pane at it with a url rather than a launch configuration:
+
+```powershell
+dotnet run --project src/Act.App/Act.App.csproj --no-build --launch-profile http -- `
+    --ACT_DATA_DIR=$env:TEMP\act-agent-sandbox --Urls=http://localhost:5290
+```
+
+then `preview_start` with `{"url": "http://localhost:5290"}`. Both flags reach
+`builder.Configuration` as command-line values (`ActDataDirectory.OverrideKey` is
+`ACT_DATA_DIR`); confirm with the `Data directory …` line the log opens with. Use the
+`Act.App` configuration only for **read-only** looking, and say so when you do.
+
+- Startup **sweeps and purges delete files**, so a sandbox is also what stops a restart of
+  yours reaping folders mine created — see `AttachmentSweep`, which now refuses to act on an
+  empty board for exactly this reason.
+- Kill only what you started. Before `Stop-Process` on port 5210, remember that instance is
+  probably **mine**; ask, or use your own port and leave 5210 alone.
+
 ## Version control (HARD RULE)
 
 - **Never `git add`/stage, `git commit`, or `git push` yourself unless I

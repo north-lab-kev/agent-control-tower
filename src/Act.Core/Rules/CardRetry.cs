@@ -15,7 +15,7 @@ namespace Act.Core.Rules;
 public static class CardRetry
 {
     public static bool CanRetry(Card card, bool sessionLive)
-        => !card.IsDeleted
+        => card.IsOnBoard
             && card.Column is BoardColumn.YourTurn
             && card.Badge is Badge.Error
             && card.SessionId is { Length: > 0 }

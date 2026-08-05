@@ -6,26 +6,28 @@ namespace Act.Core.Tests;
 
 public class CardOrderTests
 {
+    // Cards stored before ordering existed are all at zero, and `Number` descending keeps those
+    // reading newest first — the same rule the stamp applies to everything else.
     [Fact]
-    public void Cards_stored_before_ordering_existed_sort_by_number()
+    public void Cards_stored_before_ordering_existed_sort_by_number_newest_first()
     {
-        Card[] column = [At(1041), At(1039), At(1040)];
+        Card[] column = [At(1039), At(1041), At(1040)];
 
-        CardOrder.Sort(column).Select(card => card.Number).Should().Equal(1039, 1040, 1041);
+        CardOrder.Sort(column).Select(card => card.Number).Should().Equal(1041, 1040, 1039);
     }
 
     [Fact]
-    public void An_arriving_card_lands_past_everything_in_the_column()
+    public void An_arriving_card_lands_ahead_of_everything_in_the_column()
     {
         var arriving = At(1042);
 
-        CardOrder.Last([At(1039, 1), At(1040, 4), At(1041, 2)], arriving).Should().Be(5);
+        CardOrder.First([At(1039, 1), At(1040, 4), At(1041, 2)], arriving).Should().Be(0);
     }
 
     [Fact]
     public void An_empty_column_takes_the_first_position()
     {
-        CardOrder.Last([], At(1039)).Should().Be(1);
+        CardOrder.First([], At(1039)).Should().Be(0);
     }
 
     // The card is already sitting in the column when it is re-stamped, and its own position must not
@@ -33,9 +35,9 @@ public class CardOrderTests
     [Fact]
     public void A_card_already_in_the_column_does_not_count_itself()
     {
-        var arriving = At(1041, 7);
+        var arriving = At(1041, -7);
 
-        CardOrder.Last([At(1039, 1), arriving], arriving).Should().Be(2);
+        CardOrder.First([At(1039, 1), arriving], arriving).Should().Be(0);
     }
 
     [Fact]
@@ -86,10 +88,11 @@ public class CardOrderTests
     {
         Card[] column = [At(1039), At(1040), At(1041)];
 
+        // Unordered the lane reads 1041, 1040, 1039; the drag takes 1041 down to where 1039 sat.
         CardOrder.Move(column, column[2], column[0]);
 
         CardOrder.Sort(column).Select(card => card.Order).Should().Equal(1, 2, 3);
-        CardOrder.Sort(column).Select(card => card.Number).Should().Equal(1041, 1039, 1040);
+        CardOrder.Sort(column).Select(card => card.Number).Should().Equal(1040, 1039, 1041);
     }
 
     [Fact]

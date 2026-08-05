@@ -74,11 +74,16 @@ public partial class FlightStrip(IClock clock)
 
     private bool IsCompact => Density is BoardDensity.Compact;
 
-    // Detailed only: the compact strip has no room for either without pushing the badge out, and the
-    // badge is the signal the density exists to preserve.
-    private bool CanLaunch => Card.Column is BoardColumn.Ready && !IsCompact;
+    // Both densities: a compact board is the one you scan to start work from, so the button that
+    // starts it cannot be the thing density trades away. It goes on the second line as an icon,
+    // beside the path, which leaves the first line's badge exactly the width it had.
+    //
+    // Offered in Preparing as well as Ready: a card you have finished drafting is one you want to
+    // start, and making that cost a drag first was ceremony. The board promotes it — see
+    // `BoardView.LaunchAsync` — so Ready is still passed through rather than skipped.
+    private bool CanLaunch => Card.Column is BoardColumn.Preparing or BoardColumn.Ready;
 
-    private bool CanRetry => Retriable && !IsCompact;
+    private bool CanRetry => Retriable;
 
     private Task OpenAsync() => OnOpen.InvokeAsync(Card);
 

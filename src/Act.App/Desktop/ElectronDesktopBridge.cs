@@ -8,5 +8,12 @@ public sealed class ElectronDesktopBridge : IDesktopBridge
 
     public Task OpenExternalAsync(string url) => Electron.Shell.OpenExternalAsync(url);
 
-    public Task OpenFolderAsync(string path) => Electron.Shell.OpenPathAsync(path);
+    // `openPath` answers with an empty string on success and a message on failure rather than throwing,
+    // so the empty case is normalised to null and the message passed straight through.
+    public async Task<string?> OpenPathAsync(string path)
+    {
+        var error = await Electron.Shell.OpenPathAsync(path);
+
+        return string.IsNullOrWhiteSpace(error) ? null : error;
+    }
 }

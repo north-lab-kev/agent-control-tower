@@ -81,7 +81,13 @@ public class SessionLifetimeTests
         var token = hooks.Register(card.Id);
 
         await launcher.RestoreAsync(card, TerminalSize.Default);
-        await Settles(() => !registry.IsLive(card.Id));
+
+        // Waits on the token, not on `IsLive`, and that distinction is the whole test: `EndAsync` takes
+        // the session out of the dictionary *first* and only releases the token after the dispose that
+        // follows, so `!IsLive` is true for a moment while the token is still registered. Waiting on the
+        // wrong one of the two made this the suite's only flaky test — it passed alone and failed under
+        // the load of four assemblies, which reads exactly like slowness and is not.
+        await Settles(() => !hooks.TryResolve(token, out _));
 
         hooks.TryResolve(token, out _).Should().BeFalse();
     }
@@ -163,9 +169,16 @@ public class SessionLifetimeTests
 
     // The scripted session runs on its own task, so the assertions wait on the condition rather
     // than on a duration — a sleep long enough to be safe on CI is a slow suite everywhere else.
+    //
+    // The budget is a *ceiling*, not a cost: the loop leaves the moment the condition holds, so a
+    // passing test is as fast at 6s as at 2s and only a genuine hang pays the difference. Raised from
+    // 2s on 2026-08-05 for headroom under a loaded machine — but note that the flake it was raised for
+    // was **not** slowness, and raising this did not fix it: the caller was waiting on a condition that
+    // goes true a beat before the one it asserts. Wait on the property under test, not on a neighbour
+    // of it, and this loop's ceiling stops mattering.
     private static async Task Settles(Func<bool> until)
     {
-        for (var attempt = 0; attempt < 200 && !until(); attempt++)
+        for (var attempt = 0; attempt < 600 && !until(); attempt++)
             await Task.Delay(10);
     }
 

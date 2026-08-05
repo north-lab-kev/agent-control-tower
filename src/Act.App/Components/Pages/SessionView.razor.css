@@ -82,6 +82,18 @@
     border-color: var(--act-run);
 }
 
+/* The same frame, kept so an archived card's page has the shape of the one it came from — with the
+   page's own surface rather than the terminal's, because there is no terminal behind it. */
+.terminal.closed {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--act-s2);
+    background: var(--act-surface);
+    color: var(--act-faint);
+}
+
 /* Present but never in the way: the file input is what `act-attach` feeds, and unlike the task
    form's panel there is nothing here to click — the terminal underneath needs every pixel. */
 .terminal ::deep input.hiddenpick {
@@ -151,6 +163,12 @@
     margin: 0;
     font-size: var(--act-t4);
     color: var(--act-ink);
+
+    /* A grid item's `min-width` defaults to `auto`, which lets it grow past its own `1fr` track to fit
+       whatever it holds — so a long value widened the row beyond the 15rem rail rather than being
+       contained by it (measured: a 224px track holding a 287px `dd`). Zeroing it makes the track the
+       limit, which is what lets a file name ellipsize and stops a session id stretching the column. */
+    min-width: 0;
 }
 
 /* The share, set apart from the raw pair beside it: the numbers answer "how much", the percentage
@@ -176,6 +194,88 @@
     font-size: var(--act-t3);
     color: var(--act-dim);
     overflow-wrap: anywhere;
+}
+
+/* One row per file in a 15rem column, so the name is what gets truncated and the size — the shorter,
+   fixed-width half — always stays readable. `title` on the row carries the full name. */
+.facts .files {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--act-s1);
+}
+
+.facts .files li {
+    display: flex;
+    align-items: center;
+    gap: var(--act-s1);
+    min-width: 0;
+}
+
+/* Same stripped button as the task form's chips, laid out to fill the row so the whole width of a
+   15rem rail is the click target rather than just the text. */
+.facts .files .open {
+    display: flex;
+    align-items: center;
+    gap: var(--act-s1);
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.facts .files .open:hover .name {
+    color: var(--act-run);
+}
+
+/* Same treatment as the task form's chips: the card still names the file, so the row stays and says
+   the bytes are gone rather than quietly dropping the row. */
+.facts .files .open.gone .name {
+    text-decoration: line-through;
+    color: var(--act-faint);
+}
+
+.facts .files .open.gone ::deep .rzi {
+    color: var(--act-wait);
+}
+
+.facts .files .open:focus-visible {
+    outline: 1px solid var(--act-run);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+.facts .files .name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.facts .files .size {
+    flex: none;
+    font-family: var(--act-mono);
+    font-size: var(--act-t3);
+    color: var(--act-dim);
+}
+
+/* Radzen's icons default to 20px, which next to 12px text in a narrow rail reads as the icon being
+   the content. Sized to the line instead. */
+.facts .files ::deep .rzi {
+    flex: none;
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    line-height: 14px;
+    color: var(--act-dim);
 }
 
 .actions {

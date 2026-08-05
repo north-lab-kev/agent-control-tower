@@ -134,7 +134,20 @@ public partial class SettingsView(
     {
         try
         {
-            await desktop.OpenFolderAsync(logs.Directory);
+            // The bridge now *reports* a refusal instead of throwing it — a path the OS will not open is
+            // ordinary rather than exceptional — so the returned message is what decides. The catch is
+            // left for interop failing outright, which is a different thing.
+            if (await desktop.OpenPathAsync(logs.Directory) is { } refused)
+            {
+                logsFailed = true;
+
+                log.LogWarning(
+                    "Opening the log folder {Directory} failed: {Refusal}",
+                    logs.Directory,
+                    refused);
+
+                return;
+            }
 
             logsFailed = false;
         }

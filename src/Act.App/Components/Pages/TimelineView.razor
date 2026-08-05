@@ -4,22 +4,22 @@
 
 <PageTitle>@(card is null ? "ACT" : $"#{card.Number} — {card.Title}")</PageTitle>
 
-<EscapeKey OnEscape="BackToBoard" />
+<EscapeKey OnEscape="Back" />
 
 @if (card is null)
 {
     <div class="timeline missing">
         <RadzenText TextStyle="TextStyle.Body1" Text="@Strings.Card_NotFound" />
         <RadzenButton Text="@Strings.Nav_BackToBoard" Icon="arrow_back" Size="ButtonSize.Small"
-                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" Click="BackToBoard" />
+                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" Click="Back" />
     </div>
 }
 else
 {
     <div class="timeline">
         <header class="bar">
-            <RadzenButton Icon="arrow_back" Text="@Strings.Nav_BackToBoard" Size="ButtonSize.Small"
-                          ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="BackToBoard" />
+            <RadzenButton Icon="arrow_back" Text="@CardExit.Label(card)" Size="ButtonSize.Small"
+                          ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="Back" />
             <span class="id">#@card.Number</span>
             <span class="title">@card.Title</span>
         </header>

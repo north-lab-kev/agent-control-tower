@@ -17,7 +17,7 @@ namespace Act.Core.Rules;
 public static class CardCompletion
 {
     public static bool CanComplete(Card card)
-        => !card.IsDeleted && card.Column is BoardColumn.YourTurn;
+        => card.IsOnBoard && card.Column is BoardColumn.YourTurn;
 
     public static bool CanCompleteInto(Card card, BoardColumn target)
         => target is BoardColumn.Completed && CanComplete(card);

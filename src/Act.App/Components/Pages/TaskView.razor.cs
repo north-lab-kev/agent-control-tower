@@ -30,6 +30,7 @@ public partial class TaskView(
     UserSettingsService settings,
     IWorkingDirectories directories,
     IAttachmentStore attachments,
+    AttachmentOpener opener,
     IClock clock,
     DialogService dialogService,
     NavigationManager navigation,
@@ -68,6 +69,10 @@ public partial class TaskView(
     private readonly string dropRootId = $"act-drop-{Guid.NewGuid():N}";
 
     private readonly string dropInputId = $"act-file-{Guid.NewGuid():N}";
+
+    // One id, not one per attachment: only the hovered row renders a preview, so there is never a
+    // second element wearing it.
+    private readonly string previewId = $"act-preview-{Guid.NewGuid():N}";
 
     private IJSObjectReference? attach;
 
@@ -111,20 +116,66 @@ public partial class TaskView(
 
     private string DropInputId => dropInputId;
 
+    private string PreviewId => previewId;
+
     private string DropZoneText => dragging
         ? Strings.NewTask_Attachments_DropActive
         : Strings.NewTask_Attachments_Drop;
 
     // Only what can actually be shown. A log or a PDF has no thumbnail, and an empty frame under the
-    // cursor reads as a broken image rather than as "nothing to preview".
+    // cursor reads as a broken image rather than as "nothing to preview" — and neither does a file that
+    // is no longer on disk, which is what `Missing` covers.
     private bool Previews(TaskAttachment attachment)
-        => ReferenceEquals(previewing, attachment) && attachment.IsImage;
+        => ReferenceEquals(previewing, attachment) && attachment.IsImage && !Missing(attachment);
 
-    // The file name is escaped rather than trusted to be url-safe: `AttachmentStore` allows spaces and
-    // anything else the platform permits, and the route segment has to survive them. The endpoint
-    // re-checks the decoded name against the card's own folder either way.
+    // The card keeps a *name*; the bytes are a separate thing that can go without it — a purge, a hand
+    // reaching into the data directory. Asked at render time rather than stored, for the same reason the
+    // working directory's existence is: a stored answer would be a stale one. Cheap enough at a handful
+    // of rows, and it is what turns a broken-image icon into a row that says what is actually wrong.
+    private bool Missing(TaskAttachment attachment)
+        => attachments.ResolveInside(form.CardId, attachment.FileName) is null;
+
+    private static string RowIcon(TaskAttachment attachment, bool missing) => missing
+        ? "broken_image"
+        : attachment.IsImage ? "image" : "description";
+
     private string PreviewUrl(TaskAttachment attachment)
-        => $"{AttachmentEndpointExtensions.RoutePrefix}/{form.CardId:d}/{Uri.EscapeDataString(attachment.FileName)}";
+        => AttachmentEndpointExtensions.UrlFor(form.CardId, attachment);
+
+    // Names the file as well as the action, so it doubles as the tooltip a truncated name needs — and
+    // says the file is gone rather than offering to open it when there is nothing there.
+    private static string RowLabel(TaskAttachment attachment, bool missing) => missing
+        ? Text.Format(Strings.NewTask_Attachments_GoneDetail, attachment.FileName)
+        : Text.Format(Strings.NewTask_Attachments_Open, attachment.FileName);
+
+    // The only way to look at an attachment the hover preview cannot show, which is everything that is
+    // not an image. Offered on a locked card too: opening a file changes nothing about the run.
+    private async Task OpenAttachmentAsync(TaskAttachment attachment)
+    {
+        var result = await opener.OpenAsync(form.CardId, attachment);
+
+        if (result.Outcome is AttachmentOpenOutcome.Opened)
+            return;
+
+        notifications.Notify(new NotificationMessage
+        {
+            Severity = NotificationSeverity.Warning,
+            Summary = result.Outcome is AttachmentOpenOutcome.Missing
+                ? Strings.NewTask_Attachments_Gone
+                : Strings.NewTask_Attachments_OpenFailed,
+            Detail = result.Outcome is AttachmentOpenOutcome.Missing
+                ? Text.Format(Strings.NewTask_Attachments_GoneDetail, attachment.FileName)
+                : result.Detail ?? Text.Format(
+                    Strings.NewTask_Attachments_OpenFailedDetail,
+                    attachment.FileName),
+            Duration = 8000,
+        });
+    }
+
+    // An archived card is a record: it opens, because reading it is why the archive keeps it, and
+    // nothing on it moves. Restoring is the way back to an editable task, and it lives on the
+    // archive page rather than here — this surface stays entirely read-only.
+    private bool ReadOnly => card is { } existing && !TaskEditing.CanEdit(existing);
 
     // Past the launch boundary the form describes a run that already happened, so what defines that
     // run stops being editable — `TaskEditing` owns the split, and `NewTaskForm.ApplyTo` enforces it
@@ -314,7 +365,7 @@ public partial class TaskView(
                     Severity = NotificationSeverity.Error,
                     Summary = Strings.NewTask_Attachments_Failed,
                     Detail = error.Message,
-                    Duration = 20000,
+                    Duration = 5000,
                 });
             }
         }
@@ -340,7 +391,7 @@ public partial class TaskView(
         Severity = NotificationSeverity.Warning,
         Summary = summary,
         Detail = detail,
-        Duration = 8000,
+        Duration = 5000,
     });
 
     // Only the follow-ups that are still live. Ones already archived are not a decision the user
@@ -353,7 +404,7 @@ public partial class TaskView(
     // the follow-ups, which is a genuine choice rather than an "are you sure".
     private async Task StartDeleteAsync()
     {
-        if (card is not { } existing)
+        if (card is not { } existing || ReadOnly)
             return;
 
         var followUps = LiveFollowUps;
@@ -432,7 +483,7 @@ public partial class TaskView(
                 Severity = NotificationSeverity.Success,
                 Summary = Strings.Task_SaveAsTemplate_Saved,
                 Detail = Text.Format(Strings.Task_SaveAsTemplate_SavedDetail, named.Trim()),
-                Duration = 6000,
+                Duration = 5000,
             });
         }
         finally
@@ -472,7 +523,7 @@ public partial class TaskView(
                 Severity = NotificationSeverity.Error,
                 Summary = Strings.Task_DeleteFailed,
                 Detail = error.Message,
-                Duration = 20000,
+                Duration = 5000,
             });
 
             deleting = false;
@@ -499,7 +550,7 @@ public partial class TaskView(
                 Severity = NotificationSeverity.Error,
                 Summary = Strings.NewTask_CreateDirFailed,
                 Detail = error.Message,
-                Duration = 20000,
+                Duration = 5000,
             });
         }
     }
@@ -566,14 +617,21 @@ public partial class TaskView(
 
             await unsaved.InvokeVoidAsync("watch", owner, desktop.IsDesktop);
 
-            // Bound on the whole page rather than on the panel: a file dragged at a form is aimed at
-            // the prompt as often as at the box that collects it, and the highlight tells the user
-            // where it will land either way. A locked card has no input to feed, so nothing is bound.
-            if (!Locked && !missing)
+            // The module is loaded for **every** card that exists, locked or not, because it does two
+            // jobs and only one of them is about adding files: `place` positions the hover preview,
+            // which a launched card wants as much as a draft does. Gating the import on `Locked` — as
+            // this did at first — left a completed card rendering a preview that was never placed and
+            // so never became visible.
+            if (!missing)
             {
                 attach = await js.InvokeAsync<IJSObjectReference>("import", "/js/act-attach.js");
 
-                await attach.InvokeVoidAsync("watch", dropRootId, dropInputId, owner);
+                // Only the *input* half is gated: drop and paste feed a file input a locked card does
+                // not render. Bound on the whole page rather than on the panel, because a file dragged
+                // at a form is aimed at the prompt as often as at the box that collects it, and the
+                // highlight tells the user where it will land either way.
+                if (!Locked)
+                    await attach.InvokeVoidAsync("watch", dropRootId, dropInputId, owner);
             }
         }
 
@@ -584,7 +642,7 @@ public partial class TaskView(
         {
             try
             {
-                await placing.InvokeVoidAsync("place", dropRootId);
+                await placing.InvokeVoidAsync("place", previewId);
             }
             catch (JSDisconnectedException)
             {
@@ -622,7 +680,38 @@ public partial class TaskView(
         if (card is null)
             attachments.Clear(form.CardId);
         else
-            attachments.Prune(form.CardId, attachmentBaseline);
+            PruneAttachments(attachmentBaseline);
+    }
+
+    // The one place that deletes an existing card's files, so it is the one place worth guarding and the
+    // one place worth logging. Two reasons a prune is refused:
+    //
+    //   * **The card is locked.** Its attachments cannot have changed, so there is nothing to reconcile
+    //     and everything to lose.
+    //   * **The card still names files the prune would not keep.** That is not a removal the user made;
+    //     it is the form's copy of the list disagreeing with the card's, and the card is the record.
+    //     Belt and braces behind the first guard, because this is a delete of the user's own data.
+    private void PruneAttachments(IEnumerable<string> keep)
+    {
+        if (Locked)
+            return;
+
+        var kept = keep.ToList();
+
+        if (card is { } existing
+            && existing.Attachments.Any(attachment => !kept.Contains(attachment.FileName)))
+        {
+            using (log.BeginTaskScope(existing.Number, existing.SessionId))
+                log.LogWarning(
+                    "Not pruning attachments: the card still names {Named} file(s) and the form would "
+                        + "keep only {Kept}.",
+                    existing.Attachments.Count,
+                    kept.Count);
+
+            return;
+        }
+
+        attachments.Prune(form.CardId, kept);
     }
 
     public async ValueTask DisposeAsync()
@@ -764,7 +853,8 @@ public partial class TaskView(
     // Explicit intent, so it overwrites: a user who clicks this while a title is already there is
     // asking for a different one, and refusing would leave the button doing nothing on the very card
     // where it was pressed. Their own text is one Escape-free `Ctrl+Z` away in the box either way.
-    private bool CanGenerateTitle => !titling && !saving && !string.IsNullOrWhiteSpace(form.Prompt);
+    private bool CanGenerateTitle
+        => !titling && !saving && !ReadOnly && !string.IsNullOrWhiteSpace(form.Prompt);
 
     private async Task GenerateTitleAsync()
     {
@@ -782,7 +872,7 @@ public partial class TaskView(
                 Severity = NotificationSeverity.Warning,
                 Summary = Strings.NewTask_GenerateTitleFailed,
                 Detail = Strings.NewTask_GenerateTitleFallback,
-                Duration = 8000,
+                Duration = 5000,
             });
 
         if (suggestion is { } result)
@@ -810,9 +900,11 @@ public partial class TaskView(
         }
     }
 
+    // The button is gone on an archived card, and the check is here as well because a form still
+    // submits on Enter in any of its boxes.
     private async Task OnSubmitAsync(NewTaskForm _)
     {
-        if (saving)
+        if (saving || ReadOnly)
             return;
 
         saving = true;
@@ -836,7 +928,14 @@ public partial class TaskView(
 
             // After the write, so the card and the directory agree from here on: an attachment the
             // user removed on this visit is what loses its bytes, and only once the removal is real.
-            attachments.Prune(form.CardId, AttachmentNames);
+            //
+            // **Never on a locked card.** Past the launch boundary the attachment list is immutable —
+            // `ApplyTo` will not write it and the markup offers no way to remove one — so there is
+            // nothing here to reconcile and pruning is pure downside: it is a delete driven by the
+            // *form's* copy of the list against a card that owns the real one. A save that only changed
+            // the title would have taken the files with it if that copy were ever short. This is the
+            // one plausible route by which a launched task lost its attachment on 2026-08-05.
+            PruneAttachments(AttachmentNames);
 
             discarded = true;
         }
@@ -847,6 +946,11 @@ public partial class TaskView(
 
         BackToBoard();
     }
+
+    // Leaving the page returns to the list the card is on — see `CardExit`. The two exits above
+    // keep the board on purpose: a save and an archive are both moves *of* the card, made from the
+    // board, and the result of each is what the board now shows.
+    private void Back() => navigation.NavigateTo(CardExit.Route(card));
 
     private void BackToBoard() => navigation.NavigateTo("/");
 
@@ -862,6 +966,6 @@ public partial class TaskView(
             return;
         }
 
-        BackToBoard();
+        Back();
     }
 }

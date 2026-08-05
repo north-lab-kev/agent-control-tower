@@ -13,15 +13,17 @@
     <div class="taskview empty">
         <RadzenText TextStyle="TextStyle.Body1" Text="@Strings.Card_NotFound" />
         <RadzenButton Text="@Strings.Nav_BackToBoard" Icon="arrow_back" Size="ButtonSize.Small"
-                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" Click="BackToBoard" />
+                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" Click="Back" />
     </div>
 }
 else
 {
     <div class="taskview" id="@DropRootId">
         <header class="bar">
-            <RadzenButton Icon="arrow_back" Text="@Strings.Nav_BackToBoard" Size="ButtonSize.Small"
-                          ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="BackToBoard" />
+            @* Named for where it lands, which for an archived card is the archive it was opened
+               from — see `CardExit`. *@
+            <RadzenButton Icon="arrow_back" Text="@CardExit.Label(card)" Size="ButtonSize.Small"
+                          ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="Back" />
             @if (card is { } existing)
             {
                 <span class="id">#@existing.Number</span>
@@ -40,8 +42,15 @@ else
             <RadzenStack Gap="1.5rem" class="sheet">
 
                 @* Said once, at the top, rather than repeated beside every frozen control: the
-                   reason is one fact about the card, not a property of each field. *@
-                @if (Locked)
+                   reason is one fact about the card, not a property of each field. Archived wins
+                   over launched — it freezes strictly more, and both sentences would be one too
+                   many for a page nothing on which can be changed. *@
+                @if (ReadOnly)
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter"
+                                 AllowClose="false" Icon="inventory_2" Text="@Strings.NewTask_Archived" />
+                }
+                else if (Locked)
                 {
                     <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter"
                                  AllowClose="false" Icon="lock" Text="@Strings.NewTask_Locked" />
@@ -61,13 +70,17 @@ else
                             <div class="titlerow">
                                 <RadzenTextBox Name="Title" @bind-Value="form.Title"
                                                MaxLength="@TaskTitleQuery.MaxLength"
-                                               Placeholder="@Strings.NewTask_Title_Placeholder" class="wide" />
-                                <RadzenButton Icon="auto_awesome" ButtonStyle="ButtonStyle.Base"
-                                              Variant="Variant.Outlined" Size="ButtonSize.Small"
-                                              ButtonType="ButtonType.Button" Click="GenerateTitleAsync"
-                                              Disabled="@(!CanGenerateTitle)" IsBusy="titling"
-                                              title="@Strings.NewTask_GenerateTitle"
-                                              aria-label="@Strings.NewTask_GenerateTitle" />
+                                               Placeholder="@Strings.NewTask_Title_Placeholder"
+                                               ReadOnly="ReadOnly" class="wide" />
+                                @if (!ReadOnly)
+                                {
+                                    <RadzenButton Icon="auto_awesome" ButtonStyle="ButtonStyle.Base"
+                                                  Variant="Variant.Outlined" Size="ButtonSize.Small"
+                                                  ButtonType="ButtonType.Button" Click="GenerateTitleAsync"
+                                                  Disabled="@(!CanGenerateTitle)" IsBusy="titling"
+                                                  title="@Strings.NewTask_GenerateTitle"
+                                                  aria-label="@Strings.NewTask_GenerateTitle" />
+                                }
                             </div>
                             <RadzenCustomValidator Component="Title" Validator="@(() => TitleSatisfied)"
                                                    Text="@Strings.NewTask_Title_Required" />
@@ -123,15 +136,28 @@ else
                                            them may be 25 MB. *@
                                         <div class="chip" @onmouseenter="() => previewing = attachment"
                                              @onmouseleave="() => previewing = null">
-                                            <RadzenIcon Icon="@(attachment.IsImage ? "image" : "description")" />
-                                            <span class="name" title="@attachment.FileName">@attachment.FileName</span>
+                                            @* A real button, not a clickable div: opening the file is the
+                                               row's primary action, so it has to be reachable by
+                                               keyboard. The remove button stays a sibling — nesting one
+                                               button inside another is invalid, and a click on the X
+                                               must not also open the file. *@
+                                            @{ var gone = Missing(attachment); }
+                                            <button type="button" class="open @(gone ? "gone" : null)"
+                                                    @onclick="() => OpenAttachmentAsync(attachment)"
+                                                    title="@RowLabel(attachment, gone)"
+                                                    aria-label="@RowLabel(attachment, gone)">
+                                                <RadzenIcon Icon="@RowIcon(attachment, gone)" />
+                                                <span class="name">@attachment.FileName</span>
+                                                <span class="size">@TaskLabels.FileSize(attachment.Length)</span>
+                                            </button>
+
+                                            @* A sibling of the button, so the box is measured against
+                                               the whole row — see `AttachmentPreview`. *@
                                             @if (Previews(attachment))
                                             {
-                                                <div class="preview">
-                                                    <img src="@PreviewUrl(attachment)" alt="@attachment.FileName" />
-                                                </div>
+                                                <AttachmentPreview Id="@PreviewId" Url="@PreviewUrl(attachment)"
+                                                                   Alt="@attachment.FileName" />
                                             }
-                                            <span class="size">@TaskLabels.FileSize(attachment.Length)</span>
                                             @if (!Locked)
                                             {
                                                 <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Base"
@@ -209,14 +235,15 @@ else
                                 <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Model_Hint" class="hint" />
                             </RadzenStack>
                             <RadzenDropDown TValue="string" Value="form.Model" ValueChanged="OnModelChanged"
-                                            Data="Models" AllowClear="true"
+                                            Data="Models" AllowClear="true" Disabled="ReadOnly"
                                             Placeholder="@Strings.NewTask_AgentDefault" class="control" />
                         </div>
 
                         <div class="row">
                             <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Effort" />
                             <RadzenDropDown TValue="string" @bind-Value="form.Effort" Data="Efforts"
-                                            AllowClear="true" Placeholder="@Strings.NewTask_AgentDefault"
+                                            AllowClear="true" Disabled="ReadOnly"
+                                            Placeholder="@Strings.NewTask_AgentDefault"
                                             class="control" />
                         </div>
 
@@ -227,7 +254,7 @@ else
                             </RadzenStack>
                             <RadzenDropDown TValue="PermissionMode" @bind-Value="form.Permission"
                                             Data="PermissionChoices" TextProperty="Text" ValueProperty="Value"
-                                            AllowClear="false" class="control" />
+                                            AllowClear="false" Disabled="ReadOnly" class="control" />
                         </div>
                     </RadzenStack>
                 </RadzenFieldset>
@@ -307,14 +334,22 @@ else
                     <div class="destructive">
                         @* Archiving is reversible, so a childless card needs no confirmation — the
                            archive page is the undo. A card with follow-ups opens a dialog, because
-                           their fate is a real choice about tasks other than this one. *@
-                        @if (card is not null)
+                           their fate is a real choice about tasks other than this one. Gone on a
+                           card that is already archived: there is nothing left to archive it into. *@
+                        @if (card is not null && !ReadOnly)
                         {
                             <RadzenButton Icon="delete_outline" ButtonStyle="ButtonStyle.Danger"
                                           Variant="Variant.Text" Size="ButtonSize.Small"
                                           ButtonType="ButtonType.Button" Disabled="deleting"
                                           Click="StartDeleteAsync"
                                           title="@Strings.Task_Delete" aria-label="@Strings.Task_Delete" />
+                        }
+
+                        @* Both survive the archive, because neither touches this card: a duplicate
+                           is a new task, and a template is made of what is on the form. They are
+                           also the two reasons to open an archived card at all. *@
+                        @if (card is not null)
+                        {
                             <RadzenButton Icon="content_copy" ButtonStyle="ButtonStyle.Base"
                                           Variant="Variant.Text" Size="ButtonSize.Small"
                                           ButtonType="ButtonType.Button" Disabled="duplicating"
@@ -337,14 +372,19 @@ else
                         @* Icon-only, like delete — but both keep a title and an aria-label, because
                            an unlabelled button is only unambiguous to the person who wrote it. *@
                         <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
-                                      Size="ButtonSize.Small" ButtonType="ButtonType.Button" Click="BackToBoard"
+                                      Size="ButtonSize.Small" ButtonType="ButtonType.Button" Click="Back"
                                       title="@Strings.NewTask_Cancel" aria-label="@Strings.NewTask_Cancel" />
                         @* Busy, not just disabled: a save that has to write a title first waits on a
-                           CLI for a few seconds, and a button that only greys out reads as a hang. *@
-                        <RadzenButton Icon="save" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat"
-                                      Size="ButtonSize.Small" ButtonType="ButtonType.Submit" Disabled="saving"
-                                      IsBusy="saving"
-                                      title="@Strings.NewTask_Save" aria-label="@Strings.NewTask_Save" />
+                           CLI for a few seconds, and a button that only greys out reads as a hang.
+                           Absent rather than disabled on an archived card — a greyed Save invites
+                           the user to look for what would re-enable it, and nothing would. *@
+                        @if (!ReadOnly)
+                        {
+                            <RadzenButton Icon="save" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat"
+                                          Size="ButtonSize.Small" ButtonType="ButtonType.Submit" Disabled="saving"
+                                          IsBusy="saving"
+                                          title="@Strings.NewTask_Save" aria-label="@Strings.NewTask_Save" />
+                        }
                     </RadzenStack>
                 </div>
             </div>

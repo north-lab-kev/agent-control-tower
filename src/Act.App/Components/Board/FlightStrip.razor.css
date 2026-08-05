@@ -151,10 +151,32 @@
 ::deep .b-review { --tint: var(--act-review); }
 ::deep .b-done { --tint: var(--act-done); }
 
+/* A compact strip's second line is the path plus one button: the path takes whatever is left and
+   ellipsizes, which is why it needs `min-width: 0` — a flex item's default `auto` floor is the
+   string's own width, and a long folder would push the button off the card instead of truncating. */
+::deep .cpath {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
 /* Radzen gives it a 16px glyph beside a 12px label, so the icon was the loudest thing on a strip
    whose whole job is to be read. */
 ::deep .launch .rz-button-icon-left {
     font-size: var(--act-icon);
+}
+
+/* Icon-only, so the label's padding comes off and the glyph's own reserved box goes with it —
+   otherwise a 14px icon sits centred in Radzen's 20px hole and the button is wider than the path
+   it shares the line with. */
+::deep .launch.mini.rz-button.rz-variant-outlined.rz-base {
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 0 0.3rem;
+}
+
+::deep .launch.mini .rz-button-icon-left {
+    width: auto;
+    margin: 0;
 }
 
 ::deep .ctxbar {

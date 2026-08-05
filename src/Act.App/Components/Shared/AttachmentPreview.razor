@@ -1,0 +1,9 @@
+@* The hover thumbnail, shared by the two faces that list a task's attachments — the task form's chips
+   and the terminal rail's file rows. One component rather than the same block restated twice, because
+   the `position: fixed` box, its sizing and the placement contract are all one decision.
+
+   Its **parent element is the anchor**: `act-attach.place` positions this box against whatever it sits
+   inside, so the caller only has to render it as a child of the row being hovered. *@
+<div class="preview" id="@Id">
+    <img src="@Url" alt="@Alt" />
+</div>

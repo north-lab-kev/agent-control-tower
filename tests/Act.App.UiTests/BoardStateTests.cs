@@ -12,11 +12,11 @@ public class BoardStateTests
 {
     private static readonly DateTimeOffset Now = new(2026, 8, 2, 9, 0, 0, TimeSpan.Zero);
 
-    // A card landing in a column lands at the end of it. Decided in one place because half a dozen
+    // A card landing in a column lands at the top of it. Decided in one place because half a dozen
     // callers assign a column, and a stamp only most of them remembered would leave cards sitting
     // wherever their previous column had put them.
     [Fact]
-    public async Task A_card_arriving_in_a_column_lands_past_everything_already_there()
+    public async Task A_card_arriving_in_a_column_lands_ahead_of_everything_already_there()
     {
         var first = Card(BoardColumn.Ready, order: 1);
         var second = Card(BoardColumn.Ready, order: 2);
@@ -27,8 +27,8 @@ public class BoardStateTests
         arriving.Column = BoardColumn.Ready;
         await board.UpdateAsync(arriving);
 
-        arriving.Order.Should().Be(3);
-        board.In(BoardColumn.Ready).Last().Id.Should().Be(arriving.Id);
+        arriving.Order.Should().Be(0);
+        board.In(BoardColumn.Ready).First().Id.Should().Be(arriving.Id);
     }
 
     // An ordinary save is not an arrival, or editing a title would send the card to the back of its
@@ -53,10 +53,10 @@ public class BoardStateTests
     {
         var board = await BoardOf(Card(BoardColumn.Preparing, order: 1));
 
-        var created = Card(BoardColumn.Preparing, order: 0);
+        var created = Card(BoardColumn.Preparing, order: 5);
         await board.CreateAsync(created);
 
-        created.Order.Should().Be(2);
+        created.Order.Should().Be(0);
         board.In(BoardColumn.Preparing).Should().HaveCount(2);
     }
 
@@ -71,17 +71,17 @@ public class BoardStateTests
         board.In(BoardColumn.Ready).Select(card => card.Order).Should().Equal(1, 2, 3);
     }
 
-    // Cards stored before ordering existed are all at zero, and `Number` is what keeps those in the
-    // order they were created.
+    // Cards stored before ordering existed are all at zero, and `Number` descending keeps those
+    // reading newest first, like every other column.
     [Fact]
-    public async Task Cards_with_no_order_fall_back_to_arrival_order()
+    public async Task Cards_with_no_order_fall_back_to_newest_created_first()
     {
         var board = await BoardOf(
             Card(BoardColumn.Ready, order: 0, number: 1002),
             Card(BoardColumn.Ready, order: 0, number: 1000),
             Card(BoardColumn.Ready, order: 0, number: 1001));
 
-        board.In(BoardColumn.Ready).Select(card => card.Number).Should().Equal(1000, 1001, 1002);
+        board.In(BoardColumn.Ready).Select(card => card.Number).Should().Equal(1002, 1001, 1000);
     }
 
     [Fact]

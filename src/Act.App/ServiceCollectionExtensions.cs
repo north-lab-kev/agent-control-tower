@@ -1,14 +1,17 @@
 using Act.Agents.ClaudeCode;
 using Act.Agents.Codex;
+using Act.App.Attachments;
 using Act.App.Cards;
 using Act.App.Desktop;
 using Act.App.Notifications;
 using Act.App.Sessions;
 using Act.App.Settings;
+using Act.App.Telemetry;
 using Act.App.Usage;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Infrastructure;
+using Act.Infrastructure.Telemetry;
 using Act.Infrastructure.Usage;
 using ElectronNET.API;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -31,6 +34,9 @@ public static class ServiceCollectionExtensions
         services.AddRadzenComponents();
         services.AddSingleton<IAssetVersions, AssetVersions>();
         services.AddScoped<IDesktopBridge, BrowserDesktopBridge>();
+
+        // Scoped because the bridge is: which shell is behind it is decided per circuit.
+        services.AddScoped<AttachmentOpener>();
         services.AddSingleton<INotifier, BrowserNotifier>();
         services.AddSingleton<UiPresence>();
         services.AddSingleton<DeepLinkRouter>();
@@ -41,7 +47,8 @@ public static class ServiceCollectionExtensions
             .AddActAgents()
             .AddActBoard()
             .AddActSessions()
-            .AddActUsage(configuration);
+            .AddActUsage(configuration)
+            .AddTelemetry(configuration);
     }
 
     // Electron-only, and registered from the branch that decides the app runs as a desktop shell:
@@ -103,6 +110,31 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<UsageState>();
         services.AddSingleton<UsagePump>();
+
+        return services;
+    }
+
+    // Bound here rather than inside `AddActPostHog` for the same reason `AddActUsage` binds its own
+    // section: configuration is the app's, and infrastructure takes the answer.
+    //
+    // The sink is composed in two layers on purpose — the transport knows how to send, the gate knows
+    // whether it may. `Act.App` never names PostHog; `ActTelemetry` never reads the user's switch.
+    private static IServiceCollection AddTelemetry(this IServiceCollection services, IConfiguration configuration)
+    {
+        var options = configuration.GetSection(TelemetryOptions.SectionName).Get<TelemetryOptions>()
+            ?? new TelemetryOptions();
+
+        services.AddSingleton(options);
+        services.AddActPostHog(options, provider => provider.GetRequiredService<UserSettingsService>().Telemetry);
+
+        services.AddSingleton<ITelemetrySink>(provider => new ConsentedTelemetrySink(
+            ActTelemetry.Transport(
+                provider,
+                options,
+                provider.GetRequiredService<UserSettingsService>().InstallId),
+            provider.GetRequiredService<UserSettingsService>()));
+
+        services.AddSingleton<TelemetryPump>();
 
         return services;
     }

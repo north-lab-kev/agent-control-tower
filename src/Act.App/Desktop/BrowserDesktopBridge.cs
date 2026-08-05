@@ -9,10 +9,24 @@ public sealed class BrowserDesktopBridge(IJSRuntime js) : IDesktopBridge
 
     public async Task OpenExternalAsync(string url) => await js.InvokeVoidAsync("open", url, "_blank");
 
-    public Task OpenFolderAsync(string path)
+    // `UseShellExecute` on the **server**, which for ACT is the machine the user is sitting at — the web
+    // host is an implementation detail of a desktop app, not a deployment. That is the same trust model
+    // the logs folder already opens under; it is worth naming because it is the one line here that
+    // would mean something different if ACT were ever served to another machine.
+    //
+    // Unlike Electron's `openPath` this throws rather than reporting, so the throw becomes the message.
+    public Task<string?> OpenPathAsync(string path)
     {
-        using var opened = Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        try
+        {
+            using var opened = Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
 
-        return Task.CompletedTask;
+            return Task.FromResult<string?>(null);
+        }
+        catch (Exception error) when (error is System.ComponentModel.Win32Exception
+            or InvalidOperationException or FileNotFoundException or PlatformNotSupportedException)
+        {
+            return Task.FromResult<string?>(error.Message);
+        }
     }
 }

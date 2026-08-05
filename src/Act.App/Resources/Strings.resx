@@ -48,6 +48,9 @@
   <data name="NewTask_Locked" xml:space="preserve">
     <value>This task has launched. Its prompt, directory, agent and automation are fixed — they describe the run that already started. The title and the agent settings can still change, and apply the next time it launches.</value>
   </data>
+  <data name="NewTask_Archived" xml:space="preserve">
+    <value>This task is archived. It is a record of work that is over: nothing here can be changed and its terminal does not start. Restore it from the archive to work on it again, or duplicate it to start the same task over.</value>
+  </data>
   <data name="NewTask_Title" xml:space="preserve">
     <value>Title</value>
   </data>
@@ -110,6 +113,21 @@
   </data>
   <data name="NewTask_Attachments_Failed" xml:space="preserve">
     <value>Could not attach the file</value>
+  </data>
+  <data name="NewTask_Attachments_Open" xml:space="preserve">
+    <value>Open {0}</value>
+  </data>
+  <data name="NewTask_Attachments_OpenFailed" xml:space="preserve">
+    <value>Could not open the file</value>
+  </data>
+  <data name="NewTask_Attachments_OpenFailedDetail" xml:space="preserve">
+    <value>Windows has no application associated with {0}, or it refused to start one.</value>
+  </data>
+  <data name="NewTask_Attachments_Gone" xml:space="preserve">
+    <value>The file is no longer there</value>
+  </data>
+  <data name="NewTask_Attachments_GoneDetail" xml:space="preserve">
+    <value>{0} is not in this task's folder any more.</value>
   </data>
   <data name="NewTask_WorkingDir" xml:space="preserve">
     <value>Working directory</value>
@@ -702,6 +720,9 @@
   <data name="Session_NotLaunchable" xml:space="preserve">
     <value>Move the card to Ready to launch it.</value>
   </data>
+  <data name="Session_Archived" xml:space="preserve">
+    <value>This task is archived. Its terminal does not start — restore it to the board to run it again.</value>
+  </data>
   <data name="Session_LaunchFailed" xml:space="preserve">
     <value>Launch failed</value>
   </data>
@@ -797,6 +818,9 @@
   </data>
   <data name="Archive_Restore" xml:space="preserve">
     <value>Restore to the board</value>
+  </data>
+  <data name="Archive_Open" xml:space="preserve">
+    <value>Open the task, read-only</value>
   </data>
   <data name="Archive_AutoArchived" xml:space="preserve">
     <value>archived automatically</value>

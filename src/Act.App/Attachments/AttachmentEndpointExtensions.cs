@@ -18,6 +18,13 @@ public static class AttachmentEndpointExtensions
 {
     public const string RoutePrefix = "/attachments";
 
+    // Composed here rather than at each call site, so the route and the url that hits it cannot drift.
+    // The file name is escaped rather than trusted to be url-safe: `AttachmentStore` allows spaces and
+    // anything else the platform permits, and the segment has to survive them. The endpoint re-checks
+    // the decoded name against the card's own folder either way.
+    public static string UrlFor(Guid cardId, TaskAttachment attachment)
+        => $"{RoutePrefix}/{cardId:d}/{Uri.EscapeDataString(attachment.FileName)}";
+
     public static void MapActAttachments(this IEndpointRouteBuilder routes)
         => routes.MapGet(
                 $"{RoutePrefix}/{{cardId:guid}}/{{fileName}}",

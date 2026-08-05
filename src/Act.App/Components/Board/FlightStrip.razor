@@ -16,23 +16,47 @@
 <RadzenCard Variant="Variant.Outlined" class="stripcard">
     @if (IsCompact)
     {
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
-            <RadzenText TextStyle="TextStyle.Caption" Text="@($"#{Card.Number}")" class="cid" />
-            <RadzenText TextStyle="TextStyle.Body2" Text="@Card.Title" class="ttl" />
-            @if (face.BadgeText is not null)
-            {
-                <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.BadgeText" class="@face.FullBadgeClass" />
-            }
-            @if (face.HoldText is not null)
-            {
-                <span title="@face.HoldTip">
-                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.HoldText" class="@face.HoldClass" />
-                </span>
-            }
-            @if (face.Schedule is not null)
-            {
-                <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="@face.Schedule" class="schip" />
-            }
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenText TextStyle="TextStyle.Caption" Text="@($"#{Card.Number}")" class="cid" />
+                <RadzenText TextStyle="TextStyle.Body2" Text="@Card.Title" class="ttl" />
+                @if (face.BadgeText is not null)
+                {
+                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.BadgeText" class="@face.FullBadgeClass" />
+                }
+                @if (face.HoldText is not null)
+                {
+                    <span title="@face.HoldTip">
+                        <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.HoldText" class="@face.HoldClass" />
+                    </span>
+                }
+                @if (face.Schedule is not null)
+                {
+                    <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="@face.Schedule" class="schip" />
+                }
+            </RadzenStack>
+
+            @* The path and the action are the two things a compact strip still has to carry, so they
+               share the second line: the folder gives up width and the button keeps its box, and the
+               first line's badge is left exactly as wide as it was. *@
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.35rem">
+                <RadzenText TextStyle="TextStyle.Caption" Text="@Card.WorkingDir" class="path cpath"
+                            title="@Card.WorkingDir" />
+                @if (CanLaunch)
+                {
+                    <RadzenButton Icon="play_arrow" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
+                                  Variant="Variant.Outlined" class="launch mini"
+                                  title="@Strings.Board_Launch" aria-label="@Strings.Board_Launch"
+                                  Disabled="IsLaunching" Click="@LaunchAsync" @onclick:stopPropagation="true" />
+                }
+                @if (CanRetry)
+                {
+                    <RadzenButton Icon="refresh" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
+                                  Variant="Variant.Outlined" class="launch mini"
+                                  title="@Strings.Board_Retry" aria-label="@Strings.Board_Retry"
+                                  Disabled="IsLaunching" Click="@RetryAsync" @onclick:stopPropagation="true" />
+                }
+            </RadzenStack>
         </RadzenStack>
     }
     else

@@ -52,6 +52,19 @@ public class SessionRestoreTests
         SessionRestore.IsResumable(card).Should().BeFalse();
     }
 
+    // The other way off the board, and it has to mean the same thing: opening a card the retention
+    // window retired is reading a record, so it must not spawn a process either.
+    [Fact]
+    public void A_card_the_retention_window_took_stays_off_too()
+    {
+        var card = CardIn(BoardColumn.Completed);
+
+        card.ArchivedAt = DateTimeOffset.UnixEpoch;
+
+        SessionRestore.IsResumable(card).Should().BeFalse();
+        SessionRestore.RestoresUnattended(card).Should().BeFalse();
+    }
+
     // Startup restores the machine region only.
     [Theory]
     [InlineData(BoardColumn.Executing)]

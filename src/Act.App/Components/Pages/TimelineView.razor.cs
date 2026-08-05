@@ -32,5 +32,6 @@ public partial class TimelineView(BoardState board, IClock clock, NavigationMana
         StateHasChanged();
     });
 
-    private void BackToBoard() => navigation.NavigateTo("/");
+    // The board, or the archive for a card that is off it — see `CardExit`.
+    private void Back() => navigation.NavigateTo(CardExit.Route(card));
 }

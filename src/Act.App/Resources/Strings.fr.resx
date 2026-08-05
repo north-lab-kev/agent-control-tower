@@ -48,6 +48,9 @@
   <data name="NewTask_Locked" xml:space="preserve">
     <value>Cette tâche est lancée. Sa consigne, son répertoire, son agent et son automatisation sont figés — ils décrivent l'exécution déjà commencée. Le titre et les réglages de l'agent restent modifiables et s'appliqueront au prochain lancement.</value>
   </data>
+  <data name="NewTask_Archived" xml:space="preserve">
+    <value>Cette tâche est archivée. C'est la trace d'un travail terminé : rien ici n'est modifiable et son terminal ne démarre pas. Restaurez-la depuis l'archive pour y retravailler, ou dupliquez-la pour refaire la même tâche.</value>
+  </data>
   <data name="NewTask_Title" xml:space="preserve">
     <value>Titre</value>
   </data>
@@ -110,6 +113,21 @@
   </data>
   <data name="NewTask_Attachments_Failed" xml:space="preserve">
     <value>Impossible de joindre le fichier</value>
+  </data>
+  <data name="NewTask_Attachments_Open" xml:space="preserve">
+    <value>Ouvrir {0}</value>
+  </data>
+  <data name="NewTask_Attachments_OpenFailed" xml:space="preserve">
+    <value>Impossible d'ouvrir le fichier</value>
+  </data>
+  <data name="NewTask_Attachments_OpenFailedDetail" xml:space="preserve">
+    <value>Windows n'a aucune application associée à {0}, ou a refusé de la démarrer.</value>
+  </data>
+  <data name="NewTask_Attachments_Gone" xml:space="preserve">
+    <value>Le fichier n'est plus là</value>
+  </data>
+  <data name="NewTask_Attachments_GoneDetail" xml:space="preserve">
+    <value>{0} ne se trouve plus dans le dossier de cette tâche.</value>
   </data>
   <data name="NewTask_WorkingDir" xml:space="preserve">
     <value>Répertoire de travail</value>
@@ -702,6 +720,9 @@
   <data name="Session_NotLaunchable" xml:space="preserve">
     <value>Déplacez la carte vers Prêt pour la démarrer.</value>
   </data>
+  <data name="Session_Archived" xml:space="preserve">
+    <value>Cette tâche est archivée. Son terminal ne démarre pas — restaurez-la au tableau pour la relancer.</value>
+  </data>
   <data name="Session_LaunchFailed" xml:space="preserve">
     <value>Échec du démarrage</value>
   </data>
@@ -797,6 +818,9 @@
   </data>
   <data name="Archive_Restore" xml:space="preserve">
     <value>Restaurer au tableau</value>
+  </data>
+  <data name="Archive_Open" xml:space="preserve">
+    <value>Ouvrir la tâche, en lecture seule</value>
   </data>
   <data name="Archive_AutoArchived" xml:space="preserve">
     <value>archivée automatiquement</value>

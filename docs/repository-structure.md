@@ -98,6 +98,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │  │                          #       SettingsView, Error, NotFound
 │  │  │  ├─ Board/                  #     non-routable board parts (FlightStrip)
 │  │  │  ├─ Shared/                 #     CardTabs (Task|Terminal|Timeline), FolderPicker,
+│  │  │  │                         #       AttachmentPreview (the hover thumbnail both the task
+│  │  │  │                         #         form's chips and the terminal rail render; its parent
+│  │  │  │                         #         element is the anchor act-attach.place measures),
 │  │  │  │                         #       EscapeKey (renders nothing; binds Escape for a page)
 │  │  │  └─ Layout/                 #     MainLayout, top bar, theme stylesheets
 │  │  ├─ Desktop/                   #   DesktopShell: the Electron window + tray icon and the
@@ -109,7 +112,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ Attachments/               #   the one route that serves a local file: a card's attached
 │  │  │                            #     image, for the chip's hover thumbnail. Thin like Hooks/ —
 │  │  │                            #     the image list is TaskAttachment's and the folder boundary
-│  │  │                            #     is IAttachmentStore.ResolveInside, both tested web-free
+│  │  │                            #     is IAttachmentStore.ResolveInside, both tested web-free.
+│  │  │                            #     Also AttachmentOpener: resolve a card's file name to a real
+│  │  │                            #     path and hand it to the shell, answering with an outcome
+│  │  │                            #     (opened / gone / refused) so the page owns the wording
 │  │  ├─ Cards/                     #   BoardState — owns every card incl. archived ones, and
 │  │  │                            #     decides what may see which; RetentionPump (the hourly
 │  │  │                            #     auto-archive sweep); task form model (NewTaskForm, and

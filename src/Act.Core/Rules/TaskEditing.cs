@@ -17,8 +17,14 @@ namespace Act.Core.Rules;
 //     `launchConfig`. A model or permission mode does not apply to the turn already running, but
 //     it is what the next launch uses, which is the whole point of being allowed to switch model
 //     on a failed card before retrying it.
+// Off the board there is a third state, wider than either of those: an archived card — deleted by
+// hand or retired by the retention window — is a record of work that is over, so *nothing* on it is
+// editable and no start of any kind is offered. It is still openable, because reading it is exactly
+// why the archive keeps it; restoring it is what makes it a live task again.
 public static class TaskEditing
 {
+    public static bool CanEdit(Card card) => card.IsOnBoard;
+
     public static bool CanEditLaunchInputs(Card card)
-        => card.Column is BoardColumn.Preparing or BoardColumn.Ready;
+        => CanEdit(card) && card.Column is BoardColumn.Preparing or BoardColumn.Ready;
 }

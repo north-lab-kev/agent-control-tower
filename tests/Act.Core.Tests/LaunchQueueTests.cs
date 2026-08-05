@@ -98,8 +98,8 @@ public class LaunchQueueTests
     [Fact]
     public void Two_ready_cards_in_one_folder_do_not_both_launch()
     {
-        var first = Ready(1040, TaskSchedule.Now);
-        var second = Ready(1041, TaskSchedule.Now);
+        var first = Ready(1041, TaskSchedule.Now);
+        var second = Ready(1040, TaskSchedule.Now);
 
         var evaluation = Evaluate([first, second]);
 
@@ -155,10 +155,10 @@ public class LaunchQueueTests
     [Fact]
     public void A_launch_consumes_the_slot_it_takes()
     {
-        var first = Ready(1040, TaskSchedule.Now);
+        var first = Ready(1041, TaskSchedule.Now);
         first.WorkingDir = "/dev/one";
 
-        var second = Ready(1041, TaskSchedule.Now);
+        var second = Ready(1040, TaskSchedule.Now);
         second.WorkingDir = "/dev/two";
 
         var evaluation = Evaluate([first, second], Policy() with { MaxConcurrent = 1 });
@@ -192,8 +192,10 @@ public class LaunchQueueTests
         Hold(evaluation, card).Reason.Should().Be(LaunchHold.UsageLimit);
     }
 
+    // Nothing reordered, so the tiebreak decides — and the column reads newest first, which makes the
+    // queue take the most recently readied card first. See `CardOrder`.
     [Fact]
-    public void The_queue_is_first_in_first_out_by_number()
+    public void The_queue_is_last_in_first_out_by_number()
     {
         var later = Ready(1041, TaskSchedule.Now);
         later.WorkingDir = "/dev/two";
@@ -202,7 +204,7 @@ public class LaunchQueueTests
         earlier.WorkingDir = "/dev/one";
 
         Evaluate([later, earlier]).Launch.Select(card => card.Number)
-            .Should().Equal(1040, 1041);
+            .Should().Equal(1041, 1040);
     }
 
     // The whole point of ordering a column by hand: the runner takes Ready the way the board draws
@@ -223,7 +225,8 @@ public class LaunchQueueTests
     }
 
     // A due instant decides whether a card is in the queue at all, never where in it: a dated card
-    // that has come due sits where the column shows it, which with nothing reordered is by number.
+    // that has come due sits where the column shows it, which with nothing reordered is by number,
+    // newest first.
     [Fact]
     public void A_dated_card_that_is_due_queues_in_column_order()
     {
@@ -235,7 +238,7 @@ public class LaunchQueueTests
         immediate.WorkingDir = "/dev/two";
 
         Evaluate([dated, immediate]).Launch.Select(card => card.Number)
-            .Should().Equal(1039, 1041);
+            .Should().Equal(1041, 1039);
     }
 
     [Fact]

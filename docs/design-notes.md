@@ -87,6 +87,30 @@ command line through untouched and ACT quotes each argument by the rules `Comman
 documents. Measured against the real CLI afterwards: **226 characters in, 226 out**, where the
 transport's own escaping gave 28.
 
+### A variadic flag must never be the last one before a positional — three times now
+
+The prompt is a positional argument on both CLIs, and both have variadic flags that will eat it.
+`--tools` was the first (see `ClaudeCodeAdapter.QueryAsync`), `codex --image` the second, and
+`claude --add-dir` the third — and the third **shipped broken**, because the command line *looked*
+right when it was read back off the process table and nobody checked that the agent had actually
+received anything.
+
+The failure is silent in the shape that matters. Non-interactively the CLI says `Error: Input must be
+provided either through stdin or as a prompt argument when using --print`; in a TUI launch it says
+nothing at all — the agent comes up with an empty composer, so ACT's own board reports a running card
+and the transcript never starts. The symptom was seen during verification, mistaken for the CLI's
+"manual mode", and explained away.
+
+The rule, for any flag added to a launch command line from here on:
+
+- **Bind the value with `=`** (`--add-dir=<path>`, `--image=<path>`) so the option takes exactly one
+  value per occurrence, whatever its arity.
+- **Verify the agent received the prompt**, not that the command line contains it. `claude -p
+  --model haiku --add-dir=<dir> "Reply with exactly: BANANA"` answering `BANANA` is the check;
+  reading the arguments back proves only that ACT spelled them, not that the CLI parsed them.
+- The adapter tests pin the *form* — the bound spelling present, the bare one absent, the prompt still
+  the final argument — because a unit test cannot re-derive commander's or clap's parsing.
+
 ### `codex --image` must bind its value with `=` — measured 2026-08-04
 
 `-i, --image <FILE>...` is variadic, so `-i C:\a\shot.png "the prompt"` does **not** mean one image

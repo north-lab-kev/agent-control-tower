@@ -138,11 +138,17 @@ public sealed class ClaudeCodeAdapter(
         // documented grant, and it is passed whether or not there is a file yet: a mid-session drop
         // arrives long after this command line is gone. There is no `--image` equivalent on this
         // CLI, so every attachment reaches the model as a path the agent reads for itself.
+        //
+        // **`--add-dir=<path>`, never `--add-dir <path>`.** The flag is variadic
+        // (`--add-dir <directories...>`), so a value passed as its own argument keeps consuming
+        // positionals — and the next positional is the prompt, which disappears into the directory
+        // list. Measured against 2.1.222: the separated form answers
+        // `Error: Input must be provided either through stdin or as a prompt argument`, while the `=`
+        // form binds one value and the prompt survives. Identical to the `codex --image` trap and to
+        // the `--tools` trap in `QueryAsync` below — a variadic flag must never be the last one
+        // before a positional.
         if (attachments.Directory is { Length: > 0 } granted)
-        {
-            arguments.Add("--add-dir");
-            arguments.Add(granted);
-        }
+            arguments.Add($"--add-dir={granted}");
 
         arguments.AddRange(resolved.ExtraFlags);
 

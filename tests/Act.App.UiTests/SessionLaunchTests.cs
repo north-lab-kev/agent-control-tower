@@ -163,6 +163,41 @@ public class SessionLaunchTests
         adapter.Launches.Should().BeEmpty();
     }
 
+    // An archived card is openable and inert. Ready is the column a launch is offered from, so it is
+    // the one that proves the archive outranks it.
+    [Fact]
+    public async Task An_archived_card_is_not_launched()
+    {
+        var card = Ready();
+        card.DeletedAt = Now;
+
+        var (launcher, _, adapter, _) = LauncherOf(card);
+
+        launcher.CanLaunch(card).Should().BeFalse();
+
+        (await launcher.LaunchAsync(card, TerminalSize.Default)).Launched.Should().BeFalse();
+
+        adapter.Launches.Should().BeEmpty();
+        card.Column.Should().Be(BoardColumn.Ready);
+    }
+
+    // The other half, and the one the terminal page walks into: opening an archived card must not
+    // resume the session it still carries.
+    [Fact]
+    public async Task An_archived_card_is_not_resumed()
+    {
+        var card = Executing();
+        card.ArchivedAt = Now;
+
+        var (launcher, _, adapter, _) = LauncherOf(card);
+
+        launcher.CanRestart(card).Should().BeFalse();
+
+        (await launcher.RestoreAsync(card, TerminalSize.Default)).Launched.Should().BeFalse();
+
+        adapter.Resumes.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task A_card_that_is_already_running_is_not_launched_twice()
     {

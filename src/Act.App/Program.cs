@@ -4,6 +4,7 @@ using Act.App.Cards;
 using Act.App.Desktop;
 using Act.App.Sessions;
 using Act.App.Settings;
+using Act.App.Telemetry;
 using Act.App.Usage;
 using Act.App.Hooks;
 using Act.App.Hosting;
@@ -46,6 +47,11 @@ app.BindActHookEndpoint();
 var settings = app.Services.GetRequiredService<UserSettingsService>();
 
 settings.ApplyLanguage();
+
+// Straight after the language, because the locale it just set is one of the things `app_started`
+// reports, and before everything else, because the crash handlers it attaches are worth having up
+// before anything can fail. The container disposes it, which is where the closing flush lives.
+app.Services.GetRequiredService<TelemetryPump>().Start();
 
 await app.Services.GetRequiredService<BoardState>().LoadAsync();
 

@@ -43,10 +43,15 @@
                 {
                     <div class="row">
                         <span class="id">#@card.Number</span>
-                        <div class="what">
+                        @* A link rather than a click handler: an archived card is a route like any
+                           other, so it gets the middle-click, the keyboard and the hover target the
+                           browser already knows how to give it. What it opens is read-only
+                           throughout — see `TaskEditing`. *@
+                        <a class="what" href="@CardTabs.Route(card.Id, CardSurface.Task)"
+                           title="@Strings.Archive_Open">
                             <span class="ttl">@card.Title</span>
                             <span class="meta">@Meta(card)</span>
-                        </div>
+                        </a>
                         <RadzenButton Icon="restore_from_trash" Size="ButtonSize.ExtraSmall"
                                       ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
                                       Click="@(() => RestoreAsync(card))"

@@ -15,8 +15,12 @@ public static class SessionRestore
     // Completed too, and for a different reason: the session *is* the record of what was done, and a
     // signed-off card that opens on a blank pane loses it. Resuming does not un-complete anything —
     // the rules do not govern Completed, so nothing the resumed session says can move the card.
+    //
+    // `IsOnBoard` rather than "not deleted": a card the retention window archived is as far off the
+    // board as one the user removed, and opening either of them must not spawn a process for work
+    // that is over.
     public static bool IsResumable(Card card)
-        => !card.IsDeleted
+        => card.IsOnBoard
             && card.SessionId is { Length: > 0 }
             && (RulesEngine.Governs(card.Column) || card.Column is BoardColumn.Completed);
 

@@ -158,23 +158,27 @@ export function watch(rootId, inputId, owner) {
     zones.set(rootId, { root, onDragEnter, onDragLeave, onDrop, onPaste });
 }
 
-// Places the hover preview beside its chip. It has to be JS because the box is `position: fixed` — the
-// only way out of the sheet's own `overflow-y: auto`, which clips an absolutely positioned overlay —
-// and a fixed box needs viewport coordinates nothing in CSS can hand it.
+// Places the hover preview beside the row it belongs to. It has to be JS because the box is
+// `position: fixed` — the only way out of a scroll container's `overflow`, which clips an absolutely
+// positioned overlay — and a fixed box needs viewport coordinates nothing in CSS can hand it.
 //
-// Below the chip when there is room, above it when there is not, and clamped to the viewport on both
-// axes so a chip at the right-hand edge does not push half the thumbnail off screen. The box has a
+// Below the row when there is room, above it when there is not, and clamped to the viewport on both
+// axes so a row at the right-hand edge does not push half the thumbnail off screen. The box has a
 // fixed size in CSS, so this runs *before* the image has loaded and never has to run twice.
+//
+// **The anchor is the preview's own parent**, not a named class. Two faces use this — the task form's
+// chips and the terminal rail's file rows — and asking for the element it was rendered inside is what
+// lets one function serve both without knowing either one's markup.
 const Gap = 8;
 
-export function place(rootId) {
-    const preview = document.getElementById(rootId)?.querySelector('.preview');
-    const chip = preview?.closest('.chip');
-    if (!preview || !chip) {
+export function place(previewId) {
+    const preview = document.getElementById(previewId);
+    const parent = preview?.parentElement;
+    if (!preview || !parent) {
         return;
     }
 
-    const anchor = chip.getBoundingClientRect();
+    const anchor = parent.getBoundingClientRect();
     const width = preview.offsetWidth;
     const height = preview.offsetHeight;
 

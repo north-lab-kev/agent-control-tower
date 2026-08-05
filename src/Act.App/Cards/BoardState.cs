@@ -27,10 +27,10 @@ public sealed class BoardState(ICardStore store, IAttachmentStore attachments, I
 
     public event Action? Changed;
 
-    // Every column reads the same way — the order the user put it in, arrival order until they do —
-    // and Your turn is no exception: the badge says *why* a card is waiting, and ranking by it took
-    // the order out of the user's hands for the one column where the next thing to look at is their
-    // call. See `CardOrder`.
+    // Every column reads the same way — the order the user put it in, newest arrival first until they
+    // do — and Your turn is no exception: the badge says *why* a card is waiting, and ranking by it
+    // took the order out of the user's hands for the one column where the next thing to look at is
+    // their call. See `CardOrder`.
     public IReadOnlyList<Card> In(BoardColumn column)
         => CardOrder.Sort(cards.Where(card => card.IsOnBoard && card.Column == column));
 
@@ -109,7 +109,7 @@ public sealed class BoardState(ICardStore store, IAttachmentStore attachments, I
             placed[card.Id] = card.Column;
     }
 
-    // A card that lands in a column lands at the end of it. Decided here rather than at each of the
+    // A card that lands in a column lands at the top of it. Decided here rather than at each of the
     // half-dozen places a column is assigned — the launch, the rules engine, the sign-off, the
     // reopen, a hand drag — because every one of them saves through this method, and a stamp that
     // only *most* of them remembered would leave cards sitting wherever their last column had put
@@ -119,7 +119,7 @@ public sealed class BoardState(ICardStore store, IAttachmentStore attachments, I
         if (placed.TryGetValue(card.Id, out var was) && was == card.Column)
             return;
 
-        card.Order = CardOrder.Last(In(card.Column), card);
+        card.Order = CardOrder.First(In(card.Column), card);
     }
 
     // Manual ordering inside a column, which for Ready is also the order the queue will launch in:

@@ -277,8 +277,8 @@ all deliberate:
 
 - **Ordering replaces adjacency.** Two columns implied a priority by sitting
   side by side; one column has to state it. Your turn is ordered like every other
-  column — arrival order, and whatever order the user drags it into after that
-  (see *Ordering a column*). It was briefly ranked by badge (`needs permission`
+  column — newest arrival first, and whatever order the user drags it into after
+  that (see *Ordering a column*). It was briefly ranked by badge (`needs permission`
   → `needs answer` → `error` → `killed` → `to review`); that was **dropped on
   2026-08-02**, because a rank the user cannot override decides for them which of
   twenty waiting cards to look at next, and only they know that. The badge still
@@ -370,20 +370,28 @@ From there the normal Your turn exits apply.
 Every column is a **list the user owns**, and the same rule covers all five:
 `Act.Core/Rules/CardOrder`, on a stored `order` per card.
 
-- **A card lands at the end of the column it arrives in** — created, dragged,
-  launched, moved by the rules engine, signed off, reopened. Nothing arrives in
-  the middle of a lane the user has arranged.
-- **So an untouched board is FIFO**, which is what it always was. `number` is the
-  tiebreak, so cards that share an order still read in the order they were created.
+- **A card lands at the top of the column it arrives in** — created, dragged,
+  launched, moved by the rules engine, signed off, reopened. **Changed 2026-08-05**,
+  from landing at the end: what just happened is what you want to read, and burying
+  a fresh sign-off under twenty older ones in Completed — or a card that just started
+  waiting under twenty in Your turn — made the newest event the hardest one to find.
+  Nothing arrives in the middle of a lane the user has arranged.
+- **So an untouched board is newest-first.** `number` descending is the tiebreak, so
+  cards that share an order — everything stored before ordering existed sits at zero —
+  read newest first too, rather than inverting the rule for the one case nobody
+  arranged. The stamp walks *down* rather than renumbering the lane, so an arrival
+  writes one row instead of all of them and `order` values go negative; they are a
+  sequence, never a position.
 - **A strip dropped on one of its own column-mates takes that card's place**:
   dragged down it lands after the card under the cursor, dragged up it lands
   before, and an insertion line on that edge says which while the drag is live.
-  Crossing columns is the move it always was — the card lands last, not wherever
+  Crossing columns is the move it always was — the card lands first, not wherever
   the cursor was.
 - **Ready's order is the queue's order.** The runner takes that column exactly as
-  it is drawn (see *Runner logic*), so dragging a strip to the top of Ready is how
-  you say "this one next". That is the reason this exists; ordering the other four
-  is the same gesture doing the obvious thing.
+  it is drawn (see *Runner logic*), so an unarranged Ready launches the most
+  recently readied card first, and dragging a strip to the top is how you say "this
+  one next" against that. Manual ordering is the reason this exists; ordering the
+  other four is the same gesture doing the obvious thing.
 - **The lane is ordered, not the filter.** A drop is resolved against the whole
   column, so reordering while a search is narrowing the board cannot silently
   reshuffle the cards it is hiding.
@@ -877,12 +885,19 @@ message cap for.
   could not cover all three routes; and a referenced file the user later moves or deletes
   leaves a card that cannot be re-run.
 - **Each agent delivers them its own way**, and both are measured:
-  - **Claude Code** — `--add-dir <folder>` on every launch *and* resume, plus every path in
+  - **Claude Code** — `--add-dir=<folder>` on every launch *and* resume, plus every path in
     the prompt. There is no `--image` on this CLI, so a picture arrives as a path the agent
     reads; the grant is what stops `default` permission mode parking on a permission prompt
     for the task's own attachment. It is passed **whether or not anything is attached yet**,
     because a file dropped onto the terminal an hour in has no second chance at the command
     line.
+    - **`--add-dir=<path>`, never `--add-dir <path>`.** The flag is variadic
+      (`--add-dir <directories...>`), so a separated value keeps eating positionals and the
+      prompt right after it vanishes into the directory list — the CLI then answers `Error:
+      Input must be provided either through stdin or as a prompt argument`, which in a TUI
+      launch is silent: the agent simply comes up with an empty composer and the card looks
+      like it is running. Measured against 2.1.222; it shipped broken once and is the third
+      instance of the same trap, after `codex --image` and `--tools`.
   - **Codex** — `--image=<path>` per image, which puts the picture on turn one as a real
     attachment rather than behind a `view_image` call, and the rest named in the prompt.
     **No grant**: Codex reads outside `--cd` under both `read-only` and `workspace-write`
@@ -932,6 +947,12 @@ message cap for.
     attachments would otherwise be ten image fetches on first paint, one of them possibly 25 MB.
   - **Images only.** A log or a PDF has no thumbnail, and an empty frame under the cursor reads
     as a broken image rather than as "nothing to preview".
+  - **It works on a locked card too**, which is where it is most wanted: a launched or signed-off
+    task is the one you come back to in order to read what it was given. The files are still there —
+    only an archive purge removes them. It regressed once because `act-attach.js` began life as the
+    drop/paste module and was imported only for an *unlocked* card; `place` lives in that module, so
+    a completed card rendered a preview nothing ever positioned or revealed. The import is now
+    unconditional and only the file-input half is gated on `Locked`.
   - **A fixed-size box, `position: fixed`, placed by JS.** The sheet is the page's scroll
     container, so an absolutely positioned overlay is clipped by it — measured, not assumed:
     opening downward was cut off by ~200px in a 720px window, and opening upward would be cut
@@ -940,6 +961,33 @@ message cap for.
     is sized in CSS rather than by the image, which is what lets the position be computed once,
     before the bytes arrive, with no second pass and no jump.
   - The bytes come from `/attachments/{cardId}/{fileName}` — see *Local-endpoint security*.
+- **Clicking an attachment opens it in whatever the OS associates with it** — added 2026-08-05, on both
+  faces and for every type including images. It is the answer to the half the thumbnail cannot cover: a
+  log, a PDF, a spreadsheet were previously attachable and then impossible to look at.
+  - **Through `IDesktopBridge.OpenPathAsync`**, which is `shell.openPath` on the desktop and
+    `Process.Start` with `UseShellExecute` in browser mode — the latter opens on the *server*, which for
+    ACT is the machine the user is sitting at. Same trust model the logs folder already opens under.
+    It replaced `OpenFolderAsync`: a file and a folder are one operation to the shell, and the old name
+    made every call site handed a file read as a bug.
+  - **A refusal is reported, not thrown.** An extension with no associated program is a shrug from the
+    OS rather than an exception, and a click that appears to do nothing is the worst version of that —
+    so the bridge answers with a message and the two failures are told apart: the file is *gone* (the
+    card's folder no longer holds it, which a purge can do underneath an open page) or the OS *would
+    not* open it.
+  - A real `<button>`, not a clickable row, so it answers the keyboard; the remove **X** is a sibling
+    rather than a child, so clicking it cannot also open the file.
+- **The terminal face lists them too** — added 2026-08-05, in the rail beside the agent, directory and
+  session id. The paths are in the opening prompt, but by the time anyone asks "what was it given?"
+  the prompt has scrolled off the top. It shows the **card's** list rather than the folder's contents:
+  a file dropped into the terminal mid-session belongs to the conversation and is already on screen a
+  few lines up. Hidden entirely when there are none, like the metrics beside it.
+  - **Hovering a row previews it there too**, which is the face that wants it most: reading a
+    screenshot while watching the terminal beats navigating away to look at it. The 22rem box is wider
+    than the 15rem rail, and that is fine — `place` clamps it to the viewport, so it opens leftward
+    over the terminal rather than off the edge.
+  - **It works on an archived card**, which renders no terminal at all. The files outlive the session
+    and only a purge removes them, so the module carrying `place` is loaded whether or not there is a
+    terminal to drop onto — the same gate that broke the task form's preview on a completed card.
 
 ### Auto-generated titles — added 2026-08-03
 
@@ -2013,6 +2061,23 @@ history.
     auto-archived — newest first, each restorable with one click, plus **Clear archive** —
     the single permanent delete, behind an inline confirm. Restore puts a card back in the
     column it left.
+  - **An archived card opens, and everything inside it is read-only.** The row's title is a
+    link to the card's own routes, because reading a task is most of why the archive keeps
+    it — the prompt it ran with, its folder, its settings, its timeline. What it is not is a
+    task: `TaskEditing.CanEdit` is `isOnBoard`, so **every** field is frozen — not just the
+    launch inputs a launched card freezes — and Save and Delete are gone rather than
+    disabled. **Its terminal does not start**: no launch, no resume, no restart, no desktop
+    handoff, and the terminal face renders a note instead of an xterm rather than a black
+    pane that never paints. `SessionRestore`, `CardCompletion`, `CardRetry` and
+    `SessionLauncher.CanLaunch` all read `isOnBoard` for the same reason, so an
+    auto-archived card is as inert as a deleted one and startup never resumes either.
+    Duplicate and *Save as a template* stay, because neither touches the archived card.
+    Restoring it is what makes it a live task again, and that lives on the archive page.
+  - **Leaving it returns to the archive, not to the board.** The back arrow, Cancel and Escape
+    all land on the list the card is actually on — `CardExit`, shared by the three faces so
+    they cannot disagree — and the arrow is labelled with the page it opens. The two exits
+    that keep the board are the save and the archive itself: both are moves *of* the card,
+    made from the board, and the board is what shows the result.
   - **Kill before archiving.** A card with a live session tears the process down first.
     Archiving while its agent kept working would leave a process editing a directory with
     nothing on the board pointing at it — precisely the state ACT exists to prevent. The
@@ -2278,11 +2343,20 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   grid was dropped because its 40px pitch never aligned with the flexible column
   widths, so it read as noise rather than structure.
 - **Density toggle:** **Compact** (id + title + **badge** + schedule chip — badges
-  shown, not just a dot) vs **Detailed** (fuller strip with metrics, path,
-  lineage). Chosen in *Settings → Appearance → display mode* **or on the board**, on
-  a chip in the control row beside the auto-execution switch, and persisted either
-  way. In compact the title ellipsizes so the badge keeps its full width: the badge
-  is the signal, the title yields.
+  shown, not just a dot — then a second line carrying the **working directory** and
+  the **launch / retry** button as an icon) vs **Detailed** (fuller strip with
+  metrics, path, lineage, labelled buttons). Chosen in *Settings → Appearance →
+  display mode* **or on the board**, on a chip in the control row beside the
+  auto-execution switch, and persisted either way. In compact the title ellipsizes
+  so the badge keeps its full width: the badge is the signal, the title yields.
+  - **The path and the launch button survive compact — 2026-08-05.** They were
+    detailed-only, on the reasoning that a compact strip had no room for either
+    without squeezing the badge. But compact is the density you scan a full board
+    in, and it is *from* that board that work gets started: the folder says which
+    checkout a card is about, and the button is the whole point of the glance.
+    Both moved to a second line of their own, so the first line's badge keeps
+    exactly the width it had; the button drops its label and the path ellipsizes,
+    which is where the density is now paid for.
   - **The chip names the mode you are in, not the one you would get.** The board in
     front of you is the answer to "which mode is this", and a button labelled with
     the *other* mode would contradict it on every glance.

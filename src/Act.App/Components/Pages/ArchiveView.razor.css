@@ -53,12 +53,20 @@
     flex: none;
 }
 
+/* A link that reads as a row, not as a link: underlining two stacked lines in a dense list would
+   make the list itself the loudest thing on the page. The hover is what says it opens. */
 .row .what {
     display: flex;
     flex-direction: column;
     gap: 0.1rem;
     min-width: 0;
     flex: 1 1 auto;
+    text-decoration: none;
+    color: inherit;
+}
+
+.row .what:hover .ttl {
+    color: var(--act-ink);
 }
 
 .row .ttl {

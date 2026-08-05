@@ -202,6 +202,11 @@ public partial class BoardView(
     // Ready → Executing happens right here: the session belongs to the registry, not to a view,
     // so the agent is started headless at a default geometry and the strip simply moves. Opening
     // the terminal later re-attaches to that process and sizes it to the real xterm.
+    //
+    // A Preparing card is promoted first rather than launched where it stands: the launcher still
+    // refuses Preparing outright — see `SessionLauncher.CanLaunch` — so the button does the drag for
+    // you, and a launch that is then refused leaves the card in Ready, exactly where the drag alone
+    // would have left it.
     private async Task LaunchAsync(Card card)
     {
         if (!launching.Add(card.Id))
@@ -209,6 +214,9 @@ public partial class BoardView(
 
         try
         {
+            if (card.Column is BoardColumn.Preparing)
+                await board.MoveAsync(card, BoardColumn.Ready);
+
             var result = await launcher.LaunchAsync(card, geometry.Last);
 
             if (result.Message is { } message)
@@ -218,7 +226,7 @@ public partial class BoardView(
                     Severity = result.Waiting ? NotificationSeverity.Warning : NotificationSeverity.Error,
                     Summary = result.Waiting ? Strings.Session_NotLaunched : Strings.Session_LaunchFailed,
                     Detail = message,
-                    Duration = 20000,
+                    Duration = 5000,
                 });
             }
         }
@@ -249,7 +257,7 @@ public partial class BoardView(
                     Severity = result.Waiting ? NotificationSeverity.Warning : NotificationSeverity.Error,
                     Summary = result.Waiting ? Strings.Session_NotLaunched : Strings.Session_RetryFailed,
                     Detail = message,
-                    Duration = 20000,
+                    Duration = 5000,
                 });
             }
         }

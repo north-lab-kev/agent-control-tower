@@ -151,7 +151,6 @@
 }
 
 .chip {
-    position: relative;
     display: flex;
     align-items: center;
     gap: var(--act-s2);
@@ -161,6 +160,46 @@
     border-radius: var(--act-radius);
     background: var(--act-surface);
     font-size: var(--act-t3);
+}
+
+/* A button carrying the row's own layout: everything a `<button>` brings of its own — padding, border,
+   background, its centred font — is stripped so it reads as the text it wraps, and only the pointer and
+   the focus ring say it is actionable. */
+.chip .open {
+    display: flex;
+    align-items: center;
+    gap: var(--act-s2);
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.chip .open:hover .name {
+    color: var(--act-run);
+}
+
+/* A file the card names but the disk no longer holds. Struck through rather than hidden: the card is
+   still carrying it, and that is the fact worth showing — the prompt named this path to the agent. */
+.chip .open.gone .name {
+    text-decoration: line-through;
+    color: var(--act-dim);
+}
+
+.chip .open.gone ::deep .rzi {
+    color: var(--act-wait);
+}
+
+/* `focus-visible`, not `focus`: a mouse click must not leave a ring behind on a row you have moved on
+   from, and a keyboard user must always see where they are. */
+.chip .open:focus-visible {
+    outline: 1px solid var(--act-run);
+    outline-offset: 2px;
+    border-radius: 2px;
 }
 
 .chip .name {
@@ -176,43 +215,8 @@
     color: var(--act-dim);
 }
 
-/* `fixed`, not `absolute`, and that is the whole reason this needed measuring. The sheet is the page's
-   scroll container, so an absolutely positioned overlay is clipped by it — and the attachments row
-   sits low enough in a 720px window that opening *downward* was cut off by ~200px while opening
-   upward would be cut off on a taller form. A fixed box escapes ancestor overflow entirely, and
-   `act-attach.place` puts it beside the chip, flipping and clamping against the viewport.
-   Hidden until then, so it never paints at the top-left corner first. */
-.chip .preview {
-    position: fixed;
-    visibility: hidden;
-    z-index: 5;
-
-    /* A fixed box rather than one that grows with the image, so the size is known *before* the image
-       has loaded — which is what lets the position be computed once, with no second pass and no jump
-       when the bytes arrive. */
-    width: 22rem;
-    height: 16rem;
-    padding: var(--act-s1);
-    border: 1px solid var(--act-line2);
-    border-radius: var(--act-radius);
-    background: var(--act-surface);
-    box-shadow: 0 6px 18px rgb(0 0 0 / 45%);
-
-    /* The pointer must never reach it: an overlay under the cursor would fire the chip's own
-       `mouseleave`, which unrenders the overlay, which puts the cursor back on the chip — a flicker
-       loop rather than a preview. */
-    pointer-events: none;
-}
-
-/* `scale-down` rather than `contain`: a screenshot is shrunk to fit, and a 16px favicon is left at its
-   own size instead of being blown up into a blurry wall. */
-.chip .preview img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: scale-down;
-    border-radius: calc(var(--act-radius) - 2px);
-}
+/* The hover thumbnail's own look lives in `AttachmentPreview.razor.css`, since the terminal rail shows
+   the same box — nothing about it is the chip's business beyond rendering it as a child. */
 
 .row {
     display: flex;

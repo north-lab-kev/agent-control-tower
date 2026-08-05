@@ -68,6 +68,25 @@ public class AttachmentLifetimeTests
         attachments.Cleared.Should().Equal([abandoned]);
     }
 
+    // The guard that matters most, because the sweep deletes without being asked: an empty board is
+    // indistinguishable from a board that never arrived — a store another instance holds, a load that
+    // threw upstream — and acting on that assumption costs the user their files. A store with no cards
+    // has nothing worth reclaiming anyway, so refusing is free.
+    [Fact]
+    public async Task Nothing_is_swept_when_no_cards_are_loaded()
+    {
+        var attachments = new FakeAttachmentStore();
+        var board = new BoardState(new FakeCardStore([]), attachments, new FrozenClock(Now));
+
+        await board.LoadAsync();
+
+        await attachments.SaveAsync(Guid.NewGuid(), "someone-elses.png", new MemoryStream());
+
+        new AttachmentSweep(board, attachments, NullLogger<AttachmentSweep>.Instance).Run();
+
+        attachments.Cleared.Should().BeEmpty();
+    }
+
     // Including one that is only in the archive: an archived card is restorable, so its folder is
     // claimed exactly as a live card's is.
     [Fact]

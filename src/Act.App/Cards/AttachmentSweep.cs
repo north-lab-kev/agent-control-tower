@@ -18,13 +18,34 @@ public sealed class AttachmentSweep(
 {
     public void Run()
     {
-        var known = board.All.Select(card => card.Id).ToHashSet();
-        var orphans = attachments.CardIds().Where(id => !known.Contains(id)).ToList();
+        var cards = board.All;
+
+        // **A board with no cards buys nothing and risks everything.** It is the one state this cannot
+        // tell apart from a board that failed to arrive — a store another instance holds, a load that
+        // threw somewhere upstream — and being wrong here deletes the user's files rather than some
+        // bytes nobody wants. A store with genuinely no cards has nothing to reclaim either, so
+        // refusing to act in that case costs precisely zero.
+        if (cards.Count == 0)
+        {
+            log.LogDebug("No cards are loaded, so nothing is swept: an empty board proves nothing.");
+
+            return;
+        }
+
+        var claimed = cards.Select(card => card.Id).ToHashSet();
+        var orphans = attachments.CardIds().Where(id => !claimed.Contains(id)).ToList();
 
         if (orphans.Count == 0)
             return;
 
-        log.LogInformation("Clearing {Count} attachment folder(s) no task claims.", orphans.Count);
+        // The ids, not only a count. This is the one routine that deletes a user's files without being
+        // asked, and "Clearing 5 attachment folder(s)" is exactly as much as you know afterwards when
+        // it turns out to have cleared the wrong five — which is not enough to tell whether it did.
+        log.LogInformation(
+            "Clearing {Count} attachment folder(s) no task claims, against {Cards} loaded card(s): {Folders}",
+            orphans.Count,
+            cards.Count,
+            string.Join(", ", orphans));
 
         foreach (var orphan in orphans)
             attachments.Clear(orphan);

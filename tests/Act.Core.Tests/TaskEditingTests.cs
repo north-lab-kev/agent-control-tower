@@ -35,6 +35,36 @@ public class TaskEditingTests
         TaskEditing.CanEditLaunchInputs(card).Should().BeFalse();
     }
 
+    // Off the board, in the column that is otherwise the most editable of all: an archived card is a
+    // record, so being openable is the whole of what it offers.
+    [Theory]
+    [InlineData(BoardColumn.Preparing)]
+    [InlineData(BoardColumn.Completed)]
+    public void An_archived_card_is_read_only(BoardColumn column)
+    {
+        var card = CardIn(column);
+        card.DeletedAt = DateTimeOffset.UnixEpoch;
+
+        TaskEditing.CanEdit(card).Should().BeFalse();
+        TaskEditing.CanEditLaunchInputs(card).Should().BeFalse();
+    }
+
+    // Auto-archived is the same answer: which of the two took it off the board is a fact for the
+    // archive row, not a difference in what the page allows.
+    [Fact]
+    public void The_retention_window_freezes_a_card_exactly_as_a_delete_does()
+    {
+        var card = CardIn(BoardColumn.Preparing);
+        card.ArchivedAt = DateTimeOffset.UnixEpoch;
+
+        TaskEditing.CanEdit(card).Should().BeFalse();
+        TaskEditing.CanEditLaunchInputs(card).Should().BeFalse();
+    }
+
+    [Fact]
+    public void A_card_on_the_board_is_editable()
+        => TaskEditing.CanEdit(CardIn(BoardColumn.Executing)).Should().BeTrue();
+
     [Fact]
     public void Every_column_is_accounted_for()
         => Enum.GetValues<BoardColumn>().Should().HaveCount(5);

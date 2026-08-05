@@ -16,9 +16,15 @@ public sealed class UserSettings
 
     public bool CloseToTray { get; set; } = true;
 
-    // Pending: nothing sends anything yet. The switch and its stored value land first so the opt-out
-    // exists before the first byte could ever leave; the cloud sink is a later step.
+    // The opt-out for the cloud usage metrics, read on every capture rather than at startup so the
+    // switch takes effect the moment it moves — see `ConsentedTelemetrySink`.
     public bool Telemetry { get; set; } = true;
+
+    // The anonymous `distinct_id` those metrics carry: a random GUID, never a machine or hardware
+    // identifier, seeded on first launch by `UserSettingsService` and never rewritten. Stored even
+    // when telemetry is off, because it is also the id a bug report quotes — the Diagnostics page
+    // shows it.
+    public string InstallId { get; set; } = string.Empty;
 
     // On by default: two agents in one working tree is the failure mode that costs work rather than
     // time, and a user who wants them side by side can say so on the card that needs it.
