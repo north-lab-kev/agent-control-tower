@@ -4,13 +4,14 @@ using Act.Core.Agents;
 using Act.Core.Model;
 using Act.TestSupport;
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.Agents.Tests;
 
 public class CodexAdapterContractTests : AgentAdapterContract
 {
     protected override IAgentAdapter CreateAdapter()
-        => new CodexAdapter(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
+        => new CodexAdapter(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<CodexAdapter>.Instance);
 }
 
 // The Codex-specific facts, pinned so a CLI upgrade that moves them fails here rather than at
@@ -105,7 +106,7 @@ public class CodexAdapterTests
     [Fact]
     public void Auto_is_rejected_because_Codex_does_not_offer_it()
     {
-        var adapter = new CodexAdapter(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
+        var adapter = new CodexAdapter(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<CodexAdapter>.Instance);
 
         var resolution = adapter.Resolve(new LaunchConfig { PermissionMode = PermissionMode.Auto });
 
@@ -119,7 +120,7 @@ public class CodexAdapterTests
     [Fact]
     public void Every_mode_codex_offers_resolves_cleanly()
     {
-        var adapter = new CodexAdapter(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
+        var adapter = new CodexAdapter(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<CodexAdapter>.Instance);
 
         foreach (var mode in adapter.Capabilities.PermissionModes)
             adapter.Resolve(new LaunchConfig { PermissionMode = mode })
@@ -129,7 +130,7 @@ public class CodexAdapterTests
     [Fact]
     public void Codex_offers_no_desktop_handoff()
     {
-        var adapter = new CodexAdapter(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
+        var adapter = new CodexAdapter(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<CodexAdapter>.Instance);
 
         adapter.Capabilities.DesktopHandoff.Should().BeFalse();
         adapter.DesktopHandoffUrl("any-session", "C:/repo").Should().BeNull();
@@ -139,7 +140,7 @@ public class CodexAdapterTests
     public async Task Resuming_passes_the_session_id_to_the_resume_subcommand()
     {
         var pty = new StubPtyHost();
-        var adapter = new CodexAdapter(pty, new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
+        var adapter = new CodexAdapter(pty, new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<CodexAdapter>.Instance);
 
         await using var session = await adapter.ResumeAsync(new AgentResumeRequest(
             TaskId,
@@ -158,7 +159,7 @@ public class CodexAdapterTests
     [Fact]
     public void An_effort_above_a_models_ladder_is_substituted_not_passed_through()
     {
-        var adapter = new CodexAdapter(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
+        var adapter = new CodexAdapter(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<CodexAdapter>.Instance);
 
         var resolution = adapter.Resolve(new LaunchConfig { Model = "gpt-5.5", Effort = "ultra" });
 
@@ -172,7 +173,7 @@ public class CodexAdapterTests
     }
 
     private static Task<IAgentSession> LaunchAsync(StubPtyHost pty, LaunchConfig? config = null)
-        => new CodexAdapter(pty, new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles()).LaunchAsync(new AgentLaunchRequest(
+        => new CodexAdapter(pty, new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<CodexAdapter>.Instance).LaunchAsync(new AgentLaunchRequest(
             TaskId,
             "ignored-by-codex",
             "C:/repo",

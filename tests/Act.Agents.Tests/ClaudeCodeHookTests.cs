@@ -6,6 +6,7 @@ using Act.Core.Events;
 using Act.Core.Model;
 using Act.TestSupport;
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.Agents.Tests;
 
@@ -102,7 +103,7 @@ public class ClaudeCodeHookInjectionTests
         StubPtyHost pty,
         IHookEndpoint endpoint,
         IAgentConfigFiles files)
-        => new ClaudeCodeAdapter(pty, new StubCommandHost(), new TestClock(), endpoint, files).LaunchAsync(new AgentLaunchRequest(
+        => new ClaudeCodeAdapter(pty, new StubCommandHost(), new TestClock(), endpoint, files, NullLogger<ClaudeCodeAdapter>.Instance).LaunchAsync(new AgentLaunchRequest(
             TaskId,
             SessionId,
             "C:/repo",

@@ -37,7 +37,6 @@ public static class StartupLog
 
     private static string Version()
         => typeof(StartupLog).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-            ?? typeof(StartupLog).Assembly.GetName().Version?.ToString()
             ?? "unknown";
 
     // The last resort, and the only reason a crash leaves anything in the file at all: a background

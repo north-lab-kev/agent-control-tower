@@ -55,6 +55,8 @@ public partial class SettingsView(
 
     private bool CloseToTray => settings.CloseToTray;
 
+    private bool Telemetry => settings.Telemetry;
+
     private bool PreventConcurrentWorkingDir => settings.PreventConcurrentWorkingDir;
 
     private bool AutoExecutionPaused => settings.AutoExecutionPaused;
@@ -212,6 +214,8 @@ public partial class SettingsView(
     private void OnNotificationsChanged(bool notifications) => settings.SetNotifications(notifications);
 
     private void OnCloseToTrayChanged(bool closeToTray) => settings.SetCloseToTray(closeToTray);
+
+    private void OnTelemetryChanged(bool telemetry) => settings.SetTelemetry(telemetry);
 
     private void OnPreventConcurrentWorkingDirChanged(bool prevent)
         => settings.SetPreventConcurrentWorkingDir(prevent);

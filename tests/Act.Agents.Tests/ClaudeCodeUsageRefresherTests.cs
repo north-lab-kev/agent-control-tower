@@ -3,6 +3,7 @@ using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.TestSupport;
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.Agents.Tests;
 
@@ -23,7 +24,8 @@ public class ClaudeCodeUsageRefresherTests
             commands,
             new TestClock(),
             new StubHookEndpoint(),
-            new StubAgentConfigFiles());
+            new StubAgentConfigFiles(),
+            NullLogger<ClaudeCodeAdapter>.Instance);
 
         return (new ClaudeCodeUsageRefresher(() => adapter, () => machine), commands);
     }

@@ -3,7 +3,6 @@ using Act.Core.Abstractions;
 using Act.Core.Events;
 using Act.Core.Model;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.Infrastructure.Hooks;
 
@@ -16,12 +15,10 @@ public sealed class HookRequestHandler(
     IEnumerable<IHookNormalizer> normalizers,
     IAgentEventSink sink,
     IClock clock,
-    ILogger<HookRequestHandler>? log = null)
+    ILogger<HookRequestHandler> log)
 {
     private readonly Dictionary<AgentType, IHookNormalizer> byAgent =
         normalizers.ToDictionary(normalizer => normalizer.Agent);
-
-    private readonly ILogger log = log ?? NullLogger<HookRequestHandler>.Instance;
 
     public HookResult Handle(AgentType agent, string? token, JsonElement payload)
     {

@@ -999,6 +999,12 @@
   <data name="Settings_Group_Diagnostics" xml:space="preserve">
     <value>Diagnostic</value>
   </data>
+  <data name="Settings_Telemetry" xml:space="preserve">
+    <value>Aider à améliorer ACT</value>
+  </data>
+  <data name="Settings_Telemetry_Hint" xml:space="preserve">
+    <value>Envoyer des données d'utilisation anonymes et des rapports de plantage. Jamais vos consignes, le texte des tâches, les chemins de fichiers ni la sortie des agents.</value>
+  </data>
   <data name="Settings_Logs" xml:space="preserve">
     <value>Fichiers journaux</value>
   </data>

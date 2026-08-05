@@ -1,6 +1,6 @@
 namespace Act.Infrastructure.Logging;
 
-public static class ActLogDirectory
+internal static class ActLogDirectory
 {
     private const string FolderName = "logs";
 

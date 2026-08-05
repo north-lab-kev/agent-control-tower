@@ -8,6 +8,7 @@ using Act.Core.Model;
 using Act.Infrastructure.Hooks;
 using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.Infrastructure.Tests;
 
@@ -384,7 +385,8 @@ public class HookRequestHandlerTests
             endpoint,
             [new StubNormalizer()],
             sink,
-            new FixedClock());
+            new FixedClock(),
+            NullLogger<HookRequestHandler>.Instance);
     }
 
     private static JsonElement Payload()

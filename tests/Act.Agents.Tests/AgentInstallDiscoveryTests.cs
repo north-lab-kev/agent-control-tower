@@ -3,6 +3,7 @@ using Act.Agents.Codex;
 using Act.Core.Abstractions;
 using Act.TestSupport;
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.Agents.Tests;
 
@@ -88,10 +89,10 @@ public class AgentInstallDiscoveryTests
     }
 
     private static ClaudeCodeAdapter Claude()
-        => new(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
+        => new(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<ClaudeCodeAdapter>.Instance);
 
     private static CodexAdapter Codex()
-        => new(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
+        => new(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<CodexAdapter>.Instance);
 
     private sealed class FakeProbe : IExecutableProbe
     {

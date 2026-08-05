@@ -16,6 +16,10 @@ public sealed class UserSettings
 
     public bool CloseToTray { get; set; } = true;
 
+    // Pending: nothing sends anything yet. The switch and its stored value land first so the opt-out
+    // exists before the first byte could ever leave; the cloud sink is a later step.
+    public bool Telemetry { get; set; } = true;
+
     // On by default: two agents in one working tree is the failure mode that costs work rather than
     // time, and a user who wants them side by side can say so on the card that needs it.
     public bool PreventConcurrentWorkingDir { get; set; } = true;

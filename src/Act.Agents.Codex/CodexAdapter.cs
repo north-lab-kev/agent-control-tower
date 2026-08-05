@@ -2,7 +2,6 @@ using Act.Core.Abstractions;
 using Act.Core.Agents;
 using Act.Core.Model;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.Agents.Codex;
 
@@ -22,11 +21,9 @@ public sealed class CodexAdapter(
     IClock clock,
     IHookEndpoint hooks,
     IAgentConfigFiles configFiles,
-    ILogger<CodexAdapter>? log = null) : IAgentAdapter
+    ILogger<CodexAdapter> log) : IAgentAdapter
 {
     public const string DefaultBinary = "codex";
-
-    private readonly ILogger log = log ?? NullLogger<CodexAdapter>.Instance;
 
     public AgentType Agent => AgentType.Codex;
 

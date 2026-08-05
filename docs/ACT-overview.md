@@ -2325,7 +2325,8 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   **pause automatic execution** and **tasks running at once** (*Execution*),
   **Agents** — one section per registered adapter carrying that CLI's **enabled** switch,
   executable, extra flags and environment (see *Launch config*; these are properties of
-  the install, which is why they are here and not on the task form). Still to land:
+  the install, which is why they are here and not on the task form),
+  **help improve ACT** (*Diagnostics*). Still to land:
   Weekly-reset time.
   - **New task defaults is gone — removed 2026-08-04.** It was one unnamed block describing
     one kind of work, and it became *Task templates*, a managed list on its own page (see
@@ -2372,6 +2373,17 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
       back to carry the question — being shown what is about to stop is no bad thing.
       Confirming ends every live session first: the confirmation promised it, and an agent
       must not outlive the app supervising it.
+  - **Help improve ACT** (*Diagnostics*, on by default) is the opt-out for anonymous usage
+    data and crash reports sent to a cloud telemetry service. **On** by default, because a
+    solo-maintained tool learns what to fix from the installs it never sees; one switch
+    rather than a matrix, for the same reason notifications are one switch. In
+    *Diagnostics* beside the log folder, since that is where a user already goes to answer
+    "what does ACT know about my run".
+    - **The switch shipped before the sink.** `UserSettings.Telemetry` is stored and
+      honoured by nothing yet — no client, no endpoint, no payload. The opt-out exists
+      first so there is never a build where data could leave without a way to refuse.
+      What is sendable is bounded by what the setting promises: never prompts, task text,
+      titles, file paths or agent output.
 - **Localization:** the UI is translatable — **English and French**, defaulting to
   the **OS language** (anything other than French falls back to English). Strings
   live in `.resx` under `Act.App/Resources/`, reached through the SDK's

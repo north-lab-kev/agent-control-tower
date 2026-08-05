@@ -2,7 +2,6 @@ using Act.Core.Abstractions;
 using Act.Core.Agents;
 using Act.Core.Model;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.Agents.ClaudeCode;
 
@@ -17,11 +16,9 @@ public sealed class ClaudeCodeAdapter(
     IClock clock,
     IHookEndpoint hooks,
     IAgentConfigFiles configFiles,
-    ILogger<ClaudeCodeAdapter>? log = null) : IAgentAdapter
+    ILogger<ClaudeCodeAdapter> log) : IAgentAdapter
 {
     public const string DefaultBinary = "claude";
-
-    private readonly ILogger log = log ?? NullLogger<ClaudeCodeAdapter>.Instance;
 
     public AgentType Agent => AgentType.ClaudeCode;
 

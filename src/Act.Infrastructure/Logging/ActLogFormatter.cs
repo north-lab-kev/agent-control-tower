@@ -5,7 +5,7 @@ using Serilog.Parsing;
 
 namespace Act.Infrastructure.Logging;
 
-public sealed class ActLogFormatter : ITextFormatter
+internal sealed class ActLogFormatter : ITextFormatter
 {
     private static readonly string[] RenderedElsewhere = ["SourceContext", "EventId"];
 

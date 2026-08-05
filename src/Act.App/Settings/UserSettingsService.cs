@@ -28,6 +28,8 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
 
     public bool CloseToTray => current.CloseToTray;
 
+    public bool Telemetry => current.Telemetry;
+
     public bool PreventConcurrentWorkingDir => current.PreventConcurrentWorkingDir;
 
     public int MaxConcurrent => ConcurrencySlots.Clamp(current.MaxConcurrent);
@@ -271,6 +273,14 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
             return;
 
         Update(settings => settings.CloseToTray = closeToTray);
+    }
+
+    public void SetTelemetry(bool telemetry)
+    {
+        if (telemetry == current.Telemetry)
+            return;
+
+        Update(settings => settings.Telemetry = telemetry);
     }
 
     public void SetPreventConcurrentWorkingDir(bool prevent)

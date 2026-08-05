@@ -4,13 +4,14 @@ using Act.Core.Agents;
 using Act.Core.Model;
 using Act.TestSupport;
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.Agents.Tests;
 
 public class ClaudeCodeAdapterContractTests : AgentAdapterContract
 {
     protected override IAgentAdapter CreateAdapter()
-        => new ClaudeCodeAdapter(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
+        => new ClaudeCodeAdapter(new StubPtyHost(), new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<ClaudeCodeAdapter>.Instance);
 }
 
 public class ClaudeCodeAdapterTests
@@ -57,7 +58,7 @@ public class ClaudeCodeAdapterTests
     public async Task Resuming_passes_the_session_id_and_the_message_positionally()
     {
         var pty = new StubPtyHost();
-        var adapter = new ClaudeCodeAdapter(pty, new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
+        var adapter = new ClaudeCodeAdapter(pty, new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<ClaudeCodeAdapter>.Instance);
 
         await using var session = await adapter.ResumeAsync(new AgentResumeRequest(
             TaskId,
@@ -79,7 +80,7 @@ public class ClaudeCodeAdapterTests
     public async Task A_bare_resume_adds_no_prompt_argument()
     {
         var pty = new StubPtyHost();
-        var adapter = new ClaudeCodeAdapter(pty, new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles());
+        var adapter = new ClaudeCodeAdapter(pty, new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<ClaudeCodeAdapter>.Instance);
 
         await using var session = await adapter.ResumeAsync(new AgentResumeRequest(
             TaskId,
@@ -95,7 +96,7 @@ public class ClaudeCodeAdapterTests
     }
 
     private static Task<IAgentSession> LaunchAsync(StubPtyHost pty, LaunchConfig? config = null)
-        => new ClaudeCodeAdapter(pty, new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles()).LaunchAsync(new AgentLaunchRequest(
+        => new ClaudeCodeAdapter(pty, new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<ClaudeCodeAdapter>.Instance).LaunchAsync(new AgentLaunchRequest(
             TaskId,
             SessionId,
             "C:/repo",

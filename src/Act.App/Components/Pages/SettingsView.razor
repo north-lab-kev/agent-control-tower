@@ -298,6 +298,15 @@
             <RadzenFieldset Text="@Strings.Settings_Group_Diagnostics">
                 <RadzenStack Gap="1rem">
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Telemetry" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Telemetry_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenSwitch Value="Telemetry" ValueChanged="@((bool value) => OnTelemetryChanged(value))" />
+                    </RadzenStack>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
                                  JustifyContent="JustifyContent.SpaceBetween" Gap="1rem" class="logrow">
                         <RadzenStack Gap="0.1rem">
                             <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Logs" />

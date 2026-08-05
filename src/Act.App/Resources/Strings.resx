@@ -999,6 +999,12 @@
   <data name="Settings_Group_Diagnostics" xml:space="preserve">
     <value>Diagnostics</value>
   </data>
+  <data name="Settings_Telemetry" xml:space="preserve">
+    <value>Help improve ACT</value>
+  </data>
+  <data name="Settings_Telemetry_Hint" xml:space="preserve">
+    <value>Send anonymous usage data and crash reports. Never your prompts, task text, file paths or agent output.</value>
+  </data>
   <data name="Settings_Logs" xml:space="preserve">
     <value>Log files</value>
   </data>

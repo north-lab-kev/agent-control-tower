@@ -4,6 +4,7 @@ using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.TestSupport;
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.Agents.Tests;
 
@@ -22,8 +23,8 @@ public class AgentQueryTests
         var files = new StubAgentConfigFiles();
 
         IAgentAdapter adapter = agent == "codex"
-            ? new CodexAdapter(new StubPtyHost(), commands, new TestClock(), new StubHookEndpoint(), files)
-            : new ClaudeCodeAdapter(new StubPtyHost(), commands, new TestClock(), new StubHookEndpoint(), files);
+            ? new CodexAdapter(new StubPtyHost(), commands, new TestClock(), new StubHookEndpoint(), files, NullLogger<CodexAdapter>.Instance)
+            : new ClaudeCodeAdapter(new StubPtyHost(), commands, new TestClock(), new StubHookEndpoint(), files, NullLogger<ClaudeCodeAdapter>.Instance);
 
         return (adapter, commands);
     }

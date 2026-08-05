@@ -4,9 +4,9 @@ namespace Act.Infrastructure.Logging;
 
 public static class ActLogScope
 {
-    public const string TaskField = "Task";
+    private const string TaskField = "Task";
 
-    public const string SessionField = "Session";
+    private const string SessionField = "Session";
 
     public static IDisposable? BeginTaskScope(this ILogger log, int? task = null, string? session = null)
     {

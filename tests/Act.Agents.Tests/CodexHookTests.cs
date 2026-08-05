@@ -6,6 +6,7 @@ using Act.Core.Events;
 using Act.Core.Model;
 using Act.TestSupport;
 using AwesomeAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Act.Agents.Tests;
 
@@ -308,7 +309,7 @@ public class CodexHookInjectionTests
         IHookEndpoint endpoint,
         IAgentConfigFiles files,
         Guid? taskId = null)
-        => new CodexAdapter(pty, new StubCommandHost(), new TestClock(), endpoint, files).LaunchAsync(new AgentLaunchRequest(
+        => new CodexAdapter(pty, new StubCommandHost(), new TestClock(), endpoint, files, NullLogger<CodexAdapter>.Instance).LaunchAsync(new AgentLaunchRequest(
             taskId ?? TaskId,
             "ignored-by-codex",
             "C:/repo",
