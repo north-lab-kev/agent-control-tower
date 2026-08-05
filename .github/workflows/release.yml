@@ -1,17 +1,67 @@
 name: release
 
+# Manual only: a release is a deliberate act, and the version is the operator's
+# call — nothing here reacts to a push or a tag.
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release Version (ex: 1.2.3)'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
+  # Everything that does not need Windows stays on Linux: Windows minutes bill at
+  # 2x while the repo is private, so only the packaging job pays that.
+  gate:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      TAG: v${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Tags, so an already-released version fails before anything is built.
+          fetch-depth: 0
+
+      - name: Validate version and tag
+        shell: pwsh
+        run: |
+          if ($env:VERSION -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+              throw "Release Version '$env:VERSION' is not <major>.<minor>.<patch>[-prerelease] (ex: 1.2.3)."
+          }
+
+          if (git tag --list $env:TAG) {
+              throw "Tag $env:TAG already exists; releases are never re-cut under the same version."
+          }
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Build and test
+        shell: pwsh
+        run: ./scripts/build.ps1
+
   package:
     # Windows targets must be built on Windows (electron-builder cross-platform rule).
     runs-on: windows-latest
+    needs: gate
+    env:
+      VERSION: ${{ inputs.version }}
+    outputs:
+      installer: ${{ steps.installer.outputs.name }}
     steps:
       - uses: actions/checkout@v7
 
@@ -23,14 +73,102 @@ jobs:
         with:
           node-version: 22
 
+      # -Version becomes $(Version): the SDK stamps it into
+      # AssemblyInformationalVersion (what the running app reports) and
+      # electron-builder names and versions the installer from it.
       - name: Package desktop (win-x64)
         shell: pwsh
-        run: ./scripts/package-desktop.ps1 -Rid win-x64
+        run: ./scripts/package-desktop.ps1 -Rid win-x64 -Version $env:VERSION
 
-      # Uploaded as a workflow artifact for now; attaching to a GitHub Release
-      # comes once packaging is verified end-to-end.
+      - name: Locate installer
+        id: installer
+        shell: pwsh
+        run: |
+          $expected = "ACT-Setup-$env:VERSION-x64.exe"
+
+          if (-not (Test-Path (Join-Path "artifacts/desktop/win-x64" $expected))) {
+              $found = (Get-ChildItem "artifacts/desktop/win-x64" -Filter *.exe | ForEach-Object Name) -join ", "
+              throw "Expected $expected in artifacts/desktop/win-x64; found: $found"
+          }
+
+          "name=$expected" >> $env:GITHUB_OUTPUT
+
       - uses: actions/upload-artifact@v7
         with:
-          name: act-desktop-win-x64
+          name: act-desktop-win-x64-${{ inputs.version }}
           path: artifacts/desktop/win-x64/*.exe
           if-no-files-found: error
+
+  release:
+    runs-on: ubuntu-latest
+    needs: package
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ inputs.version }}
+      TAG: v${{ inputs.version }}
+      INSTALLER: ${{ needs.package.outputs.installer }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Full history + tags: the release notes are a commit range.
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: act-desktop-win-x64-${{ inputs.version }}
+          path: artifacts
+
+      - name: Build release notes
+        id: notes
+        shell: pwsh
+        run: |
+          $previous = git tag --list 'v*' --sort=-v:refname | Select-Object -First 1
+          $range = if ($previous) { "$previous..HEAD" } else { "HEAD" }
+          $commits = @(git log $range --no-merges --pretty=format:'- %s (%h)')
+
+          if (-not $commits) {
+              $commits = @('- No commits since ' + $previous + '.')
+          }
+
+          $notes = @('## ACT ' + $env:TAG, '')
+          $notes += 'Windows installer (win-x64, NSIS): `' + $env:INSTALLER + '`'
+          $notes += ''
+          $notes += '### Changes'
+          $notes += ''
+          $notes += $commits
+
+          if ($previous) {
+              $notes += ''
+              $notes += '**Full changelog**: ${{ github.server_url }}/${{ github.repository }}/compare/' + $previous + '...' + $env:TAG
+          }
+
+          $file = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          $notes -join "`n" | Set-Content $file -Encoding utf8
+
+          "path=$file" >> $env:GITHUB_OUTPUT
+
+          Write-Host ($notes -join "`n")
+
+      - name: Create tag
+        shell: pwsh
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git tag -a $env:TAG -m "ACT $env:TAG"
+          git push origin $env:TAG
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $asset = Join-Path 'artifacts' $env:INSTALLER
+          $prerelease = if ($env:VERSION -match '-') { @('--prerelease') } else { @() }
+
+          gh release create $env:TAG `
+              --title "ACT $env:TAG" `
+              --notes-file '${{ steps.notes.outputs.path }}' `
+              --verify-tag `
+              @prerelease `
+              $asset

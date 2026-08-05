@@ -73,6 +73,8 @@ public sealed class ClaudeCodeAdapter(
             request.Size,
             ["--session-id", request.SessionId],
             request.InitialPrompt,
+            request.Attachments ?? AgentAttachments.None,
+            listAttachments: true,
             cancellationToken);
 
     public Task<IAgentSession> ResumeAsync(
@@ -86,6 +88,12 @@ public sealed class ClaudeCodeAdapter(
             request.Size,
             ["--resume", request.SessionId],
             request.Message,
+            request.Attachments ?? AgentAttachments.None,
+
+            // A resumed session is not re-handed the files it opened with — the transcript it just
+            // reopened already carries them — but it still gets the grant below, because a file
+            // dropped onto the terminal an hour in has no second chance at the command line.
+            listAttachments: false,
             cancellationToken);
 
     private async Task<IAgentSession> StartAsync(
@@ -96,6 +104,8 @@ public sealed class ClaudeCodeAdapter(
         TerminalSize size,
         IReadOnlyList<string> sessionArguments,
         string? prompt,
+        AgentAttachments attachments,
+        bool listAttachments,
         CancellationToken cancellationToken)
     {
         var resolution = Resolve(config);
@@ -122,11 +132,26 @@ public sealed class ClaudeCodeAdapter(
 
         var hookToken = InjectHooks(taskId, arguments);
 
+        // The attachment directory is outside the working directory by design, and `Read` on a path
+        // outside it is exactly what `default` permission mode stops to ask about — a task launched
+        // unattended would park on that prompt with nobody awake to answer. `--add-dir` is the
+        // documented grant, and it is passed whether or not there is a file yet: a mid-session drop
+        // arrives long after this command line is gone. There is no `--image` equivalent on this
+        // CLI, so every attachment reaches the model as a path the agent reads for itself.
+        if (attachments.Directory is { Length: > 0 } granted)
+        {
+            arguments.Add("--add-dir");
+            arguments.Add(granted);
+        }
+
         arguments.AddRange(resolved.ExtraFlags);
 
         // Positional, and last: everything after it would be read as part of the prompt.
         if (!string.IsNullOrWhiteSpace(prompt))
-            arguments.Add(prompt);
+            arguments.Add(
+                listAttachments
+                    ? AttachmentInstruction.Append(prompt, attachments.AllPaths)
+                    : prompt);
 
         var process = await pty.StartAsync(
             new PtyStartInfo(

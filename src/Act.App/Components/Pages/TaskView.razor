@@ -18,7 +18,7 @@
 }
 else
 {
-    <div class="taskview">
+    <div class="taskview" id="@DropRootId">
         <header class="bar">
             <RadzenButton Icon="arrow_back" Text="@Strings.Nav_BackToBoard" Size="ButtonSize.Small"
                           ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="BackToBoard" />
@@ -83,6 +83,68 @@ else
                             <RadzenTextArea Name="Prompt" @bind-Value="form.Prompt" Rows="8" class="wide"
                                             ReadOnly="Locked" />
                             <RadzenRequiredValidator Component="Prompt" Text="@Strings.NewTask_Required" />
+                        </RadzenStack>
+
+                        <RadzenStack Gap="0.3rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Attachments" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Attachments_Hint"
+                                        class="hint" />
+
+                            @* One input, three routes. The file input is stretched transparently over
+                               the whole panel so a click anywhere opens the picker, and `act-attach`
+                               feeds the same element for a drop and a paste — so all three arrive
+                               through Blazor's own chunked upload rather than a second transport. *@
+                            @if (!Locked)
+                            {
+                                <div class="dropzone @(dragging ? "over" : null)">
+                                    <InputFile id="@DropInputId" multiple OnChange="OnAttachmentsPickedAsync"
+                                               aria-label="@Strings.NewTask_Attachments_Browse" />
+                                    <RadzenIcon Icon="attach_file" />
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="@DropZoneText" />
+                                </div>
+                            }
+
+                            @if (form.Attachments.Count == 0)
+                            {
+                                @if (Locked)
+                                {
+                                    <RadzenText TextStyle="TextStyle.Caption"
+                                                Text="@Strings.NewTask_Attachments_None" class="hint" />
+                                }
+                            }
+                            else
+                            {
+                                <div class="chips">
+                                    @foreach (var attachment in form.Attachments)
+                                    {
+                                        @* Rendered only for the chip under the cursor, rather than
+                                           hidden behind CSS on all of them: ten attachments would
+                                           otherwise be ten image fetches on first paint, and one of
+                                           them may be 25 MB. *@
+                                        <div class="chip" @onmouseenter="() => previewing = attachment"
+                                             @onmouseleave="() => previewing = null">
+                                            <RadzenIcon Icon="@(attachment.IsImage ? "image" : "description")" />
+                                            <span class="name" title="@attachment.FileName">@attachment.FileName</span>
+                                            @if (Previews(attachment))
+                                            {
+                                                <div class="preview">
+                                                    <img src="@PreviewUrl(attachment)" alt="@attachment.FileName" />
+                                                </div>
+                                            }
+                                            <span class="size">@TaskLabels.FileSize(attachment.Length)</span>
+                                            @if (!Locked)
+                                            {
+                                                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Base"
+                                                              Variant="Variant.Text" Size="ButtonSize.ExtraSmall"
+                                                              ButtonType="ButtonType.Button"
+                                                              Click="@(() => RemoveAttachment(attachment))"
+                                                              title="@Strings.NewTask_Attachments_Remove"
+                                                              aria-label="@Strings.NewTask_Attachments_Remove" />
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
                         </RadzenStack>
 
                         <RadzenStack Gap="0.3rem">

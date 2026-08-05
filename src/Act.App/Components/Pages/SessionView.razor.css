@@ -60,6 +60,7 @@
    margin is the page's left and top edge, and the rail's padding is the right one — the two have
    to agree or the body sits off-centre in its own window. */
 .terminal {
+    position: relative;
     flex: 1;
     min-width: 0;
     margin: var(--act-s2);
@@ -68,6 +69,47 @@
     border-radius: var(--act-radius);
     background: var(--act-term-bg);
     overflow: hidden;
+}
+
+/* The element xterm actually attaches to and measures itself against — the frame above owns the
+   border and the drop state, so a highlight cannot change the geometry the fit addon just fitted. */
+.terminal .screen {
+    width: 100%;
+    height: 100%;
+}
+
+.terminal.over {
+    border-color: var(--act-run);
+}
+
+/* Present but never in the way: the file input is what `act-attach` feeds, and unlike the task
+   form's panel there is nothing here to click — the terminal underneath needs every pixel. */
+.terminal ::deep input.hiddenpick {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.dropnote {
+    position: absolute;
+    inset: auto var(--act-s2) var(--act-s2) auto;
+    display: flex;
+    align-items: center;
+    gap: var(--act-s2);
+    padding: var(--act-s2);
+    border: 1px solid color-mix(in srgb, var(--act-run) var(--act-tint-edge), transparent);
+    border-radius: var(--act-radius);
+    background: var(--act-surface);
+    color: var(--act-ink);
+    pointer-events: none;
+}
+
+/* Same correction as the task form's drop zone: Radzen's caption margin is outside the box
+   `align-items: center` centres, so it offsets the label against the icon beside it. */
+.dropnote ::deep .rz-text-caption {
+    margin: 0;
 }
 
 .rail {

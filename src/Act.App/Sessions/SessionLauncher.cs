@@ -6,6 +6,7 @@ using Act.Core.Abstractions;
 using Act.Core.Agents;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Infrastructure.FileSystem;
 using Act.Infrastructure.Logging;
 
 namespace Act.App.Sessions;
@@ -24,6 +25,7 @@ public sealed class SessionLauncher(
     NotificationDispatcher notifications,
     UserSettingsService settings,
     IWorkingDirectories directories,
+    IAttachmentStore attachments,
     IClock clock,
     ILogger<SessionLauncher> log)
 {
@@ -260,7 +262,7 @@ public sealed class SessionLauncher(
     // Which of the adapter's two doors to go through is the *card's* answer, not the caller's: one
     // that has never bound a session is launched, one that has is resumed. `message` is the only
     // thing separating a retry from a bare re-attach, and it is null for both restore and restart.
-    private static Task<IAgentSession> SpawnAsync(
+    private Task<IAgentSession> SpawnAsync(
         IAgentAdapter adapter,
         Card card,
         LaunchConfig config,
@@ -269,10 +271,12 @@ public sealed class SessionLauncher(
         CancellationToken cancellationToken)
     {
         var prompt = AutoGitInstruction.Append(card.InitialPrompt, card.AutoGit);
+        var files = Attachments(card);
 
         if (card.SessionId is { } sessionId)
             return adapter.ResumeAsync(
-                new AgentResumeRequest(card.Id, sessionId, card.WorkingDir, prompt, message, config, size),
+                new AgentResumeRequest(
+                    card.Id, sessionId, card.WorkingDir, prompt, message, config, size, files),
                 cancellationToken);
 
         // Pre-minted so Claude Code can be handed it; Codex ignores it and reports its own in
@@ -284,9 +288,22 @@ public sealed class SessionLauncher(
                 card.WorkingDir,
                 prompt,
                 config,
-                size),
+                size,
+                files),
             cancellationToken);
     }
+
+    // The card carries names; the launch needs paths, and the directory exists from here on whether
+    // or not anything is in it — a file dropped onto a live terminal later lands in the same folder
+    // the command line already granted.
+    private AgentAttachments Attachments(Card card)
+        => new(
+            attachments.DirectoryFor(card.Id),
+            [
+                .. card.Attachments.Select(attachment => new AgentAttachment(
+                    attachments.PathFor(card.Id, attachment),
+                    attachment.IsImage)),
+            ]);
 
     private void Claim(Card card, IAgentSession session)
     {

@@ -27,6 +27,9 @@
   <data name="AutoGit_DraftPullRequest" xml:space="preserve">
     <value>Once you are done: commit, push and create a draft pull request.</value>
   </data>
+  <data name="Attachments_Header" xml:space="preserve">
+    <value>Files attached to this task, by absolute path:</value>
+  </data>
   <data name="Title_Instruction" xml:space="preserve">
     <value>Write a short title for the task request below, so it can be recognised at a glance on a board. Aim for eight to fifteen words and never exceed thirty. Name the action and its subject, and keep the detail that tells this task apart from a similar one; do not restate the whole request. Reply with the title alone — no quotes, no markdown, no preamble, no trailing period. Do not use any tools, do not read any files, and do not carry out the request itself. The request:</value>
   </data>

@@ -75,6 +75,42 @@
   <data name="NewTask_Prompt_Hint" xml:space="preserve">
     <value>L'instruction initiale. Conservée telle quelle pendant toute la vie de la tâche.</value>
   </data>
+  <data name="NewTask_Attachments" xml:space="preserve">
+    <value>Pièces jointes</value>
+  </data>
+  <data name="NewTask_Attachments_Hint" xml:space="preserve">
+    <value>Copiées dans le dossier d'ACT et transmises à l'agent par chemin au lancement de la tâche.</value>
+  </data>
+  <data name="NewTask_Attachments_Drop" xml:space="preserve">
+    <value>Déposez des fichiers ici, collez depuis le presse-papiers, ou parcourez</value>
+  </data>
+  <data name="NewTask_Attachments_DropActive" xml:space="preserve">
+    <value>Relâchez pour joindre</value>
+  </data>
+  <data name="NewTask_Attachments_Browse" xml:space="preserve">
+    <value>Parcourir les fichiers</value>
+  </data>
+  <data name="NewTask_Attachments_Remove" xml:space="preserve">
+    <value>Retirer la pièce jointe</value>
+  </data>
+  <data name="NewTask_Attachments_None" xml:space="preserve">
+    <value>Aucune pièce jointe.</value>
+  </data>
+  <data name="NewTask_Attachments_TooMany" xml:space="preserve">
+    <value>Trop de fichiers</value>
+  </data>
+  <data name="NewTask_Attachments_TooManyDetail" xml:space="preserve">
+    <value>Une tâche accepte au plus {0} pièces jointes.</value>
+  </data>
+  <data name="NewTask_Attachments_TooLarge" xml:space="preserve">
+    <value>Fichier trop volumineux</value>
+  </data>
+  <data name="NewTask_Attachments_TooLargeDetail" xml:space="preserve">
+    <value>{0} n'a pas été joint : une pièce jointe fait au plus {1}.</value>
+  </data>
+  <data name="NewTask_Attachments_Failed" xml:space="preserve">
+    <value>Impossible de joindre le fichier</value>
+  </data>
   <data name="NewTask_WorkingDir" xml:space="preserve">
     <value>Répertoire de travail</value>
   </data>
@@ -620,6 +656,18 @@
   </data>
   <data name="Session_RestartFailed" xml:space="preserve">
     <value>Impossible de redémarrer le terminal</value>
+  </data>
+  <data name="Session_AttachDrop" xml:space="preserve">
+    <value>Relâchez pour insérer le chemin du fichier</value>
+  </data>
+  <data name="Session_AttachNoSession" xml:space="preserve">
+    <value>Rien à quoi joindre</value>
+  </data>
+  <data name="Session_AttachNoSessionDetail" xml:space="preserve">
+    <value>Cette carte n'a pas de terminal actif : il n'y a nulle part où mettre le chemin.</value>
+  </data>
+  <data name="Session_AttachFailed" xml:space="preserve">
+    <value>Impossible de joindre le fichier</value>
   </data>
   <data name="Session_Open" xml:space="preserve">
     <value>Ouvrir le terminal</value>

@@ -151,6 +151,63 @@ public class NewTaskFormTests
         form.ToTemplate("Bugfix").Schedule.Should().Be(TaskSchedule.Manual);
     }
 
+    // The id is the attachment directory's name, so a create has to stage into the folder the saved
+    // card will own — a `ToCard` that minted a fresh one would leave every attached file orphaned.
+    [Fact]
+    public void The_saved_card_keeps_the_id_the_form_staged_its_files_under()
+    {
+        var form = Edited();
+
+        form.ToCard(DateTimeOffset.UnixEpoch).Id.Should().Be(form.CardId);
+    }
+
+    [Fact]
+    public void A_card_that_has_not_launched_takes_its_attachments()
+    {
+        var card = CardIn(BoardColumn.Ready);
+
+        (Edited() with { Attachments = [Attached("spec.md")] }).ApplyTo(card);
+
+        card.Attachments.Should().ContainSingle().Which.FileName.Should().Be("spec.md");
+    }
+
+    // Frozen with the prompt, and for the same reason: the files are part of what the run was handed.
+    [Fact]
+    public void A_launched_card_keeps_the_attachments_it_ran_with()
+    {
+        var card = CardIn(BoardColumn.Executing);
+        card.Attachments = [Attached("trace.log")];
+
+        (Edited() with { Attachments = [Attached("spec.md")] }).ApplyTo(card);
+
+        card.Attachments.Should().ContainSingle().Which.FileName.Should().Be("trace.log");
+    }
+
+    [Fact]
+    public void An_edited_cards_attachments_arrive_on_the_form()
+    {
+        var card = CardIn(BoardColumn.Ready);
+        card.Attachments = [Attached("spec.md")];
+
+        var form = NewTaskForm.From(card);
+
+        form.CardId.Should().Be(card.Id);
+        form.Attachments.Should().ContainSingle().Which.FileName.Should().Be("spec.md");
+    }
+
+    // A file belongs to one run, exactly like the specific datetime a template already drops — so a
+    // task started from a template begins with an empty attachment list and its own fresh folder.
+    [Fact]
+    public void A_task_made_from_a_template_starts_with_no_attachments()
+    {
+        var form = NewTaskForm.From(new TaskTemplate { Prompt = "Update the packages" });
+
+        form.Attachments.Should().BeEmpty();
+        form.CardId.Should().NotBe(Guid.Empty);
+    }
+
+    private static TaskAttachment Attached(string name) => new() { FileName = name, Length = 12 };
+
     private static NewTaskForm Edited() => new()
     {
         Title = "New title",

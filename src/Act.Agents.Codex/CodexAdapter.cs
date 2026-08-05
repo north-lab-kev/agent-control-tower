@@ -126,6 +126,8 @@ public sealed class CodexAdapter(
             request.Size,
             leadingArguments: [],
             prompt: request.InitialPrompt,
+            request.Attachments ?? AgentAttachments.None,
+            sendAttachments: true,
             cancellationToken);
 
     public Task<IAgentSession> ResumeAsync(
@@ -139,6 +141,11 @@ public sealed class CodexAdapter(
             request.Size,
             leadingArguments: ["resume", request.SessionId],
             request.Message,
+            request.Attachments ?? AgentAttachments.None,
+
+            // A resumed session is not re-handed the files it opened with: the transcript it just
+            // reopened already carries them, and `-i` would attach every image a second time.
+            sendAttachments: false,
             cancellationToken);
 
     private async Task<IAgentSession> StartAsync(
@@ -149,6 +156,8 @@ public sealed class CodexAdapter(
         TerminalSize size,
         IReadOnlyList<string> leadingArguments,
         string? prompt,
+        AgentAttachments attachments,
+        bool sendAttachments,
         CancellationToken cancellationToken)
     {
         var resolution = Resolve(config);
@@ -188,11 +197,32 @@ public sealed class CodexAdapter(
 
         var hookToken = InjectHooks(taskId, arguments);
 
+        // `--image` is why the two adapters differ here: measured against 0.146.0-alpha.3.1 it is
+        // "Optional image(s) to attach to the initial prompt", so the CLI reads the file itself and
+        // the picture lands on turn one as a real attachment rather than as a tool call the sandbox
+        // could refuse. Everything it does not cover is named in the prompt instead — Codex reads
+        // outside `--cd` under both `read-only` and `workspace-write` (measured), so no grant is
+        // needed. Its own `--add-dir` is deliberately not used: that flag makes a directory
+        // *writable*, which is not what a reference file wants.
+        //
+        // **`--image=<path>`, never `-i <path>`.** The flag is variadic (`-i <FILE>...`), so a value
+        // passed as its own argument keeps consuming positionals — and the positional right after it
+        // is the prompt, which then vanishes into the image list and leaves Codex waiting on stdin
+        // for a prompt that will never come. Measured, and the same trap `--tools` sets for
+        // `ClaudeCodeAdapter.QueryAsync`. The `=` form binds exactly one value per occurrence.
+        var images = sendAttachments ? attachments.PathsOf(image: true) : [];
+
+        foreach (var image in images)
+            arguments.Add($"--image={image}");
+
         arguments.AddRange(resolved.ExtraFlags);
 
         // Positional, and last: everything after it would be read as part of the prompt.
         if (!string.IsNullOrWhiteSpace(prompt))
-            arguments.Add(prompt);
+            arguments.Add(
+                sendAttachments
+                    ? AttachmentInstruction.Append(prompt, attachments.PathsOf(image: false))
+                    : prompt);
 
         var process = await pty.StartAsync(
             new PtyStartInfo(

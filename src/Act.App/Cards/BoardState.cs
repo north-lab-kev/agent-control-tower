@@ -2,13 +2,14 @@ using Act.App.Resources;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Infrastructure.FileSystem;
 
 namespace Act.App.Cards;
 
 // Holds every card the store has, including the ones off the board, and decides which of them
 // anything is allowed to see. The board and the attention count are about *live* work, so they never
 // look at a deleted or auto-archived card; the archive looks at nothing else.
-public sealed class BoardState(ICardStore store, IClock clock)
+public sealed class BoardState(ICardStore store, IAttachmentStore attachments, IClock clock)
 {
     private IReadOnlyList<Card> cards = [];
 
@@ -145,9 +146,14 @@ public sealed class BoardState(ICardStore store, IClock clock)
 
     // The copy is a new card in every sense the store cares about — its own id and number — so it
     // goes through the same create path, and the caller gets it back to open it.
+    //
+    // The attached *files* are copied too, not shared: the copy owns its own directory, so removing
+    // an attachment from one card cannot empty the other's prompt.
     public async Task<Card> DuplicateAsync(Card card, CancellationToken cancellationToken = default)
     {
         var copy = CardDuplicate.Of(card, Text.Format(Strings.Task_DuplicateTitle, card.Title), clock.Now);
+
+        attachments.Copy(card.Id, copy.Id);
 
         await CreateAsync(copy, cancellationToken);
 
@@ -218,6 +224,10 @@ public sealed class BoardState(ICardStore store, IClock clock)
     // The only place a card actually leaves the store. Unlinks each one from any parent that is
     // still around, because `children` and `parentId` are stored on both sides and a purge that
     // skipped this would leave live cards pointing at rows that no longer exist.
+    //
+    // It is also the only place attached files may be deleted, for exactly the same reason the
+    // delete above is soft: an archived card is restorable, and a restore that came back without
+    // its attachments would be a card whose prompt names files that are gone.
     public Task PurgeArchivedAsync(CancellationToken cancellationToken = default)
         => WriteAsync(
             async token =>
@@ -226,6 +236,8 @@ public sealed class BoardState(ICardStore store, IClock clock)
                 {
                     if (Card(card.ParentId ?? Guid.Empty) is { } parent && parent.Children.Remove(card.Id))
                         await store.UpdateAsync(parent, token);
+
+                    attachments.Clear(card.Id);
 
                     await store.DeleteAsync(card.Id, token);
                 }

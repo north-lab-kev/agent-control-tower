@@ -29,6 +29,10 @@ internal static class ActBsonMapper
             .Ignore(card => card.IsAutoArchived)
             .Ignore(card => card.IsOnBoard);
 
+        mapper.Entity<TaskAttachment>()
+            .Ignore(attachment => attachment.IsImage)
+            .Ignore(attachment => attachment.ImageContentType);
+
         mapper.Entity<CardMetrics>()
             .Ignore(metrics => metrics.TokensTotal)
             .Ignore(metrics => metrics.ContextPercent);

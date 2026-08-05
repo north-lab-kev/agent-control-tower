@@ -134,7 +134,7 @@ public class SessionLifetimeTests
             hooks,
             new StubAgentConfigFiles(),
             NullLogger<SessionRegistry>.Instance);
-        var board = new BoardState(new FakeCardStore([card]), clock);
+        var board = new BoardState(new FakeCardStore([card]), new FakeAttachmentStore(), clock);
         var settings = new UserSettingsService(new FakeSettingsStore(), new AppCulture());
         var notifications = TestNotifications.Dispatcher(settings, new RecordingNotifier());
 
@@ -147,6 +147,7 @@ public class SessionLifetimeTests
             notifications,
             settings,
             new AnyDirectory(),
+            new FakeAttachmentStore(),
             clock,
             NullLogger<SessionLauncher>.Instance);
 

@@ -22,6 +22,9 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IWorkingDirectories, WorkingDirectories>();
+        services.AddSingleton<IAttachmentStore>(provider => new AttachmentStore(
+            dataDirectory,
+            provider.GetRequiredService<IClock>()));
         services.AddSingleton<IPtyHost, PtyHost>();
         services.AddSingleton<ICommandHost, CommandHost>();
         services.AddSingleton<IExecutableProbe, ExecutableProbe>();

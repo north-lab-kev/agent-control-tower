@@ -172,12 +172,89 @@ public class CodexAdapterTests
             .Resolved.Effort.Should().Be("ultra");
     }
 
-    private static Task<IAgentSession> LaunchAsync(StubPtyHost pty, LaunchConfig? config = null)
+    // `--image` is the whole reason the two adapters differ over attachments: the CLI reads the file
+    // itself, so the picture lands on turn one instead of behind a tool call the sandbox could refuse.
+    //
+    // The `=` form is load-bearing and is a measured trap, not a style choice: `-i` is variadic, so
+    // `-i <path>` followed by the positional prompt swallows the prompt into the image list and Codex
+    // then blocks waiting on stdin for one.
+    [Fact]
+    public async Task An_image_rides_the_native_flag_and_is_left_out_of_the_prompt()
+    {
+        var pty = new StubPtyHost();
+
+        await using var session = await LaunchAsync(pty, attachments: Attached(
+            new AgentAttachment(@"C:\act\a\shot.png", IsImage: true)));
+
+        pty.Last.Arguments.Should().Contain(@"--image=C:\act\a\shot.png");
+        pty.Last.Arguments.Should().NotContain("-i");
+        pty.Last.Arguments[^1].Should().Be("do the thing");
+    }
+
+    [Fact]
+    public async Task Several_images_each_get_their_own_bound_flag()
+    {
+        var pty = new StubPtyHost();
+
+        await using var session = await LaunchAsync(pty, attachments: Attached(
+            new AgentAttachment(@"C:\act\a\one.png", IsImage: true),
+            new AgentAttachment(@"C:\act\a\two.jpg", IsImage: true)));
+
+        pty.Last.Arguments.Should().Contain(@"--image=C:\act\a\one.png")
+            .And.Contain(@"--image=C:\act\a\two.jpg");
+        pty.Last.Arguments[^1].Should().Be("do the thing");
+    }
+
+    // Everything `-i` does not cover is named instead. No grant goes with it: Codex reads outside
+    // `--cd` under both sandboxes, and its own `--add-dir` makes a directory *writable*, which is not
+    // what a reference file wants.
+    [Fact]
+    public async Task A_file_that_is_not_an_image_is_named_in_the_prompt_without_a_grant()
+    {
+        var pty = new StubPtyHost();
+
+        await using var session = await LaunchAsync(pty, attachments: Attached(
+            new AgentAttachment(@"C:\act\a\trace.log", IsImage: false)));
+
+        pty.Last.Arguments.Should().NotContain(argument => argument.StartsWith("--image", StringComparison.Ordinal));
+        pty.Last.Arguments.Should().NotContain("--add-dir");
+        pty.Last.Arguments[^1].Should().Contain(@"C:\act\a\trace.log");
+    }
+
+    // A resumed session already carries its opening files in the transcript it reopened, so `-i`
+    // would attach every image a second time.
+    [Fact]
+    public async Task A_resume_re_attaches_nothing()
+    {
+        var pty = new StubPtyHost();
+        var adapter = new CodexAdapter(pty, new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<CodexAdapter>.Instance);
+
+        await using var session = await adapter.ResumeAsync(new AgentResumeRequest(
+            TaskId,
+            "019ea722-d3f0-7563-b3cd-8ac7fb3f9a69",
+            "C:/repo",
+            "do the thing",
+            null,
+            new LaunchConfig(),
+            TerminalSize.Default,
+            Attached(new AgentAttachment(@"C:\act\a\shot.png", IsImage: true))));
+
+        pty.Last.Arguments.Should().NotContain(argument => argument.Contains(@"C:\act\a\shot.png", StringComparison.Ordinal));
+    }
+
+    private static AgentAttachments Attached(params AgentAttachment[] files)
+        => new(@"C:\act\a", files);
+
+    private static Task<IAgentSession> LaunchAsync(
+        StubPtyHost pty,
+        LaunchConfig? config = null,
+        AgentAttachments? attachments = null)
         => new CodexAdapter(pty, new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<CodexAdapter>.Instance).LaunchAsync(new AgentLaunchRequest(
             TaskId,
             "ignored-by-codex",
             "C:/repo",
             "do the thing",
             config ?? new LaunchConfig(),
-            TerminalSize.Default));
+            TerminalSize.Default,
+            attachments));
 }

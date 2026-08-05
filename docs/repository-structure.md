@@ -12,7 +12,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 ├─ .github/
 │  ├─ workflows/
 │  │  ├─ ci.yml                      # build + fast test suite (Linux on push; Windows occasional while private)
-│  │  └─ release.yml                 # tag → release build + desktop artifact
+│  │  └─ release.yml                 # manual (Release Version input): gate (Linux) → package (Windows) → tag + release (Linux)
 │  ├─ ISSUE_TEMPLATE/
 │  ├─ PULL_REQUEST_TEMPLATE.md
 │  └─ dependabot.yml
@@ -70,7 +70,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     page can ask), ActLogScope (the Task/Session correlation
 │  │  │                            #     scope every call site shares — MEL only)
 │  │  ├─ Storage/                   #   act.db open + BsonMapper, schema version, card/settings stores
-│  │  ├─ FileSystem/                #   IWorkingDirectories: ~ expansion, path validation, browsing
+│  │  ├─ FileSystem/                #   IWorkingDirectories: ~ expansion, path validation, browsing.
+│  │  │                            #     Also IAttachmentStore + AttachmentStore — a task's files
+│  │  │                            #     under attachments/<cardId>/, with the name sanitising,
+│  │  │                            #     collision suffixing and prune/copy/clear the lifecycle needs
 │  │  ├─ Power/                     #   ISleepInhibitor: SetThreadExecutionState (Windows),
 │  │  │                            #     caffeinate (macOS), systemd-inhibit (Linux)
 │  │  ├─ Terminal/                  #   IPtyHost over Porta.Pty: spawn, incremental UTF-8 decode,
@@ -103,6 +106,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     implementations each — the only shell surface a page may
 │  │  │                            #     touch. With Program.cs and the DI extensions, the ONLY
 │  │  │                            #     place allowed to name ElectronNET (a test enforces it)
+│  │  ├─ Attachments/               #   the one route that serves a local file: a card's attached
+│  │  │                            #     image, for the chip's hover thumbnail. Thin like Hooks/ —
+│  │  │                            #     the image list is TaskAttachment's and the folder boundary
+│  │  │                            #     is IAttachmentStore.ResolveInside, both tested web-free
 │  │  ├─ Cards/                     #   BoardState — owns every card incl. archived ones, and
 │  │  │                            #     decides what may see which; RetentionPump (the hourly
 │  │  │                            #     auto-archive sweep); task form model (NewTaskForm, and
@@ -111,7 +118,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #       that describes a task shares; capability
 │  │  │                            #     catalog built from the registered adapters;
 │  │  │                            #     TaskTitles (ask the task's agent to name it, and always
-│  │  │                            #       answer — the prompt's opening words are the floor)
+│  │  │                            #       answer — the prompt's opening words are the floor);
+│  │  │                            #     AttachmentSweep (one startup pass clearing attachment
+│  │  │                            #       folders no card claims)
 │  │  ├─ Sessions/                  #   SessionRegistry (the live sessions), SessionLauncher
 │  │  │                            #     (launch + restore), SessionRestorer (startup re-attach),
 │  │  │                            #     CardCompleter / CardReopener (the two hand-driven moves
@@ -143,7 +152,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │  └─ js/                     #     interop modules: act-terminal (attach / write / resize /
 │  │  │                            #       dispose), act-unsaved (the window-close guard),
 │  │  │                            #       act-escape (Escape leaves the page it is bound on),
-│  │  │                            #       act-presence (focus + visibility, for the toast gate)
+│  │  │                            #       act-presence (focus + visibility, for the toast gate),
+│  │  │                            #       act-attach (a drop or a file paste funnelled into the
+│  │  │                            #         page's own InputFile, so all three attachment routes
+│  │  │                            #         stream the same way; a text paste is never claimed)
 │  │  ├─ Properties/                #   launchSettings + electron-builder.json (packaging)
 │  │  ├─ ServiceCollectionExtensions.cs
 │  │  │                            #   AddActApp: every Act.App registration (agents, board,
@@ -332,6 +344,17 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   starts real processes, because a closed stdin, an undeadlocked stderr and a
   deadline that actually kills are properties of the OS and a fake would only prove
   the fake works. The shell it drives is the platform's own, never an agent CLI.
+- **`IAttachmentStore` is declared beside its implementation, not in `Act.Core` — added
+  2026-08-04.** A task's attached files live under `<dataDir>/attachments/<cardId>/`, and the
+  port for reaching them sits in `Act.Infrastructure/FileSystem/AttachmentStore.cs` with the
+  class that implements it. That is the `INotifier` line applied a second time: an interface
+  earns a place in `Act.Core/Abstractions` only when Core-side code triggers it, and nothing in
+  Core does — `AttachmentInstruction` takes resolved paths, and the adapters are handed
+  `AgentAttachments` rather than a store, which is also what keeps the contract suite off the
+  filesystem the way `IPtyHost` keeps it off the process table. Contrast
+  `IWorkingDirectories`, which *is* a Core port because `WorkingDirConflict` really calls it.
+  It also keeps `Act.TestSupport` on its single `Act.Core` reference: the fake lives in
+  `Act.App.UiTests` beside `FakeCardStore`, which is the only suite that needs one.
 - **The contract suite covers only the process-free surface.** `AgentAdapterContract`
   in `Act.Agents.Tests` asserts identity, capabilities and launch-config resolution —
   never a live session — because ACT deliberately runs no real CLI in automated

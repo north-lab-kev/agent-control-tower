@@ -13,6 +13,18 @@ public sealed record NewTaskForm
 
     public string Prompt { get; set; } = string.Empty;
 
+    // The card id is minted here rather than by `ToCard`, because a file is written the moment it is
+    // attached and it has to be written *somewhere*: the id is the attachment directory's name, so
+    // the folder a create stages into is already the folder the saved card owns and there is no move
+    // step to get wrong.
+    public Guid CardId { get; init; } = Guid.NewGuid();
+
+    // Deliberately outside the record's own equality — a `List<T>` compares by reference, so the
+    // dirty check ignores it and `TaskView` compares the names itself. Attached files are on disk
+    // before the form is saved, which is why they are not "unsaved changes" in the same sense the
+    // text fields are.
+    public List<TaskAttachment> Attachments { get; init; } = [];
+
     public string WorkingDir { get; set; } = string.Empty;
 
     public AgentType Agent { get; set; }
@@ -76,6 +88,8 @@ public sealed record NewTaskForm
 
     public static NewTaskForm From(Card card) => new()
     {
+        CardId = card.Id,
+        Attachments = [.. card.Attachments],
         Title = card.Title,
         Prompt = card.InitialPrompt,
         WorkingDir = card.WorkingDir,
@@ -94,6 +108,7 @@ public sealed record NewTaskForm
     {
         var card = new Card
         {
+            Id = CardId,
             Column = BoardColumn.Preparing,
             Origin = TaskOrigin.Manual,
             CreatedAt = createdAt,
@@ -118,6 +133,7 @@ public sealed record NewTaskForm
         if (TaskEditing.CanEditLaunchInputs(card))
         {
             card.InitialPrompt = Prompt.Trim();
+            card.Attachments = [.. Attachments];
             card.WorkingDir = WorkingDir.Trim();
             card.AgentType = Agent;
 

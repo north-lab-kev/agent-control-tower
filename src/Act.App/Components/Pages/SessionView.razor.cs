@@ -5,7 +5,9 @@ using Act.App.Sessions;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Infrastructure.FileSystem;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.JSInterop;
 using Radzen;
 
@@ -22,16 +24,26 @@ public partial class SessionView(
     CardCompleter completer,
     CardReopener reopener,
     IEnumerable<IAgentAdapter> adapters,
+    IAttachmentStore attachments,
     NavigationManager navigation,
     NotificationService notifications,
     IDesktopBridge desktop,
-    IJSRuntime js) : IAsyncDisposable
+    IJSRuntime js,
+    ILogger<SessionView> log) : IAsyncDisposable
 {
     private readonly string terminalId = $"act-term-{Guid.NewGuid():N}";
+
+    private readonly string dropRootId = $"act-drop-{Guid.NewGuid():N}";
+
+    private readonly string dropInputId = $"act-file-{Guid.NewGuid():N}";
 
     private DotNetObjectReference<SessionView>? owner;
 
     private IJSObjectReference? module;
+
+    private IJSObjectReference? attach;
+
+    private bool dragging;
 
     private IAgentSession? session;
 
@@ -50,6 +62,10 @@ public partial class SessionView(
     public Guid CardId { get; set; }
 
     private string TerminalId => terminalId;
+
+    private string DropRootId => dropRootId;
+
+    private string DropInputId => dropInputId;
 
     private TerminalSize Geometry { get; set; } = TerminalSize.Default;
 
@@ -110,8 +126,106 @@ public partial class SessionView(
         module = await js.InvokeAsync<IJSObjectReference>("import", "/js/act-terminal.js");
         owner = DotNetObjectReference.Create(this);
 
+        // Bound on the terminal frame, not the page: the rail's buttons are not somewhere a file
+        // means anything, and a paste is only claimed when the clipboard carries files — so xterm
+        // keeps handling a text paste exactly as it did.
+        attach = await js.InvokeAsync<IJSObjectReference>("import", "/js/act-attach.js");
+
+        await attach.InvokeVoidAsync("watch", dropRootId, dropInputId, owner);
+
         await AttachAsync();
     }
+
+    // The one write ACT authors into a live terminal, and it is deliberately the least it can be: the
+    // file's own path, quoted when it has a space in it, typed where the cursor already is. No submit
+    // key — the user reads what landed and presses Enter, exactly as they would after dragging a file
+    // onto any other terminal. See `IAgentTerminal`.
+    private async Task OnAttachmentsDroppedAsync(InputFileChangeEventArgs args)
+    {
+        dragging = false;
+
+        if (card is not { } existing)
+            return;
+
+        if (session is not { } running)
+        {
+            notifications.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Warning,
+                Summary = Strings.Session_AttachNoSession,
+                Detail = Strings.Session_AttachNoSessionDetail,
+                Duration = 8000,
+            });
+
+            return;
+        }
+
+        List<string> quoted = [];
+
+        foreach (var file in args.GetMultipleFiles(TaskAttachment.MaxPerTask))
+        {
+            if (file.Size > TaskAttachment.MaxLength)
+            {
+                notifications.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Warning,
+                    Summary = Strings.NewTask_Attachments_TooLarge,
+                    Detail = Text.Format(
+                        Strings.NewTask_Attachments_TooLargeDetail,
+                        file.Name,
+                        TaskLabels.FileSize(TaskAttachment.MaxLength)),
+                    Duration = 8000,
+                });
+
+                continue;
+            }
+
+            try
+            {
+                await using var content = file.OpenReadStream(TaskAttachment.MaxLength);
+
+                // Into the same folder the launch already granted the CLI access to, and *not* onto
+                // the card: the prompt is the opening instruction and stays verbatim, so a file
+                // handed over mid-session belongs to the conversation rather than to the task record.
+                var saved = await attachments.SaveAsync(existing.Id, file.Name, content);
+
+                quoted.Add(Quoted(attachments.PathFor(existing.Id, saved)));
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException
+                or JSException or TaskCanceledException)
+            {
+                log.LogError(error, "Attaching {FileName} to the live session failed.", file.Name);
+
+                notifications.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = Strings.Session_AttachFailed,
+                    Detail = error.Message,
+                    Duration = 20000,
+                });
+            }
+        }
+
+        if (quoted.Count > 0)
+            await running.Terminal.WriteAsync(string.Join(" ", quoted) + " ");
+    }
+
+    // Double quotes and a trailing space, which is what a terminal emulator does with a dragged file
+    // and what both TUIs read back as one argument. ACT's own directory names cannot contain a quote
+    // — `AttachmentStore` strips every invalid filename character — so there is nothing to escape
+    // inside the quotes.
+    private static string Quoted(string path) => path.Contains(' ') ? $"\"{path}\"" : path;
+
+    [JSInvokable]
+    public void OnDragActive(bool active) => InvokeAsync(() =>
+    {
+        if (dragging == active)
+            return;
+
+        dragging = active;
+
+        StateHasChanged();
+    });
 
     [JSInvokable]
     public async Task OnData(string data)
@@ -146,6 +260,18 @@ public partial class SessionView(
             {
                 await loaded.InvokeVoidAsync("dispose", terminalId);
                 await loaded.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+
+        if (attach is { } dropping)
+        {
+            try
+            {
+                await dropping.InvokeVoidAsync("dispose", dropRootId);
+                await dropping.DisposeAsync();
             }
             catch (JSDisconnectedException)
             {

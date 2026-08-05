@@ -69,7 +69,7 @@ public class CardReopenerTests
 
     private static async Task<CardReopener> ReopenerOf(params Card[] cards)
     {
-        var board = new BoardState(new FakeCardStore(cards), new FrozenClock(Now));
+        var board = new BoardState(new FakeCardStore(cards), new FakeAttachmentStore(), new FrozenClock(Now));
 
         await board.LoadAsync();
 

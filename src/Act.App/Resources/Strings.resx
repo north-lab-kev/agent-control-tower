@@ -75,6 +75,42 @@
   <data name="NewTask_Prompt_Hint" xml:space="preserve">
     <value>The opening instruction. Kept verbatim for the life of the task.</value>
   </data>
+  <data name="NewTask_Attachments" xml:space="preserve">
+    <value>Attachments</value>
+  </data>
+  <data name="NewTask_Attachments_Hint" xml:space="preserve">
+    <value>Copied into ACT's own folder and handed to the agent by path when the task runs.</value>
+  </data>
+  <data name="NewTask_Attachments_Drop" xml:space="preserve">
+    <value>Drop files here, paste from the clipboard, or browse</value>
+  </data>
+  <data name="NewTask_Attachments_DropActive" xml:space="preserve">
+    <value>Release to attach</value>
+  </data>
+  <data name="NewTask_Attachments_Browse" xml:space="preserve">
+    <value>Browse files</value>
+  </data>
+  <data name="NewTask_Attachments_Remove" xml:space="preserve">
+    <value>Remove attachment</value>
+  </data>
+  <data name="NewTask_Attachments_None" xml:space="preserve">
+    <value>No attachments.</value>
+  </data>
+  <data name="NewTask_Attachments_TooMany" xml:space="preserve">
+    <value>Too many files</value>
+  </data>
+  <data name="NewTask_Attachments_TooManyDetail" xml:space="preserve">
+    <value>A task takes at most {0} attachments.</value>
+  </data>
+  <data name="NewTask_Attachments_TooLarge" xml:space="preserve">
+    <value>File too large</value>
+  </data>
+  <data name="NewTask_Attachments_TooLargeDetail" xml:space="preserve">
+    <value>{0} was not attached: an attachment may be at most {1}.</value>
+  </data>
+  <data name="NewTask_Attachments_Failed" xml:space="preserve">
+    <value>Could not attach the file</value>
+  </data>
   <data name="NewTask_WorkingDir" xml:space="preserve">
     <value>Working directory</value>
   </data>
@@ -620,6 +656,18 @@
   </data>
   <data name="Session_RestartFailed" xml:space="preserve">
     <value>Could not restart the terminal</value>
+  </data>
+  <data name="Session_AttachDrop" xml:space="preserve">
+    <value>Release to insert the file's path</value>
+  </data>
+  <data name="Session_AttachNoSession" xml:space="preserve">
+    <value>Nothing to attach to</value>
+  </data>
+  <data name="Session_AttachNoSessionDetail" xml:space="preserve">
+    <value>This card has no live terminal, so there is nowhere to put the path.</value>
+  </data>
+  <data name="Session_AttachFailed" xml:space="preserve">
+    <value>Could not attach the file</value>
   </data>
   <data name="Session_Open" xml:space="preserve">
     <value>Open terminal</value>

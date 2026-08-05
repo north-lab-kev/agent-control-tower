@@ -185,7 +185,7 @@ public class SessionLaunchTests
             new StubHookEndpoint(),
             new StubAgentConfigFiles(),
             NullLogger<SessionRegistry>.Instance);
-        var board = new BoardState(new FakeCardStore(cards), clock);
+        var board = new BoardState(new FakeCardStore(cards), new FakeAttachmentStore(), clock);
         var settings = new UserSettingsService(new FakeSettingsStore(), new AppCulture());
         var notifier = new RecordingNotifier();
 
@@ -198,6 +198,7 @@ public class SessionLaunchTests
             TestNotifications.Dispatcher(settings, notifier),
             settings,
             new PassThroughDirectories(),
+            new FakeAttachmentStore(),
             clock,
             NullLogger<SessionLauncher>.Instance);
 

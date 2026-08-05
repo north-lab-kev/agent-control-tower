@@ -162,6 +162,25 @@ Standards to build against — not optional polish. Specifics named for the
   observation ACT can afford to drop, while an MCP call **mutates** ACT's store by
   creating a card, so the token is the *only* thing that decides which card becomes
   the parent — it is never an argument the agent supplies. See *Agent ↔ ACT contract*.
+- **`/attachments/{cardId}/{fileName}` is the one route that serves a local file** —
+  added 2026-08-05 so an attachment chip can show a thumbnail on hover, since
+  attachments deliberately live outside `wwwroot` and an `<img>` cannot read a path.
+  It is the narrowest thing that does that job, and every narrowing is deliberate:
+  - **Images only, from a fixed list** (`TaskAttachment.ImageContentTypeFor`), with the
+    content type taken from the extension rather than sniffed from the bytes. **SVG is
+    excluded** — it is an image everywhere else and a script host here, and served from
+    ACT's own origin it would run against ACT's own page.
+  - **The folder is the boundary, and it is proved rather than assumed.**
+    `IAttachmentStore.ResolveInside` resolves the name and then requires the result to sit
+    inside that card's own directory, so `..`, an absolute path, and a sibling folder
+    sharing the id's prefix all answer null — as does a name that simply is not there, so
+    nothing can be probed for existence. The check is a store rule, not route code,
+    precisely so a unit test can attack it.
+  - **Never the HTML a clipboard supplied.** A pasted `<img src="file:///…">` names a real
+    path and is ignored; only files the browser itself handed over are ever copied in, and
+    only what a card's own folder holds is ever served back out.
+  - Read-only `GET`, on the app port only — `HookPortGuard` already answers hook paths on
+    the hook port and everything else off it, so the route needs no guard of its own.
 
 ### Dependency licensing
 
@@ -466,6 +485,9 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
   auditing what was originally asked). Subsequent inputs — answers, permission
   grants, follow-up instructions — are typed in the terminal and belong to the
   interaction history, **not** to this field.
+- `attachments[]` — the files handed to the task alongside its prompt. **Names only**,
+  never paths: the bytes live in ACT's own data directory under the card's `id`, and
+  that root moves with `ACT_DATA_DIR`. See *Attachments* below.
 
 ### State
 
@@ -827,6 +849,97 @@ on a board whose whole point is that there are several.
 - **`TaskDefaults` → `Templates` is the store's first real migration** (schema 1 → 2), rather
   than the fresh-`act.db` answer the pre-release rule still allows: the change is mechanical and
   the board it would have cost is the user's. See `docs/design-notes.md` for how it is written.
+
+### Attachments — added 2026-08-04
+
+A task can carry files: a screenshot, a log, a spec, a PDF. Three ways in, and they are
+one code path — a **file picker**, **drag-and-drop**, and **paste**. The browser hands all
+three over as the same `File` object, so `act-attach.js` funnels a drop and a paste into
+the page's own hidden `<input type="file">` and lets Blazor's `InputFile` stream them the
+way it already streams a pick. No base64 over interop, and nothing to bump the SignalR
+message cap for.
+
+- **Paths, never contents.** The opening prompt is a positional command-line argument for
+  both agents, and Windows caps a command line at ~32,767 characters — so inlining a file
+  would spend the whole budget on a modest log and fail the spawn outright on a large one.
+  `AttachmentInstruction` appends a localised header and one **absolute path per line**, and
+  the agent reads the file with its own tools. This is the thing a CLI host can do that a
+  chat client cannot: the file is already on the machine the agent runs on.
+  - Appended **at launch and never stored**, exactly like the `autoGit` sentence —
+    `initialPrompt` stays verbatim for the life of the task, which is what the form promises.
+  - Appended **by the adapter**, not the launcher, because which files a CLI can take
+    natively is a fact about that CLI.
+- **ACT's own directory, never the task's working directory** —
+  `<dataDir>/attachments/<cardId>/`. The rule that killed `.act/` on 2026-07-30 applies to a
+  user's file exactly as it applied to a status file, and an attachment written into a
+  repository is one `autoGit` commit away from being pushed.
+- **A copy, not a reference.** A paste has no source path at all, so referencing in place
+  could not cover all three routes; and a referenced file the user later moves or deletes
+  leaves a card that cannot be re-run.
+- **Each agent delivers them its own way**, and both are measured:
+  - **Claude Code** — `--add-dir <folder>` on every launch *and* resume, plus every path in
+    the prompt. There is no `--image` on this CLI, so a picture arrives as a path the agent
+    reads; the grant is what stops `default` permission mode parking on a permission prompt
+    for the task's own attachment. It is passed **whether or not anything is attached yet**,
+    because a file dropped onto the terminal an hour in has no second chance at the command
+    line.
+  - **Codex** — `--image=<path>` per image, which puts the picture on turn one as a real
+    attachment rather than behind a `view_image` call, and the rest named in the prompt.
+    **No grant**: Codex reads outside `--cd` under both `read-only` and `workspace-write`
+    (measured), and its own `--add-dir` makes a directory *writable*, which is not what a
+    reference file wants.
+    - **`--image=<path>`, never `-i <path>`.** The flag is variadic (`-i <FILE>...`), so a
+      value passed as its own argument keeps eating positionals — including the prompt right
+      after it, which vanishes into the image list and leaves Codex blocked on stdin waiting
+      for a prompt that never comes. Measured against `0.146.0-alpha.3.1`; the same trap
+      `--tools` sets for Claude Code's one-shot query.
+  - A **resume** carries the folder and drops the list: the transcript it just reopened
+    already holds the files, and re-handing them would read as a fresh handover forty turns in.
+- **A live session takes them too, and it is still the user typing.** A drop or a
+  files-carrying paste over the Terminal tab saves the file and inserts its **quoted absolute
+  path** where the cursor already is — with **no submit key**. That is the same completion of
+  a drag gesture every terminal emulator performs, which is why it is not the send-back that
+  was cut on 2026-08-01: nothing is phrased, nothing is decided, and nothing is sent until the
+  user presses Enter. A paste carrying **text** is never claimed — not even when a bitmap rides along
+  with it, which is what copying a spreadsheet cell puts on the clipboard — so xterm and the prompt
+  box keep handling text exactly as they did.
+  A mid-session file is deliberately **not** added to `attachments[]`: the prompt is the
+  opening instruction, so a file handed over later belongs to the conversation, not the record.
+- **10 files, 25 MB each.** `IBrowserFile.OpenReadStream` refuses to guess a ceiling, and a
+  card keeps its files until the archive is purged, so the store needs a bound. An oversized
+  file is named in the message; a batch over the count is refused **whole** rather than
+  truncated, because keeping the first few of a dropped selection is the kind of partial
+  success nobody notices until the agent asks about a file that never arrived.
+- **Written on add, reconciled on commit.** The bytes hit disk the moment a file is attached,
+  so a 25 MB paste does not sit in server memory waiting for a Save that may never come — and
+  a mid-session drop has no Save at all. The disk and the card are brought back into agreement
+  when the form commits either way: a save prunes to what it stored, a discard prunes back to
+  what the form opened with (or clears the folder outright for a card that was never saved).
+  `NewTaskForm` mints the card's `id` for the same reason, so a create stages into the folder
+  the saved card will own and there is no move step to get wrong.
+- **Three lifecycle rules, and only one of them deletes.** A **purge** of the archive is the
+  only place a card leaves the store and so the only place its files may go; a **soft delete**
+  keeps them, because the archive can put the card back; a **duplicate** copies them, so the
+  copy owns its own and removing an attachment from one card cannot empty the other's prompt.
+  A startup **sweep** clears folders no card claims — the crash-shaped exit the discard path
+  cannot cover — and it can only run there, where "no card owns this" is a fact rather than a
+  race against a form halfway through its first attachment.
+- **Templates carry none.** A file belongs to one run, exactly like the specific datetime a
+  template already drops.
+- **Hovering an image chip shows a thumbnail** — added 2026-08-05. It is the cheapest way to
+  answer "which screenshot is that", which a filename like `pasted-20260804-232132.png` cannot.
+  - **Rendered only for the chip under the cursor**, not hidden behind CSS on all of them: ten
+    attachments would otherwise be ten image fetches on first paint, one of them possibly 25 MB.
+  - **Images only.** A log or a PDF has no thumbnail, and an empty frame under the cursor reads
+    as a broken image rather than as "nothing to preview".
+  - **A fixed-size box, `position: fixed`, placed by JS.** The sheet is the page's scroll
+    container, so an absolutely positioned overlay is clipped by it — measured, not assumed:
+    opening downward was cut off by ~200px in a 720px window, and opening upward would be cut
+    off on a taller form, so *neither* direction is safe. `act-attach.place` puts the box beside
+    the chip, flips it above when there is no room below, and clamps it to the viewport. The box
+    is sized in CSS rather than by the image, which is what lets the position be computed once,
+    before the bytes arrive, with no second pass and no jump.
+  - The bytes come from `/attachments/{cardId}/{fileName}` — see *Local-endpoint security*.
 
 ### Auto-generated titles — added 2026-08-03
 
@@ -1455,9 +1568,12 @@ string on the screen. See *The one prompt no hook reports*.
 
 ### The input channel is the human at the keyboard
 
-**ACT types nothing into a session at all.** Every byte reaching a live agent is a
+**ACT composes nothing for a live session.** Every byte reaching a live agent is a
 keystroke the user made in the terminal ACT is showing them; ACT's only writes to
-the pty are the resize and the teardown.
+the pty are the resize, the teardown, and **a dropped file's own path** — inserted
+where the cursor already is, never followed by a submit key, and only in answer to a
+drag or paste the user just performed. See *Attachments*: it is what a terminal
+emulator does with a dragged file, not an instruction ACT decided to send.
 
 *(Until 2026-08-01 there was one exception — a **send-back message**, seeded from
 the UI into a session parked at its prompt, going in as bracketed paste followed by
@@ -1987,6 +2103,20 @@ survives an upgrade or a reinstall. `ACT_DATA_DIR` overrides the directory (env
 var, appsettings key, or CLI arg); it's resolved once at startup and passed into
 infrastructure, which never reads the environment itself.
 
+**The folder is per hosting environment.** `Production` — the installed app — owns
+plain `ACT`; every other `ASPNETCORE_ENVIRONMENT` gets its own sibling,
+`ACT.<Environment>`, so a `Development` run lands in `%LOCALAPPDATA%\ACT.Development`.
+Everything ACT writes hangs off that one root — `act.db`, `logs/`, `attachments/`, the
+generated agent config files — so the split isolates the whole working set, not just the
+board. `ACT_DATA_DIR` still wins over both: an explicit path is the answer, and the
+environment suffix is only the default for the machine nobody has configured.
+
+The **listening port is split the same way**, because the two apps have to be able to run
+at once: `appsettings.json` pins the installed app to `http://localhost:5200` and
+`appsettings.Development.json` pins the dev loop to `http://localhost:5210`. The hook port
+needs no rule — it is allocated free and remembered *in the store*, so separate stores
+already mean separate hook ports.
+
 ### Single instance — one process owns the data file
 
 **ACT is a singleton: launching it again focuses the window you already have.**
@@ -2005,10 +2135,13 @@ right answer.
   `RequestSingleInstanceLockAsync`, which also covers the window being hidden
   rather than merely minimized.
 - **Consequence for development:** a browser-mode `dotnet run` and the packaged
-  desktop app are separate processes with separate instance locks, so they cannot
-  run at the same time against the same store — the second one to touch the file
-  fails on the LiteDB lock. Point one of them at another store with
-  `ACT_DATA_DIR`.
+  desktop app are separate processes with separate instance locks, so the lock
+  never stops the second one — what used to stop it was the LiteDB single-writer
+  lock on the shared store. The per-environment folder above removes that: a
+  `Development` run opens `ACT.Development\act.db` on port 5210 while the installed
+  app keeps `ACT\act.db` on 5200, and neither sees the other. Pointing one of them
+  somewhere else with `ACT_DATA_DIR` is still available and is the only answer when
+  two runs share an environment.
 
 ---
 

@@ -77,6 +77,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<BoardState>();
         services.AddSingleton<TaskTitles>();
         services.AddSingleton<RetentionPump>();
+        services.AddSingleton<AttachmentSweep>();
         services.AddSingleton<CardCompleter>();
         services.AddSingleton<CardReopener>();
 

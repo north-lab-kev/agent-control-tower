@@ -53,6 +53,16 @@ public static class TaskLabels
         _ => Strings.GitAction_Commit,
     };
 
+    // Powers of 1024 with the short units, because the number is read beside a file name to answer
+    // "is this the big one or the small one" — not to be added up. Culture-aware so a French decimal
+    // comma arrives as one.
+    public static string FileSize(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:0.#} KB",
+        _ => $"{bytes / (1024.0 * 1024.0):0.#} MB",
+    };
+
     // The default template's name is not stored: it is not the user's to change, and a stored
     // translation would freeze whichever language the install first ran in. Every other template
     // requires a name, so this is the only case with nothing to show.

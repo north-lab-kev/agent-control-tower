@@ -116,7 +116,7 @@ public class SessionRestartTests
             new StubHookEndpoint(),
             new StubAgentConfigFiles(),
             NullLogger<SessionRegistry>.Instance);
-        var board = new BoardState(new FakeCardStore(cards), clock);
+        var board = new BoardState(new FakeCardStore(cards), new FakeAttachmentStore(), clock);
         var settings = new UserSettingsService(new MemorySettingsStore(), new AppCulture());
 
         board.LoadAsync().GetAwaiter().GetResult();
@@ -128,6 +128,7 @@ public class SessionRestartTests
             TestNotifications.Dispatcher(settings, new RecordingNotifier()),
             settings,
             new PassThroughDirectories(),
+            new FakeAttachmentStore(),
             clock,
             NullLogger<SessionLauncher>.Instance), registry, adapter);
     }

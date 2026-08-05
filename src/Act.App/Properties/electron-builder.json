@@ -14,7 +14,8 @@
   },
   "nsis": {
     "oneClick": false,
-    "allowToChangeInstallationDirectory": true
+    "allowToChangeInstallationDirectory": true,
+    "artifactName": "ACT-Setup-${version}-${arch}.${ext}"
   },
   // Linux (AppImage + .deb) — décommenter pour l'activer ; doit être buildé sur Linux.
   // "linux": {

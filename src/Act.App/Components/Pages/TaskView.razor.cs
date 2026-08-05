@@ -1,3 +1,4 @@
+using Act.App.Attachments;
 using Act.App.Cards;
 using Act.App.Desktop;
 using Act.App.Resources;
@@ -7,8 +8,10 @@ using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Infrastructure.FileSystem;
 using Act.Infrastructure.Logging;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 using Radzen;
@@ -26,6 +29,7 @@ public partial class TaskView(
     TaskTitles titles,
     UserSettingsService settings,
     IWorkingDirectories directories,
+    IAttachmentStore attachments,
     IClock clock,
     DialogService dialogService,
     NavigationManager navigation,
@@ -51,6 +55,21 @@ public partial class TaskView(
     private bool titling;
 
     private bool templating;
+
+    private bool dragging;
+
+    private TaskAttachment? previewing;
+
+    // The names the form loaded or last saved with. The dirty check cannot come off `NewTaskForm`'s
+    // own equality here: the record holds a `List<T>`, which compares by reference, so `form with { }`
+    // hands the baseline the very list the page then mutates.
+    private List<string> attachmentBaseline = [];
+
+    private readonly string dropRootId = $"act-drop-{Guid.NewGuid():N}";
+
+    private readonly string dropInputId = $"act-file-{Guid.NewGuid():N}";
+
+    private IJSObjectReference? attach;
 
     // Titling outlives no navigation: the answer is for a form that is still on screen, and a CLI
     // still thinking about a page the user has left is work nobody will read.
@@ -83,7 +102,29 @@ public partial class TaskView(
     [SupplyParameterFromQuery(Name = "template")]
     private Guid? TemplateId { get; set; }
 
-    private bool IsDirty => !missing && form != baseline;
+    private bool IsDirty
+        => !missing && (form != baseline || !AttachmentNames.SequenceEqual(attachmentBaseline));
+
+    private IEnumerable<string> AttachmentNames => form.Attachments.Select(a => a.FileName);
+
+    private string DropRootId => dropRootId;
+
+    private string DropInputId => dropInputId;
+
+    private string DropZoneText => dragging
+        ? Strings.NewTask_Attachments_DropActive
+        : Strings.NewTask_Attachments_Drop;
+
+    // Only what can actually be shown. A log or a PDF has no thumbnail, and an empty frame under the
+    // cursor reads as a broken image rather than as "nothing to preview".
+    private bool Previews(TaskAttachment attachment)
+        => ReferenceEquals(previewing, attachment) && attachment.IsImage;
+
+    // The file name is escaped rather than trusted to be url-safe: `AttachmentStore` allows spaces and
+    // anything else the platform permits, and the route segment has to survive them. The endpoint
+    // re-checks the decoded name against the card's own folder either way.
+    private string PreviewUrl(TaskAttachment attachment)
+        => $"{AttachmentEndpointExtensions.RoutePrefix}/{form.CardId:d}/{Uri.EscapeDataString(attachment.FileName)}";
 
     // Past the launch boundary the form describes a run that already happened, so what defines that
     // run stops being editable — `TaskEditing` owns the split, and `NewTaskForm.ApplyTo` enforces it
@@ -223,6 +264,84 @@ public partial class TaskView(
         form.WorkingDir = path;
         picking = false;
     }
+
+    // Written to disk on add rather than on save, which is what lets a 25 MB screenshot leave the
+    // server's memory immediately instead of being held per circuit until the user commits. The
+    // directory is named after the id the form minted, so a create stages into the folder the saved
+    // card will own and there is nothing to move.
+    private async Task OnAttachmentsPickedAsync(InputFileChangeEventArgs args)
+    {
+        // Refused whole rather than truncated. Keeping the first few of a dropped selection is the
+        // kind of partial success nobody notices until the agent asks about a file that never came.
+        if (args.FileCount > TaskAttachment.MaxPerTask - form.Attachments.Count)
+        {
+            Warn(
+                Strings.NewTask_Attachments_TooMany,
+                Text.Format(Strings.NewTask_Attachments_TooManyDetail, TaskAttachment.MaxPerTask));
+
+            return;
+        }
+
+        foreach (var file in args.GetMultipleFiles(TaskAttachment.MaxPerTask))
+        {
+            // Checked here as well as by `OpenReadStream`, so an oversized file is named in the
+            // message instead of arriving as an `IOException` halfway through the copy.
+            if (file.Size > TaskAttachment.MaxLength)
+            {
+                Warn(
+                    Strings.NewTask_Attachments_TooLarge,
+                    Text.Format(
+                        Strings.NewTask_Attachments_TooLargeDetail,
+                        file.Name,
+                        TaskLabels.FileSize(TaskAttachment.MaxLength)));
+
+                continue;
+            }
+
+            try
+            {
+                await using var content = file.OpenReadStream(TaskAttachment.MaxLength);
+
+                form.Attachments.Add(await attachments.SaveAsync(form.CardId, file.Name, content));
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException
+                or JSException or TaskCanceledException)
+            {
+                log.LogError(error, "Attaching {FileName} to the task failed.", file.Name);
+
+                notifications.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = Strings.NewTask_Attachments_Failed,
+                    Detail = error.Message,
+                    Duration = 20000,
+                });
+            }
+        }
+    }
+
+    // In memory only. The bytes go when the form commits — see `IAttachmentStore.Prune` — because a
+    // removal the user then abandons must not leave the stored card naming a file that is gone.
+    private void RemoveAttachment(TaskAttachment attachment) => form.Attachments.Remove(attachment);
+
+    [JSInvokable]
+    public void OnDragActive(bool active) => InvokeAsync(() =>
+    {
+        if (dragging == active)
+            return;
+
+        dragging = active;
+
+        StateHasChanged();
+    });
+
+    private void Warn(string summary, string detail) => notifications.Notify(new NotificationMessage
+    {
+        Severity = NotificationSeverity.Warning,
+        Summary = summary,
+        Detail = detail,
+        Duration = 8000,
+    });
 
     // Only the follow-ups that are still live. Ones already archived are not a decision the user
     // needs to make again.
@@ -401,7 +520,7 @@ public partial class TaskView(
             card = null;
             missing = false;
             form = NewTaskForm.From(settings.TemplateOrDefault(TemplateId));
-            baseline = form with { };
+            Rebase();
             discarded = false;
 
             return;
@@ -420,8 +539,15 @@ public partial class TaskView(
         form = card is { } existing
             ? NewTaskForm.From(existing)
             : NewTaskForm.From(settings.TemplateOrDefault(TemplateId));
-        baseline = form with { };
+        Rebase();
         discarded = false;
+    }
+
+    // The two snapshots the dirty check compares against, taken together so they cannot drift.
+    private void Rebase()
+    {
+        baseline = form with { };
+        attachmentBaseline = [.. AttachmentNames];
     }
 
     // Two exits, two mechanisms, because they are two different things. Every move inside ACT —
@@ -439,6 +565,30 @@ public partial class TaskView(
             owner = DotNetObjectReference.Create(this);
 
             await unsaved.InvokeVoidAsync("watch", owner, desktop.IsDesktop);
+
+            // Bound on the whole page rather than on the panel: a file dragged at a form is aimed at
+            // the prompt as often as at the box that collects it, and the highlight tells the user
+            // where it will land either way. A locked card has no input to feed, so nothing is bound.
+            if (!Locked && !missing)
+            {
+                attach = await js.InvokeAsync<IJSObjectReference>("import", "/js/act-attach.js");
+
+                await attach.InvokeVoidAsync("watch", dropRootId, dropInputId, owner);
+            }
+        }
+
+        // After the render that added it, because the box only has a position once it is in the
+        // document — and it stays `visibility: hidden` until this lands, so it never paints at the
+        // viewport's top-left corner on the way past.
+        if (previewing is not null && attach is { } placing)
+        {
+            try
+            {
+                await placing.InvokeVoidAsync("place", dropRootId);
+            }
+            catch (JSDisconnectedException)
+            {
+            }
         }
 
         if (unsaved is not { } module || armed == IsDirty)
@@ -454,8 +604,25 @@ public partial class TaskView(
     [JSInvokable]
     public async Task OnCloseBlocked()
     {
-        if (await ConfirmDiscardAsync() && unsaved is { } module)
+        if (!await ConfirmDiscardAsync())
+            return;
+
+        DiscardAttachments();
+
+        if (unsaved is { } module)
             await module.InvokeVoidAsync("release");
+    }
+
+    // The other half of writing files on add: a discard has to undo them, or a task the user walked
+    // away from leaves bytes nothing on the board names. A card that was never saved loses the whole
+    // directory; an edit is rolled back to the names it arrived with, which is also what un-does an
+    // attachment removed and then abandoned.
+    private void DiscardAttachments()
+    {
+        if (card is null)
+            attachments.Clear(form.CardId);
+        else
+            attachments.Prune(form.CardId, attachmentBaseline);
     }
 
     public async ValueTask DisposeAsync()
@@ -477,6 +644,18 @@ public partial class TaskView(
             }
         }
 
+        if (attach is { } dropping)
+        {
+            try
+            {
+                await dropping.InvokeVoidAsync("dispose", dropRootId);
+                await dropping.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+
         owner?.Dispose();
     }
 
@@ -486,7 +665,11 @@ public partial class TaskView(
             return;
 
         if (await ConfirmDiscardAsync())
+        {
+            DiscardAttachments();
+
             return;
+        }
 
         context.PreventNavigation();
     }
@@ -650,6 +833,10 @@ public partial class TaskView(
             {
                 await board.CreateAsync(form.ToCard(clock.Now));
             }
+
+            // After the write, so the card and the directory agree from here on: an attachment the
+            // user removed on this visit is what loses its bytes, and only once the removal is real.
+            attachments.Prune(form.CardId, AttachmentNames);
 
             discarded = true;
         }

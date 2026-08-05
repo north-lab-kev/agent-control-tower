@@ -31,7 +31,19 @@ else
         <CardTabs CardId="card.Id" />
 
         <div class="body">
-            <div class="terminal" id="@terminalId"></div>
+            @* A drop lands anywhere over the terminal, and all it does is type the file's path where
+               the cursor already is — never a submit key. See `IAgentTerminal`. *@
+            <div class="terminal @(dragging ? "over" : null)" id="@DropRootId">
+                <div class="screen" id="@terminalId"></div>
+                <InputFile id="@DropInputId" multiple OnChange="OnAttachmentsDroppedAsync" class="hiddenpick" />
+                @if (dragging)
+                {
+                    <div class="dropnote">
+                        <RadzenIcon Icon="attach_file" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Session_AttachDrop" />
+                    </div>
+                }
+            </div>
 
             <aside class="rail">
                 @* A status, not an action — so it sits with the facts, and the button it used to

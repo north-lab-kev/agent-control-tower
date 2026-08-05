@@ -339,7 +339,7 @@ public class BoardStateTests
 
     private static async Task<BoardState> BoardOf(params Card[] cards)
     {
-        var board = new BoardState(new FakeCardStore(cards), new FrozenClock(Now));
+        var board = new BoardState(new FakeCardStore(cards), new FakeAttachmentStore(), new FrozenClock(Now));
 
         await board.LoadAsync();
 

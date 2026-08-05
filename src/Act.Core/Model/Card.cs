@@ -12,6 +12,11 @@ public sealed class Card
 
     public string InitialPrompt { get; set; } = string.Empty;
 
+    // The files handed to the task alongside its prompt. They live in ACT's data directory under
+    // this card's id, so the card carries names and the paths are resolved at launch — see
+    // `TaskAttachment` and `AttachmentInstruction`.
+    public IList<TaskAttachment> Attachments { get; set; } = [];
+
     public BoardColumn Column { get; set; }
 
     // The card's place inside its column — see `CardOrder`. Stamped past everything already there

@@ -87,6 +87,98 @@ command line through untouched and ACT quotes each argument by the rules `Comman
 documents. Measured against the real CLI afterwards: **226 characters in, 226 out**, where the
 transport's own escaping gave 28.
 
+### `codex --image` must bind its value with `=` — measured 2026-08-04
+
+`-i, --image <FILE>...` is variadic, so `-i C:\a\shot.png "the prompt"` does **not** mean one image
+and a prompt: clap keeps collecting positionals into the image list, the prompt is swallowed as a
+second file name, and Codex then prints `Reading prompt from stdin...` and blocks on a prompt that
+will never come. Measured against `0.146.0-alpha.3.1`, where it cost a launch that looked like a
+hung CLI.
+
+`--image=<path>` binds exactly one value per occurrence, so several images are several flags and the
+positional prompt survives at the end where both adapters put it. This is the same trap `--tools`
+sets for `ClaudeCodeAdapter.QueryAsync`, and the same answer: **keep the prompt away from a variadic
+flag's value.** `CodexAdapterTests` pins the `=` form and asserts the prompt is still the last
+argument, because nothing in the flag's own help says any of this.
+
+### Attachments travel as paths, never as contents — decided 2026-08-04
+
+The opening prompt is a positional command-line argument for both agents, and Windows caps a command
+line at ~32,767 characters. Inlining an attached file's *contents* would therefore spend the whole
+budget on a modest log and fail the spawn outright on a large one — the same class of failure the
+quoting bug above produced, and just as quiet. So `AttachmentInstruction` writes one **absolute path
+per line** under a localised header and the agent reads the file itself, which is the thing a CLI
+host can do that a chat client cannot: the file is already on the machine the agent runs on.
+
+Claude Code needs `--add-dir` with it, because the paths are deliberately outside the working
+directory and `Read` on one is exactly what `default` permission mode stops to ask about — an
+unattended task would park on a prompt for its own attachment. Measured: the flag adds no trust
+prompt of its own, and an agent handed a path under `%LOCALAPPDATA%\ACT\attachments\<cardId>\` reads
+it without stopping. Codex needs no grant at all: it reads outside `--cd` under both `read-only` and
+`workspace-write`, also measured.
+
+### A pasted screenshot may not be in `clipboardData.files` — measured 2026-08-04
+
+Read off a real Windows clipboard, a screenshot is `PNG` + `Bitmap` + `DeviceIndependentBitmap` +
+`Format17` and **no `FileDrop`**: no path, no filename, nothing to reference. That is the measurement
+behind *a copy, not a reference*, and it is also why the pasted-bitmap rename exists — the name a
+page sees is one the browser invented.
+
+It is also why `act-attach` reads `clipboardData.items` and not only `.files`. A bitmap with no
+backing file can arrive as a `kind: 'file'` **item** alone, so a handler that trusts `files` attaches
+a dropped file happily and does nothing at all for the one thing people actually paste — silently,
+with no error to notice.
+
+**The `items` fallback yields to text, and that guard is the whole subtlety.** Copying a cell from
+Excel or a selection from Word puts a bitmap *and* text on the clipboard; claiming that paste would
+attach a picture of the cell instead of pasting its text into the prompt box or the terminal. So the
+fallback is skipped whenever `text/plain` is non-empty. A populated `files` needs no such guard —
+that is an unambiguous file paste, the shape a file copied in Explorer arrives as. Four cases,
+all four verified in the app: bitmap-only → attach; bitmap + text → text; `files` populated →
+attach; plain text → text.
+
+**`files` wins over `items`; the two are never concatenated.** A screenshot tool puts the same
+picture on the clipboard *twice*. Measured off a Screenpresso capture: `FileDrop` (a real
+`…\Screenpresso\2026-08-04_14h46_07.png`, 180,964 bytes), `Bitmap` (2064×1078, the same image raw),
+`FileContents`/`FileGroupDescriptorW`, an HTML `<img src="file:///…">`, and **no** `UnicodeText`.
+Reading both sources would attach one screenshot as two files; preferring `files` also keeps the
+tool's own filename instead of the one the browser invents, which is why this shape lands as
+`2026-08-04_14h46_07.png` while a bare bitmap lands as `pasted-<timestamp>.png`.
+
+**The HTML is never parsed, and that is a boundary rather than an omission.** The same capture's
+`<img src="file:///C:/…">` names a real local path, and honouring it would let whatever the user
+pasted nominate any file on the disk for ACT to copy and hand to an agent. Only real `File` objects
+the browser itself put in `files`/`items` are taken — the browser has already gated those.
+
+### The hover thumbnail has to be `position: fixed` — measured 2026-08-05
+
+An overlay anchored to an attachment chip with `position: absolute` is clipped by the task sheet,
+because `.body` is the page's scroll container (`overflow-y: auto`) and absolute positioning does not
+escape an ancestor's overflow. Both directions were measured in a 1280×720 window: opening *downward*
+put the box's bottom at 865 against a scroller ending at 667 — about 200px cut off — and opening
+*upward* fails the same way on a taller form, where the chips sit higher. There is no safe fixed
+direction, which is what rules out the CSS-only version.
+
+So the box is `position: fixed` (outside every ancestor's clip) and `act-attach.place` gives it
+viewport coordinates: below the chip when there is room, above when there is not, clamped on both
+axes. Verified on three viewports — flipped above at 720px tall, below at 1646px, and pulled back to
+an 8px right-hand gap for a chip shoved against the right edge.
+
+**The box is sized in CSS, not by the image**, and that is what keeps it to one pass. An `<img>` has
+no intrinsic size until it loads, so a box that grew with its content would have to be positioned
+again afterwards — a visible jump on every hover. A fixed 22rem × 16rem frame with
+`object-fit: scale-down` is measurable before the first byte arrives, shrinks a screenshot to fit and
+leaves a favicon at its own size instead of blowing it up.
+
+### Inserting a dropped file's path is not the send-back that was cut
+
+Send-back (deleted 2026-08-01) composed a message and pressed the agent's submit key, which put ACT
+in the business of guessing when a TUI was ready to be typed into. A file dropped on the Terminal tab
+does neither: it inserts **the file's own path**, quoted, where the cursor already is, and sends
+nothing. Every terminal emulator does this with a dragged file, and the user still has to read what
+landed and press Enter. `IAgentTerminal`'s doc comment was amended rather than quietly contradicted —
+the invariant is that ACT composes no *instruction*, not that it never writes.
+
 ---
 
 ## Ingestion

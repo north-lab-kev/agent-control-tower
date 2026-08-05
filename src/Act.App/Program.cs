@@ -1,4 +1,5 @@
 using Act.App;
+using Act.App.Attachments;
 using Act.App.Cards;
 using Act.App.Desktop;
 using Act.App.Sessions;
@@ -13,7 +14,9 @@ using AppRoot = Act.App.Components.App;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var dataDirectory = ActDataDirectory.Resolve(builder.Configuration[ActDataDirectory.OverrideKey]);
+var dataDirectory = ActDataDirectory.Resolve(
+    builder.Configuration[ActDataDirectory.OverrideKey],
+    builder.Environment.EnvironmentName);
 
 builder.Logging.AddActFileLog(dataDirectory);
 
@@ -45,6 +48,10 @@ var settings = app.Services.GetRequiredService<UserSettingsService>();
 settings.ApplyLanguage();
 
 await app.Services.GetRequiredService<BoardState>().LoadAsync();
+
+// Straight after the load and before anything can create a card, which is the only moment "no card
+// owns this folder" is a fact rather than a race — see `AttachmentSweep`.
+app.Services.GetRequiredService<AttachmentSweep>().Run();
 
 // Before anything can launch: discovery only fills what settings do not already say, because a
 // path the user typed is the answer — probing is for the machine nobody has configured yet.
@@ -91,6 +98,7 @@ app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages:
 app.UseAntiforgery();
 
 app.MapActHooks();
+app.MapActAttachments();
 app.MapStaticAssets();
 app.MapRazorComponents<AppRoot>()
     .AddInteractiveServerRenderMode();

@@ -95,12 +95,82 @@ public class ClaudeCodeAdapterTests
         pty.Last.Arguments[^1].Should().NotBe(string.Empty);
     }
 
-    private static Task<IAgentSession> LaunchAsync(StubPtyHost pty, LaunchConfig? config = null)
+    // There is no `--image` on this CLI, so every attachment reaches the model as a path — and the
+    // paths are all outside the working directory, which is what `--add-dir` is for: without it a
+    // `default`-mode task would park on a permission prompt for its own attachment.
+    [Fact]
+    public async Task Every_attachment_is_listed_in_the_prompt_and_its_folder_is_granted()
+    {
+        var pty = new StubPtyHost();
+
+        await using var session = await LaunchAsync(pty, attachments: Attached(
+            new AgentAttachment(@"C:\act\a\shot.png", IsImage: true),
+            new AgentAttachment(@"C:\act\a\trace.log", IsImage: false)));
+
+        pty.Last.Arguments.Should().ContainInOrder("--add-dir", @"C:\act\a");
+        pty.Last.Arguments[^1].Should().Contain(@"C:\act\a\shot.png").And.Contain(@"C:\act\a\trace.log");
+    }
+
+    // Granted whether or not there is a file yet, because a file dropped onto the terminal an hour in
+    // has no second chance at this command line.
+    [Fact]
+    public async Task The_folder_is_granted_even_with_nothing_attached_yet()
+    {
+        var pty = new StubPtyHost();
+
+        await using var session = await LaunchAsync(pty, attachments: Attached());
+
+        pty.Last.Arguments.Should().ContainInOrder("--add-dir", @"C:\act\a");
+        pty.Last.Arguments[^1].Should().Be("do the thing");
+    }
+
+    // A resume keeps the grant and drops the list: the transcript it just reopened already carries
+    // the files, and re-listing them would read as a fresh handover forty turns in.
+    [Fact]
+    public async Task A_resume_keeps_the_grant_and_does_not_relist_the_files()
+    {
+        var pty = new StubPtyHost();
+        var adapter = new ClaudeCodeAdapter(pty, new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<ClaudeCodeAdapter>.Instance);
+
+        await using var session = await adapter.ResumeAsync(new AgentResumeRequest(
+            TaskId,
+            SessionId,
+            "C:/repo",
+            "do the thing",
+            "pick it back up",
+            new LaunchConfig(),
+            TerminalSize.Default,
+            Attached(new AgentAttachment(@"C:\act\a\trace.log", IsImage: false))));
+
+        pty.Last.Arguments.Should().ContainInOrder("--add-dir", @"C:\act\a");
+        pty.Last.Arguments[^1].Should().Be("pick it back up");
+    }
+
+    // No directory means no grant, which is what a card launched before attachments existed looks
+    // like — an empty `--add-dir` would be a flag pointing at the process's own working directory.
+    [Fact]
+    public async Task Nothing_is_granted_when_there_is_no_attachment_directory()
+    {
+        var pty = new StubPtyHost();
+
+        await using var session = await LaunchAsync(pty);
+
+        pty.Last.Arguments.Should().NotContain("--add-dir");
+    }
+
+    private static AgentAttachments Attached(params AgentAttachment[] files)
+        => new(@"C:\act\a", files);
+
+    private static Task<IAgentSession> LaunchAsync(
+        StubPtyHost pty,
+        LaunchConfig? config = null,
+        AgentAttachments? attachments = null)
         => new ClaudeCodeAdapter(pty, new StubCommandHost(), new TestClock(), new StubHookEndpoint(), new StubAgentConfigFiles(), NullLogger<ClaudeCodeAdapter>.Instance).LaunchAsync(new AgentLaunchRequest(
             TaskId,
             SessionId,
             "C:/repo",
             "do the thing",
             config ?? new LaunchConfig(),
-            TerminalSize.Default));
+            TerminalSize.Default,
+            attachments));
 }

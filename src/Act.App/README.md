@@ -19,6 +19,11 @@ dotnet run --project src/Act.App --launch-profile http
 
 Serves at `http://localhost:5210`. No Electron, no Node — plain Blazor Server.
 
+`Development` runs are isolated from the installed app: port 5210 against
+`%LOCALAPPDATA%\ACT.Development`, while `Production` keeps port 5200 and
+`%LOCALAPPDATA%\ACT`. Both can run at the same time; see *Where the data lives* in
+`docs/ACT-overview.md`.
+
 ## Run — Electron desktop window
 
 ```
@@ -40,6 +45,11 @@ Wraps `dotnet publish -r <rid> -p:ElectronPackaging=true`; output lands in
 `artifacts/desktop/<rid>/`. The `ElectronPackaging` flag is what keeps the RID
 (needed by electron-builder); ordinary builds stay RID-agnostic and
 cross-platform.
+
+Releases add `-Version 1.2.3` (see `.github/workflows/release.yml`): that single
+property is both what the running app reports (`AssemblyInformationalVersion`,
+logged by `Hosting/StartupLog`) and what names the installer
+(`ACT-Setup-<version>-x64.exe`).
 
 ## UI direction
 

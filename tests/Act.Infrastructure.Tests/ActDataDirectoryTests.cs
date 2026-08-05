@@ -10,12 +10,44 @@ public class ActDataDirectoryTests
     {
         var directory = ActDataDirectory.Resolve();
 
-        var expected = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "ACT");
-
-        directory.Should().Be(expected);
+        directory.Should().Be(LocalAppData("ACT"));
         directory.Should().NotStartWith(AppContext.BaseDirectory);
+    }
+
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("production")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void Resolve_keeps_the_plain_folder_for_the_installed_app(string? environment)
+    {
+        ActDataDirectory.Resolve(environment: environment).Should().Be(LocalAppData("ACT"));
+    }
+
+    [Fact]
+    public void Resolve_isolates_a_non_production_environment_in_its_own_folder()
+    {
+        ActDataDirectory.Resolve(environment: "Development").Should().Be(LocalAppData("ACT.Development"));
+    }
+
+    [Fact]
+    public void Resolve_ignores_the_environment_when_a_directory_is_configured()
+    {
+        using var temp = new TempDirectory();
+
+        ActDataDirectory.Resolve(temp.Path, "Development").Should().Be(temp.Path);
+    }
+
+    [Fact]
+    public void FolderFor_strips_characters_a_directory_name_cannot_hold()
+    {
+        ActDataDirectory.FolderFor("Dev/../Staging").Should().Be("ACT.Dev..Staging");
+    }
+
+    [Fact]
+    public void FolderFor_falls_back_to_the_plain_folder_when_nothing_survives()
+    {
+        ActDataDirectory.FolderFor("//").Should().Be("ACT");
     }
 
     [Fact]
@@ -52,4 +84,8 @@ public class ActDataDirectoryTests
 
         Directory.Exists(temp.Path).Should().BeFalse();
     }
+
+    private static string LocalAppData(string folder) => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        folder);
 }
