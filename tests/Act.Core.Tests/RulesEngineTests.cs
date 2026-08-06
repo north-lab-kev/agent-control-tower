@@ -341,7 +341,6 @@ public class RulesEngineTests
         new SessionEnded(SessionId, At),
         new SessionStarted(SessionId, At, "t.jsonl", "C:/repo"),
         new SessionEnriched(SessionId, At, new EnrichmentSnapshot()),
-        new FollowUpsWritten(SessionId, At, ["001.json"]),
         new StartupPromptWaiting(SessionId, At),
     ];
 

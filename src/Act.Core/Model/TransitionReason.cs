@@ -47,6 +47,11 @@ public enum TransitionReason
     TurnFailed,
     AgentExited,
 
+    // The parent's row when its agent creates a follow-up. It carries no column, because the parent
+    // did not move — it produced something — and `TimelineEntry` renders a reasoned row with a null
+    // column as wording alone.
+    SpawnedFollowUp,
+
     // The CLI is parked on its directory-trust prompt, which blocks before the session exists and
     // so reaches ACT as no hook at all. Its own reason rather than `PermissionRequested`: nothing
     // was requested by an agent that has not started, and the timeline should say which prompt it

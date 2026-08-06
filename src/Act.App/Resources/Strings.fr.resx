@@ -369,6 +369,27 @@
   <data name="Card_Children" xml:space="preserve">
     <value>{0} enfants ⤵</value>
   </data>
+  <data name="Session_SpawnedBy" xml:space="preserve">
+    <value>Créée par</value>
+  </data>
+  <data name="Session_FollowUps" xml:space="preserve">
+    <value>Tâches de suivi</value>
+  </data>
+  <data name="Settings_MaxFollowUps" xml:space="preserve">
+    <value>Tâches de suivi qu&apos;un agent peut créer par tâche</value>
+  </data>
+  <data name="Settings_MaxFollowUps_Hint" xml:space="preserve">
+    <value>Une limite de sécurité sur les tâches créées par un agent, comptée sur toute la vie de la tâche. Mettez 0 pour empêcher les agents d&apos;en créer.</value>
+  </data>
+  <data name="Card_SpawnedBy" xml:space="preserve">
+    <value>↳ n° {0}</value>
+  </data>
+  <data name="Card_SpawnedBy_Tip" xml:space="preserve">
+    <value>Créée par la tâche n° {0} — {1}</value>
+  </data>
+  <data name="Card_SpawnedByUnknown" xml:space="preserve">
+    <value>↳ tâche de suivi</value>
+  </data>
   <data name="Agent_ClaudeCode" xml:space="preserve">
     <value>claude</value>
   </data>
@@ -908,6 +929,9 @@
   </data>
   <data name="Transition_StartupPrompt" xml:space="preserve">
     <value>En attente de l&apos;invite de démarrage de la CLI</value>
+  </data>
+  <data name="Transition_SpawnedFollowUp" xml:space="preserve">
+    <value>Tâche de suivi créée : {0}</value>
   </data>
   <data name="Card_Surface_Timeline" xml:space="preserve">
     <value>Historique</value>

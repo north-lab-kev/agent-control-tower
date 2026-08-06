@@ -178,12 +178,7 @@ public partial class BoardView(
         }
     }
 
-    // Past the launch boundary a card *is* its session, so opening one goes to its terminal
-    // rather than to the form — the form's fields are not the user's to change any more.
-    private void OpenAsync(Card card) => navigation.NavigateTo(
-        card.Column is BoardColumn.Preparing or BoardColumn.Ready
-            ? $"/card/{card.Id}/edit"
-            : $"/card/{card.Id}/terminal");
+    private void OpenAsync(Card card) => navigation.NavigateTo(CardRoute.For(card));
 
     // The default is left out: the button itself is what starts a task from it, so listing it in the
     // button's own menu offers the same thing twice.
@@ -237,6 +232,11 @@ public partial class BoardView(
     }
 
     private bool CanRetry(Card card) => launcher.CanRetry(card);
+
+    // Off `BoardState` rather than the column being drawn, because a parent is very often in a
+    // different one — the whole point of a follow-up is that it outlives the turn that asked for it.
+    private Card? ParentOf(Card card)
+        => card.ParentId is { } parentId ? board.Card(parentId) : null;
 
     // The board is the right home for Retry, not the session view: opening a failed card's terminal
     // already resumes it, so by the time you are looking at the rail the process is live again and

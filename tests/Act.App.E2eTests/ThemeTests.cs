@@ -45,11 +45,11 @@ public sealed class ThemeTests : BrowserTest
     {
         await GoAsync();
 
-        await Page.EmulateMediaAsync(new PageEmulateMediaOptions { ColorScheme = ColorScheme.Light });
+        await ApplySchemeAsync(ColorScheme.Light);
 
         var light = await BackgroundAsync();
 
-        await Page.EmulateMediaAsync(new PageEmulateMediaOptions { ColorScheme = ColorScheme.Dark });
+        await ApplySchemeAsync(ColorScheme.Dark);
         await WaitUntilChangedAsync("div.act-root", "backgroundColor", light);
 
         (await BackgroundAsync()).Should().NotBe(light);
@@ -60,13 +60,13 @@ public sealed class ThemeTests : BrowserTest
     {
         await GoAsync();
 
-        await Page.EmulateMediaAsync(new PageEmulateMediaOptions { ColorScheme = ColorScheme.Light });
+        await ApplySchemeAsync(ColorScheme.Light);
 
         var light = await RailAsync("div.strip.r-run");
 
         light.Should().NotBeNullOrWhiteSpace();
 
-        await Page.EmulateMediaAsync(new PageEmulateMediaOptions { ColorScheme = ColorScheme.Dark });
+        await ApplySchemeAsync(ColorScheme.Dark);
         await WaitUntilChangedAsync("div.strip.r-run", "--rail", light);
 
         (await RailAsync("div.strip.r-run"))
@@ -91,8 +91,30 @@ public sealed class ThemeTests : BrowserTest
     }
 
     // Emulating a colour scheme does not repaint synchronously — the style recalc lands a frame or two
-    // later, and reading straight afterwards returns the value from *before* the switch. This failed in
-    // Release and passed in Debug purely on timing, which is exactly the shape of test worth not keeping.
+    // later, and reading straight afterwards returns the value from *before* the switch.
+    //
+    // `WaitUntilChangedAsync` below handles that for a switch whose previous value is known, and for a
+    // long time that was thought to be the whole problem. It is not: the **first** emulation of a test
+    // has no previous value to wait against, and reading through it returns whatever scheme the browser
+    // happened to start in. When that read came back dark, the light/dark comparison was seeded with the
+    // dark value, the wait that followed was waiting for dark to stop being dark, and the test hung until
+    // it timed out. Rare — one run in about a dozen full suites — and it looked like the assertion rather
+    // than the setup.
+    //
+    // So every emulation goes through here instead. `matchMedia` flipping is the browser's own statement
+    // that the new scheme is in force, and two frames after it is past the style recalc that follows.
+    private async Task ApplySchemeAsync(ColorScheme scheme)
+    {
+        await Page.EmulateMediaAsync(new PageEmulateMediaOptions { ColorScheme = scheme });
+
+        await Page.WaitForFunctionAsync(
+            "expected => window.matchMedia(`(prefers-color-scheme: ${expected})`).matches",
+            scheme is ColorScheme.Dark ? "dark" : "light");
+
+        await Page.EvaluateAsync(
+            "() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))");
+    }
+
     private Task WaitUntilChangedAsync(string selector, string property, string previous)
         => Page.WaitForFunctionAsync(
             """

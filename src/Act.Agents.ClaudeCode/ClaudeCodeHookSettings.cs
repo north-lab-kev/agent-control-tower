@@ -10,6 +10,11 @@ namespace Act.Agents.ClaudeCode;
 //
 // Every hook here is observability-only: `type: "http"`, and ACT ignores whatever it answers.
 // None of them can deny a tool, block a turn, or fail a session.
+//
+// It also carries the pre-allow list for ACT's own MCP tools (declared in `ClaudeCodeMcpConfig`),
+// which is the one thing in this file that is not observability. It grants only ACT's three tool
+// ids and never widens anything else: an approval prompt for a tool ACT itself installed would stop
+// an unattended card on a question the user never asked to be asked.
 public static class ClaudeCodeHookSettings
 {
     public const string FileName = "act-settings.json";
@@ -52,9 +57,18 @@ public static class ClaudeCodeHookSettings
                 });
         }
 
+        var allow = new JsonArray();
+
+        foreach (var tool in McpTransport.Tools)
+            allow.Add(McpTransport.PermissionId(tool));
+
         var settings = new JsonObject
         {
             ["hooks"] = hooks,
+            ["permissions"] = new JsonObject
+            {
+                ["allow"] = allow,
+            },
         };
 
         return settings.ToJsonString(new JsonSerializerOptions { WriteIndented = true });

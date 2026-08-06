@@ -283,7 +283,67 @@ public class StripFaceTests
         Face(card).Metrics.Should().HaveCount(4);
     }
 
+    // A card an agent created is not one the user wrote, and telling them apart at a glance is the whole
+    // reason `parentId` is recorded. Both densities carry it — see `FlightStripTests` for the markup.
+    [Fact]
+    public void A_spawned_card_names_the_task_that_made_it()
+    {
+        var face = Face(Spawned(), Parent());
+
+        face.Spawned.Should().Be("↳ #1039");
+        face.SpawnedTip.Should().Contain("1039").And.Contain("Rework the auth module");
+    }
+
+    [Fact]
+    public void A_card_the_user_wrote_carries_no_marker()
+    {
+        var face = Face(Card(BoardColumn.Ready));
+
+        face.Spawned.Should().BeNull();
+        face.SpawnedTip.Should().BeNull();
+    }
+
+    // The origin is a fact about how the card came to exist, so it outlives the parent being archived or
+    // purged. Dropping the marker when the parent is out of view would quietly relabel an agent's card as
+    // something the user wrote.
+    [Fact]
+    public void A_spawned_card_whose_parent_is_gone_still_says_it_was_spawned()
+    {
+        var face = Face(Spawned());
+
+        face.Spawned.Should().NotBeNullOrWhiteSpace();
+        face.Spawned.Should().NotContain("1039");
+        face.SpawnedTip.Should().NotBeNullOrWhiteSpace();
+    }
+
+    // Being handed a parent does not make a card spawned — `origin` decides, and a manual card that
+    // somehow arrived with one must not start claiming otherwise.
+    [Fact]
+    public void A_manual_card_is_not_marked_even_if_a_parent_is_supplied()
+        => Face(Card(BoardColumn.Ready), Parent()).Spawned.Should().BeNull();
+
+    private static StripFace Face(Card card, Card? parent) => StripFace.Of(card, null, Now, parent);
+
     private static StripFace Face(Card card, ReadyHold? hold = null) => StripFace.Of(card, hold, Now);
+
+    private static Card Spawned()
+    {
+        var card = Card(BoardColumn.Ready);
+
+        card.Origin = TaskOrigin.Spawned;
+        card.SpawnAuthor = SpawnAuthor.Agent;
+        card.ParentId = Guid.NewGuid();
+
+        return card;
+    }
+
+    private static Card Parent() => new()
+    {
+        Number = 1039,
+        Title = "Rework the auth module",
+        Column = BoardColumn.YourTurn,
+        AgentType = AgentType.ClaudeCode,
+    };
 
     private static Card Card(BoardColumn column) => new()
     {

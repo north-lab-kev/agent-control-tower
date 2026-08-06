@@ -90,6 +90,27 @@ else
                     <dt>@Strings.Session_SessionId</dt>
                     <dd class="path">@(card.SessionId ?? Strings.Session_SessionPending)</dd>
 
+                    @* Lineage reads both directions, which is the whole reason it is stored on both
+                       sides — a follow-up says where it came from, and the task that produced one says
+                       what it left behind. Each is a link, because the next question is always "what
+                       was that one?". *@
+                    @if (Parent is { } parent)
+                    {
+                        <dt>@Strings.Session_SpawnedBy</dt>
+                        <dd><a href="@Route(parent)">#@parent.Number — @parent.Title</a></dd>
+                    }
+
+                    @if (Children is { Count: > 0 } children)
+                    {
+                        <dt>@Strings.Session_FollowUps</dt>
+                        <dd>
+                            @foreach (var child in children)
+                            {
+                                <div><a href="@Route(child)">#@child.Number — @child.Title</a></div>
+                            }
+                        </dd>
+                    }
+
                     @* What the launch handed over, so this face answers "what did it get?" without a
                        trip back to the task tab — the paths are in the prompt, but the prompt is
                        scrolled off the top by the time anyone asks.

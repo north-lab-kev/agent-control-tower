@@ -111,7 +111,7 @@
                                          OnDragOver="drag.OverStrip" OnDrop="DropOnAsync"
                                          DropEdge="@DropEdge(card)"
                                          IsDragging="drag.IsLifted(card)" IsLaunching="IsLaunching(card)"
-                                         Hold="holds.GetValueOrDefault(card.Id)" />
+                                         Hold="holds.GetValueOrDefault(card.Id)" Parent="ParentOf(card)" />
                         }
                     }
                 </RadzenStack>

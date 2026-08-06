@@ -141,7 +141,7 @@ public class MetricsProjectionTests
         var card = new Card();
 
         MetricsProjection.Apply(card, new SessionEnded(SessionId, At)).Should().BeFalse();
-        MetricsProjection.Apply(card, new FollowUpsWritten(SessionId, At, ["001.json"])).Should().BeFalse();
+        MetricsProjection.Apply(card, new StartupPromptWaiting(SessionId, At)).Should().BeFalse();
     }
 
     // Metrics never route anything — that is the rules engine's job — so applying any event must

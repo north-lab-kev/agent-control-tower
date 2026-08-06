@@ -8,6 +8,7 @@ using Act.App.Telemetry;
 using Act.App.Usage;
 using Act.App.Hooks;
 using Act.App.Hosting;
+using Act.App.Mcp;
 using Act.Infrastructure.Logging;
 using Act.Infrastructure.Storage;
 using ElectronNET.API;
@@ -91,6 +92,10 @@ async Task RestoreThenRunAsync()
 // answer only on the loopback hook port, the UI only on the app's.
 app.UseActHookPortGuard();
 
+// After the guard, so a request that reached the wrong port is already a 404 rather than a 401 that
+// would confirm the route exists there.
+app.UseActMcpAuthorization();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
@@ -104,6 +109,7 @@ app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages:
 app.UseAntiforgery();
 
 app.MapActHooks();
+app.MapActMcp();
 app.MapActAttachments();
 app.MapStaticAssets();
 app.MapRazorComponents<AppRoot>()

@@ -65,10 +65,16 @@ public partial class FlightStrip(IClock clock)
     [Parameter]
     public ReadyHold? Hold { get; set; }
 
+    // The card this one was spawned from, resolved by the board for the same reason `Hold` is: the
+    // strip holds one card and the lineage marker needs the *parent's* number, which only something
+    // looking at the whole store can supply.
+    [Parameter]
+    public Card? Parent { get; set; }
+
     // Recomputed per render on purpose: the quiet chip and the usage countdown are derived from an
     // instant, so nothing pushes a change when they advance — the board's refresh tick is what makes
     // the number move.
-    private StripFace Face => StripFace.Of(Card, Hold, clock.Now);
+    private StripFace Face => StripFace.Of(Card, Hold, clock.Now, Parent);
 
     private bool Draggable => ManualMove.CanDrag(Card.Column);
 

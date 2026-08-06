@@ -17,6 +17,7 @@
     <PackageReference Include="ElectronNET.Core" />
     <PackageReference Include="ElectronNET.Core.AspNet" />
     <PackageReference Include="Microsoft.CodeAnalysis.ResxSourceGenerator" PrivateAssets="all" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
     <PackageReference Include="Radzen.Blazor" />
   </ItemGroup>
 

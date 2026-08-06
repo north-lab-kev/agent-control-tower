@@ -3,6 +3,7 @@ using Act.Agents.Codex;
 using Act.App.Attachments;
 using Act.App.Cards;
 using Act.App.Desktop;
+using Act.App.Mcp;
 using Act.App.Notifications;
 using Act.App.Sessions;
 using Act.App.Settings;
@@ -87,6 +88,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<AttachmentSweep>();
         services.AddSingleton<CardCompleter>();
         services.AddSingleton<CardReopener>();
+        services.AddSingleton<FollowUpService>();
+        services.AddActMcp();
 
         return services;
     }

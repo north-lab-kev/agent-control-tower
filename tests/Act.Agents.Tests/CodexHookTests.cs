@@ -196,6 +196,10 @@ public class CodexHookInjectionTests
     // re-prompts for trust when it changes. Two launches of the same card — and of a different one
     // — must produce byte-identical declarations, which is only possible while the token and the
     // endpoint url stay in the environment.
+    //
+    // Scoped to the hook declarations rather than the whole file since the MCP server joined it: that
+    // block carries a url because `mcp_servers` has no environment indirection for one, and it is not
+    // part of what the trust hash covers.
     [Fact]
     public async Task The_hook_definition_is_byte_identical_across_launches_and_carries_no_secret()
     {
@@ -211,12 +215,57 @@ public class CodexHookInjectionTests
         {
         }
 
-        var a = first.External.Single().Value;
-        var b = second.External.Single().Value;
+        var a = HookBlock(first.External.Single().Value);
+        var b = HookBlock(second.External.Single().Value);
 
         a.Should().Be(b);
         a.Should().NotContain(endpoint.Register(TaskId));
         a.Should().NotContain("127.0.0.1");
+    }
+
+    // The whole file, token included: whatever else joins this profile, none of it may carry the
+    // per-session secret — a file on disk outlives the session, and Codex rewrites it when it saves.
+    [Fact]
+    public async Task No_part_of_the_profile_carries_the_session_token()
+    {
+        var endpoint = new StubHookEndpoint();
+        var files = new StubAgentConfigFiles();
+
+        await using var session = await LaunchAsync(new StubPtyHost(), endpoint, files);
+
+        files.External.Single().Value.Should().NotContain(endpoint.Register(TaskId));
+    }
+
+    // Type-probed against the CLI on 2026-08-06: the profile layer really does parse `mcp_servers`,
+    // and it named both keys back — `url` wants a string, `env_http_headers` wants a map. The parser
+    // ignores unknown keys, so a drift in either name would be silent and ACT's server would simply
+    // never appear in the session.
+    [Fact]
+    public async Task The_profile_declares_acts_mcp_server_with_the_token_read_from_the_environment()
+    {
+        var files = new StubAgentConfigFiles();
+
+        await using var session = await LaunchAsync(new StubPtyHost(), new StubHookEndpoint(), files);
+
+        var profile = files.External.Single().Value;
+
+        profile.Should().Contain($"[mcp_servers.{McpTransport.ServerName}]");
+        profile.Should().Contain($"url = \"http://127.0.0.1:{StubHookEndpoint.Port}{McpTransport.Route}\"");
+        profile.Should().Contain(
+            $"env_http_headers = {{ \"{HookTransport.TokenHeader}\" = \"{AgentEnvironment.ActHookToken}\" }}");
+
+        // The static-header form would put the per-session token in the file, which is the one thing
+        // this profile must never hold.
+        profile.ReplaceLineEndings("\n").Should().NotContain("\nhttp_headers");
+    }
+
+    // Everything from the first `[mcp_servers` on is ACT's MCP declaration; before it is what Codex
+    // hashes for trust.
+    private static string HookBlock(string profile)
+    {
+        var index = profile.IndexOf("[mcp_servers", StringComparison.Ordinal);
+
+        return index < 0 ? profile : profile[..index];
     }
 
     [Fact]

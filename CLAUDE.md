@@ -112,6 +112,30 @@ then `preview_start` with `{"url": "http://localhost:5290"}`. Both flags reach
   answer for a breaking change — but say so out loud, because it costs my board.
   Once ACT has shipped, a migration is the only option.
 
+## Tests (HARD RULE)
+
+- **Every change ships with its tests, in the same pass.** New behaviour gets new
+  tests; changed behaviour gets its existing tests updated. Do not report a change
+  as done with the tests "to follow" — that is the version that never arrives.
+- **Aim for full coverage of what you touched**, and mean it: not just the happy
+  path, but every refusal, every boundary, every branch a bad argument reaches.
+  The paths that go untested are exactly the ones no screen shows you.
+- **Put each test in the cheapest tier that can hold it** — see the spec's
+  *Testing* section for the tiers. Pure logic goes in `Act.Core.Tests`; anything
+  needing the app's service graph goes in `Act.App.UiTests` (`ComponentTest` has
+  the graph already assembled); the browser tier is for what only a browser can
+  show. A service is *not* exempt because it lives in `Act.App` — only the
+  stateful pumps are, and they are exempt because they are pumps, not because
+  they are app-level.
+- **When you finish a feature, audit it before saying it is done.** List the
+  types you added, grep the test projects for each one, and say plainly what has
+  no test and why. Nothing found this way is embarrassing; the same gap found
+  later is.
+- **A failing test is a finding, not an obstacle.** Diagnose it before changing
+  it, and never widen a timeout, loosen an assertion or delete a case to get to
+  green. If the test is right and the code is wrong, fix the code; if a test is
+  genuinely wrong, say so and say why.
+
 ## Communication
 
 - Always reply to me in **English**.

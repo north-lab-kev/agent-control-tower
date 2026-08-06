@@ -57,7 +57,7 @@ public static class CodexHookConfig
     // Changing this shape is not something to do from the docs: the parser accepts unknown keys in
     // silence, so a wrong shape fails at launch rather than at write. `codex-hooks.md` has
     // the type-probing trick for re-measuring it against a newer CLI.
-    public static string ComposeProfile(string forwarderPath)
+    public static string ComposeProfile(string forwarderPath, Uri? mcpEndpoint)
     {
         var builder = new StringBuilder();
 
@@ -74,7 +74,29 @@ public static class CodexHookConfig
             builder.AppendLine($"command = {Toml(Command(forwarderPath, name))}");
         }
 
+        if (mcpEndpoint is { } endpoint)
+            AppendMcpServer(builder, endpoint);
+
         return builder.ToString();
+    }
+
+    // ACT's own MCP server, in the same profile layer as the hooks. Type-probed against the CLI on
+    // 2026-08-06 rather than taken from the docs, which only describe `mcp_servers` at config root:
+    // `mcp_servers.act.url` wants a string and `mcp_servers.act.env_http_headers` wants a map, both
+    // reported by name, so the layer really does parse this table.
+    //
+    // **`env_http_headers`, never `http_headers`.** It maps a header name to an *environment
+    // variable* name, so the per-session token stays on the process environment where the hook
+    // forwarder already reads it — and this file stays byte-identical from one launch to the next,
+    // which is what the hook-trust hash depends on.
+    private static void AppendMcpServer(StringBuilder builder, Uri endpoint)
+    {
+        builder.AppendLine();
+        builder.AppendLine($"[mcp_servers.{McpTransport.ServerName}]");
+        builder.AppendLine($"url = {Toml(endpoint.ToString())}");
+        builder.AppendLine(
+            $"env_http_headers = {{ {Toml(HookTransport.TokenHeader)} = "
+                + $"{Toml(AgentEnvironment.ActHookToken)} }}");
     }
 
     // **The program token must not be quoted, and everything after it may be.** Codex takes quotes

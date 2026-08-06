@@ -3,6 +3,7 @@ using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
 using Act.Core.Scheduling;
+using Act.Core.Spawning;
 using Act.Core.Telemetry;
 
 namespace Act.App.Settings;
@@ -46,6 +47,8 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
     public bool AutoExecutionPaused => current.AutoExecutionPaused;
 
     public int UsageCeilingPercent => UsageCeiling.Clamp(current.UsageCeilingPercent);
+
+    public int MaxFollowUpsPerCard => SpawnQuota.Clamp(current.MaxFollowUpsPerCard);
 
     // Everything the queue reads, in one object, so the runner and the board ask the same question
     // of the same values rather than each assembling their own.
@@ -330,6 +333,16 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
             return;
 
         Update(settings => settings.UsageCeilingPercent = clamped);
+    }
+
+    public void SetMaxFollowUpsPerCard(int cap)
+    {
+        var clamped = SpawnQuota.Clamp(cap);
+
+        if (clamped == current.MaxFollowUpsPerCard)
+            return;
+
+        Update(settings => settings.MaxFollowUpsPerCard = clamped);
     }
 
     public void SetAutoExecutionPaused(bool paused)

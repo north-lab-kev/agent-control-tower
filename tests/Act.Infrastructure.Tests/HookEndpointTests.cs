@@ -278,6 +278,24 @@ public class HookPortGuardTests
         HookPortGuard.Rejects(AppPort, 0, "/").Should().BeFalse();
         HookPortGuard.Rejects(AppPort, 0, HookTransport.ClaudeRoute).Should().BeTrue();
     }
+
+    // The MCP server is the second agent-facing family and gets the same treatment in both
+    // directions. It matters more here than for the hooks, not less: this route can *write* to the
+    // board, so a copy of it answering on the port the browser talks to would be reachable by
+    // anything the browser can reach.
+    [Fact]
+    public void The_mcp_server_answers_on_the_hook_port_and_nowhere_else()
+    {
+        HookPortGuard.Rejects(HookPort, HookPort, McpTransport.Route).Should().BeFalse();
+        HookPortGuard.Rejects(AppPort, HookPort, McpTransport.Route).Should().BeTrue();
+    }
+
+    [Fact]
+    public void An_mcp_sub_path_is_treated_as_the_mcp_route()
+    {
+        HookPortGuard.Rejects(HookPort, HookPort, $"{McpTransport.Route}/message").Should().BeFalse();
+        HookPortGuard.Rejects(AppPort, HookPort, $"{McpTransport.Route}/message").Should().BeTrue();
+    }
 }
 
 public class HookRequestHandlerTests

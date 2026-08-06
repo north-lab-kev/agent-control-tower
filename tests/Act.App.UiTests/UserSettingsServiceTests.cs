@@ -3,6 +3,7 @@ using Act.App.Settings;
 using Act.Core.Model;
 using Act.Core.Rules;
 using Act.Core.Scheduling;
+using Act.Core.Spawning;
 using AwesomeAssertions;
 
 namespace Act.App.UiTests;
@@ -88,6 +89,29 @@ public class UserSettingsServiceTests
         settings.MaxConcurrent.Should().Be(expected);
         store.Load().MaxConcurrent.Should().Be(expected);
     }
+
+    // A runaway-loop backstop, so it is clamped like the others — but **zero is a legitimate value**
+    // here and must survive, because it is how a user turns agent-spawned work off entirely.
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(-5, SpawnQuota.Minimum)]
+    [InlineData(50_000, SpawnQuota.Maximum)]
+    [InlineData(25, 25)]
+    public void The_follow_up_cap_is_clamped_but_zero_survives(int asked, int expected)
+    {
+        var (settings, store) = ServiceOf();
+
+        settings.SetMaxFollowUpsPerCard(asked);
+
+        settings.MaxFollowUpsPerCard.Should().Be(expected);
+        store.Load().MaxFollowUpsPerCard.Should().Be(expected);
+    }
+
+    // A board that has never been told otherwise still accepts follow-ups: the default is a ceiling no
+    // real plan reaches, not a switch a user has to find and turn on.
+    [Fact]
+    public void The_follow_up_cap_defaults_to_the_backstop_rather_than_to_zero()
+        => ServiceOf().Item1.MaxFollowUpsPerCard.Should().Be(SpawnQuota.Default);
 
     [Theory]
     [InlineData(0, CompletedRetention.MinimumDays)]

@@ -409,3 +409,47 @@ Still-useful mechanics, none of them hook-specific:
   `{"method":"initialize","params":{"clientInfo":{…}}}` drew no response and a subsequent
   call returned `{"error":{"code":-32600,"message":"Not initialized"}}`. Worth another
   look; it would replace most of the guesswork above.
+
+---
+
+## MCP: `mcp_servers` in ACT's profile layer — type-probed 2026-08-06
+
+ACT declares its own MCP server (`create_followup`, `list_tasks`, `get_task`) in the same
+generated `$CODEX_HOME/act.config.toml` the hooks live in. The vendor docs describe
+`mcp_servers` only at config root, so whether a **profile layer** honours it was unmeasured.
+It does — measured with the same type-probing trick as the hook schema, against
+`codex.exe` from `…/OpenAI/Codex/bin/69066b736e1e17a4/`:
+
+| written into `act.config.toml` | CLI answered | means |
+|---|---|---|
+| `mcp_servers = 1` | *invalid type: integer, expected a map in `mcp_servers`* | the layer parses it |
+| `[mcp_servers.act]` + `url = 1` | *expected a string in `mcp_servers.act.url`* | `url` exists |
+| … + `env_http_headers = 1` | *expected a map in `mcp_servers.act.env_http_headers`* | exists |
+| … + `http_headers = 1` | *expected a map in `mcp_servers.act.http_headers`* | exists |
+| … + `totally_bogus_key = 1` | *stdin is not a terminal* | ignored, as ever |
+| ACT's real block | *stdin is not a terminal* | the shape ACT ships parses |
+
+Run with `CODEX_HOME` pointed at a scratch directory, never the user's — the probe writes
+`act.config.toml`, which is the very file a real launch regenerates.
+
+**`env_http_headers`, not `http_headers`.** It maps a header name to an *environment variable
+name*, so the per-session token stays on the process environment where the hook forwarder
+already reads it, and the profile stays byte-identical across launches — the property the
+hook-trust hash depends on. `http_headers` would put the secret in a file on disk that Codex
+itself rewrites. `CodexHookTests` pins both halves.
+
+✅ **Verified live 2026-08-06, card #1002 → #1003.** A Codex card launched with the block above in
+its profile, reached its TUI, called `create_followup`, and the child landed on the board. Two
+things came out of it worth keeping:
+
+- **No MCP gate of its own.** Declaring a server did not add a review screen on top of the
+  directory-trust and hook-review ones, and all nine `trusted_hash` entries were still in the file
+  afterwards — so the block really is outside what the hook hash covers.
+- **Codex reorders ACT's file when it saves.** The `[mcp_servers.act]` block came back *after*
+  `[hooks.state]` rather than before it, where ACT wrote it. Harmless — both are top-level tables —
+  but it is the same reformatting that made "compare the file with ACT's own bytes" fail as a
+  change-detector back in step 8, and it is why `WriteExternalPreservingTail` keys on the
+  `[hooks.state` marker instead. Anything added to this profile has to survive being moved.
+- **The call escapes `workspace-write`.** The connection is made by the CLI's own process, not by a
+  sandboxed tool invocation, so the network block never applies — the premise the whole MCP-over-curl
+  decision rested on, now measured rather than assumed.

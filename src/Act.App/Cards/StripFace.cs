@@ -27,11 +27,13 @@ public sealed record StripFace(
     string? HoldText,
     string? HoldTip,
     string HoldClass,
+    string? Spawned,
+    string? SpawnedTip,
     IReadOnlyList<string> Metrics)
 {
     public string FullBadgeClass => $"badge {BadgeClass}".TrimEnd();
 
-    public static StripFace Of(Card card, ReadyHold? hold, DateTimeOffset now)
+    public static StripFace Of(Card card, ReadyHold? hold, DateTimeOffset now, Card? parent = null)
     {
         var agent = AgentName(card.AgentType);
 
@@ -46,6 +48,8 @@ public sealed record StripFace(
             HoldText: HoldTextFor(hold, now),
             HoldTip: HoldTipFor(hold, agent),
             HoldClass: HoldClassFor(hold),
+            Spawned: SpawnedFor(card, parent),
+            SpawnedTip: SpawnedTipFor(card, parent),
             Metrics: MetricsFor(card.Metrics));
     }
 
@@ -129,6 +133,27 @@ public sealed record StripFace(
                 card.ScheduledFor?.ToString(Strings.Schedule_DateFormat, CultureInfo.CurrentCulture)),
             _ => null,
         };
+
+    // A card an agent created rather than the user. Both densities carry it, because telling those
+    // apart at a glance is the whole reason `parentId` is recorded — and it is a glyph plus a number
+    // rather than a chip precisely so compact can afford it beside the path.
+    //
+    // A parent the board can no longer see (archived, purged) still marks the card as spawned: the
+    // origin is a fact about how it came to exist, and dropping the marker would quietly relabel it
+    // as something the user wrote.
+    private static string? SpawnedFor(Card card, Card? parent)
+        => card.Origin is not TaskOrigin.Spawned
+            ? null
+            : parent is { } known
+                ? Text.Format(Strings.Card_SpawnedBy, known.Number)
+                : Strings.Card_SpawnedByUnknown;
+
+    private static string? SpawnedTipFor(Card card, Card? parent)
+        => card.Origin is not TaskOrigin.Spawned
+            ? null
+            : parent is { } known
+                ? Text.Format(Strings.Card_SpawnedBy_Tip, known.Number, known.Title)
+                : Strings.Card_SpawnedByUnknown;
 
     // A hold is not a `Badge` — it is derived, it is never stored, and it must not blink or notify.
     private static string? HoldTextFor(ReadyHold? hold, DateTimeOffset now)

@@ -930,6 +930,41 @@ What the chosen route costs, and why the fixture looks the way it does:
   directory out of `builder.Configuration` on its second line, before any `ConfigureWebHost` callback has
   run. That is also why the assembly disables test parallelisation.
 
+### Knowing a Blazor page is ready to be clicked — the one-in-six flake, 2026-08-06
+
+`GoAsync` waits for three things before a spec touches the page, and the third is the only one that
+answers the question that matters. The history is worth keeping, because two earlier gates each looked
+sufficient and were not, and the failure they let through was invisible in the worst way: **the click
+simply vanished.**
+
+The symptom was `SignOffTests.Confirming_empties_it` failing about **one run in six** — click the
+archive button, wait for the board, board never comes. Everything about it pointed the wrong way. It
+looked like slowness, so the expect timeout went from 5s to 15s and the failure rate did not move. It
+looked like a render fault, because Playwright's aria snapshot showed the layout header present and
+`main` empty. It looked like it might be the new MCP server slowing startup, so it was measured against
+a worktree at the previous commit — which flaked at the same rate, clearing that.
+
+What settled it was instrumenting the failure instead of theorising about it: at the moment the wait
+expired, the card was **still on the board** and the page was **still on `/edit`**. Nothing had been
+asked of the server at all. Clicking a second time always worked.
+
+So the click was landing on markup that had no handler behind it. Blazor Server prerenders the page as
+plain HTML, and until the circuit adopts it there is nothing to receive an event — a click in that
+window is discarded silently, with no error anywhere. `GoAsync` was waiting for the `_blazor`
+WebSocket, which proves only that the server is reachable.
+
+The gate that finally holds is **`_bl_<guid>` attributes**: Blazor stamps one on every element it has
+bound a handler to, and only when the circuit renders. Measured rather than assumed — the prerendered
+HTML straight off the socket carries **zero**, the same page once attached carries **62**.
+
+One weaker gate was tried in between and is worth naming so nobody re-derives it: waiting for Blazor's
+`<!--Blazor:…-->` prerender comment markers to disappear. It is *nearly* right — the markers do go on
+attach — but they go when the circuit begins adopting the component, before handlers exist. It still
+flaked three runs in fourteen.
+
+Rates, all on the same machine, same suite: no gate **1 in 6**, marker gate **3 in 14**, handler gate
+**0 in 16**, then the full suite twice more green.
+
 ### Synthesising a paste
 
 Two of the `act-attach` specs build a hand-made clipboard object rather than a real `DataTransfer`, and

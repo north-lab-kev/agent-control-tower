@@ -64,18 +64,31 @@ public abstract class BrowserTest : IAsyncLifetime
 
     // The circuit has to exist before a click means anything. A prerendered page renders identical markup
     // and answers no events at all — a click lands on it, does nothing, and the assertion times out
-    // pointing at the wrong thing entirely. Waiting for the `_blazor` socket is what says the server is
-    // on the other end of it.
+    // pointing at the wrong thing entirely.
     //
-    // It is not enough on its own for anything that depends on a **JS module**: those are imported in
+    // **All three waits are load-bearing; none of the first two is enough on its own.** The socket says
+    // the server is reachable. `HandlersWired` says this page can actually receive a click: Blazor stamps
+    // a `_bl_<guid>` attribute on every element it has bound a handler to, and only when the circuit
+    // renders. Removing it brings back a one-in-six flake in which clicks vanish without a trace — see
+    // *Knowing a Blazor page is ready to be clicked* in `docs/design-notes.md` for how that was chased
+    // down and for the two weaker gates that looked right and were not.
+    //
+    // It is still not enough for anything that depends on a **JS module**: those are imported in
     // `OnAfterRenderAsync`, which happens later still, so a spec touching one needs its own gate — see
     // `Clipboard.WaitForReadyAsync`.
+    private const string HandlersWired =
+        """
+        () => [...document.querySelectorAll('*')]
+            .some(element => [...element.attributes].some(a => a.name.startsWith('_bl_')))
+        """;
+
     internal async Task GoAsync(string route = "/")
     {
         await Page.RunAndWaitForWebSocketAsync(() => Page.GotoAsync(route));
 
         await Page.WaitForFunctionAsync("() => window.Blazor !== undefined");
         await Page.Locator("div.act-root").WaitForAsync();
+        await Page.WaitForFunctionAsync(HandlersWired);
     }
 
     internal static Card Card(int number, string title, BoardColumn column, string workingDir = "/dev/act")

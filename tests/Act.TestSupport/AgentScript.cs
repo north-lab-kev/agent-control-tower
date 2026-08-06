@@ -49,9 +49,6 @@ public sealed class AgentScript
     public AgentScript Enriches(EnrichmentSnapshot snapshot)
         => Emit((session, at) => new SessionEnriched(session, at, snapshot));
 
-    public AgentScript WritesFollowUps(params string[] files)
-        => Emit((session, at) => new FollowUpsWritten(session, at, files));
-
     public AgentScript EndsTurn()
         => Emit((session, at) => new TurnEnded(session, at));
 

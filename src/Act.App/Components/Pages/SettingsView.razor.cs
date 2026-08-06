@@ -65,6 +65,8 @@ public partial class SettingsView(
 
     private int MaxConcurrent => settings.MaxConcurrent;
 
+    private int MaxFollowUpsPerCard => settings.MaxFollowUpsPerCard;
+
     private int UsageCeilingPercent => settings.UsageCeilingPercent;
 
     private bool IsDesktop => desktop.IsDesktop;
@@ -238,6 +240,8 @@ public partial class SettingsView(
     private void OnAutoExecutionPausedChanged(bool paused) => settings.SetAutoExecutionPaused(paused);
 
     private void OnMaxConcurrentChanged(int cap) => settings.SetMaxConcurrent(cap);
+
+    private void OnMaxFollowUpsChanged(int cap) => settings.SetMaxFollowUpsPerCard(cap);
 
     private void OnUsageCeilingChanged(int percent) => settings.SetUsageCeilingPercent(percent);
 

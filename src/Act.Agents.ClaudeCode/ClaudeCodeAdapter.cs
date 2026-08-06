@@ -251,14 +251,23 @@ public sealed class ClaudeCodeAdapter(
 
         var token = hooks.Register(taskId);
 
-        string path;
+        string settings;
+        string mcp;
 
         try
         {
-            path = configFiles.Write(
+            settings = configFiles.Write(
                 taskId,
                 ClaudeCodeHookSettings.FileName,
                 ClaudeCodeHookSettings.Compose(url, token));
+
+            // Same token, same endpoint, same per-launch file discipline — see `ClaudeCodeMcpConfig`
+            // for why it is a second file rather than a key in the first, and why the user's own MCP
+            // servers are left alone.
+            mcp = configFiles.Write(
+                taskId,
+                ClaudeCodeMcpConfig.FileName,
+                ClaudeCodeMcpConfig.Compose(url, token));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
@@ -273,7 +282,9 @@ public sealed class ClaudeCodeAdapter(
         }
 
         arguments.Add("--settings");
-        arguments.Add(path);
+        arguments.Add(settings);
+        arguments.Add("--mcp-config");
+        arguments.Add(mcp);
 
         return token;
     }

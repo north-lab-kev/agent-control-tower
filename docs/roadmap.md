@@ -1436,67 +1436,156 @@ the spec cites (*Agent ↔ ACT contract*, *Local-endpoint security*) and renumbe
 steps to close the gap would break those references for nothing. So the sequence ends
 …15, 16, 12.
 
-- [ ] **12. Spawning & lineage — an MCP server** — the `create_followup` tool and
+- [x] **12. Spawning & lineage — an MCP server** — the `create_followup` tool and
   parent/children. *Verify:* a real agent calls the tool mid-session and a tracked child card
   appears in Ready with correct lineage, on both agents.
-  - **Owed a browser round trip when it lands.** `AgentScript.WritesFollowUps(...)` already emits
-    `FollowUpsWritten` and nothing consumes it, so the spec could not be written with the rest of
-    `Act.App.E2eTests` on 2026-08-06. What it should cover is the half bUnit cannot: a child card
-    *appearing on the board* while the parent is still running, with nobody touching the browser — the
-    same push path `LaunchTests` pins for a permission request. The archive-with-follow-ups dialog is
-    already covered by `TaskViewExitTests`.
-  - **Decided 2026-07-30: one MCP tool, not a file and not a curl command.** The whole
-    agent→ACT contract is this one tool; the `.act/followups/` file mechanism was dropped
-    with the status file. Rationale (payload shape, grant width, sandbox avoidance,
-    instruction decay, simpler `dependsOn`) is in the spec's *Agent ↔ ACT contract* — read
-    it before building, it is the design.
-  - [ ] **Host it on the kept hook port, streamable HTTP, at `/mcp`.** Not stdio: stdio
-    means one child process per session, and ACT has already paid once for leaking a
-    process per session (the `conhost` bug at step 7). The Kestrel listener, the kept port
-    and the per-session token all exist — this is a third route family beside
-    `/hooks/claude` and `/hooks/codex`, and it reuses `x-act-hook-token` and the same
-    task-resolution path as `SessionEventSink`.
-  - [ ] **One tool, one namespace.** `create_followup` under server name `act`, so the
-    pre-allow entry reads `mcp__act__create_followup`. Arguments
-    `{ title, prompt, cwd?, dependsOn? }`; returns the minted `number` and `id`.
-    **No `parentId` argument** — the token identifies the calling task, so an agent
-    cannot spawn onto another card. That is also why the config file carrying the token
-    must be per launch, never shared.
-  - [ ] **Config injection per adapter**, mirroring what the hook config already does:
-    Claude via `--mcp-config <path>` (per-launch file, alongside `act-settings.json`) plus
-    `permissions.allow: ["mcp__act__create_followup"]` in the generated `--settings` so
-    there is no approval prompt; Codex via `mcp_servers` layered through ACT's `--profile`.
-  - [ ] **Dependency: the C# MCP SDK** — expected MIT, so check the license and add it to
-    `THIRD-PARTY-NOTICES.md` before it lands (same discipline as `Porta.Pty` / xterm).
-    **Consider `ModelContextProtocol` v2.0 (in preview as of 2026-07-30)** rather than the
-    1.x line: check what it changes for the streamable-HTTP server host and per-tool
-    registration before committing, and note that taking a preview package means pinning an
-    exact version and accepting API churn until it ships stable.
-  - [ ] **Dead code to remove:** the `FollowUpsWritten` event, which has neither a producer
-    nor a consumer and described the file mechanism.
-  - **Open questions — each decides a fallback, settle before building:**
-    - ⚠️ **Does Codex's `mcp_servers` support streamable HTTP *with custom headers*?** It
-      was stdio-only historically. If not, the fallbacks are (a) an ACT-shipped stdio
-      shim that forwards to the loopback endpoint, or (b) the token in the URL path
-      rather than a header — which then must not be logged.
-    - ⚠️ **Can a per-launch MCP config coexist with Codex's byte-stable profile?** The
-      hook-trust hash covers hook definitions, not `mcp_servers`, so a per-launch profile
-      *should* be safe — but that is inference from the hook findings, not a measurement.
-      If it is not safe, the stdio shim above solves it too, since a fixed shim path is
-      byte-stable and the token can ride the process env.
-    - ⚠️ **Does an MCP tool call really escape both sandboxes?** The premise is that the
-      CLI's own process makes the MCP connection, so Codex's `workspace-write` network
-      block and Claude's bash sandbox never apply. Measure it — it is the main reason the
-      tool was chosen over a `curl` command.
-    - ⚠️ **Does Claude Code's MCP approval respect `permissions.allow` from `--settings`
-      for an `mcp__*` tool id?** If not, the first follow-up per session costs an
-      approval prompt, which is tolerable but should be a known cost rather than a
-      surprise.
-    - ⚠️ **Do either CLI surface an MCP server's `instructions` to the model?** Not
-      load-bearing — the tool description carries everything needed, and ACT injects no
-      preamble by design (see the spec's *ACT does not announce the tool*). It decides
-      only where any future framing would live if it is ever wanted, so it is worth one
-      look while the server is being built rather than a separate investigation later.
+  - **Decided 2026-07-30, settled 2026-08-06: one MCP server, three tools.** The whole
+    agent→ACT contract is this server; the `.act/followups/` file mechanism was dropped with
+    the status file. The tool surface, every argument and every omission, the `same`
+    inheritance rule, the read scope, the spawn cap and the transport findings are in the
+    spec's *Agent ↔ ACT contract* — **read it before building, it is the design.** What
+    follows is only the build order.
+  - **Dependency: `ModelContextProtocol.AspNetCore` 2.1.0.** The 2.x line **shipped stable**
+    — the earlier note here calling it preview is out of date, so there is no exact-version
+    pin to carry and no API churn to absorb. License check into `THIRD-PARTY-NOTICES.md`
+    before it lands, same discipline as `Porta.Pty` / xterm.
+
+  - [x] **A. Probes first — three measurements that each decide where code goes.** Use the
+    type-probing technique from *Codex hook findings*: the parsers ignore unknown keys, so a
+    wrong shape buys nothing in silence. A1 blocks phase D; the rest ride the first live launch.
+    - [x] **A1. Is `[mcp_servers.*]` honoured inside ACT's `--profile act` layer?** ✅ **Yes —
+      probed 2026-08-06**, and the `-c` fallback is not needed. Serde named both keys back:
+      `mcp_servers.act.url` wants a string, `env_http_headers` and `http_headers` want maps, and
+      ACT's real block parses. Table in *Codex hook findings*; run against a scratch `CODEX_HOME`,
+      never the user's, since the probe writes the very file a launch regenerates.
+    - [x] **A2. Does adding an MCP server to the profile raise a trust prompt of its own?** ✅ **No
+      new gate, and the file survives Codex's own rewrite — 2026-08-06, card #1002.** ACT's
+      `[mcp_servers.act]` went into the generated profile, the launch reached its TUI, and the nine
+      `trusted_hash` entries were all still there afterwards. Codex **reorders** what ACT wrote —
+      the block came back *after* `[hooks.state]` rather than before it — which is the same
+      reformatting `WriteExternalPreservingTail` already exists to survive, and it survived.
+    - [x] **A3. Does an MCP tool call escape both sandboxes?** ✅ **Both, yes — 2026-08-06.** Claude
+      Code called all three tools from card #1000; Codex called `create_followup` from #1002 and
+      minted **#1003**. Every call reached ACT's loopback endpoint from inside the CLI's own
+      process, exactly as the premise said — so neither Codex's `workspace-write` network block nor
+      Claude's bash sandbox enters the picture, and the reason the tool was chosen over a `curl`
+      command holds.
+    - [x] **A4. Does Claude Code's `permissions.allow` from `--settings` cover an `mcp__*` id?** ✅
+      **Yes.** Three tool calls, no approval prompt, no `needs permission` badge — the card's
+      timeline goes straight from activity to the two spawns to the turn ending. So the generated
+      settings file really does pre-allow ACT's own tools, and an unattended card will not park on
+      a question about a server ACT installed itself.
+    - **The one flag that would have skipped the directory-trust dialog does not exist for a
+      session.** `claude --help` is explicit: the workspace-trust dialog is skipped only in
+      non-interactive mode (`-p`, or a non-TTY stdout), which ACT never uses for a launch. So a card
+      pointed at a folder the CLI has never seen *will* park on it, and the startup grace covering
+      that is load-bearing rather than incidental.
+    - ✅ **Closed without a probe: do the CLIs surface server `instructions` to the model?**
+      Both do, per their own documentation (2026-08-06) — and on Claude Code with tool search
+      enabled it is the *only* prose loaded at session start, which turns it from optional
+      framing into the thing that decides whether the model looks for the tool at all. Budget:
+      load-bearing content inside 512 characters (Codex's cutoff), whole thing under 2KB
+      (Claude's truncation).
+
+  - [x] **B. The core — everything decidable without a web framework.** `Act.Core/Spawning/`:
+    `FollowUpRequest` (the parsed arguments), `FollowUpResolver` (request + parent + capability
+    catalog → a child-card draft or a rejection, delegating model/effort/permission to the
+    existing `LaunchConfigResolver` so the never-silently-drop rule is inherited rather than
+    re-implemented), `SpawnQuota` (pure predicate over `children[]`), and the `TaskSummary` /
+    `TaskDetail` projections with their field exclusions. Plus `TransitionReason.SpawnedFollowUp`,
+    `UserSettings.MaxFollowUpsPerCard = 100`, and `Act.Core/Agents/McpTransport` for the wire
+    constants — route, server name, tool ids — beside `HookTransport` and for the same reason:
+    the adapters write them into agent config and cannot reference infrastructure.
+    - **One centralized link routine, per the spec's consistency rule.** Minting the child,
+      linking `parentId` and `children[]` in one operation, appending the parent's transition and
+      persisting both cards is a single service — never ad-hoc, or the two copies drift.
+
+  - [x] **C. The server — `Act.App/Mcp/`, on the kept hook port at `/mcp`.** Not stdio: that
+    means one child process per session, and ACT has already paid once for leaking a process per
+    session (the `conhost` bug at step 7). A third route family beside `/hooks/claude` and
+    `/hooks/codex`, reusing `x-act-hook-token` and the same task resolution as `SessionEventSink`.
+    It lives in the app rather than infrastructure for the reason `HookEndpointExtensions` records.
+    - **Resolve the token per request, not at initialize.** A streamable-HTTP session is
+      long-lived, and `SessionRegistry.Forget` releases the token when the session ends — read
+      once at connect and a dead card keeps a working connection.
+    - **`HookPortGuard` learns the new prefix**: `/mcp` served on the hook port, 404 on the app
+      port, with the existing test extended in both directions.
+
+  - [x] **D. Config injection per adapter**, mirroring the hook config. Claude: a per-launch
+    `act-mcp.json` (`mcpServers.act` → `type: "http"`, url, `headers`) passed with
+    `--mcp-config`, plus the three tool ids in `permissions.allow` of the settings file ACT
+    already generates. Codex: `[mcp_servers.act]` in the generated profile with
+    `env_http_headers = { "x-act-hook-token" = "ACT_HOOK_TOKEN" }`, so the token rides the
+    environment the launch already sets and the file stays byte-identical across launches — the
+    property the hook trust hash depends on. Both shapes are documented by the vendors; the
+    open part is A1, not the shapes.
+
+  - [x] **E. The board, the timeline and the settings knob.** `StripFace` gains the lineage
+    marker (`↳ #1039` plus a tip naming the parent), rendered in **both densities** — compact on
+    the second line the path and launch button already share, so the badge keeps its width;
+    verify at the 210px minimum column and give the strip a little height rather than dropping
+    the marker. `TransitionText` + `Transition_SpawnedFollowUp` in both resx files with a `{0}`
+    for the child. A lineage panel on the task and session views (parent link, children list).
+    The cap under *Settings → Advanced*.
+
+  - [x] **F. Tests, per tier.** Core: the `same`-inheritance matrix per knob, a cross-agent
+    spawn, an unknown model rejected *with the valid list*, `schedule` having no `same`, the
+    quota at its boundary, both sides of the lineage link, the projection exclusions, and
+    `clientKey` dedupe. Adapters: the generated Claude json, and the Codex profile **byte-identical
+    across two launches carrying different tokens** — the regression guard for the trust hash.
+    Infrastructure: the port guard both ways.
+    - [x] **The browser spec, and it needs no real agent.** This is what
+      `AgentScript.WritesFollowUps` was standing in for and could not deliver. The MCP server is
+      ACT's own HTTP endpoint, so the agent's side of the wire is a POST: boot with
+      `MockAgentAdapter` as every other spec does, launch a card, take a token from
+      `IHookEndpoint.Register`, post a `tools/call` at `/mcp`, and assert the child strip appears
+      **with nobody touching the browser** — the same push path `LaunchTests` pins for a
+      permission request. No CLI, no vendor tokens, and it runs on the existing ubuntu `e2e` job.
+      The archive-with-follow-ups dialog is already covered by `TaskViewExitTests`.
+
+  - [x] **G. Deletions and docs.** `FollowUpsWritten` goes, with `AgentScript.WritesFollowUps` and
+    the two tests that assert nothing consumes it — its payload is a list of `.act/followups/`
+    paths, a mechanism that no longer exists, and under MCP a follow-up is not an observation
+    about the parent's session at all: it moves no column, stamps no badge, and has nothing for
+    the rules engine to rule on. The parent's timeline row is a `Transition`, not an event.
+
+  - [x] **Live verification (the step's own verify line) — ✅ both agents, 2026-08-06.**
+    ✅ **Claude Code, 2026-08-06, card #1000.** A real session called `list_tasks` and then
+    `create_followup` twice, and both children appeared on the board with nobody touching it:
+    **#1001 on claude** and **#1002 on codex**, each carrying `↳ #1000` in *both* densities, the
+    parent's cwd, and `manual`. The parent finished on `to review · 1 turns · 2 children ⤵`, its
+    rail listing both follow-ups as links, and its timeline reading Moved by hand → Launched →
+    start-up prompt → activity → **Spawned a follow-up: #1001 · Write the README** → **#1002 · Check
+    the Codex path** → Turn ended. No console errors.
+    - **The cross-agent rule proved itself in the field, which no unit test can.** #1002 came out
+      `agent codex` with model **`gpt-5.6-terra`** — Codex's *own* default off the live capability
+      catalog, not the parent's Claude slug — `permission default` inherited, `schedule manual`
+      because a schedule is never inherited. That is the whole `same`-across-agents design, observed.
+    - **Compact holds the marker at the squeeze.** Measured at a 760px viewport where the lanes
+      compress to 181px: `↳ #1000` renders at 41px, unclipped, and no strip overflows its box — the
+      path beside it gives up the width, as designed. No extra strip height was needed after all.
+    - ✅ **Codex too, same run, card #1002 → #1003.** Launched from Ready, reached its TUI with
+      ACT's `[mcp_servers.act]` in the profile, called `create_followup`, and the child appeared on
+      the board. So the board ended on a **two-generation chain** — #1000 (claude, `done`) → #1002
+      (codex, `to review`, `↳ #1000`) → #1003 (`↳ #1002`) — and the grandchild points at its own
+      parent rather than at the root, which is the lineage rule doing the one thing a single
+      generation could not have shown.
+    - **The folder guard fired, and it is worth having seen.** The first attempt to launch #1002
+      was refused — *"Not launched: task 1000 is still working in …"* — because the parent was still
+      in Your turn holding the working directory. Signing #1000 off released it and the launch went
+      through. Exactly the sequential-spawning behaviour the spec describes, observed rather than
+      assumed.
+    - **What *is* verified without one, so the gap is only the CLIs' own end.** The browser tier
+      drives the real server with the SDK's own MCP client over streamable HTTP — the same protocol
+      both CLIs speak — and proves the whole chain: a card appears on the board from a tool call with
+      nobody touching the page, lineage written both ways, the parent's timeline row, the `↳ #1039`
+      marker, board-wide reads, `clientKey` dedupe, a readable refusal, and the three-tool surface.
+      Confirmed live against the running app besides: `/mcp` answers 404 on the app port, 401 on the
+      hook port without a valid token, and the UI 404s on the hook port.
+    - ⚠️ **`[McpHeader]` is not how a tool reads an HTTP header — measured on SDK 2.1.0.** A parameter
+      carrying it is still published in the tool's input schema, so the model saw a `token` argument
+      it could not supply and *every* call failed. ACT reads the header off `IHttpContextAccessor`
+      instead, and `FollowUpTests` pins the schema so the mistake cannot come back.
 
 ## Milestones
 
@@ -1510,7 +1599,9 @@ steps to close the gap would break those references for nothing. So the sequence
   for space, one for type and one for colour — Radzen's widgets included, rather than sitting in
   their own palette beside them — and the settings page that gives the scattered knobs a home.
   *Polished* is claimed with the one caveat step 16 records: no pass made in a real window.
-- **After step 12, which is now last** — agent-spawned follow-ups on top of it.
+- ✅ **After step 12, which was last — reached 2026-08-06.** Agent-spawned follow-ups on top of all
+  of it: an agent running under ACT can put work on ACT's own board, in its own card, on either CLI,
+  and the board shows where every card came from. The build sequence is complete.
 
 ## Build-time items to verify (from the spec)
 

@@ -341,7 +341,7 @@ public sealed class CodexAdapter(
             // formatting when it saves, so what ACT wrote does not come back byte-identical.
             configFiles.WriteExternalPreservingTail(
                 CodexHookConfig.ProfilePath(CodexHookConfig.ResolveCodexHome()),
-                CodexHookConfig.ComposeProfile(forwarder),
+                CodexHookConfig.ComposeProfile(forwarder, McpEndpoint()),
                 CodexHookConfig.TrustStateKey);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
@@ -361,4 +361,10 @@ public sealed class CodexAdapter(
 
         return hooks.Register(taskId);
     }
+
+    // The MCP server sits on the same loopback endpoint as the hooks, at its own route. Null when the
+    // endpoint has not bound, which leaves the declaration out of the profile entirely rather than
+    // writing a server the CLI would spend its startup timeout failing to reach.
+    private Uri? McpEndpoint()
+        => hooks.BaseAddress is { } address ? new Uri(address, McpTransport.Route) : null;
 }

@@ -95,8 +95,82 @@ public class ClaudeCodeHookInjectionTests
         await using var session = await LaunchAsync(pty, StubHookEndpoint.Offline(), files);
 
         pty.Last.Arguments.Should().NotContain("--settings");
+        pty.Last.Arguments.Should().NotContain("--mcp-config");
         files.Written.Should().BeEmpty();
         pty.Last.Environment.Should().NotContainKey(AgentEnvironment.ActHookToken);
+    }
+
+    [Fact]
+    public async Task A_launch_passes_its_own_mcp_config_by_path()
+    {
+        var pty = new StubPtyHost();
+        var files = new StubAgentConfigFiles();
+
+        await using var session = await LaunchAsync(pty, new StubHookEndpoint(), files);
+
+        var arguments = pty.Last.Arguments.ToList();
+        var index = arguments.IndexOf("--mcp-config");
+
+        index.Should().BeGreaterThanOrEqualTo(0);
+        arguments[index + 1].Should().EndWith(ClaudeCodeMcpConfig.FileName);
+    }
+
+    [Fact]
+    public async Task The_mcp_config_declares_acts_server_over_http_with_the_token_header()
+    {
+        var pty = new StubPtyHost();
+        var files = new StubAgentConfigFiles();
+        var endpoint = new StubHookEndpoint();
+
+        await using var session = await LaunchAsync(pty, endpoint, files);
+
+        var server = JsonDocument.Parse(files.Content(ClaudeCodeMcpConfig.FileName)!)
+            .RootElement
+            .GetProperty("mcpServers")
+            .GetProperty(McpTransport.ServerName);
+
+        server.GetProperty("type").GetString().Should().Be("http");
+        server.GetProperty("url").GetString()
+            .Should().Be($"http://127.0.0.1:{StubHookEndpoint.Port}{McpTransport.Route}");
+        server.GetProperty("headers")
+            .GetProperty(HookTransport.TokenHeader)
+            .GetString()
+            .Should().Be(endpoint.Register(TaskId));
+    }
+
+    // `--strict-mcp-config` would make ACT's server the *only* one the session has, silently taking
+    // away every MCP tool the user configured for their own work. ACT adds a server; it does not
+    // curate the user's.
+    [Fact]
+    public async Task Act_never_takes_away_the_users_own_mcp_servers()
+    {
+        var pty = new StubPtyHost();
+
+        await using var session = await LaunchAsync(pty, new StubHookEndpoint(), new StubAgentConfigFiles());
+
+        pty.Last.Arguments.Should().NotContain("--strict-mcp-config");
+    }
+
+    // Without the pre-allow the first follow-up of every session costs an approval prompt — which for
+    // an unattended card means parking on a question nobody is awake to answer. Scoped to ACT's own
+    // three ids: nothing else in the user's permission surface is widened.
+    [Fact]
+    public async Task The_settings_file_pre_allows_acts_own_mcp_tools_and_nothing_else()
+    {
+        var pty = new StubPtyHost();
+        var files = new StubAgentConfigFiles();
+
+        await using var session = await LaunchAsync(pty, new StubHookEndpoint(), files);
+
+        var allow = JsonDocument.Parse(files.Content(ClaudeCodeHookSettings.FileName)!)
+            .RootElement
+            .GetProperty("permissions")
+            .GetProperty("allow")
+            .EnumerateArray()
+            .Select(entry => entry.GetString())
+            .ToList();
+
+        allow.Should().BeEquivalentTo(McpTransport.Tools.Select(McpTransport.PermissionId));
     }
 
     private static Task<IAgentSession> LaunchAsync(

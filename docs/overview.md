@@ -454,8 +454,11 @@ section used to specify (`.act/followups/`, ACT-prefixed filenames, atomic write
 consume-on-ingest, a `FileSystemWatcher`) was **dropped on 2026-07-30**; the
 reasoning is recorded there.
 
-- **Arguments:** `{ title, prompt, cwd?, dependsOn? }` — `cwd` defaults to the
-  parent's working directory.
+- **Arguments:** the task (`title`, `prompt`), where it runs (`cwd`, defaulting to the
+  parent's), how it runs (`agent`, `model`, `effort`, `permission`, `autoGit` — each
+  defaulting to `same`, meaning the parent's value), when it runs (`schedule`), and
+  `dependsOn`. The full table and the reasoning for every inclusion and omission are in
+  *Agent ↔ ACT contract*.
 - **The parent is the token, not an argument.** ACT resolves the calling session
   from the per-session token, so an agent can only spawn onto its own card.
 - **ACT still owns id assignment.** Each child gets a freshly minted UUID and
@@ -464,10 +467,16 @@ reasoning is recorded there.
 - **Ingested immediately, not at `Stop`.** The card lands in Ready when the tool is
   called; there is no scan trigger and no consumed directory, so ingestion is
   idempotent by construction — one call, one card.
+- **Capped at 100 per parent for the card's lifetime**, counted off `children[]` and
+  configurable under *Settings → Advanced*.
+- **The parent's timeline records each spawn.** One `spawnedFollowUp` transition per
+  child, carrying the child's number and title in its note and no column change — the
+  parent did not move, it produced something.
 
 `dependsOn` is the seed of task ordering (a plan implies sequence); ordering is
 enforced by the scheduling runner — a task launches only after its `dependsOn`
-prerequisites are Completed.
+prerequisites are Completed. It may name **any** card, not only siblings the same
+session created, which is what the `list_tasks` read tool exists to make discoverable.
 
 ---
 
@@ -556,9 +565,13 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
   - *Consistency rule:* create / delete / re-parent must update **both sides in
     one operation**, via a single centralized link/unlink routine — never ad-hoc
     — so the two copies can't drift.
+  - `children[]` is also the **spawn budget**: `create_followup` refuses once it holds
+    the configured cap, so the limit is per card for its lifetime rather than per
+    session, and a relaunch cannot refill it.
 - `spawnAuthor` — `act | agent` (when spawned; affects labeling).
 - `dependsOn` — ordering seed on spawned tasks (enforced by the scheduling
-  runner: a task launches only after its `dependsOn` are Completed).
+  runner: a task launches only after its `dependsOn` are Completed). Any card may be
+  named, not only a sibling.
 
 ### Timing & history
 
@@ -1486,20 +1499,138 @@ simply something the user sees on review. Git chosen at *review* time is **not a
 reviewer, so asking is what the modal would have done and typing is what the user does
 instead.
 
-### Agent ↔ ACT contract — one MCP tool, decided 2026-07-30
+### Agent ↔ ACT contract — one MCP server, decided 2026-07-30, settled 2026-08-06
 
-**The agent→ACT contract is a single MCP tool, `create_followup`, and nothing else.**
-There is no status file, no follow-up file, and no `.act/` directory. Everything ACT
-knows about a running session it *observes* (hooks, transcript, process); the one
-thing an agent can *tell* ACT is that some work belongs in its own task.
+**The agent→ACT contract is a single MCP server, `act`, and nothing else.** There is
+no status file, no follow-up file, and no `.act/` directory. Everything ACT knows
+about a running session it *observes* (hooks, transcript, process); what an agent may
+**do** is create a follow-up card, and what it may **ask** is what is already on the
+board.
 
-| | `mcp__act__create_followup` |
+| | |
 |---|---|
 | Transport | streamable HTTP on ACT's kept hook port, `/mcp` |
 | Auth | the session's existing hook token, `x-act-hook-token` |
-| Arguments | `{ "title", "prompt", "cwd"?, "dependsOn"? }` |
-| Returns | the minted card's number and id |
-| Not called | nothing spawned |
+| Server name | `act`, so the pre-allow ids read `mcp__act__…` |
+| Tools | `create_followup` (write), `list_tasks` and `get_task` (read) |
+
+#### `create_followup`
+
+| Argument | Values | |
+|---|---|---|
+| `title` | | required |
+| `prompt` | | required |
+| `agent` | `same` \| `claude` \| `codex` | a Claude session may spawn a Codex card and back |
+| `model` | `same` \| any the chosen agent supports | free string, not a static enum — the valid set depends on `agent` |
+| `effort` | `same` \| any the chosen agent supports | as above |
+| `permission` | `same` \| `default` \| `plan` \| `acceptEdits` \| `auto` \| `dontAsk` \| `bypass` | |
+| `schedule` | `manual` \| `now` \| `next_window` | default `manual`; no `same` — see below |
+| `autoGit` | `same` \| `none` \| `commit` \| `push` \| `pr` | |
+| `cwd` | | defaults to the parent's working directory |
+| `dependsOn` | any card ids | not restricted to this session's own children |
+| `clientKey` | | optional idempotency key |
+
+Returns the minted `id` and `number`, the **resolved** agent / model / effort /
+permission, and the list of adjustments — so an agent that asked for a model the
+chosen CLI does not have learns what it actually got.
+
+**`same` means the parent's value, and it is the default everywhere it exists.** Not
+the user's global defaults and not a template: a follow-up is the same work in the
+same tree, so the parent is the honest baseline. Everything the agent does not supply
+is inherited, and the resolution runs through `LaunchConfigResolver` like any launch —
+an unsupported value is substituted with a recorded adjustment or rejected with a
+message, never silently dropped.
+
+**`schedule` is the one knob with no `same`, because the parent's is not inheritable.**
+A schedule is a launch trigger that already fired; inheriting `specificDateTime` would
+mean a date in the past and inheriting `now` would mean a child that launches the
+instant it lands. So the values are the three that mean something for a card that does
+not exist yet, and the default is `manual` — the Ready queue, gated exactly as any
+other Ready card.
+
+**`permission` can escalate, and that was accepted rather than overlooked
+(2026-08-06).** A child may be *more* permissive than its parent, up to `bypass`. It
+was raised as a privilege-escalation shape and the clamp was declined, on the grounds
+that the child still lands in **Ready** and the user still gates every launch — so an
+escalation is visible on the board before anything runs, which is the same protection
+the launch boundary already gives every other card.
+
+**What is deliberately not an argument.** `parentId` — the token identifies the caller
+(see below). `extraFlags` / `env` / `agentBinary` — arbitrary process control handed to
+a model. `allowConcurrentWorkingDir` — the folder guard is the user's, not the agent's
+to waive. `attachments`. And the landing column, because an agent does not choose its
+own leash length.
+
+**The folder guard makes spawning sequential, and that is the intent.** A child
+inherits the parent's `cwd`, and the parent holds that folder until it is **Completed**
+— Executing and Your turn both hold it. So spawned cards queue in Ready behind their
+parent's sign-off rather than running beside it. Recorded here because it reads like a
+stuck queue and is the guard working: two agents in one working tree is the collision
+it exists to prevent.
+
+**A cap of 100 follow-ups per card, for the card's whole lifetime.** Counted off
+`children[]`, so a relaunch or a restore does not refill the budget. At the cap the
+call returns an error the agent can read rather than failing silently. Configurable
+under *Settings → Advanced*, because 100 is a runaway-loop backstop rather than a
+considered limit.
+
+#### `list_tasks` and `get_task` — reads, board-wide
+
+**This is the first time ACT tells an agent anything**, and the scope was decided on
+2026-08-06 as the whole board rather than the caller's own lineage.
+
+- **`list_tasks`** — summaries of on-board cards: `id`, `number`, `title`, `column`,
+  `badge`, `agent`, and whether this session spawned it. No prompts, no paths, no
+  metrics. Optional column filter; archived and deleted excluded; capped at 200 with an
+  **explicit truncation note** rather than a silent trim.
+- **`get_task`** — one card in full: the summary plus `prompt`, `cwd`, model / effort /
+  permission, `parentId`, `children`, `dependsOn`, timestamps. Never `sessionId` and
+  never attachment paths.
+
+**Why board-wide, when own-lineage would have been safer.** Two things need it.
+`dependsOn` may name any card, and an agent cannot depend on what it cannot discover —
+own-lineage reads would have made that argument unreachable in practice. And a long
+session that has been compacted re-proposes follow-ups it already created; reading
+first is the only defence it has. **The cost, accepted:** a session working in one repo
+can read the titles of tasks in every other, and that text lands in its transcript and
+possibly in a commit message.
+
+**`clientKey` covers what a read cannot.** Read-then-write races; an idempotency key
+does not. Two calls carrying the same key under the same parent return the same card
+instead of two.
+
+#### Server `instructions` — both CLIs read it, and Claude Code may read *only* it
+
+Confirmed from both vendors' documentation on 2026-08-06, having been an open question
+since the tool was designed:
+
+- **Codex** reads the `instructions` field returned at initialization and uses it as
+  server-wide guidance alongside the tools, and asks that the **first 512 characters**
+  be self-contained — that is what it has when deciding whether to use the server.
+- **Claude Code** loads it at session start and truncates it at **2KB**. The important
+  part is its interaction with tool search: with deferred tool loading, *only tool names
+  and server instructions* are in context at session start. So `create_followup`'s own
+  description may not be loaded when the model is deciding whether ACT can do this at
+  all — the server instructions are.
+
+That inverts the earlier assumption that instructions were optional framing. ACT writes
+them, with the load-bearing content inside the first 512 characters and the whole thing
+under 2KB.
+
+#### Transport — measured from both vendors' docs 2026-08-06, and both fallbacks are dead
+
+- **Codex** supports streamable HTTP with custom headers, including
+  `env_http_headers`, which maps a header name to an **environment variable name**. So
+  the token rides the process environment exactly as the hook forwarder's already does
+  and the generated profile stays byte-identical across launches. The ACT-shipped stdio
+  shim and the token-in-the-url fallback are both unnecessary.
+- **Claude Code** takes `type: "http"` (`streamable-http` is an accepted alias) with
+  static `headers`. Its `--mcp-config` file is written per launch anyway, so the token
+  goes in the file.
+- ⚠️ **Unmeasured:** whether `[mcp_servers.*]` is honoured inside a Codex *profile
+  layer*. ACT writes `$CODEX_HOME/act.config.toml` and passes `--profile act`; the docs
+  only describe `mcp_servers` at config root. Type-probe it before writing the injection
+  code — the fallback is `-c mcp_servers.act.…` overrides on the command line.
 
 **Why a tool and not a file or a curl command.** All three cost about the same in
 tokens — 150–250 in a prompt-cached prefix — so the deciding factors were elsewhere:
@@ -1559,10 +1690,10 @@ it. It does not, and a preamble would be the wrong place for it anyway:
   the launch argument. The description carries the *when not to* as well — a
   follow-up is for work that belongs in its own task, not for deferring part of the
   current one.
-- **If broader framing is ever wanted**, MCP's own `instructions` field in the
-  initialize response is where it belongs — it travels over the connection, not in
-  the opening prompt. ⚠️ Whether either CLI surfaces server instructions to the model
-  is unmeasured; see step 12.
+- **Broader framing goes in MCP's own `instructions` field**, not in a preamble — it
+  travels over the connection rather than in the opening prompt. Both CLIs read it,
+  and on Claude Code with tool search enabled it is the *only* prose loaded at session
+  start; see *Server `instructions`* above.
 - **It keeps the read-only stance total.** ACT never parses the screen, never answers
   a prompt, and every source reports rather than commands. An injected instruction
   block is the write-side version of exactly that — dropping it makes the principle
@@ -1880,9 +2011,13 @@ not launch while another card is working in the same directory.
 
 ### Spawned-task schedule defaults
 
-- **Agent-emitted** (plan follow-ups): default **Manual** (nobody chose them at
-  spawn time → review-before-run is safer). *(Revisit if inherit/now preferred.)*
-  This is the only kind of spawn there is — see *Task spawning & lineage*.
+- **Agent-emitted** (plan follow-ups): default **Manual** — nobody chose them at spawn
+  time, so review-before-run is safer. This is the only kind of spawn there is; see
+  *Task spawning & lineage*.
+- **Settled 2026-08-06:** the agent may override it per call with `now` or
+  `next_window`, and **`same` is not offered** — a parent's schedule is a trigger that
+  already fired, so inheriting it means either a past date or an immediate launch. The
+  reasoning is in *Agent ↔ ACT contract*.
 
 ### Master switch
 
@@ -2367,6 +2502,13 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     Both moved to a second line of their own, so the first line's badge keeps
     exactly the width it had; the button drops its label and the path ellipsizes,
     which is where the density is now paid for.
+  - **A spawned card says so in both densities — decided 2026-08-06.** A card an agent
+    created is not one the user wrote, and telling them apart at a glance is the point
+    of recording `parentId` at all. Detailed carries it in the lineage area as
+    `↳ #1039`; **compact carries it too**, on the second line the path and the launch
+    button already share, so the badge keeps its width and the title keeps its
+    ellipsis. If it will not fit there at the 210px minimum column, the strip gets a
+    little taller rather than the marker getting dropped.
   - **The chip names the mode you are in, not the one you would get.** The board in
     front of you is the answer to "which mode is this", and a button labelled with
     the *other* mode would contradict it on every glance.

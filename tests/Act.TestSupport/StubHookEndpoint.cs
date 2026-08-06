@@ -13,7 +13,9 @@ public sealed class StubHookEndpoint : IHookEndpoint
 
     private int issued;
 
-    public StubHookEndpoint(int port = 49711)
+    public const int Port = 49711;
+
+    public StubHookEndpoint(int port = Port)
         => BaseAddress = port > 0 ? new Uri($"http://127.0.0.1:{port}") : null;
 
     public Uri? BaseAddress { get; }

@@ -159,6 +159,14 @@
     min-width: 0;
 }
 
+/* The lineage marker joins that line and must never be what gets squeezed: it is four characters,
+   the path beside it is already the thing giving up width, and a `↳ #1039` broken across a wrap
+   would be unreadable. `flex: 0 0 auto` keeps it whole and leaves the ellipsis where it belongs. */
+::deep .clin {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
 /* Radzen gives it a 16px glyph beside a 12px label, so the icon was the loudest thing on a strip
    whose whole job is to be read. */
 ::deep .launch .rz-button-icon-left {

@@ -1,6 +1,7 @@
 @page "/settings"
 @using Act.Core.Model
 @using Act.Core.Scheduling
+@using Act.Core.Spawning
 
 <PageTitle>@Strings.Settings_Title</PageTitle>
 
@@ -154,6 +155,21 @@
                         </RadzenStack>
                         <RadzenSwitch Value="PreventConcurrentWorkingDir"
                                       ValueChanged="@((bool value) => OnPreventConcurrentWorkingDirChanged(value))" />
+                    </RadzenStack>
+
+                    @* A runaway-loop backstop rather than a considered limit, which is why it sits
+                       here at a number nobody should ever reach. Zero turns agent-spawned work off. *@
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_MaxFollowUps" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_MaxFollowUps_Hint"
+                                        class="hint" />
+                        </RadzenStack>
+                        <RadzenNumeric TValue="int" Value="MaxFollowUpsPerCard"
+                                       Min="SpawnQuota.Minimum" Max="SpawnQuota.Maximum" Step="10"
+                                       Change="@((int value) => OnMaxFollowUpsChanged(value))"
+                                       class="control" />
                     </RadzenStack>
                 </RadzenStack>
             </RadzenFieldset>

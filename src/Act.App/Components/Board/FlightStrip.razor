@@ -40,6 +40,13 @@
                share the second line: the folder gives up width and the button keeps its box, and the
                first line's badge is left exactly as wide as it was. *@
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.35rem">
+                @* One glyph and a number rather than a chip: compact has to say a card was spawned
+                   too, and this is what fits beside a path that is already ellipsizing. *@
+                @if (face.Spawned is { } spawnedBy)
+                {
+                    <RadzenText TextStyle="TextStyle.Caption" Text="@spawnedBy" class="lin clin"
+                                title="@face.SpawnedTip" />
+                }
                 <RadzenText TextStyle="TextStyle.Caption" Text="@Card.WorkingDir" class="path cpath"
                             title="@Card.WorkingDir" />
                 @if (CanLaunch)
@@ -117,10 +124,15 @@
                 }
             }
 
-            @if (face.Schedule is not null || Card.Children.Count > 0)
+            @if (face.Schedule is not null || face.Spawned is not null || Card.Children.Count > 0)
             {
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
                              Gap="0.45rem" Wrap="FlexWrap.Wrap">
+                    @if (face.Spawned is { } spawnedBy)
+                    {
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@spawnedBy" class="lin"
+                                    title="@face.SpawnedTip" />
+                    }
                     @if (Card.Children.Count > 0)
                     {
                         <RadzenText TextStyle="TextStyle.Caption"

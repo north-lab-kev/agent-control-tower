@@ -18,6 +18,12 @@ Expected dependencies to attribute (fill in as they are added):
   `Serilog.Extensions.Logging`, `Serilog.Sinks.File`. Nothing is vendored, so the notices
   travel with the packages; versions are pinned in `Directory.Packages.props` rather than
   restated here.
+- ModelContextProtocol — **Apache 2.0** (<https://github.com/modelcontextprotocol/csharp-sdk>) —
+  the MCP server ACT exposes to its agents, added 2026-08-06. Two packages:
+  `ModelContextProtocol.AspNetCore` in the app and `ModelContextProtocol.Core` in the browser
+  tests, which drive it with the SDK's own client. Apache rather than the MIT this list
+  otherwise runs on, so it is called out here; nothing is vendored, and versions are pinned in
+  `Directory.Packages.props`.
 - xUnit, AwesomeAssertions / Shouldly, NSubstitute (test-only) — Apache 2.0 / MIT
 
 **Vendored (source-committed, not a package reference)** — these ship as files in

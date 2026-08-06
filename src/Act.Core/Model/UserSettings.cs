@@ -1,3 +1,5 @@
+using Act.Core.Spawning;
+
 namespace Act.Core.Model;
 
 public sealed class UserSettings
@@ -37,6 +39,11 @@ public sealed class UserSettings
     // The master switch, off by default — auto-execution is the point of the queue. Manual launches
     // are unaffected: pausing stops ACT from starting things, not the user.
     public bool AutoExecutionPaused { get; set; }
+
+    // How many follow-ups one card's agent may create over that card's whole life — see `SpawnQuota`.
+    // A runaway-loop backstop rather than a considered limit, which is why the default is far above
+    // any real plan; zero turns agent-spawned work off entirely.
+    public int MaxFollowUpsPerCard { get; set; } = SpawnQuota.Default;
 
     // Where a quota window counts as spent. Under 100 on purpose — see `UsageCeiling`, which owns the
     // default and the bounds.

@@ -93,6 +93,7 @@ public abstract class ComponentTest : BunitContext, IAsyncLifetime
         Services.AddSingleton<QueueRunner>();
         Services.AddSingleton<CardCompleter>();
         Services.AddSingleton<CardReopener>();
+        Services.AddSingleton<FollowUpService>();
         Services.AddSingleton<TaskTitles>();
         Services.AddSingleton<AttachmentOpener>();
 
@@ -159,6 +160,8 @@ public abstract class ComponentTest : BunitContext, IAsyncLifetime
     internal SessionLauncher Launcher => Services.GetRequiredService<SessionLauncher>();
 
     internal QueueRunner Queue => Services.GetRequiredService<QueueRunner>();
+
+    internal FollowUpService FollowUps => Services.GetRequiredService<FollowUpService>();
 
     internal UsageState Usage => Services.GetRequiredService<UsageState>();
 

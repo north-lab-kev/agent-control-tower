@@ -369,6 +369,27 @@
   <data name="Card_Children" xml:space="preserve">
     <value>{0} children ⤵</value>
   </data>
+  <data name="Session_SpawnedBy" xml:space="preserve">
+    <value>Spawned by</value>
+  </data>
+  <data name="Session_FollowUps" xml:space="preserve">
+    <value>Follow-ups</value>
+  </data>
+  <data name="Settings_MaxFollowUps" xml:space="preserve">
+    <value>Follow-ups an agent may create per task</value>
+  </data>
+  <data name="Settings_MaxFollowUps_Hint" xml:space="preserve">
+    <value>A safety limit on agent-created tasks, counted over a task's whole life. Set it to 0 to stop agents creating tasks at all.</value>
+  </data>
+  <data name="Card_SpawnedBy" xml:space="preserve">
+    <value>↳ #{0}</value>
+  </data>
+  <data name="Card_SpawnedBy_Tip" xml:space="preserve">
+    <value>Spawned by #{0} — {1}</value>
+  </data>
+  <data name="Card_SpawnedByUnknown" xml:space="preserve">
+    <value>↳ spawned</value>
+  </data>
   <data name="Agent_ClaudeCode" xml:space="preserve">
     <value>claude</value>
   </data>
@@ -908,6 +929,9 @@
   </data>
   <data name="Transition_StartupPrompt" xml:space="preserve">
     <value>Waiting on the CLI's start-up prompt</value>
+  </data>
+  <data name="Transition_SpawnedFollowUp" xml:space="preserve">
+    <value>Spawned a follow-up: {0}</value>
   </data>
   <data name="Card_Surface_Timeline" xml:space="preserve">
     <value>Timeline</value>

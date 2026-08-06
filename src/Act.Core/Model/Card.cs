@@ -57,6 +57,12 @@ public sealed class Card
 
     public SpawnAuthor? SpawnAuthor { get; set; }
 
+    // The idempotency key the spawning agent supplied, if it supplied one — see `create_followup`.
+    // Stored rather than held in memory because the race it closes outlives a process: a session
+    // restored into a fresh terminal re-proposes the follow-ups it lost track of, and an in-memory
+    // map would have gone with the old one.
+    public string? SpawnKey { get; set; }
+
     public IList<Guid> DependsOn { get; set; } = [];
 
     public DateTimeOffset CreatedAt { get; set; }

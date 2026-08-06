@@ -69,6 +69,14 @@ public partial class SessionView(
     [Parameter]
     public Guid CardId { get; set; }
 
+    // Resolved per render rather than held: a follow-up can be created while this page is open — that
+    // is the point of it — and the board raises `Changed`, which re-renders this.
+    private Card? Parent => card?.ParentId is { } parentId ? board.Card(parentId) : null;
+
+    private IReadOnlyList<Card>? Children => card is { } shown ? board.ChildrenOf(shown) : null;
+
+    private static string Route(Card card) => CardRoute.For(card);
+
     private string TerminalId => terminalId;
 
     private string DropRootId => dropRootId;
