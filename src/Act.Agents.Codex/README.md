@@ -14,7 +14,7 @@ Responsibilities:
   context, the last message), and process signals. Verified end to end on
   2026-07-31; the long detour to get there — the hooks fire, but ACT was quoting
   the program token, so every one failed — is in
-  `docs/codex-hooks-findings.md`, which is worth reading before touching the
+  `docs/findings/codex-hooks.md`, which is worth reading before touching the
   hook config.
 - **Normalized mappings** — `model` / `effort` / `permissionMode` → Codex's real
   settings; raw events → normalized events. Note the adapter declares **five**

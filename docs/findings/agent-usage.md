@@ -7,8 +7,8 @@ both. Measured 2026-07-31 against `claude-code 2.1.220` and the Codex CLI at
 This supersedes the roadmap's old open question, *"`/usage` scriptability +
 reset-time detection"*. It is not scriptable — and it does not need to be.
 
-Companion reading: *Usage indicator* in `ACT-overview.md`, and the usage rows in
-`repository-structure.md`.
+Companion reading: *Usage indicator* in `../overview.md`, and the usage rows in
+`../repository-structure.md`.
 
 ---
 
@@ -255,7 +255,7 @@ and deliberately unread: it names a plan, and every number ACT shows comes from 
 endpoint instead.
 
 So when the probe answers `Expired`, `UsagePump` runs the **`-p` query path** —
-the same measured command line `agent-title-findings.md` documents, reached through
+the same measured command line `agent-title.md` documents, reached through
 `IAgentAdapter.QueryAsync` so the flag set keeps exactly one owner — and, if it answers,
 **re-reads the credential file and probes once more** in the same pass. `UsageRefresh`
 (in `Act.Core/Rules`) owns the decisions, and all of them are pure: which availability a
@@ -283,7 +283,7 @@ The 4 s versus 466 ms gap is the tell: only one of them makes a network round tr
 **So the nudge is not free**, and the cost is the whole design constraint:
 
 - **~5,000 tokens per refresh** (≈ $0.008–0.010), per the cost table in
-  `agent-title-findings.md`. In steady state that is *one* nudge per 8-hour token
+  `agent-title.md`. In steady state that is *one* nudge per 8-hour token
   lifetime — a few cents a month — because a successful refresh buys 8 hours of
   `Available`.
 - **`Usage:RefreshOnExpiry`** (default `true`) switches it off entirely for anyone who

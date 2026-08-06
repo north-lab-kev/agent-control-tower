@@ -7,7 +7,7 @@ namespace Act.Agents.Codex;
 
 // Written blind against the documented payload contract, and **proven against real payloads on
 // 2026-07-31**: `SessionStart`, `UserPromptSubmit`, the tool events, `Stop` and `PermissionRequest`
-// all normalized correctly on the first live run. See `docs/codex-hooks-findings.md`.
+// all normalized correctly on the first live run. See `docs/findings/codex-hooks.md`.
 //
 // The one place Codex is richer than Claude Code: `PermissionRequest` is an explicit event, so a
 // waiting prompt is reported rather than inferred from a notification message. Measured live as
@@ -125,8 +125,13 @@ public sealed class CodexHookNormalizer : IHookNormalizer
             ?? Text(payload, "tool_name")
             ?? "waiting for approval";
 
+    // The object check is not redundant: `TryGetProperty` *throws* on an element that is not one, and
+    // the `questions` array reaches here entry by entry — a number or a null among them would take the
+    // whole hook request down rather than cost one line of a question's text.
     private static string? Text(JsonElement payload, string name)
-        => payload.TryGetProperty(name, out var value) && value.ValueKind is JsonValueKind.String
-            ? value.GetString()
-            : null;
+        => payload.ValueKind is JsonValueKind.Object
+            && payload.TryGetProperty(name, out var value)
+            && value.ValueKind is JsonValueKind.String
+                ? value.GetString()
+                : null;
 }

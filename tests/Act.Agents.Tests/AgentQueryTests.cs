@@ -10,7 +10,7 @@ namespace Act.Agents.Tests;
 
 // The one-shot query, held to the properties that make it cheap and safe rather than to a verbatim
 // command line — except where a flag *is* the property, in which case it is named. The measured
-// behaviour behind each of these is in `docs/agent-title-findings.md`.
+// behaviour behind each of these is in `docs/findings/agent-title.md`.
 public class AgentQueryTests
 {
     public static TheoryData<string> Agents => ["claude", "codex"];

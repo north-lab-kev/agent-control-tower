@@ -20,7 +20,7 @@ of a TUI's paint is not reading an answer, and the `prototype` branch's
 
 So `ICommandHost` sits beside `IPtyHost`: same port-shaped seam, opposite
 properties. This is *not* the rejected stream-json control protocol
-(`ACT-overview.md` → *Rejected alternatives*). That proposal replaced the user's
+(`../overview.md` → *Rejected alternatives*). That proposal replaced the user's
 interactive session with a headless one. This adds a side channel for questions
 ACT asks itself, and touches no session at all.
 

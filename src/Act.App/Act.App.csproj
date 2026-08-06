@@ -30,6 +30,9 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Act.App.UiTests" />
+
+    <!-- Top-level statements compile to an internal Program, and WebApplicationFactory<Program> needs it. -->
+    <InternalsVisibleTo Include="Act.App.E2eTests" />
   </ItemGroup>
 
   <ItemGroup>

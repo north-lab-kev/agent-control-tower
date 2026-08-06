@@ -6,7 +6,7 @@ using Act.Core.Agents;
 namespace Act.Agents.Codex;
 
 // The four facts this file is built on, each measured against the CLI rather than read from docs.
-// `docs/codex-hooks-findings.md` is where they were established and where the wrong turns are
+// `docs/findings/codex-hooks.md` is where they were established and where the wrong turns are
 // recorded; what follows is only what a reader has to hold to edit this safely.
 //
 //   * The profile's `hooks` is a **table whose keys are event names** — `[[hooks.<Event>]]` with a
@@ -55,7 +55,7 @@ public static class CodexHookConfig
     // under `[hooks.state.…]`, which ACT cannot prevent).
     //
     // Changing this shape is not something to do from the docs: the parser accepts unknown keys in
-    // silence, so a wrong shape fails at launch rather than at write. `codex-hooks-findings.md` has
+    // silence, so a wrong shape fails at launch rather than at write. `codex-hooks.md` has
     // the type-probing trick for re-measuring it against a newer CLI.
     public static string ComposeProfile(string forwarderPath)
     {
@@ -83,7 +83,7 @@ public static class CodexHookConfig
     // argument after it works, path with a space included, because from there `cmd` is parsing.
     //
     // This one line is why no Codex hook arrived for the first weeks of the feature; the whole
-    // investigation is in `codex-hooks-findings.md`. Do not add quotes around the program.
+    // investigation is in `codex-hooks.md`. Do not add quotes around the program.
     private static string Command(string forwarderPath, string eventName)
         => OperatingSystem.IsWindows()
             ? $"{WindowsShell} /c \"{forwarderPath}\" {eventName}"

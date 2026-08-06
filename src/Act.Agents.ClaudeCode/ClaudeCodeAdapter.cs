@@ -183,7 +183,7 @@ public sealed class ClaudeCodeAdapter(
     //     agents — every one of which is context this question has no use for and tokens the user
     //     would pay for. `--bare` looks like the better switch and is a trap: it makes auth *strictly*
     //     `ANTHROPIC_API_KEY`/`apiKeyHelper` and never reads OAuth or the keychain, so it would fail
-    //     outright for a subscription user. See `docs/agent-title-findings.md`.
+    //     outright for a subscription user. See `docs/findings/agent-title.md`.
     //   * `--no-session-persistence` keeps a throwaway out of the user's `/resume` picker.
     //   * The prompt goes on **stdin**, not positionally, so no quoting rule anywhere between here
     //     and the CLI can bite — see `CommandStartInfo.Input`.

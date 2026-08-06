@@ -17,7 +17,7 @@ public enum UsagePressure
 
 // `ResetsAt` is null for a window whose clock has not started: a 5-hour window with no activity in it
 // reports a percentage and no reset, and dropping it for the missing instant is what once left the top
-// bar showing a weekly meter and no session one. See `docs/agent-usage-findings.md`.
+// bar showing a weekly meter and no session one. See `docs/findings/agent-usage.md`.
 public sealed record UsageWindow(
     UsageWindowKind Kind,
     int Percent,

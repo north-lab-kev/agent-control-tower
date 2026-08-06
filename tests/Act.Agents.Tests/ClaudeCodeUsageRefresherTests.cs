@@ -11,7 +11,7 @@ namespace Act.Agents.Tests;
 // composing a command line of its own, so the measured flag set has exactly one owner — and the run
 // it produces is the one `AgentQueryTests` already holds to being cheap. `auth status` was measured
 // and rejected here: it reads the credential file without refreshing it. See
-// `docs/agent-usage-findings.md`.
+// `docs/findings/agent-usage.md`.
 public class ClaudeCodeUsageRefresherTests
 {
     private static (ClaudeCodeUsageRefresher Refresher, StubCommandHost Commands) Create(

@@ -22,7 +22,7 @@ Serves at `http://localhost:5210`. No Electron, no Node — plain Blazor Server.
 `Development` runs are isolated from the installed app: port 5210 against
 `%LOCALAPPDATA%\ACT.Development`, while `Production` keeps port 5200 and
 `%LOCALAPPDATA%\ACT`. Both can run at the same time; see *Where the data lives* in
-`docs/ACT-overview.md`.
+`docs/overview.md`.
 
 ## Run — Electron desktop window
 

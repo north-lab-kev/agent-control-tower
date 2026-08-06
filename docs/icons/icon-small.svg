@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="ACT — Agent Control Tower">
-  <!-- Small-size variant of act-icon.svg, for 16–24px (favicon, tray, tab). Two heavier rings
+  <!-- Small-size variant of icon.svg, for 16–24px (favicon, tray, tab). Two heavier rings
        instead of three, no crosshair, no afterglow wedge, no blip, and a flat tile instead of a
-       gradient one: every one of those reads as mud below ~40px. Above 40px use act-icon.svg. -->
+       gradient one: every one of those reads as mud below ~40px. Above 40px use icon.svg. -->
 
   <!-- app tile -->
   <rect x="16" y="16" width="480" height="480" rx="116" fill="#0d1217" stroke="#26333f" stroke-width="2"/>

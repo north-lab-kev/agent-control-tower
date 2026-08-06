@@ -25,7 +25,7 @@ trusting"* leaves a Codex card with no payloads, so nothing names its rollout an
 only what its process can say.
 
 Companion reading: the *Codex facts* and *Codex hook findings* sections of
-`ACT-roadmap.md`, and *Local-endpoint security* in `ACT-overview.md`.
+`../roadmap.md`, and *Local-endpoint security* in `../overview.md`.
 
 ---
 

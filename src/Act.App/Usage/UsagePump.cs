@@ -54,7 +54,7 @@ public sealed class UsagePump(
                 // file and refreshes it on use, so the fix is to make the CLI run — never to perform
                 // the OAuth exchange here, which would race a rotating refresh token and could cost
                 // the user their login. The nudge is a measured ~5,000 tokens (see
-                // `docs/agent-usage-findings.md`), so it is rate-limited on its own clock rather than
+                // `docs/findings/agent-usage.md`), so it is rate-limited on its own clock rather than
                 // the poll interval, and that clock lengthens after a nudge that changed nothing.
                 if (options.RefreshOnExpiry
                     && UsageRefresh.Answers(result.Availability)

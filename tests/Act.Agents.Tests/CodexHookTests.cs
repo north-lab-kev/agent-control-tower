@@ -12,7 +12,7 @@ namespace Act.Agents.Tests;
 
 // These pin what ACT *writes*, which is where the bug that kept every Codex hook from ever running
 // lived — a quoted program token. Ingestion through them was verified live on 2026-07-31; see
-// `docs/codex-hooks-findings.md`.
+// `docs/findings/codex-hooks.md`.
 public class CodexHookInjectionTests
 {
     private static readonly Guid TaskId = Guid.Parse("6f0d5d5c-16b8-4a2c-9f4d-2f0a3f7c1e11");

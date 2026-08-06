@@ -227,6 +227,102 @@ public class AttachmentStoreTests
         StoreIn(temp).ResolveInside(CardId, "never-written.png").Should().BeNull();
     }
 
+    // A name the framework itself cannot parse, which is the portable test — the invalid-character set
+    // differs per OS. Null rather than a throw, because this is reached from a route serving an `<img>`.
+    [Fact]
+    public void A_name_the_framework_cannot_parse_resolves_to_nothing()
+    {
+        using var temp = new TempDirectory();
+
+        StoreIn(temp).ResolveInside(CardId, "shot\0.png").Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void A_blank_name_resolves_to_nothing(string fileName)
+    {
+        using var temp = new TempDirectory();
+
+        StoreIn(temp).ResolveInside(CardId, fileName).Should().BeNull();
+    }
+
+    // Both run on paths that may never have existed — a card that never attached anything, a template
+    // copied before its first save — so neither may throw and neither may create the folder.
+    [Fact]
+    public void Pruning_a_card_that_attached_nothing_is_silent()
+    {
+        using var temp = new TempDirectory();
+
+        var prune = () => StoreIn(temp).Prune(CardId, ["shot.png"]);
+
+        prune.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Copying_from_a_card_that_attached_nothing_creates_no_folder()
+    {
+        using var temp = new TempDirectory();
+
+        var target = Guid.NewGuid();
+
+        var copy = () => StoreIn(temp).Copy(CardId, target);
+
+        copy.Should().NotThrow();
+
+        Directory.Exists(Path.Combine(temp.Path, AttachmentStore.DirectoryName, target.ToString("d")))
+            .Should().BeFalse();
+    }
+
+    // Windows stores neither a trailing dot nor a bare `.`, and both are what a name made only of dots
+    // leaves behind once the base name has been trimmed.
+    [Theory]
+    [InlineData("...")]
+    [InlineData(".")]
+    [InlineData("   ...   ")]
+    public async Task A_name_made_only_of_dots_is_replaced_rather_than_left_as_an_extension(string given)
+    {
+        using var temp = new TempDirectory();
+
+        var saved = await StoreIn(temp).SaveAsync(CardId, given, Bytes("png"));
+
+        saved.FileName.Should().StartWith("pasted-");
+        saved.FileName.Should().NotEndWith(".");
+    }
+
+    [Fact]
+    public async Task A_very_long_name_is_cut_rather_than_refused_by_the_filesystem()
+    {
+        using var temp = new TempDirectory();
+
+        var store = StoreIn(temp);
+
+        var saved = await store.SaveAsync(CardId, new string('n', 400) + ".png", Bytes("png"));
+
+        saved.FileName.Should().EndWith(".png");
+        saved.FileName.Length.Should().BeLessThan(200);
+
+        File.Exists(store.PathFor(CardId, saved)).Should().BeTrue();
+    }
+
+    // `name (2).ext`, then `(3)`, and so on: attaching the same file twice is a normal accident and
+    // silently overwriting the first would lose whichever copy the user actually wanted.
+    [Fact]
+    public async Task A_third_copy_of_the_same_name_walks_past_the_second()
+    {
+        using var temp = new TempDirectory();
+
+        var store = StoreIn(temp);
+
+        var first = await store.SaveAsync(CardId, "shot.png", Bytes("one"));
+        var second = await store.SaveAsync(CardId, "shot.png", Bytes("two"));
+        var third = await store.SaveAsync(CardId, "shot.png", Bytes("three"));
+
+        first.FileName.Should().Be("shot.png");
+        second.FileName.Should().Be("shot (2).png");
+        third.FileName.Should().Be("shot (3).png");
+    }
+
     private static AttachmentStore StoreIn(TempDirectory temp) => new(temp.Path, new FrozenClock(Now));
 
     private static MemoryStream Bytes(string content) => new(Encoding.UTF8.GetBytes(content));

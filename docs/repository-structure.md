@@ -18,16 +18,17 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  └─ dependabot.yml
 │
 ├─ docs/                            # design docs
-│  ├─ ACT-overview.md               # the spec
-│  ├─ ACT-roadmap.md                # the build plan
+│  ├─ overview.md                   # the spec
+│  ├─ roadmap.md                    # the build plan
 │  ├─ repository-structure.md       # this file
 │  ├─ design-notes.md               # how the non-obvious decisions were reached: measurements,
 │  │                                #   rejected shapes, deleted code. The code cites it rather
 │  │                                #   than carrying the history inline
-│  ├─ agent-usage-findings.md       # the two usage endpoints and their traps
-│  ├─ agent-title-findings.md       # the one-shot query: measured flags per CLI, the stdin and
-│  │                                #   stream-splitting traps, why --bare breaks auth
-│  └─ codex-hooks-findings.md       # Codex hook discovery, TOML shape, the quoting bug
+│  └─ findings/                     # measured investigations, cited from the code
+│     ├─ agent-usage.md             # the two usage endpoints and their traps
+│     ├─ agent-title.md             # the one-shot query: measured flags per CLI, the stdin and
+│     │                             #   stream-splitting traps, why --bare breaks auth
+│     └─ codex-hooks.md             # Codex hook discovery, TOML shape, the quoting bug
 │
 ├─ src/
 │  ├─ Act.Core/                     # DOMAIN + APPLICATION — no infra/UI/agent deps
@@ -198,9 +199,11 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  ├─ Act.Agents.Tests/             # contract tests: one suite every adapter must pass
 │  ├─ Act.App.UiTests/              # the app layer: its services, plus a bUnit suite per component
 │  │                                #   — ComponentTest builds the app graph over the fakes, and
-│  │                                #   RadzenDom is the one place that names Radzen's rendered
-│  │                                #   shapes. Playwright is still the plan for the browser-mode
-│  │                                #   pass, now scoped to what bUnit cannot see: the JS modules
+│  │                                #   RadzenDom is the one place that names Radzen's rendered shapes
+│  ├─ Act.App.E2eTests/             # Playwright against the real app on a real port, mock-adapter
+│  │                                #   driven. ActApp is the host (two of them — see tests/README);
+│  │                                #   scoped to what bUnit cannot see: the JS modules, xterm, and
+│  │                                #   the round trips. Excluded from the default test run
 │  └─ Act.TestSupport/              # the MOCK adapter + fixtures/builders (shared)
 │
 ├─ scripts/
@@ -317,7 +320,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   the path and the endpoint per agent, but **ships absent rather than blank**: an empty string
   configures nothing, and a file full of empty keys reads as "fill these in" for values that are
   supposed to be found. The measured endpoints, response shapes and traps are in
-  `docs/agent-usage-findings.md`.
+  `docs/findings/agent-usage.md`.
   - **`appsettings` holds facts about the machine and the vendor; the store holds the user's
     choices.** That is the whole line, and it decides where a knob goes. A credential path
     and an endpoint are there for when discovery is wrong on *this* machine or a vendor moves

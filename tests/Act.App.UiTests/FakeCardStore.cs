@@ -20,8 +20,17 @@ internal sealed class FakeCardStore(IEnumerable<Card> cards) : ICardStore
         return Task.CompletedTask;
     }
 
+    // The cards handed to `UpdateAsync`, in order. A fake that only holds rows cannot tell "the
+    // board wrote this down" from "the board mutated the object it was already holding", and the
+    // arming the queue resolves has to be *written* before anything launches.
+    public List<Card> Updated { get; } = [];
+
     public Task UpdateAsync(Card card, CancellationToken cancellationToken = default)
-        => Task.CompletedTask;
+    {
+        Updated.Add(card);
+
+        return Task.CompletedTask;
+    }
 
     public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         => Task.FromResult(rows.RemoveAll(row => row.Id == id) > 0);

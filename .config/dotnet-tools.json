@@ -1,6 +1,6 @@
 {
   "version": 1,
   "isRoot": true,
-  "//": "Placeholder — local tools (roadmap step 2): dotnet-format, coverlet, playwright. Add via `dotnet tool install`.",
+  "//": "Playwright's browsers are installed from the e2e project's own build output, not from here — see tests/README.md. dotnet-format and coverlet are still to add.",
   "tools": {}
 }

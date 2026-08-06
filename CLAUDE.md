@@ -4,7 +4,7 @@ Instructions for Claude Code when working in this repository.
 
 ## Project docs
 
-- **`docs/ACT-overview.md` — MUST READ.** The authoritative spec: state model,
+- **`docs/overview.md` — MUST READ.** The authoritative spec: state model,
   data model, ingestion, rules engine, UI direction. Read it before any
   non-trivial change, and follow it when it disagrees with a mockup or with the
   existing code. Keep it updated when a decision changes.
@@ -14,7 +14,7 @@ Instructions for Claude Code when working in this repository.
   `Abstractions/` interfaces). Read it before adding a project, folder, or file so
   new code lands where the architecture expects it, and keep it updated when the
   layout changes.
-- **`docs/ACT-roadmap.md` — read when needed.** Build sequence and step status.
+- **`docs/roadmap.md` — read when needed.** Build sequence and step status.
   Consult it to know what comes next or what a step's *verify* line requires;
   tick steps off as they land.
 - **`docs/design-notes.md` — read when a comment points at it, or before undoing something
@@ -22,16 +22,16 @@ Instructions for Claude Code when working in this repository.
   pinned CLI, shapes that were tried and rejected, code that was deleted and why. The code
   states its invariants and cites this file rather than narrating the history inline, so a
   constant or a guard that looks removable is usually explained here.
-- **`docs/agent-usage-findings.md` — read before touching usage code.** Where the
+- **`docs/findings/agent-usage.md` — read before touching usage code.** Where the
   5-hour and weekly numbers come from: the two undocumented HTTP endpoints, their
   response shapes, the unit and encoding traps between them, the rules ACT holds
   itself to around the CLIs' credential files, and the alternatives that were
   measured and rejected.
-- **`docs/agent-title-findings.md` — read before touching one-shot queries or the
+- **`docs/findings/agent-title.md` — read before touching one-shot queries or the
   auto-generated title.** The measured flag set for each CLI's non-interactive mode,
   the traps between them (stdin must be closed; Codex splits its streams; `claude
   --bare` silently breaks OAuth auth), and the checklist to re-test on a CLI bump.
-- **`docs/codex-hooks-findings.md` — read before touching Codex hook wiring.**
+- **`docs/findings/codex-hooks.md` — read before touching Codex hook wiring.**
   Codex hooks do not fire on the pinned CLI, so that code is written blind; the
   file records what was measured, what ACT assumed, and the checklist to re-test
   it against a newer CLI.
@@ -157,5 +157,5 @@ More build-time guidance to add:
 - domain vocabulary to use verbatim (cards, columns, badges, transitions, adapters, sources)
 - commands and workflow rules
 
-See docs/ACT-overview.md for the spec and docs/ACT-roadmap.md for the build sequence.
+See docs/overview.md for the spec and docs/roadmap.md for the build sequence.
 -->

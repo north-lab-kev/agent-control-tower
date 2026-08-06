@@ -1,6 +1,6 @@
 # ACT — Implementation roadmap
 
-Build sequence for ACT. Companion to the spec (`ACT-overview.md`); this file is
+Build sequence for ACT. Companion to the spec (`overview.md`); this file is
 build-tracking, not design. Steps are ordered so each is small, independently
 verifiable, and leaves something runnable.
 
@@ -1439,6 +1439,12 @@ steps to close the gap would break those references for nothing. So the sequence
 - [ ] **12. Spawning & lineage — an MCP server** — the `create_followup` tool and
   parent/children. *Verify:* a real agent calls the tool mid-session and a tracked child card
   appears in Ready with correct lineage, on both agents.
+  - **Owed a browser round trip when it lands.** `AgentScript.WritesFollowUps(...)` already emits
+    `FollowUpsWritten` and nothing consumes it, so the spec could not be written with the rest of
+    `Act.App.E2eTests` on 2026-08-06. What it should cover is the half bUnit cannot: a child card
+    *appearing on the board* while the parent is still running, with nobody touching the browser — the
+    same push path `LaunchTests` pins for a permission request. The archive-with-follow-ups dialog is
+    already covered by `TaskViewExitTests`.
   - **Decided 2026-07-30: one MCP tool, not a file and not a curl command.** The whole
     agent→ACT contract is this one tool; the `.act/followups/` file mechanism was dropped
     with the status file. Rationale (payload shape, grant width, sandbox avoidance,
@@ -1546,7 +1552,7 @@ steps to close the gap would break those references for nothing. So the sequence
   credential file. ACT polls both and renders them in the top bar. Endpoints, response
   shapes, the three unit/encoding traps, and the rejected alternatives (statusline hook,
   pty scrape, transcript derivation, Codex rollout `rate_limits`) are in
-  **`docs/agent-usage-findings.md`** — read it before touching usage code.
+  **`docs/findings/agent-usage.md`** — read it before touching usage code.
   - **Still open for step 14:** clean mid-task resume after a rate-limit interruption.
     The backpressure signals now have a source, though — Codex's `limit_reached` /
     `rate_limit_reached_type` and the window `resets_at` are what `waiting-reset` needs.
@@ -1767,23 +1773,25 @@ directory change, the other is a third-party tool dependency with its own
 lifecycle. Revisit once the per-card working directory is a first-class
 setting.
 
-## Deferred — Playwright in CI
+## Playwright in CI
 
-The browser suite (`docs/playwright-plan.md`) is **run by hand**, decided 2026-08-05. It exists for
-the three things bUnit structurally cannot see — the five JS interop modules, xterm, and one
-full-stack smoke — and none of those is a per-push regression risk in the way component behaviour is.
-The fast suite (unit + contract + bUnit, ~1500 tests in a few seconds) stays blocking on every push;
-this one does not run there at all.
+The browser suite (`tests/Act.App.E2eTests`, described in `tests/README.md`) runs in CI as its own
+`e2e` job — decided 2026-08-06, reversing the "by hand" call of the day before.
 
-`scripts/build.ps1` excludes it by category, so `dotnet test` on the solution stays fast and a local
-build never needs a browser installed.
+- **Its own job, not more steps on `build-test`.** The fast suite keeps reporting in seconds instead of
+  waiting behind a browser, and a red `e2e` is legible at a glance as "the browser tier" rather than
+  hiding in a log with 1800 unit tests. It costs one extra solution build; on ubuntu that is 1x minutes.
+- **Build, then install, then test — in that order.** The installer *is* a build artefact: the
+  `Microsoft.Playwright` package emits `playwright.ps1` into the test project's output, which keeps the
+  browser version pinned to the package rather than to a separately-versioned CLI tool. Hence
+  `build.ps1 -NoBuild` for the test step, so the job does not build the solution twice.
+- **`scripts/build.ps1` still excludes it by category**, so a local `dotnet test` stays fast and never
+  needs a browser. `-E2E` runs only that category.
 
-To put it in CI later:
+Still open:
 
-- [ ] A **separate job**, not a step in `ci.yml`'s `build-test` — nightly plus `workflow_dispatch`,
-  on `ubuntu-latest`, with `playwright install --with-deps chromium`.
-- [ ] Decide what a failure means. A browser suite that gates every push is how a solo project ends
-  up disabling its own CI; nightly-and-reported is the honest setting until it has proven stable.
-- [ ] Note the CI-cost angle while private: the browser install alone is a minute or two per run.
-
-Until then the spec's *CI (required)* section overstates what runs — see the note there.
+- [ ] **Decide what a failure means.** It is blocking today, like everything else. A browser suite that
+  gates every push is how a solo project ends up disabling its own CI — if `e2e` starts flaking, move it
+  to `schedule` + `workflow_dispatch` before reaching for `continue-on-error`, which hides it instead.
+- [ ] **Watch the minutes while the repo is private.** The browser install alone is a minute or two per
+  run, on top of the second solution build.

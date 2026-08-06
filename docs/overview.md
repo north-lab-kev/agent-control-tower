@@ -108,7 +108,8 @@ Standards to build against — not optional polish. Specifics named for the
   mode, **not** the Electron shell (single-instance-lock / CDP friction).
   Deliberately narrow, because bUnit already covers the components: the **five JS
   interop modules** (which bUnit stubs and therefore cannot see at all), **xterm**,
-  and **one full-stack smoke**. See `docs/playwright-plan.md`.
+  and **round trips** — the circuit, the store on disk, and a card moving on
+  screen because an agent event arrived. See `tests/README.md`.
 - **Coverage:** **coverlet**; weighted — domain core / rules engine ~90%+; no
   blanket 100% mandate elsewhere.
 - **No automated integration tests against real CLIs** (deliberate — slow,
@@ -119,10 +120,10 @@ Standards to build against — not optional polish. Specifics named for the
 
 - **GitHub Actions**, running the **full fast suite** (unit + contract + bUnit
   component tests) on every push / PR. Blocking.
-- **The Playwright suite is not part of it** — it is launched by hand, decided
-  2026-08-05. See *Deferred — Playwright in CI* in the roadmap for what putting
-  it there would take, and why nightly-and-reported is the honest setting rather
-  than blocking.
+- **The Playwright suite runs as its own `e2e` job**, also blocking — build,
+  install Chromium, then test. Separate so the fast suite still reports in
+  seconds and a browser failure is legible on its own. See *Playwright in CI* in
+  the roadmap for what is still open about it.
 - Matrix on **Windows + Linux** (matches the cross-OS requirement).
 - The release-build script (roadmap step 2) is the CI build hook.
 
@@ -1032,7 +1033,7 @@ whole design is about making that cost nothing:
 - **A title costs ~5,000–7,000 tokens, and the prompt is not what drives it** — the
   CLI's own preamble is. Prompt sizes from 5 to 1,080 words moved the total by around
   1,500 tokens, so a long prompt is never truncated before asking. The measured
-  breakdown per agent is in `docs/agent-title-findings.md`.
+  breakdown per agent is in `docs/findings/agent-title.md`.
 - **It never fails.** A missing CLI, a refusal, an expired login, an exhausted
   quota, a timeout or an unusable answer falls back to the prompt's own opening
   words. A save refused over a field ACT offered to fill in would be worse than the
@@ -1055,7 +1056,7 @@ whole design is about making that cost nothing:
 
 The measured flag sets, the traps behind each one (notably why `claude --bare`
 would break auth, and why Codex's prompt must go on stdin), and the re-test
-checklist are in `docs/agent-title-findings.md`.
+checklist are in `docs/findings/agent-title.md`.
 
 ---
 
@@ -1990,7 +1991,7 @@ from that CLI's own credential file, polled **once every 3 minutes and never fas
 than once a minute**. Endpoints, response
 shapes and the alternatives that were rejected (Claude Code's `statusLine` payload,
 scraping `/usage` from a pty, deriving from transcripts, Codex's rollout
-`rate_limits`) are recorded in **`docs/agent-usage-findings.md`**. Read it before
+`rate_limits`) are recorded in **`docs/findings/agent-usage.md`**. Read it before
 touching usage code.
 
 Five rules the design turns on:
@@ -2664,7 +2665,7 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
 ## Spec status
 
 This section is the resume point. The design is **complete** — nothing left to
-define. The build sequence lives in **`ACT-roadmap.md`** (16 steps across 6
+define. The build sequence lives in **`roadmap.md`** (16 steps across 6
 phases). Only pixel-level UI polish and per-step build-time verifications remain,
 tracked there.
 

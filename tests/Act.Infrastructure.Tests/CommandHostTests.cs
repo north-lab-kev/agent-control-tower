@@ -87,6 +87,37 @@ public class CommandHostTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
     }
 
+    // A global npm install puts the CLI behind `codex.cmd`, and Windows refuses to `CreateProcess` a
+    // batch file — it is not an image. So one is really run here rather than asserted about: a shim
+    // that stopped being applied would fail at every launch of an npm-installed agent, and nothing
+    // short of a real spawn proves it is applied.
+    [Fact]
+    public async Task A_batch_file_is_run_through_the_shell_because_windows_cannot_spawn_one()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        using var temp = new TempDirectory();
+
+        Directory.CreateDirectory(temp.Path);
+
+        var script = Path.Combine(temp.Path, "act-fake-agent.cmd");
+
+        File.WriteAllText(script, "@echo off\r\necho from the shim\r\n");
+
+        var result = await new CommandHost().RunAsync(
+            new CommandStartInfo(
+                script,
+                [],
+                temp.Path,
+                AgentEnvironment.ForQuery(new Dictionary<string, string>()),
+                null,
+                Patient));
+
+        result.Succeeded.Should().BeTrue(result.Error);
+        result.Output.Should().Be("from the shim");
+    }
+
     private static Task<CommandResult> RunAsync(
         string script,
         string? input = null,

@@ -13,9 +13,9 @@ a previous implementation, and anything that would be wrong if the code changed 
 
 **Companion files**, which already do this for their own areas and are not duplicated below:
 
-- `agent-usage-findings.md` — the two usage endpoints, their response shapes, the unit and
+- `findings/agent-usage.md` — the two usage endpoints, their response shapes, the unit and
   encoding traps, and the alternatives measured and rejected.
-- `codex-hooks-findings.md` — Codex hook discovery, the TOML shape, the quoting bug, hook trust.
+- `findings/codex-hooks.md` — Codex hook discovery, the TOML shape, the quoting bug, hook trust.
 - `repository-structure.md` — *Key decisions*: project boundaries, why `Act.Desktop` is not a
   project, the Electron startup-timing trap, store conventions.
 
@@ -211,7 +211,7 @@ the invariant is that ACT composes no *instruction*, not that it never writes.
 
 Codex had a second way for ACT to find its transcript: `CodexRolloutFinder` inferred the file from
 the folder layout and a cwd/timestamp match, written because its hooks were believed dead. They are
-not — that was ACT quoting the hook command, see `codex-hooks-findings.md` — so the guessing was
+not — that was ACT quoting the hook command, see `findings/codex-hooks.md` — so the guessing was
 deleted along with `ITranscriptFinder` and `ITranscriptDirectory`. Both agents now learn where
 their transcript is the same way: the hooks say so.
 
@@ -887,3 +887,55 @@ the specific element to name the colour, then a search for that literal among th
 properties to find who owns it. Enumerating `document.styleSheets` to find the *rule* is not worth
 attempting: it failed three times here on selectors the CSSOM reports in a form `Element.matches`
 rejects.
+
+## Testing the app in a real browser
+
+### How the browser suite gets a deterministic agent
+
+`Act.App.E2eTests` runs the real app through `WebApplicationFactory<Program>` on a real Kestrel port and
+replaces both `IAgentAdapter` registrations with `MockAgentAdapter` in `ConfigureTestServices`. It looks
+like the heavyweight option; the two lighter ones were tried on paper first and both fail on something
+specific.
+
+**A fake CLI on disk, pointed at by `AgentDefaults.Binary`.** By far the most attractive: a real pty
+running a real program, no test wiring inside the host, and it would cover `PtyHost` — which the mock
+adapter cannot. It does not survive contact with the code. `PtyHost` hands
+`ExecutableResolver.Resolve(...)` straight to the pty as `App`, and unlike `CommandHost` it has **no
+`cmd /c` shim** (`CommandHost.cs` has one precisely because a `.cmd` cannot be started with
+`UseShellExecute = false`; `PtyHost.cs` does not). So a `.cmd` or `.sh` fake will not spawn on Windows,
+and pointing `Binary` at `node.exe` does not help either — the adapter owns the argument order, so the
+script path cannot be made the first argument. Reviving this needs a per-platform native executable, or
+a `cmd /c` shim in `PtyHost` that nothing else wants.
+
+**A production switch** (`Act:UseMockAgent` or similar). Rejected on the rule that decides where every
+other knob goes: `appsettings` holds facts about the machine and the vendor, the store holds the user's
+choices, and a test hook is neither. It would also be a permanent seam in shipped code for the benefit
+of one test project.
+
+What the chosen route costs, and why the fixture looks the way it does:
+
+- **Two hosts run, not one.** `WebApplicationFactory` casts whatever `CreateHost` returns to a
+  `TestServer`, so a second host has to exist even though nothing talks to it — and it boots ACT
+  completely. LiteDB takes an exclusive lock on `act.db`, so the two cannot share a data directory; the
+  shadow gets a store nobody reads. The environment is re-read on each `Build()` (the resolver re-runs
+  `Program` from the top), which is what makes setting the directory between the two builds work.
+- **`UseStaticWebAssets()` is not optional.** Without it every asset 500s: `MapStaticAssets` resolves
+  files through the web-root provider, the web root is the test project's folder, and the manifest that
+  points back at the real files is only loaded automatically in Development.
+- **The log providers are cleared.** Not for quiet: `StartupLog` watches for unobserved task exceptions
+  and logs them, and on teardown that handler runs on the finalizer thread *after* the providers are
+  disposed. The Windows event log provider then throws `ObjectDisposedException` out of a finalizer and
+  takes the whole test host process down. It did, twice.
+- **Configuration arrives as environment variables**, not `UseSetting`. `Program.cs` reads the data
+  directory out of `builder.Configuration` on its second line, before any `ConfigureWebHost` callback has
+  run. That is also why the assembly disables test parallelisation.
+
+### Synthesising a paste
+
+Two of the `act-attach` specs build a hand-made clipboard object rather than a real `DataTransfer`, and
+that is deliberate twice over. Chromium ignores `clipboardData` in `ClipboardEvent`'s init dictionary, and
+files re-hosted through a page-built `DataTransfer` never reach Blazor's chunked upload — measured, not
+assumed. More to the point, the rules being pinned cannot be expressed with a real one: `items.add()`
+populates `files` too, so `files` and `items` can never be made to *disagree*, which is the whole subject
+of the "a screenshot tool put the picture on the clipboard twice" and "yield to the text" cases. The
+hand-made shape is what Windows actually produces.
