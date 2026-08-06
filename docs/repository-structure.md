@@ -196,7 +196,11 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  ├─ Act.Core.Tests/               # xUnit — rules engine & scheduler (hard, pure)
 │  ├─ Act.Infrastructure.Tests/     # store round-trip, restart survival, schema versioning
 │  ├─ Act.Agents.Tests/             # contract tests: one suite every adapter must pass
-│  ├─ Act.App.UiTests/              # Playwright (browser-mode Blazor, mock-adapter driven)
+│  ├─ Act.App.UiTests/              # the app layer: its services, plus a bUnit suite per component
+│  │                                #   — ComponentTest builds the app graph over the fakes, and
+│  │                                #   RadzenDom is the one place that names Radzen's rendered
+│  │                                #   shapes. Playwright is still the plan for the browser-mode
+│  │                                #   pass, now scoped to what bUnit cannot see: the JS modules
 │  └─ Act.TestSupport/              # the MOCK adapter + fixtures/builders (shared)
 │
 ├─ scripts/

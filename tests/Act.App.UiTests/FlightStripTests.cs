@@ -1,0 +1,142 @@
+using Act.App.Components.Board;
+using Act.Core.Model;
+using Act.Core.Scheduling;
+using AwesomeAssertions;
+using Bunit;
+using Microsoft.AspNetCore.Components.Web;
+
+namespace Act.App.UiTests;
+
+// `StripFaceTests` pins what a strip *says*; this pins that the component actually says it, and that
+// the gestures on it land where the board expects. Those are the two halves a pure test cannot
+// reach: whether a computed class makes it onto the element the CSS paints, and whether clicking the
+// launch button starts the card without also opening it — the button sits inside a strip that is
+// itself a click target, so `stopPropagation` is the whole reason the board does not navigate away
+// from a card the user just launched.
+public class FlightStripTests : ComponentTest
+{
+    [Fact]
+    public void The_face_reaches_the_element_the_css_paints()
+    {
+        var card = Card(BoardColumn.YourTurn);
+        card.Badge = Badge.NeedsPermission;
+
+        var cut = Strip(card);
+
+        cut.Find("div.strip").ClassName.Should().Be("strip r-wait attn liftable");
+        cut.Find(".badge").TextContent.Should().Be("needs permission");
+    }
+
+    // A hold borrows the badge slot a Ready card leaves empty, and the sentence explaining it hangs
+    // off the wrapping element rather than the chip — worth a render test, because a `title` on the
+    // wrong element is invisible in a unit test and silent in the browser.
+    [Fact]
+    public void A_hold_explains_itself_on_the_element_that_carries_the_tooltip()
+    {
+        var blocker = Card(BoardColumn.Executing);
+        blocker.Number = 7;
+        blocker.Title = "Already here";
+
+        var cut = Strip(Card(BoardColumn.Ready), p =>
+            p.Add(c => c.Hold, new ReadyHold(LaunchHold.WorkingDir, Blocker: blocker)));
+
+        var chip = cut.Find(".b-hold");
+
+        chip.TextContent.Should().Contain("7");
+        chip.ParentElement!.GetAttribute("title").Should().Contain("Already here");
+    }
+
+    [Theory]
+    [InlineData(BoardColumn.Ready, "true")]
+    [InlineData(BoardColumn.Executing, "false")]
+    public void Only_a_column_a_card_may_leave_by_hand_lifts(BoardColumn column, string expected)
+    {
+        Strip(Card(column)).Find("div.strip").GetAttribute("draggable").Should().Be(expected);
+    }
+
+    [Fact]
+    public void Clicking_a_strip_opens_its_card()
+    {
+        var card = Card(BoardColumn.Executing);
+        Card? opened = null;
+
+        var cut = Strip(card, p => p.Add(c => c.OnOpen, c => opened = c));
+
+        cut.Find("div.strip").Click();
+
+        opened.Should().BeSameAs(card);
+    }
+
+    // The strip is a `role="button"`, so the keyboard has to open it too — and only on the two keys
+    // that mean "activate".
+    [Theory]
+    [InlineData("Enter", true)]
+    [InlineData(" ", true)]
+    [InlineData("a", false)]
+    public void The_keyboard_opens_a_strip_the_way_a_button_opens(string key, bool expected)
+    {
+        var opened = false;
+
+        var cut = Strip(Card(BoardColumn.Executing), p => p.Add(c => c.OnOpen, _ => opened = true));
+
+        cut.Find("div.strip").KeyDown(new KeyboardEventArgs { Key = key });
+
+        opened.Should().Be(expected);
+    }
+
+    [Fact]
+    public void Launching_a_card_does_not_also_open_it()
+    {
+        var card = Card(BoardColumn.Ready);
+        Card? launched = null;
+        var opened = false;
+
+        var cut = Strip(card, p =>
+        {
+            p.Add(c => c.OnLaunch, c => launched = c);
+            p.Add(c => c.OnOpen, _ => opened = true);
+        });
+
+        cut.Find("button.launch").Click();
+
+        launched.Should().BeSameAs(card);
+        opened.Should().BeFalse("the launch click is stopped at the button, not left to bubble to the strip");
+    }
+
+    // Density is what the strip itself decides — `StripFace` computes the identity line either way.
+    // Compact drops it for the bare number, and keeps the launch button as an icon, because a compact
+    // board is the one you start work from.
+    [Fact]
+    public void A_compact_strip_gives_up_the_identity_line_but_not_the_launch_button()
+    {
+        var card = Card(BoardColumn.Ready);
+        card.ObservedModel = "claude-opus-5";
+
+        Strip(card).Find(".cid").TextContent.Should().Be("#1042 · claude · claude-opus-5");
+
+        var compact = Strip(card, density: BoardDensity.Compact);
+
+        compact.Find(".cid").TextContent.Should().Be("#1042");
+        compact.FindAll("button.launch").Should().ContainSingle();
+    }
+
+    private IRenderedComponent<FlightStrip> Strip(
+        Card card,
+        Action<ComponentParameterCollectionBuilder<FlightStrip>>? parameters = null,
+        BoardDensity density = BoardDensity.Detailed)
+        => Render<FlightStrip>(p =>
+        {
+            p.Add(c => c.Card, card);
+            p.Add(c => c.Density, density);
+            parameters?.Invoke(p);
+        });
+
+    private static Card Card(BoardColumn column) => new()
+    {
+        Number = 1042,
+        Title = "Rename the widget",
+        Column = column,
+        AgentType = AgentType.ClaudeCode,
+        WorkingDir = "/dev/act",
+    };
+}

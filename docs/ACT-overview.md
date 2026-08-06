@@ -98,11 +98,17 @@ Standards to build against — not optional polish. Specifics named for the
   events, deterministically, no real CLI or tokens.
 - **Contract tests.** One shared xUnit suite that **every** agent adapter must
   pass, so Claude Code and Codex are held to the same normalized behavior.
-- **UI tests — Playwright for .NET** against the **browser-mode** Blazor app
-  (`dotnet run`), driven by the **mock adapter** so flows are deterministic. Run
-  against browser mode, **not** the Electron shell (single-instance-lock / CDP
-  friction). Cover: task creation, drag + drag-time graying, event-driven column
-  moves, and the per-state drawer actions.
+- **Component tests — bUnit**, one suite per component, rendering in-process
+  against an AngleSharp DOM with no server and no browser. This is where UI
+  behaviour is pinned: computed values reaching the elements that consume them,
+  gestures reaching the right handlers, which branch rendered and what is absent.
+  Everything a render can answer belongs here rather than in a browser.
+- **UI tests — Playwright for .NET** against the **browser-mode** Blazor app,
+  driven by the **mock adapter** so flows are deterministic. Run against browser
+  mode, **not** the Electron shell (single-instance-lock / CDP friction).
+  Deliberately narrow, because bUnit already covers the components: the **five JS
+  interop modules** (which bUnit stubs and therefore cannot see at all), **xterm**,
+  and **one full-stack smoke**. See `docs/playwright-plan.md`.
 - **Coverage:** **coverlet**; weighted — domain core / rules engine ~90%+; no
   blanket 100% mandate elsewhere.
 - **No automated integration tests against real CLIs** (deliberate — slow,
@@ -111,10 +117,13 @@ Standards to build against — not optional polish. Specifics named for the
 
 ### CI (required)
 
-- **GitHub Actions**, running the **full fast suite** (unit + contract +
-  Playwright UI) on every push / PR. Blocking.
-- Matrix on **Windows + Linux** (matches the cross-OS requirement); include the
-  Playwright browser-install step.
+- **GitHub Actions**, running the **full fast suite** (unit + contract + bUnit
+  component tests) on every push / PR. Blocking.
+- **The Playwright suite is not part of it** — it is launched by hand, decided
+  2026-08-05. See *Deferred — Playwright in CI* in the roadmap for what putting
+  it there would take, and why nightly-and-reported is the honest setting rather
+  than blocking.
+- Matrix on **Windows + Linux** (matches the cross-OS requirement).
 - The release-build script (roadmap step 2) is the CI build hook.
 
 ### Observability & operational

@@ -13,14 +13,14 @@ public class AgentBinaryCheckTests
 {
     [Fact]
     public void An_empty_box_is_only_on_PATH_when_the_name_really_resolves()
-        => AgentBinaryCheck.For(new Probe(), Adapter(AgentInstall.OnPath), string.Empty)
+        => AgentBinaryCheck.For(new FakeExecutableProbe(), Adapter(AgentInstall.OnPath), string.Empty)
             .Should().Be(new AgentBinaryState(AgentBinaryStatus.OnPath));
 
     [Fact]
     public void An_empty_box_warns_when_the_agent_is_installed_off_PATH()
     {
         var state = AgentBinaryCheck.For(
-            new Probe(),
+            new FakeExecutableProbe(),
             Adapter(AgentInstall.At(@"C:\tools\codex.exe")),
             string.Empty);
 
@@ -30,31 +30,31 @@ public class AgentBinaryCheckTests
 
     [Fact]
     public void An_empty_box_with_nothing_installed_says_so()
-        => AgentBinaryCheck.For(new Probe(), Adapter(AgentInstall.Missing), string.Empty)
+        => AgentBinaryCheck.For(new FakeExecutableProbe(), Adapter(AgentInstall.Missing), string.Empty)
             .Status.Should().Be(AgentBinaryStatus.NotInstalled);
 
     [Fact]
     public void A_typed_path_that_exists_is_found()
         => AgentBinaryCheck.For(
-                new Probe { Files = { @"C:\tools\codex.exe" } },
+                new FakeExecutableProbe { Files = { @"C:\tools\codex.exe" } },
                 Adapter(AgentInstall.Missing),
                 @"C:\tools\codex.exe")
             .Status.Should().Be(AgentBinaryStatus.Found);
 
     [Fact]
     public void A_typed_path_that_does_not_exist_is_not_found()
-        => AgentBinaryCheck.For(new Probe(), Adapter(AgentInstall.OnPath), @"C:\nope\codex.exe")
+        => AgentBinaryCheck.For(new FakeExecutableProbe(), Adapter(AgentInstall.OnPath), @"C:\nope\codex.exe")
             .Status.Should().Be(AgentBinaryStatus.NotFound);
 
     // A bare name is resolved the way the launch resolves it, not treated as a path that is missing.
     [Fact]
     public void A_typed_bare_name_is_resolved_on_PATH()
-        => AgentBinaryCheck.For(new Probe { OnPathNames = { "codex" } }, Adapter(AgentInstall.Missing), "codex")
+        => AgentBinaryCheck.For(new FakeExecutableProbe { OnPathNames = { "codex" } }, Adapter(AgentInstall.Missing), "codex")
             .Status.Should().Be(AgentBinaryStatus.Found);
 
     [Fact]
     public void A_typed_bare_name_that_does_not_resolve_is_not_found()
-        => AgentBinaryCheck.For(new Probe(), Adapter(AgentInstall.OnPath), "nosuchcli")
+        => AgentBinaryCheck.For(new FakeExecutableProbe(), Adapter(AgentInstall.OnPath), "nosuchcli")
             .Status.Should().Be(AgentBinaryStatus.NotFound);
 
     private static IAgentAdapter Adapter(AgentInstall install) => new StubAdapter(install);
@@ -79,21 +79,5 @@ public class AgentBinaryCheckTests
 
         public Task<string?> QueryAsync(AgentQueryRequest request, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
-    }
-
-    private sealed class Probe : IExecutableProbe
-    {
-        public HashSet<string> OnPathNames { get; } = [];
-
-        public HashSet<string> Files { get; } = [];
-
-        public string? OnPath(string executable)
-            => OnPathNames.Contains(executable) ? $"/usr/bin/{executable}" : null;
-
-        public string? FirstExisting(IEnumerable<string> candidates) => candidates.FirstOrDefault(Files.Contains);
-
-        public IReadOnlyList<string> DirectoriesNewestFirst(string parent) => [];
-
-        public string? ReadText(string path) => null;
     }
 }

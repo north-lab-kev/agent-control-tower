@@ -29,6 +29,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Act.App.UiTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Act.Agents.ClaudeCode\Act.Agents.ClaudeCode.csproj" />
     <ProjectReference Include="..\Act.Agents.Codex\Act.Agents.Codex.csproj" />
     <ProjectReference Include="..\Act.Core\Act.Core.csproj" />

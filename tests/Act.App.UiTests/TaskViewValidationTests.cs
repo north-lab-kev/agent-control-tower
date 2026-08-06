@@ -1,0 +1,226 @@
+using Act.App.Components.Pages;
+using Act.Core.Abstractions;
+using Act.Core.Model;
+using AwesomeAssertions;
+using Bunit;
+
+namespace Act.App.UiTests;
+
+// Two refusals with different weights, which is the whole point. A path that cannot be a path blocks the
+// save; a path that merely is not there yet does not, because a directory you are about to create is a
+// perfectly reasonable thing to save a task against. Getting that backwards either lets a doomed card
+// through or refuses a legitimate one.
+public class TaskViewValidationTests : ComponentTest
+{
+    [Fact]
+    public async Task A_malformed_directory_refuses_the_save_and_says_which_way()
+    {
+        Directories.Checks["relative/path"] = PathCheck.Malformed(PathError.NotAbsolute);
+
+        var cut = Show();
+
+        Fill(cut, prompt: "Do the thing", workingDir: "relative/path");
+
+        await Submit(cut);
+
+        Board.All.Should().BeEmpty("nothing was saved");
+        cut.Markup.Should().Contain("Enter an absolute path");
+    }
+
+    [Fact]
+    public async Task Nonsense_is_refused_differently_from_a_relative_path()
+    {
+        Directories.Checks["<>"] = PathCheck.Malformed(PathError.Malformed);
+
+        var cut = Show();
+
+        Fill(cut, prompt: "Do the thing", workingDir: "<>");
+
+        await Submit(cut);
+
+        cut.Markup.Should().Contain("not a valid folder path");
+    }
+
+    // Found here rather than at launch: a directory that does not exist is the single most common reason a
+    // launch fails, and the form is where the user can still do something about it.
+    [Fact]
+    public async Task A_directory_that_is_only_missing_is_saved_anyway_and_offered_a_mkdir()
+    {
+        Directories.Checks["/dev/new"] = PathCheck.Missing("/dev/new");
+
+        var cut = Show();
+
+        Fill(cut, prompt: "Do the thing", workingDir: "/dev/new");
+
+        cut.Find("div.dirwarn").TextContent.Should().Contain("does not exist yet");
+
+        await Submit(cut);
+
+        Board.All.Should().ContainSingle().Which.WorkingDir.Should().Be("/dev/new");
+    }
+
+    [Fact]
+    public void The_mkdir_button_creates_the_directory_that_was_typed()
+    {
+        Directories.Checks["/dev/new"] = PathCheck.Missing("/dev/new");
+
+        var cut = Show();
+
+        Fill(cut, workingDir: "/dev/new");
+
+        cut.Find("div.dirwarn button").Click();
+
+        Directories.Created.Should().Equal("/dev/new");
+    }
+
+    [Fact]
+    public void A_mkdir_that_the_os_refuses_is_reported_rather_than_thrown()
+    {
+        Directories.Checks["/dev/new"] = PathCheck.Missing("/dev/new");
+        Directories.CreateFails = new UnauthorizedAccessException("Access to the path is denied.");
+
+        var cut = Show();
+
+        Fill(cut, workingDir: "/dev/new");
+
+        cut.Find("div.dirwarn button").Click();
+
+        Notifications.Messages.Should().ContainSingle()
+            .Which.Detail.Should().Be("Access to the path is denied.");
+    }
+
+    // Shows the resolved path too, because the typed one and the real one differ whenever a `~` or a
+    // forward slash is involved — and that difference is exactly what confuses people.
+    [Fact]
+    public void The_missing_warning_names_the_resolved_path_only_when_it_differs()
+    {
+        Directories.Checks["/dev/new"] = PathCheck.Missing("/dev/new");
+        Directories.Checks["~/dev/new"] = PathCheck.Missing("/home/act/dev/new");
+
+        var plain = Show();
+        Fill(plain, workingDir: "/dev/new");
+        plain.Find("div.dirwarn").TextContent.Should().NotContain("/dev/new");
+
+        var tilde = Show();
+        Fill(tilde, workingDir: "~/dev/new");
+        tilde.Find("div.dirwarn").TextContent.Should().Contain("/home/act/dev/new");
+    }
+
+    [Fact]
+    public void A_directory_that_is_there_warns_about_nothing()
+    {
+        var cut = Show();
+
+        Fill(cut, workingDir: "/dev/act");
+
+        cut.FindAll("div.dirwarn").Should().BeEmpty();
+    }
+
+    // A title is required; typing it is not. Blank passes only while the prompt can stand in — the same
+    // condition `NewTaskForm.ApplyTo` falls back on, so what the field permits and what the card ends up
+    // with cannot drift apart.
+    [Fact]
+    public async Task A_task_with_neither_title_nor_prompt_is_refused()
+    {
+        var cut = Show();
+
+        Fill(cut, workingDir: "/dev/act");
+
+        await Submit(cut);
+
+        Board.All.Should().BeEmpty();
+        cut.Markup.Should().Contain("Write a title");
+    }
+
+    [Fact]
+    public async Task A_prompt_alone_is_enough_and_the_title_is_asked_for()
+    {
+        Claude.Answer = "Rename the widget";
+
+        var cut = Show();
+
+        Fill(cut, prompt: "Rename the widget everywhere", workingDir: "/dev/act");
+
+        await Submit(cut);
+
+        Board.All.Should().ContainSingle().Which.Title.Should().Be("Rename the widget");
+    }
+
+    // Silent on save, unlike the button: the user was saving, not asking for a title, and a toast about how
+    // the title was arrived at is an interruption they did not invite.
+    [Fact]
+    public async Task A_title_that_had_to_be_guessed_is_not_announced_on_a_save()
+    {
+        Claude.QueryFails = new InvalidOperationException("claude is not on PATH");
+
+        var cut = Show();
+
+        Fill(cut, prompt: "Rename the widget everywhere", workingDir: "/dev/act");
+
+        await Submit(cut);
+
+        Board.All.Should().ContainSingle().Which.Title.Should().NotBeNullOrWhiteSpace();
+        Notifications.Messages.Should().BeEmpty();
+    }
+
+    // The one place a failure is worth a word: the user asked a question here, and a box that fills with
+    // the prompt's opening words with no explanation looks like a bug rather than a fallback.
+    [Fact]
+    public void A_title_the_button_could_not_generate_says_so()
+    {
+        Claude.QueryFails = new InvalidOperationException("claude is not on PATH");
+
+        var cut = Show();
+
+        Fill(cut, prompt: "Rename the widget everywhere");
+
+        cut.Find("div.titlerow button").Click();
+
+        Notifications.Messages.Should().ContainSingle();
+        TaskViewTests.Title(cut).Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void There_is_nothing_to_generate_a_title_from_without_a_prompt()
+    {
+        Show().Find("div.titlerow button").HasAttribute("disabled").Should().BeTrue();
+    }
+
+    // Explicit intent, so it overwrites: a user who clicks this while a title is already there is asking for
+    // a different one, and refusing would leave the button doing nothing on the very card it was pressed on.
+    [Fact]
+    public void Asking_for_a_title_overwrites_the_one_that_is_there()
+    {
+        Claude.Answer = "A better title";
+
+        var cut = Show();
+
+        Fill(cut, title: "My own words", prompt: "Rename the widget everywhere");
+
+        cut.Find("div.titlerow button").Click();
+
+        TaskViewTests.Title(cut).Should().Be("A better title");
+    }
+
+    private static void Fill(
+        IRenderedComponent<TaskView> cut,
+        string? title = null,
+        string? prompt = null,
+        string? workingDir = null)
+    {
+        if (title is not null)
+            cut.Find("div.titlerow input").Change(title);
+
+        if (prompt is not null)
+            cut.Find("textarea").Change(prompt);
+
+        if (workingDir is not null)
+            cut.Find("div.dirrow input").Change(workingDir);
+    }
+
+    // Submitted through the form rather than by clicking Save, because the button is a submit and the rule
+    // being tested is the form's — a box still submits on Enter whatever the footer offers.
+    private static Task Submit(IRenderedComponent<TaskView> cut) => cut.Find("form").SubmitAsync();
+
+    private IRenderedComponent<TaskView> Show() => Render<TaskView>();
+}

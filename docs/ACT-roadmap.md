@@ -1766,3 +1766,24 @@ Deferred because the two adapters would diverge sharply: one is a working-
 directory change, the other is a third-party tool dependency with its own
 lifecycle. Revisit once the per-card working directory is a first-class
 setting.
+
+## Deferred — Playwright in CI
+
+The browser suite (`docs/playwright-plan.md`) is **run by hand**, decided 2026-08-05. It exists for
+the three things bUnit structurally cannot see — the five JS interop modules, xterm, and one
+full-stack smoke — and none of those is a per-push regression risk in the way component behaviour is.
+The fast suite (unit + contract + bUnit, ~1500 tests in a few seconds) stays blocking on every push;
+this one does not run there at all.
+
+`scripts/build.ps1` excludes it by category, so `dotnet test` on the solution stays fast and a local
+build never needs a browser installed.
+
+To put it in CI later:
+
+- [ ] A **separate job**, not a step in `ci.yml`'s `build-test` — nightly plus `workflow_dispatch`,
+  on `ubuntu-latest`, with `playwright install --with-deps chromium`.
+- [ ] Decide what a failure means. A browser suite that gates every push is how a solo project ends
+  up disabling its own CI; nightly-and-reported is the honest setting until it has proven stable.
+- [ ] Note the CI-cost angle while private: the browser install alone is a minute or two per run.
+
+Until then the spec's *CI (required)* section overstates what runs — see the note there.

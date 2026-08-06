@@ -4,5 +4,5 @@
 4. clean git commit history, remove unnecessary files
 5. make repo public and configure permission
 
-test in-between new prompt while agent is working
-verify exception in log file
+create secret in github for release actions posthog
+verify existing exception in log file on disk
