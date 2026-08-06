@@ -75,6 +75,8 @@ public class WindowsArgumentTests
     }
 
     // The whole argument list, as the pty host sends it — the case that was broken end to end.
+    // Quoted here rather than through `ForCommandLine`, because the rules are the platform's and hold
+    // wherever the tests run, while `ForCommandLine` deliberately builds nothing off Windows.
     [Fact]
     public void A_whole_command_line_of_acts_own_arguments_round_trips()
     {
@@ -89,9 +91,23 @@ public class WindowsArgumentTests
                 + "Say \"hello\" in C:\\Dev\\act\\",
         ];
 
-        var commandLine = string.Join(' ', WindowsArgument.ForCommandLine(arguments));
+        var commandLine = string.Join(' ', arguments.Select(WindowsArgument.Quote));
 
         CommandLineSplitter.Split(commandLine).Should().Equal(arguments);
+    }
+
+    // The gate itself. A command line is a Windows concept; anywhere else the arguments reach `exec`
+    // as an array, and quoting them would put the quotes *inside* the argument.
+    [Fact]
+    public void A_command_line_is_only_built_where_the_platform_re_splits_one()
+    {
+        string[] arguments = ["--flag", """{ "state": ok }"""];
+
+        var expected = OperatingSystem.IsWindows()
+            ? arguments.Select(WindowsArgument.Quote)
+            : arguments.AsEnumerable();
+
+        WindowsArgument.ForCommandLine(arguments).Should().Equal(expected);
     }
 }
 

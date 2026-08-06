@@ -211,9 +211,9 @@ public abstract class ComponentTest : BunitContext, IAsyncLifetime
         where T : ComponentBase
         => cut.InvokeAsync(() => Services.GetRequiredService<DialogService>().Close(result));
 
-    internal sealed record OpenedDialog(Type Dialog, Dictionary<string, object> Parameters);
+    internal sealed record OpenedDialog(Type Dialog, Dictionary<string, object?> Parameters);
 
-    internal sealed record DialogRun<TDialog>(IRenderedComponent<RadzenComponents> Host, Task<dynamic> Result)
+    internal sealed record DialogRun<TDialog>(IRenderedComponent<RadzenComponents> Host, Task<dynamic?> Result)
         where TDialog : ComponentBase
     {
         // Whatever `Close` was given, or null for the X and the overlay — which every caller in ACT

@@ -41,7 +41,7 @@ public class TemplateNameDialogTests : ComponentTest
 
         run.Host.WaitForElement("div.asktemplate input").KeyDown(new KeyboardEventArgs { Key = "Enter" });
 
-        ((object)await run.Result).Should().Be("Rename the widget");
+        ((object?)await run.Result).Should().Be("Rename the widget");
     }
 
     [Fact]

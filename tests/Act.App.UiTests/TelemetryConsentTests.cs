@@ -35,12 +35,12 @@ public class TelemetryConsentTests
     }
 
     [Fact]
-    public void Turning_it_off_stops_the_flush_as_well()
+    public async Task Turning_it_off_stops_the_flush_as_well()
     {
         var (sink, transport, settings) = SinkOf();
 
         settings.SetTelemetry(false);
-        sink.FlushAsync().GetAwaiter().GetResult();
+        await sink.FlushAsync();
 
         transport.Flushes.Should().Be(0);
     }
@@ -81,7 +81,7 @@ public class TelemetryConsentTests
     // Shutdown sends nothing of its own — it exists to push what the run already queued, which a
     // batch that never left would otherwise take with it.
     [Fact]
-    public void A_shutdown_flushes_without_reporting_anything_new()
+    public async Task A_shutdown_flushes_without_reporting_anything_new()
     {
         var (_, transport, settings) = SinkOf();
         var pump = Pump(transport, settings);
@@ -90,21 +90,21 @@ public class TelemetryConsentTests
 
         var queued = transport.Captured.Count;
 
-        pump.DisposeAsync().GetAwaiter().GetResult();
+        await pump.DisposeAsync();
 
         transport.Captured.Should().HaveCount(queued);
         transport.Flushes.Should().Be(1);
     }
 
     [Fact]
-    public void A_pump_disposed_twice_flushes_once()
+    public async Task A_pump_disposed_twice_flushes_once()
     {
         var (_, transport, settings) = SinkOf();
         var pump = Pump(transport, settings);
 
         pump.Start();
-        pump.DisposeAsync().GetAwaiter().GetResult();
-        pump.DisposeAsync().GetAwaiter().GetResult();
+        await pump.DisposeAsync();
+        await pump.DisposeAsync();
 
         transport.Flushes.Should().Be(1);
     }

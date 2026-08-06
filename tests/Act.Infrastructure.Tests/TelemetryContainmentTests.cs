@@ -218,6 +218,8 @@ public class TelemetryContainmentTests
         var provider = services.BuildServiceProvider();
         var gate = provider.GetRequiredService<IOptions<PostHogOptions>>().Value.BeforeSend;
 
+        gate.Should().NotBeNull();
+
         provider.Dispose();
 
         gate(Sample()).Should().BeNull();
@@ -243,6 +245,8 @@ public class TelemetryContainmentTests
 
         var provider = services.BuildServiceProvider();
         var gate = provider.GetRequiredService<IOptions<PostHogOptions>>().Value.BeforeSend;
+
+        gate.Should().NotBeNull();
 
         provider.Dispose();
 

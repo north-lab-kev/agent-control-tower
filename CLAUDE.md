@@ -129,6 +129,12 @@ then `preview_start` with `{"url": "http://localhost:5290"}`. Both flags reach
 
 ## Coding conventions
 
+- **The build must end with zero warnings.** Not "no new warnings" — zero, tests
+  included. Before you report a change as done, run
+  `dotnet build Act.slnx -c Debug` and check the count; fix whatever you
+  introduced, and fix what is already there if you touched the file. Suppress a
+  warning (`#pragma`, `NoWarn`) only when the analyzer is genuinely wrong, and say
+  so in the reply.
 - **Always use a code-behind `.razor.cs` file** for component logic — never an
   `@code` block inside the `.razor` file. Markup stays in `.razor`, C# stays in
   the partial class.

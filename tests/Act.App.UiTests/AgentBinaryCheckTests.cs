@@ -11,6 +11,15 @@ namespace Act.App.UiTests;
 // fail with "not found" for a CLI sitting on the disk.
 public class AgentBinaryCheckTests
 {
+    // `Path.IsPathRooted` and the separators are the running platform's, and the check is deliberately
+    // written in those terms — so a path spelled the Windows way is a *bare name* on the Linux CI, and
+    // the test would assert the wrong branch. Spell it the way the platform running it does.
+    private static readonly string InstalledPath =
+        OperatingSystem.IsWindows() ? @"C:\tools\codex.exe" : "/tools/codex";
+
+    private static readonly string AbsentPath =
+        OperatingSystem.IsWindows() ? @"C:\nope\codex.exe" : "/nope/codex";
+
     [Fact]
     public void An_empty_box_is_only_on_PATH_when_the_name_really_resolves()
         => AgentBinaryCheck.For(new FakeExecutableProbe(), Adapter(AgentInstall.OnPath), string.Empty)
@@ -21,11 +30,11 @@ public class AgentBinaryCheckTests
     {
         var state = AgentBinaryCheck.For(
             new FakeExecutableProbe(),
-            Adapter(AgentInstall.At(@"C:\tools\codex.exe")),
+            Adapter(AgentInstall.At(InstalledPath)),
             string.Empty);
 
         state.Status.Should().Be(AgentBinaryStatus.NotOnPath);
-        state.DiscoveredPath.Should().Be(@"C:\tools\codex.exe");
+        state.DiscoveredPath.Should().Be(InstalledPath);
     }
 
     [Fact]
@@ -36,14 +45,14 @@ public class AgentBinaryCheckTests
     [Fact]
     public void A_typed_path_that_exists_is_found()
         => AgentBinaryCheck.For(
-                new FakeExecutableProbe { Files = { @"C:\tools\codex.exe" } },
+                new FakeExecutableProbe { Files = { InstalledPath } },
                 Adapter(AgentInstall.Missing),
-                @"C:\tools\codex.exe")
+                InstalledPath)
             .Status.Should().Be(AgentBinaryStatus.Found);
 
     [Fact]
     public void A_typed_path_that_does_not_exist_is_not_found()
-        => AgentBinaryCheck.For(new FakeExecutableProbe(), Adapter(AgentInstall.OnPath), @"C:\nope\codex.exe")
+        => AgentBinaryCheck.For(new FakeExecutableProbe(), Adapter(AgentInstall.OnPath), AbsentPath)
             .Status.Should().Be(AgentBinaryStatus.NotFound);
 
     // A bare name is resolved the way the launch resolves it, not treated as a path that is missing.
