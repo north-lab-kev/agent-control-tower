@@ -817,8 +817,8 @@ on a board whose whole point is that there are several.
 - **Exactly one template is the default, and it is a restricted one.** It is what the plain
   **New task** button uses, so a store without one is a board whose New-task button has nothing
   to start from — `UserSettingsService` seeds it on the way in rather than leaving it to the
-  pages that rely on it, because a fresh install has no settings document at all and the schema
-  migration only rewrites documents it finds. Three things about it are not the user's:
+  pages that rely on it, because a fresh install has no settings document at all for it to be
+  read from. Three things about it are not the user's:
   - **It cannot be deleted.**
   - **It cannot be renamed, and its name is not stored.** It reads as *Default* / *Par défaut*
     from the resources (`TaskLabels.Template`), so it follows the UI language instead of freezing
@@ -877,9 +877,11 @@ on a board whose whole point is that there are several.
   template — and the settings document is already loaded once at startup. A collection would
   have bought a port, a store, a cache and an async load for a list that is a handful of items
   long.
-- **`TaskDefaults` → `Templates` is the store's first real migration** (schema 1 → 2), rather
-  than the fresh-`act.db` answer the pre-release rule still allows: the change is mechanical and
-  the board it would have cost is the user's. See `docs/design-notes.md` for how it is written.
+- **`TaskDefaults` → `Templates` was the store's first real migration** (schema 1 → 2), and it is
+  gone: the migration list was emptied on 2026-08-06 so that **schema 1 is the release baseline**
+  and every install starts on a store this build created. The migration machinery stays for the
+  first breaking change after the release. See `docs/design-notes.md` for what it cost and for the
+  rules the next entry has to obey.
 
 ### Attachments — added 2026-08-04
 

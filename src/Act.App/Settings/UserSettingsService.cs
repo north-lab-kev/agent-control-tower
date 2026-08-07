@@ -178,11 +178,11 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
     // The invariants every reader leans on, seeded before anything can read a settings object without
     // them: exactly one default template, and an install id.
     //
-    // A fresh install has no settings document at all and the schema migration only rewrites the
-    // documents it finds, so both are established here rather than in a migration — an id generated
-    // when it is missing is a seed, not a second stored shape, and after this runs there is no code
-    // path that has to ask whether it is there. It also re-applies `Restrict`, which is what clears a
-    // name, title or prompt an earlier build let the default template keep.
+    // A fresh install has no settings document at all, so neither can come from the store and neither
+    // is a schema concern — a value generated when it is missing is a seed, not a second stored shape,
+    // and after this runs there is no code path that has to ask whether it is there. It also
+    // re-applies `Restrict`, which is what clears a name, title or prompt the default template must
+    // never carry.
     private static UserSettings Seeded(ISettingsStore store)
     {
         var settings = store.Load();

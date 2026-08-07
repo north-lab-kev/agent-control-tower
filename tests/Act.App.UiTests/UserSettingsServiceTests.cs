@@ -155,7 +155,7 @@ public class UserSettingsServiceTests
 
     // The invariant every reader of a template leans on: there is always exactly one default, so
     // nothing has to handle its absence. A fresh install has no settings document at all, which is why
-    // it is seeded on the way in rather than by the schema migration.
+    // it is seeded on the way in rather than read from the store.
     [Fact]
     public void A_fresh_install_already_has_one_default_template()
     {
@@ -512,8 +512,8 @@ public class UserSettingsServiceTests
         settings.MaxConcurrent.Should().Be(9);
     }
 
-    // Seeded rather than migrated: a fresh install has no settings document for a migration to find,
-    // so the id is established on the way in and every reader can assume it.
+    // Seeded, not stored: a fresh install has no settings document to read one from, so the id is
+    // established on the way in and every reader can assume it.
     [Fact]
     public void A_fresh_install_is_given_an_install_id_and_keeps_it()
     {
