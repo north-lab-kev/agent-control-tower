@@ -310,7 +310,37 @@ Content-type"* — a 400 that says nothing true about what happened.
 
 ---
 
-## Background work
+## The desktop shell
+
+### The splash screen is the Electron host's, not ACT's — decided 2026-08-07
+
+The splash is a PNG named by `<ElectronSplashScreen>` in `Act.App.csproj`. The ElectronNET.Core
+build targets copy it into the `.electron` output and write it into the host manifest's
+`splashscreen.imageFile`; the host's `main.js` then shows it inside `app.on('ready')` — before the
+socket bridge is up and, in the packaged build, before the .NET backend has even been spawned.
+That earliest-possible paint is the whole point, and it is why the splash is **not** a
+`DesktopShell` window: anything C# creates has to wait for the web host to boot, the board to load
+and the Electron bridge to connect, which is most of the time the splash exists to cover.
+
+The price, accepted deliberately (speed was chosen over placement):
+
+- **It always centres on the primary display.** The manifest splash knows nothing about the
+  remembered window bounds, so on a multi-monitor setup it may flash on a different screen than
+  the one the main window then opens on.
+- **It dies at window *creation*, not window *show*.** `main.js` destroys it on the first
+  `browser-window-created`, and `DesktopShell` creates the main window hidden and shows it at
+  `ready-to-show` — so there is a blank gap while the Blazor page loads. Nothing on the C# side
+  can extend the splash across it; the handler is the package's.
+- **Size comes from the image.** The manifest's `width`/`height` fields exist in `main.js` but the
+  package template never writes them, and an `.html` splash falls back to a fixed 800×600 — which
+  is why the splash is a PNG (window is sized to its pixel dimensions, transparent, frameless) and
+  not a themable page.
+
+The image itself is generated, not drawn by hand: dark title-bar gradient, the favicon mark, the
+wordmark's tracking and the mono full name, matching `MainLayout`'s brand strip. One language is
+baked in; that loses nothing today because `Shell_FullName` is identical in both resx files.
+`SplashScreenTests` pins the csproj property, the file's existence, and that the PNG stays within
+the smallest work area the app itself accepts (1000×320), since nothing compiles against any of it.
 
 ### Five pumps, one lifetime — consolidated 2026-08-02
 
