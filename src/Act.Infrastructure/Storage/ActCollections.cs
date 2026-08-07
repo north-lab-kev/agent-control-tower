@@ -9,4 +9,6 @@ internal static class ActCollections
     public const string Schema = "schema";
 
     public const string Settings = "settings";
+
+    public const string Endpoint = "endpoint";
 }

@@ -12,7 +12,7 @@ internal static class ActBsonMapper
 
     public static BsonMapper Create()
     {
-        var mapper = new BsonMapper();
+        var mapper = new BsonMapper { EmptyStringToNull = false };
 
         mapper.RegisterType<DateTimeOffset>(
             value => value.ToString(RoundTrip, CultureInfo.InvariantCulture),
@@ -25,7 +25,13 @@ internal static class ActBsonMapper
 
         mapper.Entity<Card>()
             .Ignore(card => card.NeedsAttention)
-            .Ignore(card => card.IsDeleted);
+            .Ignore(card => card.IsDeleted)
+            .Ignore(card => card.IsAutoArchived)
+            .Ignore(card => card.IsOnBoard);
+
+        mapper.Entity<TaskAttachment>()
+            .Ignore(attachment => attachment.IsImage)
+            .Ignore(attachment => attachment.ImageContentType);
 
         mapper.Entity<CardMetrics>()
             .Ignore(metrics => metrics.TokensTotal)

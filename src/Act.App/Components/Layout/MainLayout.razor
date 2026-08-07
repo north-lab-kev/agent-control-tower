@@ -1,25 +1,28 @@
 @inherits LayoutComponentBase
 
-<div class="act-root" data-act-theme="@ThemeAttribute">
+<div class="act-root">
     <RadzenComponents />
 
     <div class="shell">
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
-                     JustifyContent="JustifyContent.SpaceBetween" Gap="0.75rem" class="bar">
+                     JustifyContent="JustifyContent.SpaceBetween" Gap="0.75rem" class="bar titlebar">
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
-                         Gap="0.55rem" class="brand">
+                         Gap="0.5rem" class="brand">
                 <RadzenImage Path="@MarkPath" AlternateText="" class="mark" />
                 <RadzenText TextStyle="TextStyle.H6" Text="ACT" class="wordmark" />
                 <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Shell_FullName" class="fullname" />
             </RadzenStack>
 
-            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.6rem">
-                <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base"
-                             Text="@Strings.Shell_AutoExecOn" class="statchip live" />
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                         JustifyContent="JustifyContent.Center" Gap="0.5rem" class="usagegroup">
+                <UsageIndicator />
+            </RadzenStack>
 
-                <RadzenButton Icon="add" Text="@Strings.Shell_NewTask" ButtonStyle="ButtonStyle.Base"
-                              Variant="Variant.Outlined" Size="ButtonSize.Small" Click="OpenNewTask"
-                              class="newtaskbtn" aria-label="@Strings.Shell_NewTask" />
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                         JustifyContent="JustifyContent.End" Gap="0.5rem" class="actions">
+                <RadzenButton Icon="bookmarks" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                              Size="ButtonSize.Small" Click="OpenTemplates" class="gear"
+                              title="@Strings.Templates_Title" aria-label="@Strings.Templates_Title" />
 
                 <RadzenButton Icon="inventory_2" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
                               Size="ButtonSize.Small" Click="OpenArchive" class="gear"
@@ -33,7 +36,9 @@
 
         <main>
             <CascadingValue Value="Density" Name="Density">
-                @Body
+                <CascadingValue Value="BlinkYourTurn" Name="BlinkYourTurn">
+                    @Body
+                </CascadingValue>
             </CascadingValue>
         </main>
     </div>

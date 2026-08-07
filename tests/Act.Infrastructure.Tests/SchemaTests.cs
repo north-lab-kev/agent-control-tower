@@ -20,22 +20,6 @@ public class SchemaTests
     }
 
     [Fact]
-    public void A_store_written_before_versioning_is_stamped_on_open()
-    {
-        using var temp = new TempDirectory();
-
-        Directory.CreateDirectory(temp.Path);
-
-        using (var legacy = new LiteDatabase(DatabasePath(temp.Path)))
-            legacy.GetCollection("settings").Insert(new BsonDocument { ["_id"] = 1 });
-
-        using (var provider = Provider(temp.Path))
-            provider.GetRequiredService<ICardStore>();
-
-        StoredVersion(temp.Path).Should().Be(ActSchema.CurrentVersion);
-    }
-
-    [Fact]
     public void A_store_from_a_newer_build_is_rejected()
     {
         using var temp = new TempDirectory();

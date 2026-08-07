@@ -58,5 +58,5 @@ shell.
 Contributions are accepted under a Contributor License Agreement / Developer
 Certificate of Origin (protects future dual-licensing). *Exact mechanism TBD.*
 
-See [docs/ACT-overview.md](docs/ACT-overview.md) for the spec and
-[docs/ACT-roadmap.md](docs/ACT-roadmap.md) for the build sequence.
+See [docs/overview.md](docs/overview.md) for the spec and
+[docs/roadmap.md](docs/roadmap.md) for the build sequence.

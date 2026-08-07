@@ -10,8 +10,8 @@ act on it.
 
 Early scaffolding. The design is complete; implementation has not started. See:
 
-- [docs/ACT-overview.md](docs/ACT-overview.md) — the full specification
-- [docs/ACT-roadmap.md](docs/ACT-roadmap.md) — the 16-step build plan
+- [docs/overview.md](docs/overview.md) — the full specification
+- [docs/roadmap.md](docs/roadmap.md) — the 16-step build plan
 - [docs/repository-structure.md](docs/repository-structure.md) — this layout, explained
 
 ## Tech stack

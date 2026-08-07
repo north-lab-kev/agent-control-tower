@@ -3,14 +3,16 @@ using Act.Core.Model;
 namespace Act.Core.Abstractions;
 
 // `SessionId` is pre-minted by ACT so the binding exists before the process does.
-// `Preamble` stays separate from `InitialPrompt` because how it reaches the agent is the
-// adapter's call — prepended to the prompt, a system-prompt flag, a settings file.
+// `InitialPrompt` is the user's task text and nothing else — ACT injects no instruction
+// block of its own, so the opening prompt carries no ACT-authored preamble.
 // `Size` travels with the request because a pseudo-terminal is sized at spawn.
+// `Attachments` is the user's own files, which each adapter delivers its own way — see
+// `AttachmentInstruction`.
 public sealed record AgentLaunchRequest(
     Guid TaskId,
     string SessionId,
     string WorkingDir,
-    string Preamble,
     string InitialPrompt,
     LaunchConfig Config,
-    TerminalSize Size);
+    TerminalSize Size,
+    AgentAttachments? Attachments = null);

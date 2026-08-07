@@ -1,17 +1,15 @@
-<!-- Placeholder PR template. -->
-
 ## What & why
 
+<!-- What this changes, and the problem it solves. Link the issue it closes: "Closes #12". -->
 
 
-## Roadmap step
+## Agent(s) concerned
 
-<!-- e.g. Step 4 — Static board -->
+<!-- Claude Code / Codex / both / not agent-specific. If it touches one adapter, say whether the
+     other one needs the same change. -->
 
-## Checklist
 
-- [ ] Respects the dependency direction (`Act.Core` references nothing below it).
-- [ ] Uses the spec's domain vocabulary (cards, columns, badges, transitions, adapters, sources).
-- [ ] Tests added/updated; fast suite green.
-- [ ] `dotnet format` clean.
-- [ ] The step's *verify* line was checked.
+## Notes for the reviewer
+
+<!-- Screenshots for UI changes, anything deliberately left out, follow-ups, or a decision you want
+     challenged. -->

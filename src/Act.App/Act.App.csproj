@@ -17,6 +17,7 @@
     <PackageReference Include="ElectronNET.Core" />
     <PackageReference Include="ElectronNET.Core.AspNet" />
     <PackageReference Include="Microsoft.CodeAnalysis.ResxSourceGenerator" PrivateAssets="all" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
     <PackageReference Include="Radzen.Blazor" />
   </ItemGroup>
 
@@ -26,6 +27,13 @@
 
   <ItemGroup>
     <AdditionalFiles Include="Resources\Strings.resx" GenerateSource="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Act.App.UiTests" />
+
+    <!-- Top-level statements compile to an internal Program, and WebApplicationFactory<Program> needs it. -->
+    <InternalsVisibleTo Include="Act.App.E2eTests" />
   </ItemGroup>
 
   <ItemGroup>

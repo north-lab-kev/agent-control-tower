@@ -23,7 +23,7 @@ public sealed class MockAgentAdapter(
 
     public AgentCapabilities Capabilities { get; } = capabilities ?? DefaultCapabilities();
 
-    public AgentScript Script { get; set; } = AgentScript.Start().EndsTurn(TurnOutcome.ReadyForReview);
+    public AgentScript Script { get; set; } = AgentScript.Start().EndsTurn();
 
     public List<AgentLaunchRequest> Launches { get; } = [];
 
@@ -38,7 +38,7 @@ public sealed class MockAgentAdapter(
             new AgentModel(DeepModel, "Mock Deep", ["low", "high", "max"], "high"),
         ],
         FastModel,
-        new HashSet<PermissionMode>(Enum.GetValues<PermissionMode>()),
+        Enum.GetValues<PermissionMode>(),
         DesktopHandoff: true);
 
     public string? DesktopHandoffUrl(string sessionId, string workingDir)
@@ -46,6 +46,17 @@ public sealed class MockAgentAdapter(
 
     public LaunchConfigResolution Resolve(LaunchConfig config)
         => LaunchConfigResolver.Resolve(Agent, Capabilities, config);
+
+    // Whatever a test needs discovery to have found. On PATH by default, which is the shape that
+    // makes ACT change nothing.
+    public AgentInstall Install { get; set; } = AgentInstall.OnPath;
+
+    // A spawn that throws — a binary that moved, a working directory that vanished, a transcript the
+    // CLI refused to resume. Distinct from a refused *resolution*, which never reaches the adapter:
+    // this is the failure that happens after ACT has committed to starting something.
+    public Exception? Fails { get; set; }
+
+    public AgentInstall Locate(IExecutableProbe probe) => Install;
 
     public Task<IAgentSession> LaunchAsync(
         AgentLaunchRequest request,
@@ -69,8 +80,32 @@ public sealed class MockAgentAdapter(
             new MockAgentSession(request.TaskId, request.SessionId, Script, clock));
     }
 
+    // Whatever a test needs a query to come back with. Null is the failure shape — a CLI that is not
+    // there — and it is the one every caller has to survive, so it stays easy to ask for.
+    public string? Answer { get; set; } = "Mock title";
+
+    public List<AgentQueryRequest> Queries { get; } = [];
+
+    // Separate from `Fails`, which is about a spawn: a query has a failure of its own — a binary that
+    // is not there at all — and its callers are supposed to survive that rather than propagate it.
+    public Exception? QueryFails { get; set; }
+
+    public Task<string?> QueryAsync(
+        AgentQueryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        Queries.Add(request);
+
+        return QueryFails is { } failure
+            ? Task.FromException<string?>(failure)
+            : Task.FromResult(Answer);
+    }
+
     private void Refuse(LaunchConfig config)
     {
+        if (Fails is { } failure)
+            throw failure;
+
         var resolution = Resolve(config);
         if (resolution.CanLaunch)
             return;

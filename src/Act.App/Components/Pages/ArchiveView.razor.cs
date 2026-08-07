@@ -2,6 +2,7 @@ using System.Globalization;
 using Act.App.Cards;
 using Act.App.Resources;
 using Act.Core.Model;
+using Act.Core.Rules;
 using Microsoft.AspNetCore.Components;
 using Radzen;
 
@@ -19,7 +20,30 @@ public partial class ArchiveView(
 
     private bool duplicating;
 
+    private bool seeded;
+
+    private string query = string.Empty;
+
+    // The board hands its query over rather than making the user type it twice — it is the same
+    // question, asked of the half of the store the board cannot show.
+    [SupplyParameterFromQuery(Name = "q")]
+    private string? InitialQuery { get; set; }
+
+    private bool Filtering => CardSearch.IsActive(query);
+
+    private IReadOnlyList<Card> Rows => CardSearch.Filter(board.Archived, query);
+
     protected override void OnInitialized() => board.Changed += OnChanged;
+
+    // Once: a cascading value changing must not throw away what the user has typed since.
+    protected override void OnParametersSet()
+    {
+        if (seeded)
+            return;
+
+        seeded = true;
+        query = InitialQuery ?? string.Empty;
+    }
 
     public void Dispose() => board.Changed -= OnChanged;
 
@@ -80,14 +104,16 @@ public partial class ArchiveView(
 
     private void BackToBoard() => navigation.NavigateTo("/");
 
-    // Where it came from and when it went — enough to recognise a card you deleted without opening
-    // it, which is the whole job of this list.
+    // Where it came from, when it went, and whether the user or the retention window put it here —
+    // enough to recognise a card without opening it, which is the whole job of this list.
     private static string Meta(Card card)
     {
-        var deleted = card.DeletedAt?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+        var at = (card.DeletedAt ?? card.ArchivedAt)?.ToLocalTime().ToString("g", CultureInfo.CurrentCulture);
+        var how = card.IsDeleted ? null : Strings.Archive_AutoArchived;
 
         return string.Join(
             " · ",
-            new[] { card.Column.ToString(), card.WorkingDir, deleted }.Where(part => !string.IsNullOrWhiteSpace(part)));
+            new[] { CardVisuals.Column(card.Column), card.WorkingDir, at, how }
+                .Where(part => !string.IsNullOrWhiteSpace(part)));
     }
 }

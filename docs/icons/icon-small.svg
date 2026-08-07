@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="ACT — Agent Control Tower">
+  <!-- Small-size variant of icon.svg, for 16–24px (favicon, tray, tab). Two heavier rings
+       instead of three, no crosshair, no afterglow wedge, no blip, and a flat tile instead of a
+       gradient one: every one of those reads as mud below ~40px. Above 40px use icon.svg. -->
+
+  <!-- app tile -->
+  <rect x="16" y="16" width="480" height="480" rx="116" fill="#0d1217" stroke="#26333f" stroke-width="2"/>
+
+  <!-- radar rings -->
+  <g fill="none" stroke="#f2a93b" stroke-width="16">
+    <circle cx="256" cy="256" r="150" opacity="0.5"/>
+    <circle cx="256" cy="256" r="78" opacity="0.85"/>
+  </g>
+
+  <!-- sweep leading edge -->
+  <line x1="256" y1="256" x2="410" y2="150" stroke="#35c7b4" stroke-width="18" stroke-linecap="round"/>
+
+  <!-- hub -->
+  <circle cx="256" cy="256" r="26" fill="#f2a93b"/>
+</svg>

@@ -12,15 +12,27 @@ public static class CardDuplicate
     {
         Title = title,
         InitialPrompt = card.InitialPrompt,
+
+        // The list is copied here; the files behind it are copied by `BoardState.DuplicateAsync`,
+        // because a directory per card is a store concern and the core touches no filesystem.
+        Attachments =
+        [
+            .. card.Attachments.Select(attachment => new TaskAttachment
+            {
+                FileName = attachment.FileName,
+                Length = attachment.Length,
+                AddedAt = attachment.AddedAt,
+            }),
+        ],
         WorkingDir = card.WorkingDir,
         AgentType = card.AgentType,
         LaunchConfig = card.LaunchConfig.Copy(),
         Schedule = card.Schedule,
         ScheduledFor = card.ScheduledFor,
-        AutoComplete = card.AutoComplete,
         AutoGit = card.AutoGit is { } git
             ? new AutoGitOptions { Action = git.Action, Draft = git.Draft }
             : null,
+        AllowConcurrentWorkingDir = card.AllowConcurrentWorkingDir,
         Column = BoardColumn.Preparing,
         Origin = TaskOrigin.Manual,
         CreatedAt = createdAt,

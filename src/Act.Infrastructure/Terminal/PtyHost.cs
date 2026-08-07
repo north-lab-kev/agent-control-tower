@@ -24,7 +24,14 @@ public sealed class PtyHost(IWorkingDirectories directories) : IPtyHost
         {
             Name = "ACT",
             App = ExecutableResolver.Resolve(startInfo.Executable),
-            CommandLine = [.. startInfo.Arguments],
+
+            // ACT quotes its own arguments and the transport passes them through, because the
+            // transport's escaping doubles quotes and Claude Code's parser truncates the argument
+            // there. Done here rather than in the adapters: what a command line does to a quote is a
+            // fact about the platform, not about the agent, and adapters hand over argument *values*.
+            // See `WindowsArgument` for what this was silently costing.
+            VerbatimCommandLine = WindowsArgument.NeedsQuoting,
+            CommandLine = [.. WindowsArgument.ForCommandLine(startInfo.Arguments)],
             Cwd = workingDir,
             Cols = startInfo.Size.Cols,
             Rows = startInfo.Size.Rows,

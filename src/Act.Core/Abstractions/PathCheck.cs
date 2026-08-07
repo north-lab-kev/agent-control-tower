@@ -11,3 +11,19 @@ public sealed record PathCheck(bool WellFormed, bool Exists, string Resolved, st
 
     public static PathCheck Found(string resolved) => new(true, true, resolved, null);
 }
+
+// Keys rather than sentences: the UI localizes them, and infrastructure has no business
+// composing user-facing prose. Beside `PathCheck` because they are the vocabulary of its `Error`,
+// and a UI reading one must not have to reference infrastructure to name the other.
+public static class PathError
+{
+    public const string Empty = "empty";
+
+    public const string NotAbsolute = "not-absolute";
+
+    public const string Malformed = "malformed";
+
+    public const string Missing = "missing";
+
+    public const string Unreadable = "unreadable";
+}

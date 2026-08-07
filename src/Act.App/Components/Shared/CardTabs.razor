@@ -1,0 +1,14 @@
+@* Routes, not panels — each face of a card is its own url, so these are links that happen to look
+   like tabs rather than a tab container with content in it. `NavLink` marks the current one, which
+   keeps "which tab am I on" out of C# entirely. *@
+<nav class="cardtabs">
+    <NavLink class="tab" href="@Href(CardSurface.Task)" Match="NavLinkMatch.All">
+        @Strings.Card_Surface_Task
+    </NavLink>
+    <NavLink class="tab" href="@Href(CardSurface.Terminal)" Match="NavLinkMatch.All">
+        @Strings.Card_Surface_Terminal
+    </NavLink>
+    <NavLink class="tab" href="@Href(CardSurface.Timeline)" Match="NavLinkMatch.All">
+        @Strings.Card_Surface_Timeline
+    </NavLink>
+</nav>

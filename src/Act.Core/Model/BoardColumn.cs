@@ -5,7 +5,6 @@ public enum BoardColumn
     Preparing,
     Ready,
     Executing,
-    NeedsFeedback,
-    ToReview,
+    YourTurn,
     Completed,
 }

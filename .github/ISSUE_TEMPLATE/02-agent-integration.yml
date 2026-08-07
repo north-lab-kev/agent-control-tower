@@ -1,0 +1,120 @@
+name: Agent / CLI integration
+description: An agent adapter stopped matching its CLI (usage, titles, hooks, transcripts, launch), or you want a new agent supported.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this when the problem is the seam between ACT and a coding-agent CLI
+        rather than ACT's own UI or storage. Most of these break because the CLI
+        changed under a measured assumption — the assumptions and their re-test
+        checklists live in [`docs/findings/`](https://github.com/north-lab-kev/agent-control-tower/tree/main/docs/findings).
+
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Which agent is concerned
+      options:
+        - Claude Code
+        - Codex
+        - Both
+        - A new agent, not supported yet
+    validations:
+      required: true
+
+  - type: input
+    id: new-agent
+    attributes:
+      label: New agent name and CLI
+      description: Only if you picked *A new agent*. Name, repo or docs URL, and the non-interactive invocation it supports.
+      placeholder: "e.g. Aider — https://… — `aider --message …`"
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: What broke
+      options:
+        - Usage — the 5-hour or weekly numbers are wrong, stale or missing
+        - Title — the auto-generated card title is empty, garbled or hangs
+        - Hooks — state transitions do not fire, or fire late
+        - Transcript — the tail is empty, truncated or misparsed
+        - Launch / attach — the session does not start, or ACT attaches to the wrong one
+        - Install detection — ACT cannot find the CLI, or reports the wrong version
+        - Models — the model list or the selected model is wrong
+        - Authentication — login/credential errors surfaced by ACT
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: cli-version-now
+    attributes:
+      label: CLI version where it fails
+      description: Output of `claude --version` / `codex --version`.
+    validations:
+      required: true
+
+  - type: input
+    id: cli-version-before
+    attributes:
+      label: Last CLI version where it worked
+      description: Leave blank if you never saw it work.
+
+  - type: textarea
+    id: observed
+    attributes:
+      label: What ACT shows vs. what the CLI reports
+      description: |
+        Run the same thing outside ACT and compare. Paste both sides — the
+        number, title or event ACT displays, and what the CLI itself produces.
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log file
+      description: |
+        **Attach `act-<yyyyMMdd>.log`** (drag it into this field; zip it if
+        large). Find it via **Settings → Log files → Open log folder**, or at
+        `%LOCALAPPDATA%\ACT\logs\` on Windows — a development build uses
+        `ACT.Development`, a custom `ACT_DATA_DIR` uses `<that directory>\logs`.
+
+        The adapter logs the command line it ran and the raw response it could
+        not read, which is usually the whole answer for this class of bug.
+      placeholder: Drop the .log file here, or explain why it is not attached.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: log-redacted
+    attributes:
+      label: Log and paste contents
+      options:
+        - label: I removed anything sensitive — and in particular **no API keys, tokens or credential-file contents** are included.
+          required: true
+
+  - type: input
+    id: act-version
+    attributes:
+      label: ACT version or commit
+      placeholder: "v0.1.0 or 082d0a0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Relevant CLI config (hook settings, profiles), and whether a plain CLI run reproduces it without ACT.

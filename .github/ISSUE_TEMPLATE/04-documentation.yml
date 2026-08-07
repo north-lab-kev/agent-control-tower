@@ -1,0 +1,41 @@
+name: Documentation
+description: Something in the docs is wrong, missing, out of date, or contradicts the code.
+labels: ["documentation"]
+body:
+  - type: dropdown
+    id: doc
+    attributes:
+      label: Which document
+      options:
+        - README.md
+        - CONTRIBUTING.md
+        - docs/overview.md — the spec
+        - docs/roadmap.md
+        - docs/repository-structure.md
+        - docs/design-notes.md
+        - docs/findings/* — measured CLI behaviour
+        - In-app text / translations
+        - Other or several
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Where
+      description: Section heading, line number or a permalink.
+      placeholder: "docs/overview.md — 'Rules engine', third paragraph"
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong
+      description: If the docs and the code disagree, say which one you believe is right and why.
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested wording
+      description: Optional, but the fastest path to a fix.

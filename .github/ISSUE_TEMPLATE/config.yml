@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Specification — docs/overview.md
+    url: https://github.com/north-lab-kev/agent-control-tower/blob/main/docs/overview.md
+    about: The authoritative state model, data model, ingestion and UI direction. Read it before reporting behaviour as wrong or proposing a change.
+  - name: Findings — measured CLI behaviour
+    url: https://github.com/north-lab-kev/agent-control-tower/tree/main/docs/findings
+    about: Where the usage numbers, one-shot titles and Codex hooks come from, including the traps already known and the alternatives rejected.
+  - name: Contributing — prerequisites and ground rules
+    url: https://github.com/north-lab-kev/agent-control-tower/blob/main/CONTRIBUTING.md
+    about: .NET 10 SDK and Node.js setup, the dependency direction a change must respect, and the test stack.

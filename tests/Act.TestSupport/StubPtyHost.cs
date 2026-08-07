@@ -11,13 +11,16 @@ public sealed class StubPtyHost : IPtyHost
 
     public PtyStartInfo Last => Started[^1];
 
+    public StubPtyProcess LastProcess { get; private set; } = new();
+
     public Task<IPtyProcess> StartAsync(
         PtyStartInfo startInfo,
         CancellationToken cancellationToken = default)
     {
         Started.Add(startInfo);
+        LastProcess = new StubPtyProcess();
 
-        return Task.FromResult<IPtyProcess>(new StubPtyProcess());
+        return Task.FromResult<IPtyProcess>(LastProcess);
     }
 }
 
@@ -27,7 +30,6 @@ public sealed class StubPtyProcess : IPtyProcess
 
     public List<TerminalSize> Resizes { get; } = [];
 
-    public bool Killed { get; private set; }
 
     public int ProcessId => 4242;
 
@@ -45,13 +47,6 @@ public sealed class StubPtyProcess : IPtyProcess
     }
 
     public void Resize(int cols, int rows) => Resizes.Add(new TerminalSize(cols, rows));
-
-    public Task KillAsync(CancellationToken cancellationToken = default)
-    {
-        Killed = true;
-
-        return Task.CompletedTask;
-    }
 
     public async Task EmitAsync(string chunk)
     {

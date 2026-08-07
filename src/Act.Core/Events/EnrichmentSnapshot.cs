@@ -5,8 +5,6 @@ namespace Act.Core.Events;
 // not "zero".
 public sealed record EnrichmentSnapshot
 {
-    public string? LastMessage { get; init; }
-
     public string? ObservedModel { get; init; }
 
     public long? TokensIn { get; init; }

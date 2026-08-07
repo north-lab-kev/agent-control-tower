@@ -1,7 +1,0 @@
-::deep .surfaceswitch .rz-button {
-    font-family: var(--act-mono);
-    font-size: 0.62rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    padding: 0.15rem 0.55rem;
-}

@@ -3,18 +3,12 @@ using Act.Core.Model;
 
 namespace Act.Agents.Codex;
 
-// Transcribed from `codex debug models` on codex-cli 0.146.0-alpha.3.1. Note each model
-// carries a different effort ladder — that asymmetry is why `AgentCapabilities` models effort
-// per model rather than per agent. `codex-auto-review` is omitted: the catalog marks it
-// `visibility: hide`, so it is not a model a user picks.
+// A pinned snapshot of `codex debug models` on codex-cli 0.146.0-alpha.3.1, and a thing to
+// re-check on a version bump. Each model carries a different effort ladder — that asymmetry is why
+// `AgentCapabilities` models effort per model rather than per agent.
 //
-// Pinned on purpose, and staying that way. Codex does publish this list at runtime — `codex
-// debug models` renders it, and the CLI caches the same JSON at `$CODEX_HOME/models_cache.json`
-// — but neither is a contract ACT is party to: an internal cache whose schema can move under a
-// CLI upgrade would fail back to this list silently, which is the same staleness wearing a
-// costume. A pinned list is at least honest about being a snapshot, and re-checking it is a line
-// on the CLI-upgrade checklist. Claude Code publishes nothing comparable at all — see
-// ClaudeCodeCapabilities.
+// Pinned rather than read at runtime on purpose; `docs/design-notes.md` says why the CLI's own
+// cache is not a contract ACT can lean on.
 public static class CodexCapabilities
 {
     private static readonly IReadOnlyList<string> ThroughXHigh = ["low", "medium", "high", "xhigh"];
@@ -24,6 +18,18 @@ public static class CodexCapabilities
     private static readonly IReadOnlyList<string> ThroughUltra =
         ["low", "medium", "high", "xhigh", "max", "ultra"];
 
+    // Five, not six — `Auto` is deliberately absent, because Codex has no classifier tier and
+    // offering one it does not have put two identical choices in the task form. A card still
+    // carrying `Auto` from before is refused at launch rather than quietly run as something else.
+    private static readonly IReadOnlyList<PermissionMode> Modes =
+    [
+        PermissionMode.Default,
+        PermissionMode.Plan,
+        PermissionMode.AcceptEdits,
+        PermissionMode.DontAsk,
+        PermissionMode.Bypass,
+    ];
+
     public static AgentCapabilities Current { get; } = new(
         [
             new AgentModel("gpt-5.6-terra", "GPT-5.6 Terra", ThroughUltra, "medium"),
@@ -32,6 +38,7 @@ public static class CodexCapabilities
             new AgentModel("gpt-5.4-mini", "GPT-5.4 Mini", ThroughXHigh, "medium"),
         ],
         "gpt-5.6-terra",
-        new HashSet<PermissionMode>(Enum.GetValues<PermissionMode>()),
-        DesktopHandoff: false);
+        Modes,
+        DesktopHandoff: false,
+        UtilityModel: "gpt-5.4-mini");
 }

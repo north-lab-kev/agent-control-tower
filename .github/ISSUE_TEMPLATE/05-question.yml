@@ -1,0 +1,58 @@
+name: Question / support
+description: You cannot get something working and it may not be a bug.
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [spec](https://github.com/north-lab-kev/agent-control-tower/blob/main/docs/overview.md)
+        and [CONTRIBUTING](https://github.com/north-lab-kev/agent-control-tower/blob/main/CONTRIBUTING.md)
+        first — build prerequisites (.NET 10 SDK, Node.js) are the most common cause.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: What you are trying to do
+      description: Include the exact command you ran and the output or error you got.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Which agent is concerned
+      options:
+        - Claude Code
+        - Codex
+        - Both
+        - Not agent-specific (ACT itself)
+        - I don't know
+    validations:
+      required: true
+
+  - type: input
+    id: act-version
+    attributes:
+      label: ACT version or commit
+      placeholder: "v0.1.0 or 082d0a0"
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log file (optional)
+      description: |
+        If ACT started at all, attaching `act-<yyyyMMdd>.log` usually answers the
+        question faster than a description. **Settings → Log files → Open log
+        folder**, or `%LOCALAPPDATA%\ACT\logs\` on Windows. Remove anything
+        sensitive first.

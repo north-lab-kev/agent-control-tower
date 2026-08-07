@@ -1,0 +1,160 @@
+name: Bug report
+description: Something in ACT behaves incorrectly, crashes, or shows the wrong state.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing. The two fields that decide whether a bug is fixable
+        here are **which agent is concerned** and **the log file** — please fill
+        both in.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before filing
+      options:
+        - label: I searched the existing issues and this is not already reported.
+          required: true
+        - label: I reproduced this on the latest `main` (or the newest release).
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, in the order you saw it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+      description: If the spec (`docs/overview.md`) says something different from what ACT did, quote the line.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Launch ACT (browser dev loop / Electron shell)
+        2. Create a card with …
+        3. …
+    validations:
+      required: true
+
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Which agent is concerned
+      description: The coding-agent CLI involved. Pick *Not agent-specific* for board, storage, settings or packaging bugs.
+      options:
+        - Claude Code
+        - Codex
+        - Both
+        - Not agent-specific (ACT itself)
+        - I don't know
+    validations:
+      required: true
+
+  - type: input
+    id: agent-cli-version
+    attributes:
+      label: Agent CLI version
+      description: Output of `claude --version` and/or `codex --version`. Leave blank if no agent is involved.
+      placeholder: "claude 2.0.31 / codex 0.55.0"
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log file
+      description: |
+        **Attach the log file** — drag `act-<yyyyMMdd>.log` into this field
+        (GitHub accepts `.log` and `.txt`; zip it if it is large). Do not paste
+        thousands of lines inline.
+
+        Where to find it:
+        - In the app: **Settings → Log files → Open log folder**.
+        - Windows default: `%LOCALAPPDATA%\ACT\logs\act-<yyyyMMdd>.log`
+          (a development build writes to `%LOCALAPPDATA%\ACT.Development\logs`,
+          and a custom `ACT_DATA_DIR` writes to `<that directory>\logs`).
+
+        If you cannot share the log, say why here and paste the relevant lines
+        around the failure instead.
+      placeholder: Drop the .log file here, or explain why it is not attached.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: log-redacted
+    attributes:
+      label: Log contents
+      options:
+        - label: I checked the log for anything I do not want public (paths, project names, prompt text) and removed it.
+          required: true
+
+  - type: input
+    id: act-version
+    attributes:
+      label: ACT version or commit
+      description: Release tag, or `git rev-parse --short HEAD`.
+      placeholder: "v0.1.0 or 082d0a0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: host
+    attributes:
+      label: How you were running ACT
+      options:
+        - Browser dev loop (http://localhost:5210)
+        - Electron desktop shell
+        - Packaged desktop build
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+
+  - type: input
+    id: dotnet
+    attributes:
+      label: .NET SDK version
+      description: Output of `dotnet --version`. Only needed if you build ACT yourself.
+      placeholder: "10.0.100"
+
+  - type: dropdown
+    id: language
+    attributes:
+      label: UI language
+      description: Only relevant for wording, layout or formatting bugs.
+      options:
+        - English
+        - French
+        - Both / not language-specific
+    validations:
+      required: false
+
+  - type: input
+    id: install-id
+    attributes:
+      label: Install ID (optional)
+      description: From **Settings**. Lets a crash report or telemetry event be matched to this issue.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Screenshots, a recording, how often it happens, what you tried.

@@ -1,11 +1,11 @@
 namespace Act.TestSupport;
 
-// What ACT is still able to put into a session, now that prompts are answered in the agent's
-// own terminal: raw keystrokes, the two messages it submits itself, and the kill hatch.
+// What can reach a session, now that everything an agent is told after launch is typed by the
+// user: their raw keystrokes on their way through, and the resize. Nothing here is composed by
+// ACT — `Submit` was the last of those and went with send-back on 2026-08-01, and `Kill` went
+// with the kill hatch itself.
 public enum AgentInputKind
 {
     Write,
-    Submit,
     Resize,
-    Kill,
 }

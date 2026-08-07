@@ -31,3 +31,37 @@ jobs:
       - name: Build and test
         shell: pwsh
         run: ./scripts/build.ps1
+
+  # A job of its own rather than more steps on the one above, for two reasons: the fast suite keeps
+  # reporting in seconds instead of waiting behind a browser, and a red here is legible at a glance as
+  # "the browser tier" rather than hiding in a log with 1800 unit tests. It costs one extra solution
+  # build; on ubuntu that is 1x minutes.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # Built before the browser is installed, because the installer *is* a build artefact: the
+      # Microsoft.Playwright package emits playwright.ps1 into the test project's output, which keeps the
+      # browser version pinned to the package rather than to a separately-versioned CLI tool.
+      - name: Build
+        shell: pwsh
+        run: |
+          dotnet restore Act.slnx
+          dotnet build Act.slnx -c Release --no-restore
+
+      - name: Install Chromium
+        shell: pwsh
+        run: tests/Act.App.E2eTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+
+      - name: Browser tests
+        shell: pwsh
+        run: ./scripts/build.ps1 -E2E -NoBuild

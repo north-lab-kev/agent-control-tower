@@ -1,0 +1,80 @@
+name: Feature request
+description: Suggest a capability or a change to how ACT behaves.
+labels: ["enhancement"]
+body:
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before filing
+      options:
+        - label: I searched the existing issues.
+          required: true
+        - label: I checked [docs/roadmap.md](https://github.com/north-lab-kev/agent-control-tower/blob/main/docs/roadmap.md) — this is not simply a step that has not been built yet.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you were trying to do, and what made it awkward or impossible. Describe the situation, not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like ACT to do
+      description: Use the spec's vocabulary where it fits — cards, columns, badges, transitions, adapters, sources.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Board and columns
+        - Card / flight strip
+        - Launch, attach and the terminal
+        - Attachments
+        - Usage and limits
+        - Rules and transitions
+        - Archive and history
+        - Settings
+        - Notifications
+        - Desktop shell and packaging
+        - Localization
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Which agent is concerned
+      options:
+        - Claude Code
+        - Codex
+        - Both
+        - Not agent-specific (ACT itself)
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Including how you work around it today.
+
+  - type: dropdown
+    id: spec-impact
+    attributes:
+      label: Does this change the spec?
+      description: "`docs/overview.md` is authoritative — a proposal that contradicts it needs a decision recorded there first."
+      options:
+        - "No — it fits the spec as written"
+        - "Yes — it changes or extends the spec"
+        - "I'm not sure"
+    validations:
+      required: true

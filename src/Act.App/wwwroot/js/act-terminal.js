@@ -166,6 +166,13 @@ export function focus(elementId) {
     handles.get(elementId)?.term.focus();
 }
 
+// Wipes the screen and the scrollback without tearing the terminal down, for the restart: the new
+// pty replays its own backlog, and leaving the dead session's output above it would read as one
+// continuous screen when the two share nothing.
+export function clear(elementId) {
+    handles.get(elementId)?.term.reset();
+}
+
 export function dispose(elementId) {
     const handle = handles.get(elementId);
     if (!handle) {

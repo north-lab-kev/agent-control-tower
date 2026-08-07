@@ -9,7 +9,7 @@ namespace Act.App.Cards;
 // promising something ACT cannot start.
 internal sealed class AgentCapabilityCatalog(IEnumerable<IAgentAdapter> adapters) : IAgentCapabilityCatalog
 {
-    private static readonly AgentCapabilities None = new([], null, new HashSet<PermissionMode>());
+    private static readonly AgentCapabilities None = new([], null, []);
 
     private readonly IReadOnlyDictionary<AgentType, AgentCapabilities> byAgent =
         adapters.ToDictionary(adapter => adapter.Agent, adapter => adapter.Capabilities);

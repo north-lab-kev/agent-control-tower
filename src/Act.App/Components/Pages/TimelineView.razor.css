@@ -1,0 +1,113 @@
+.timeline {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.timeline.missing {
+    align-items: flex-start;
+    gap: var(--act-s3);
+    padding: var(--act-s5);
+}
+
+.bar .id {
+    font-family: var(--act-mono);
+    font-size: var(--act-t3);
+    color: var(--act-review);
+}
+
+.bar .title {
+    font-size: var(--act-t6);
+    font-weight: var(--act-w-em);
+    color: var(--act-ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--act-page-pad);
+}
+
+.sheet {
+    width: 100%;
+    max-width: var(--act-sheet-max);
+    margin: 0 auto;
+}
+
+.empty {
+    color: var(--act-faint);
+}
+
+/* The mockup's rail, in ACT's tokens: a dot per event, a hairline joining them, and the time held
+   out to the right in mono. The last dot has no tail, which is what makes it read as "so far". */
+.tl {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.tl .ev {
+    display: flex;
+    gap: var(--act-s2);
+    position: relative;
+    padding: 0 0 var(--act-s3) var(--act-s4);
+    font-size: var(--act-t4);
+}
+
+.tl .ev::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.2rem;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--rail, var(--act-faint));
+}
+
+.tl .ev::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 0.65rem;
+    bottom: 0;
+    width: 1px;
+    background: var(--act-line);
+}
+
+.tl .ev:last-child::after {
+    display: none;
+}
+
+.tl .ev .tt {
+    color: var(--act-ink);
+}
+
+.tl .ev .col {
+    font-family: var(--act-mono);
+    font-size: var(--act-t2);
+    color: var(--act-faint);
+    margin-left: 0.35rem;
+}
+
+.tl .ev .tm {
+    margin-left: auto;
+    flex: none;
+    font-family: var(--act-mono);
+    font-size: var(--act-t2);
+    color: var(--act-faint);
+}
+
+/* Same signal, same colour as the badge that reported it. */
+.tl .b-run { --rail: var(--act-run); }
+.tl .b-wait { --rail: var(--act-wait); }
+.tl .b-err { --rail: var(--act-err); }
+.tl .b-review { --rail: var(--act-review); }
+.tl .b-done { --rail: var(--act-done); }
+.tl .b-ready { --rail: var(--act-ready); }
+.tl .b-plan { --rail: var(--act-plan); }

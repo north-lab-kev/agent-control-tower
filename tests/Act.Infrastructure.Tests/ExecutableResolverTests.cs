@@ -3,6 +3,7 @@ using AwesomeAssertions;
 
 namespace Act.Infrastructure.Tests;
 
+[Collection(EnvironmentCollection.Name)]
 public class ExecutableResolverTests
 {
     [Fact]

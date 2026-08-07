@@ -26,7 +26,7 @@ public class MockAgentSessionTests
                 .Paints("Do you want to proceed?\r\n\u276f 1. Yes\r\n")
                 .AwaitsKeystroke()
                 .Activity("Bash")
-                .EndsTurn(TurnOutcome.ReadyForReview)
+                .EndsTurn()
                 .SessionEnds(),
         };
 
@@ -62,22 +62,6 @@ public class MockAgentSessionTests
     }
 
     [Fact]
-    public async Task A_turn_that_ends_needing_input_carries_the_question()
-    {
-        var adapter = new MockAgentAdapter
-        {
-            Script = AgentScript.Start().EndsTurn(TurnOutcome.NeedsInput, "which branch should I push?"),
-        };
-
-        await using var session = await LaunchAsync(adapter);
-
-        var turn = await LastAsync<TurnEnded>(session);
-
-        turn.Outcome.Should().Be(TurnOutcome.NeedsInput);
-        turn.Question.Should().Be("which branch should I push?");
-    }
-
-    [Fact]
     public async Task Terminal_output_accumulates_into_a_backlog_a_reattaching_view_can_replay()
     {
         var adapter = new MockAgentAdapter
@@ -85,7 +69,7 @@ public class MockAgentSessionTests
             Script = AgentScript.Start()
                 .Paints("Claude Code v2\r\n")
                 .Paints("\u276f ")
-                .EndsTurn(TurnOutcome.ReadyForReview),
+                .EndsTurn(),
         };
 
         await using var session = await LaunchAsync(adapter);
@@ -101,9 +85,9 @@ public class MockAgentSessionTests
         var adapter = new MockAgentAdapter
         {
             Script = AgentScript.Start()
-                .AwaitsSubmit()
+                .AwaitsKeystroke()
                 .Paints("working\u2026")
-                .EndsTurn(TurnOutcome.ReadyForReview),
+                .EndsTurn(),
         };
 
         await using var session = await LaunchAsync(adapter);
@@ -117,63 +101,45 @@ public class MockAgentSessionTests
             return Task.CompletedTask;
         };
 
-        await session.Terminal.SubmitAsync("do the thing");
+        await session.Terminal.WriteAsync("do the thing\r");
         await Drain(session);
 
         painted.Should().Equal("working\u2026");
     }
 
+    // The whole input surface, and the point of asserting it exhaustively: everything that reaches
+    // a session is either the user's own keystrokes on their way through or ACT resizing the pty.
+    // ACT composes nothing \u2014 no prompt answer, no send-back, no approval.
     [Fact]
-    public async Task ACT_types_only_what_it_submits_itself()
+    public async Task Nothing_but_the_users_keystrokes_reaches_the_session()
     {
         var adapter = new MockAgentAdapter
         {
-            Script = AgentScript.Start().AwaitsSubmit().EndsTurn(TurnOutcome.ReadyForReview),
+            Script = AgentScript.Start().AwaitsKeystroke().EndsTurn(),
         };
 
         await using var session = await LaunchAsync(adapter);
 
         session.Terminal.Resize(100, 40);
-        await session.Terminal.SubmitAsync("do the thing");
+        await session.Terminal.WriteAsync("do the thing\r");
         await Drain(session);
 
         session.Received.Should().BeEquivalentTo(
         [
             new AgentInput(AgentInputKind.Resize, Size: new TerminalSize(100, 40)),
-            new AgentInput(AgentInputKind.Submit, "do the thing"),
+            new AgentInput(AgentInputKind.Write, "do the thing\r"),
         ]);
     }
 
-    [Fact]
-    public async Task Killing_a_live_session_ends_the_stream_with_a_kill()
-    {
-        var adapter = new MockAgentAdapter
-        {
-            Script = AgentScript.Start().Activity().AwaitsSubmit().EndsTurn(TurnOutcome.ReadyForReview),
-        };
-
-        await using var session = await LaunchAsync(adapter);
-
-        var seen = new List<AgentEvent>();
-
-        await foreach (var received in session.Events)
-        {
-            seen.Add(received);
-
-            if (received is ActivityObserved)
-                await session.KillAsync();
-        }
-
-        seen.Last().Should().BeOfType<SessionKilled>();
-        seen.Should().NotContain(received => received is TurnEnded);
-    }
-
+    // Disposal is the only teardown there is, and the restart depends on this: a session ended
+    // mid-script must stop producing, or a `TurnEnded` from the pty ACT just replaced would move the
+    // card as if the new one had finished a turn.
     [Fact]
     public async Task Disposing_a_live_session_completes_the_stream()
     {
         var adapter = new MockAgentAdapter
         {
-            Script = AgentScript.Start().AwaitsSubmit().EndsTurn(TurnOutcome.ReadyForReview),
+            Script = AgentScript.Start().AwaitsKeystroke().EndsTurn(),
         };
 
         var session = await LaunchAsync(adapter);
@@ -187,10 +153,11 @@ public class MockAgentSessionTests
         }
 
         seen.Should().ContainSingle().Which.Should().BeOfType<SessionStarted>();
+        seen.Should().NotContain(received => received is TurnEnded);
     }
 
     [Fact]
-    public async Task A_launch_carries_the_pre_minted_session_id_the_preamble_and_a_terminal_size()
+    public async Task A_launch_carries_the_pre_minted_session_id_the_task_text_and_a_terminal_size()
     {
         var adapter = new MockAgentAdapter();
 
@@ -200,7 +167,7 @@ public class MockAgentSessionTests
 
         var launch = adapter.Launches.Should().ContainSingle().Subject;
 
-        launch.Preamble.Should().Contain(ActContract.RelativeStatusDirectory);
+        launch.InitialPrompt.Should().Be("do the thing");
         launch.Size.Should().Be(TerminalSize.Default);
     }
 
@@ -213,7 +180,6 @@ public class MockAgentSessionTests
             TaskId,
             SessionId,
             "C:/repo",
-            AgentPreamble.Compose(TaskId),
             "do the thing",
             "actually target main",
             new LaunchConfig(),
@@ -243,7 +209,6 @@ public class MockAgentSessionTests
         TaskId,
         SessionId,
         "C:/repo",
-        AgentPreamble.Compose(TaskId),
         "do the thing",
         config ?? new LaunchConfig(),
         TerminalSize.Default);

@@ -1,0 +1,199 @@
+@page "/template/new"
+@page "/template/{TemplateId:guid}"
+@using Act.Core.Agents
+@using Act.Core.Model
+
+<PageTitle>@PageHeading</PageTitle>
+
+<EscapeKey OnEscape="OnEscape" />
+
+@if (missing)
+{
+    <div class="templateview empty">
+        <RadzenText TextStyle="TextStyle.Body1" Text="@Strings.Template_NotFound" />
+        <RadzenButton Text="@Strings.Templates_Back" Icon="arrow_back" Size="ButtonSize.Small"
+                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" Click="BackToTemplates" />
+    </div>
+}
+else
+{
+    <div class="templateview">
+        <header class="bar">
+            <RadzenButton Icon="arrow_back" Text="@Strings.Templates_Back" Size="ButtonSize.Small"
+                          ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="BackToTemplates" />
+            <span class="title">@PageHeading</span>
+        </header>
+
+        <RadzenTemplateForm TItem="TaskTemplate" Data="template" Submit="OnSubmit" class="newtemplate">
+            <div class="body">
+            <RadzenStack Gap="1.5rem" class="sheet">
+
+                @* Said once, at the top, rather than beside each of the three fields it removes — the
+                   reason is one fact about this template, not a property of each field. *@
+                @if (template.IsDefault)
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter"
+                                 AllowClose="false" Icon="lock" Text="@Strings.Templates_DefaultLocked" />
+                }
+
+                <RadzenFieldset Text="@Strings.Templates_Group_Template">
+                    <RadzenStack Gap="1rem">
+                        @* The default carries none of these three. Its name is not the user's to
+                           change, and a title or prompt on the template the bare New task button
+                           starts from would make every task begin as a copy of the last. Hidden
+                           rather than shown read-only: three empty boxes nobody may fill in say
+                           less than the one notice above. *@
+                        @if (!template.IsDefault)
+                        {
+                            <RadzenStack Gap="0.3rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Templates_Name" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Templates_Name_Hint" class="hint" />
+                                <RadzenTextBox Name="Name" @bind-Value="template.Name" class="wide" />
+                                <RadzenRequiredValidator Component="Name" Text="@Strings.NewTask_Required" />
+                            </RadzenStack>
+
+                            @* Optional, unlike the task form's: a template that names its tasks is
+                               useful, and one that leaves this blank falls through to the title being
+                               written from the prompt on save, which is what a task with no typed title
+                               already does. *@
+                            <RadzenStack Gap="0.3rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Title" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Templates_TaskTitle_Hint"
+                                            class="hint" />
+                                <RadzenTextBox @bind-Value="template.Title" class="wide"
+                                               MaxLength="@TaskTitleQuery.MaxLength"
+                                               Placeholder="@Strings.Templates_TaskTitle_Placeholder" />
+                            </RadzenStack>
+
+                            <RadzenStack Gap="0.3rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Prompt" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Templates_Prompt_Hint" class="hint" />
+                                <RadzenTextArea @bind-Value="template.Prompt" Rows="8" class="wide" />
+                            </RadzenStack>
+                        }
+
+                        <RadzenStack Gap="0.3rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_WorkingDir" />
+
+                            <div class="dirrow">
+                                <RadzenTextBox @bind-Value="template.WorkingDir" class="wide"
+                                               Placeholder="@Strings.NewTask_WorkingDir_Placeholder" />
+                                <RadzenButton Icon="folder_open" Text="@Strings.Picker_Browse"
+                                              Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                              Variant="Variant.Outlined" ButtonType="ButtonType.Button"
+                                              Click="@(() => picking = !picking)" />
+                            </div>
+
+                            @if (picking)
+                            {
+                                <PathPicker StartAt="@template.WorkingDir" OnPick="OnFolderPicked"
+                                            OnCancel="@(() => picking = false)" />
+                            }
+                        </RadzenStack>
+                    </RadzenStack>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="@Strings.NewTask_Group_Agent">
+                    <RadzenStack Gap="1rem">
+                        <div class="row">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Agent" />
+                            <RadzenDropDown TValue="AgentType" Value="template.Agent" ValueChanged="OnAgentChanged"
+                                            Data="AgentChoices" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="false" class="control" />
+                        </div>
+
+                        <div class="row">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Model" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Model_Hint" class="hint" />
+                            </RadzenStack>
+                            <RadzenDropDown TValue="string" Value="template.Model" ValueChanged="OnModelChanged"
+                                            Data="Models" AllowClear="true"
+                                            Placeholder="@Strings.NewTask_AgentDefault" class="control" />
+                        </div>
+
+                        <div class="row">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Effort" />
+                            <RadzenDropDown TValue="string" @bind-Value="template.Effort" Data="Efforts"
+                                            AllowClear="true" Placeholder="@Strings.NewTask_AgentDefault"
+                                            class="control" />
+                        </div>
+
+                        <div class="row">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Permission" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@PermissionHint" class="hint" />
+                            </RadzenStack>
+                            <RadzenDropDown TValue="PermissionMode" @bind-Value="template.PermissionMode"
+                                            Data="PermissionChoices" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="false" class="control" />
+                        </div>
+                    </RadzenStack>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="@Strings.NewTask_Group_Automation">
+                    <RadzenStack Gap="1rem">
+                        <div class="row">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Schedule" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Schedule_Hint" class="hint" />
+                            </RadzenStack>
+                            <RadzenDropDown TValue="TaskSchedule" @bind-Value="template.Schedule"
+                                            Data="ScheduleChoices" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="false" class="control" />
+                        </div>
+
+                        @if (FolderGuardOn)
+                        {
+                            <div class="row">
+                                <RadzenStack Gap="0.1rem">
+                                    <RadzenText TextStyle="TextStyle.Body2"
+                                                Text="@Strings.NewTask_AllowConcurrentWorkingDir" />
+                                    <RadzenText TextStyle="TextStyle.Caption"
+                                                Text="@Strings.NewTask_AllowConcurrentWorkingDir_Hint" class="hint" />
+                                </RadzenStack>
+                                <RadzenSwitch @bind-Value="template.AllowConcurrentWorkingDir" />
+                            </div>
+                        }
+
+                        <div class="row">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AutoGit" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_AutoGit_Hint" class="hint" />
+                            </RadzenStack>
+                            <RadzenDropDown TValue="GitAction?" Value="template.GitAction"
+                                            ValueChanged="OnGitActionChanged" Data="GitChoices"
+                                            TextProperty="Text" ValueProperty="Value" AllowClear="true"
+                                            Placeholder="@Strings.NewTask_NoGitAction" class="control" />
+                        </div>
+
+                        @if (template.GitAction is GitAction.PullRequest)
+                        {
+                            <div class="row">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Draft" />
+                                <RadzenSwitch @bind-Value="template.Draft" />
+                            </div>
+                        }
+                    </RadzenStack>
+                </RadzenFieldset>
+
+            </RadzenStack>
+            </div>
+
+            <div class="footer">
+                <div class="sheet foot">
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End"
+                                 Gap="0.5rem">
+                        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                                      Size="ButtonSize.Small" ButtonType="ButtonType.Button"
+                                      Click="BackToTemplates"
+                                      title="@Strings.NewTask_Cancel" aria-label="@Strings.NewTask_Cancel" />
+                        <RadzenButton Icon="save" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat"
+                                      Size="ButtonSize.Small" ButtonType="ButtonType.Submit"
+                                      title="@Strings.NewTask_Save" aria-label="@Strings.NewTask_Save" />
+                    </RadzenStack>
+                </div>
+            </div>
+        </RadzenTemplateForm>
+    </div>
+}

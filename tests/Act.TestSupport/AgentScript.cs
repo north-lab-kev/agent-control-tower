@@ -46,19 +46,11 @@ public sealed class AgentScript
 
     public AgentScript AwaitsKeystroke() => Await(AgentInputKind.Write);
 
-    public AgentScript AwaitsSubmit() => Await(AgentInputKind.Submit);
-
     public AgentScript Enriches(EnrichmentSnapshot snapshot)
         => Emit((session, at) => new SessionEnriched(session, at, snapshot));
 
-    public AgentScript WritesFollowUps(params string[] files)
-        => Emit((session, at) => new FollowUpsWritten(session, at, files));
-
-    public AgentScript EndsTurn(TurnOutcome outcome, string? question = null)
-        => Emit((session, at) => new TurnEnded(session, at, outcome, question));
-
-    public AgentScript GoesQuiet(TimeSpan idle)
-        => Emit((session, at) => new NoActivityElapsed(session, at, idle));
+    public AgentScript EndsTurn()
+        => Emit((session, at) => new TurnEnded(session, at));
 
     public AgentScript Exits(int exitCode)
         => Emit((session, at) => new ProcessExited(session, at, exitCode));

@@ -33,7 +33,7 @@ public class CardStoreTests
             SessionId = "3c9a51e6-77b2-4d0f-8a41-9e5b0c72d183",
             Title = "Refactor session binding",
             InitialPrompt = "Rework how sessions bind to cards.",
-            Column = BoardColumn.NeedsFeedback,
+            Column = BoardColumn.YourTurn,
             Badge = Badge.NeedsPermission,
             AgentType = AgentType.Codex,
             WorkingDir = "~/dev/act",
@@ -43,14 +43,11 @@ public class CardStoreTests
                 Model = "opus",
                 Effort = "xhigh",
                 PermissionMode = PermissionMode.Bypass,
-                AllowedTools = ["Read", "Edit"],
-                DisallowedTools = ["Bash"],
                 ExtraFlags = ["--verbose"],
                 Env = new Dictionary<string, string> { ["ACT_TEST"] = "1" },
             },
             Schedule = TaskSchedule.SpecificDateTime,
             ScheduledFor = created.AddDays(1),
-            AutoComplete = true,
             AutoGit = new AutoGitOptions { Action = GitAction.PullRequest, Draft = true },
             Origin = TaskOrigin.Spawned,
             ParentId = parentId,
@@ -61,12 +58,13 @@ public class CardStoreTests
             LaunchedAt = created.AddMinutes(3),
             CompletedAt = created.AddMinutes(40),
             DeletedAt = created.AddMinutes(55),
+            ArchivedAt = created.AddMinutes(50),
+            KeepOnBoard = true,
             Transitions =
             [
                 new Transition { At = created, Column = BoardColumn.Ready, Note = "queued" },
                 new Transition { At = created.AddMinutes(3), Column = BoardColumn.Executing, Badge = Badge.Running },
             ],
-            LastMessage = "Waiting on permission to delete src/Api/V1.",
             ObservedModel = "opus 4.8",
             Metrics = new CardMetrics
             {
@@ -75,7 +73,6 @@ public class CardStoreTests
                 Compactions = 2,
                 ContextUsed = 142_000,
                 ContextLimit = 200_000,
-                Cost = 0.74m,
                 TurnCount = 18,
                 ToolCalls = 97,
                 LastActivityAt = created.AddMinutes(38),
@@ -101,8 +98,8 @@ public class CardStoreTests
         var card = new Card
         {
             Title = "Named enums",
-            Column = BoardColumn.ToReview,
-            Badge = Badge.Idle,
+            Column = BoardColumn.YourTurn,
+            Badge = Badge.ReadyForReview,
             AgentType = AgentType.Codex,
             Schedule = TaskSchedule.NextWindow,
             LaunchConfig = new LaunchConfig { PermissionMode = PermissionMode.DontAsk },
@@ -115,11 +112,40 @@ public class CardStoreTests
 
         var stored = database.GetCollection("cards").FindById(card.Id);
 
-        stored["Column"].AsString.Should().Be(nameof(BoardColumn.ToReview));
-        stored["Badge"].AsString.Should().Be(nameof(Badge.Idle));
+        stored["Column"].AsString.Should().Be(nameof(BoardColumn.YourTurn));
+        stored["Badge"].AsString.Should().Be(nameof(Badge.ReadyForReview));
         stored["AgentType"].AsString.Should().Be(nameof(AgentType.Codex));
         stored["Schedule"].AsString.Should().Be(nameof(TaskSchedule.NextWindow));
         stored["LaunchConfig"]["PermissionMode"].AsString.Should().Be(nameof(PermissionMode.DontAsk));
+    }
+
+    // A stored field the model no longer binds must not stop the card loading. No converter is
+    // involved — the mapper simply has nothing to bind it to — but this repo has been surprised once
+    // by what a stored value does to a read, so it is pinned rather than assumed.
+    [Fact]
+    public async Task A_field_this_build_no_longer_has_does_not_stop_the_card_loading()
+    {
+        using var temp = new TempDirectory();
+        var card = new Card { Title = "Retired field", Column = BoardColumn.YourTurn };
+
+        using (var provider = Provider(temp.Path))
+            await provider.GetRequiredService<ICardStore>().AddAsync(card);
+
+        using (var database = new LiteDatabase(Path.Combine(temp.Path, "act.db")))
+        {
+            var cards = database.GetCollection("cards");
+            var stored = cards.FindById(card.Id);
+
+            stored["LastMessage"] = "Waiting on permission to delete src/Api/V1.";
+            cards.Update(stored);
+        }
+
+        using var reading = Provider(temp.Path);
+
+        var reloaded = await reading.GetRequiredService<ICardStore>().GetAsync(card.Id);
+
+        reloaded!.Title.Should().Be("Retired field");
+        reloaded.Column.Should().Be(BoardColumn.YourTurn);
     }
 
     [Fact]

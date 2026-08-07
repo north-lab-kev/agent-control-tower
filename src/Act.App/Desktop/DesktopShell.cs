@@ -1,6 +1,8 @@
 using Act.App.Resources;
 using Act.App.Sessions;
 using Act.App.Settings;
+using Act.Core.Model;
+using Act.Core.Rules;
 using ElectronNET.API;
 using ElectronNET.API.Entities;
 
@@ -20,16 +22,45 @@ public sealed class DesktopShell(
 {
     private const int TitleBarHeight = 49;
 
+    private const int MinWindowWidth = 1000;
+
+    private const int MinWindowHeight = 320;
+
+    private const int DefaultWindowWidth = 1440;
+
+    private const int DefaultWindowHeight = 900;
+
+    private static readonly TimeSpan BoundsSaveDelay = TimeSpan.FromMilliseconds(600);
+
+    // Windows reads the toast's header from the Application User Model ID, and Electron's default
+    // makes every notification announce itself as `electron.app.Electron`. It has to match the
+    // installer's `appId`, which is what puts the same id on the Start-menu shortcut Windows
+    // resolves the display name from — a mismatch there and the packaged build is no better off.
+    private const string AppUserModelId = "com.northlabkev.act";
+
     private readonly Lock gate = new();
+
+    private readonly bool remembered = settings.Window is not null;
+
+    private readonly WindowBounds bounds = settings.Window ?? new WindowBounds
+    {
+        Width = DefaultWindowWidth,
+        Height = DefaultWindowHeight,
+    };
 
     private BrowserWindow? window;
 
     private Task? revealing;
 
+    private Timer? boundsSave;
+
     private bool trayShown;
 
     public async Task StartAsync()
     {
+        if (OperatingSystem.IsWindows())
+            Electron.App.SetAppUserModelId(AppUserModelId);
+
         Electron.Menu.SetApplicationMenu([]);
 
         settings.Changed += ApplyCloseBehaviour;
@@ -59,11 +90,21 @@ public sealed class DesktopShell(
 
     private async Task OpenWindowAsync()
     {
+        // Every launch, not just a remembered one: the default size is a guess about a screen that
+        // may be smaller than the guess.
+        var placed = await PlaceAsync(bounds);
+
         var options = new BrowserWindowOptions
         {
             Show = false,
             Icon = IconPath,
             TitleBarStyle = TitleBarStyle.hidden,
+            MinWidth = MinWindowWidth,
+            MinHeight = MinWindowHeight,
+            UseContentSize = true,
+            Center = !remembered,
+            Width = placed.Width,
+            Height = placed.Height,
         };
 
         // Transparent on purpose. The overlay is native and can only be coloured at window
@@ -81,7 +122,33 @@ public sealed class DesktopShell(
 
         var opened = await Electron.WindowManager.CreateWindowAsync(options);
 
-        opened.OnReadyToShow += () => opened.Show();
+        // Content bounds rather than window bounds, both here and when they are read back. What
+        // Windows calls the window includes an invisible resize border that Electron reports but
+        // does not accept, so a saved-then-restored window rectangle grows by it on every launch.
+        if (remembered)
+            opened.SetContentBounds(new Rectangle
+            {
+                X = placed.X,
+                Y = placed.Y,
+                Width = placed.Width,
+                Height = placed.Height,
+            });
+
+        boundsSave ??= new Timer(_ => _ = CaptureBoundsAsync(), null, Timeout.Infinite, Timeout.Infinite);
+
+        opened.OnResize += TrackBounds;
+        opened.OnMove += TrackBounds;
+        opened.OnMaximize += TrackBounds;
+        opened.OnUnmaximize += TrackBounds;
+
+        opened.OnReadyToShow += () =>
+        {
+            if (bounds.Maximized)
+                opened.Maximize();
+
+            opened.Show();
+        };
+
         opened.OnClosed += () =>
         {
             lock (gate)
@@ -95,12 +162,72 @@ public sealed class DesktopShell(
             window = opened;
     }
 
+    private void TrackBounds() => boundsSave?.Change(BoundsSaveDelay, Timeout.InfiniteTimeSpan);
+
+    // Only a window that is neither maximized nor minimized has bounds worth keeping — those states
+    // are their own answer, and writing the screen-sized rectangle they report would lose the size
+    // the user actually chose.
+    private async Task CaptureBoundsAsync()
+    {
+        BrowserWindow? live;
+
+        lock (gate)
+            live = window;
+
+        if (live is null)
+            return;
+
+        try
+        {
+            var maximized = await live.IsMaximizedAsync();
+
+            if (!maximized && !await live.IsMinimizedAsync())
+            {
+                var rectangle = await live.GetContentBoundsAsync();
+
+                bounds.X = rectangle.X;
+                bounds.Y = rectangle.Y;
+                bounds.Width = rectangle.Width;
+                bounds.Height = rectangle.Height;
+            }
+
+            bounds.Maximized = maximized;
+
+            settings.SetWindow(bounds);
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    private async Task<WindowBounds> PlaceAsync(WindowBounds wanted)
+    {
+        try
+        {
+            var displays = await Electron.Screen.GetAllDisplaysAsync();
+
+            var screens = displays
+                .Select(display => new ScreenArea(
+                    display.WorkArea.X,
+                    display.WorkArea.Y,
+                    display.WorkArea.Width,
+                    display.WorkArea.Height))
+                .ToArray();
+
+            return WindowPlacement.Fit(wanted, screens, MinWindowWidth, MinWindowHeight);
+        }
+        catch (Exception)
+        {
+            return wanted.Copy();
+        }
+    }
+
     private void OnTrayActivated(TrayClickEventArgs args, Rectangle bounds) => _ = RevealAsync();
 
     // Windows delivers a double click as a click *and* a double click, so two reveals race — and
     // two reveals with no window would build two windows. Whoever arrives second waits on the
     // first instead of starting its own.
-    private Task RevealAsync()
+    public Task RevealAsync()
     {
         lock (gate)
         {
@@ -230,5 +357,5 @@ public sealed class DesktopShell(
         lifetime.StopApplication();
     }
 
-    private static string IconPath => Path.Combine(AppContext.BaseDirectory, "icon.ico");
+    public static string IconPath => Path.Combine(AppContext.BaseDirectory, "icon.ico");
 }

@@ -1,23 +1,69 @@
 @using Act.Core.Model
 
-<div class="@StripClass" role="button" tabindex="0" title="@Card.Title"
+@* A strip is a drop target as well as a thing that lifts: dropping onto one is how the column is
+   ordered. The drop is stopped here rather than left to bubble, so the column below never sees it
+   twice — a drop that crosses columns is handed on by the board instead. *@
+@{
+    var face = Face;
+}
+<div class="@face.Strip(Blink, Draggable, IsDragging, DropEdge)" role="button" tabindex="0" title="@Card.Title"
      draggable="@(Draggable ? "true" : "false")"
      @ondragstart="OnDragStartAsync" @ondragend="OnDragEndAsync"
+     @ondragenter="OnDragOverAsync" @ondragenter:preventDefault="true" @ondragenter:stopPropagation="true"
+     @ondragover:preventDefault="true"
+     @ondrop="OnDropAsync" @ondrop:stopPropagation="true"
      @onclick="OpenAsync" @onkeydown="OnKeyDownAsync">
 <RadzenCard Variant="Variant.Outlined" class="stripcard">
     @if (IsCompact)
     {
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
-            <RadzenText TextStyle="TextStyle.Caption" Text="@($"#{Card.Number}")" class="cid" />
-            <RadzenText TextStyle="TextStyle.Body2" Text="@Card.Title" class="ttl" />
-            @if (BadgeText is not null)
-            {
-                <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@BadgeText" class="@FullBadgeClass" />
-            }
-            @if (ScheduleText is not null)
-            {
-                <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="@ScheduleText" class="schip" />
-            }
+        <RadzenStack Orientation="Orientation.Vertical" Gap="0.35rem">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                <RadzenText TextStyle="TextStyle.Caption" Text="@($"#{Card.Number}")" class="cid" />
+                <RadzenText TextStyle="TextStyle.Body2" Text="@Card.Title" class="ttl" />
+                @if (face.BadgeText is not null)
+                {
+                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.BadgeText" class="@face.FullBadgeClass" />
+                }
+                @if (face.HoldText is not null)
+                {
+                    <span title="@face.HoldTip">
+                        <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.HoldText" class="@face.HoldClass" />
+                    </span>
+                }
+                @if (face.Schedule is not null)
+                {
+                    <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="@face.Schedule" class="schip" />
+                }
+            </RadzenStack>
+
+            @* The path and the action are the two things a compact strip still has to carry, so they
+               share the second line: the folder gives up width and the button keeps its box, and the
+               first line's badge is left exactly as wide as it was. *@
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.35rem">
+                @* One glyph and a number rather than a chip: compact has to say a card was spawned
+                   too, and this is what fits beside a path that is already ellipsizing. *@
+                @if (face.Spawned is { } spawnedBy)
+                {
+                    <RadzenText TextStyle="TextStyle.Caption" Text="@spawnedBy" class="lin clin"
+                                title="@face.SpawnedTip" />
+                }
+                <RadzenText TextStyle="TextStyle.Caption" Text="@Card.WorkingDir" class="path cpath"
+                            title="@Card.WorkingDir" />
+                @if (CanLaunch)
+                {
+                    <RadzenButton Icon="play_arrow" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
+                                  Variant="Variant.Outlined" class="launch mini"
+                                  title="@Strings.Board_Launch" aria-label="@Strings.Board_Launch"
+                                  Disabled="IsLaunching" Click="@LaunchAsync" @onclick:stopPropagation="true" />
+                }
+                @if (CanRetry)
+                {
+                    <RadzenButton Icon="refresh" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
+                                  Variant="Variant.Outlined" class="launch mini"
+                                  title="@Strings.Board_Retry" aria-label="@Strings.Board_Retry"
+                                  Disabled="IsLaunching" Click="@RetryAsync" @onclick:stopPropagation="true" />
+                }
+            </RadzenStack>
         </RadzenStack>
     }
     else
@@ -25,14 +71,20 @@
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem">
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
                          JustifyContent="JustifyContent.SpaceBetween" Gap="0.4rem">
-                <RadzenText TextStyle="TextStyle.Caption" Text="@($"#{Card.Number}{AgentSuffix}")" class="cid" />
-                @if (BadgeText is not null)
+                <RadzenText TextStyle="TextStyle.Caption" Text="@face.Identity" class="cid" />
+                @if (face.BadgeText is not null)
                 {
-                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@BadgeText" class="@FullBadgeClass" />
+                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.BadgeText" class="@face.FullBadgeClass" />
+                }
+                @if (face.HoldText is not null)
+                {
+                    <span title="@face.HoldTip">
+                        <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.HoldText" class="@face.HoldClass" />
+                    </span>
                 }
             </RadzenStack>
 
-            <RadzenText TextStyle="TextStyle.Body2" Text="@Card.Title" class="ttl" />
+            <RadzenText TextStyle="TextStyle.Body2" Text="@Card.Title" class="ttl ttl3" />
             <RadzenText TextStyle="TextStyle.Caption" Text="@Card.WorkingDir" class="path" />
 
             @if (CanLaunch)
@@ -42,10 +94,24 @@
                               Disabled="IsLaunching" Click="@LaunchAsync" @onclick:stopPropagation="true" />
             }
 
+            @* Only for a card whose process is gone — see `CardRetry`. A live session is one the
+               user types into, and the terminal is a click away. *@
+            @if (CanRetry)
+            {
+                <RadzenButton Text="@Strings.Board_Retry" Icon="refresh" Size="ButtonSize.ExtraSmall"
+                              ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" class="launch"
+                              Disabled="IsLaunching" Click="@RetryAsync" @onclick:stopPropagation="true" />
+            }
+
+            @if (face.Quiet is { } quiet)
+            {
+                <RadzenText TextStyle="TextStyle.Caption" Text="@quiet" class="quiet" />
+            }
+
             @if (Card.Metrics is { } m)
             {
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="0.6rem" Wrap="FlexWrap.Wrap" class="metrics">
-                    @foreach (var metric in Metrics(m))
+                    @foreach (var metric in face.Metrics)
                     {
                         <RadzenText TextStyle="TextStyle.Caption" Text="@metric" />
                     }
@@ -58,23 +124,23 @@
                 }
             }
 
-            @if (ScheduleText is not null || Card.Children.Count > 0 || Card.AutoComplete)
+            @if (face.Schedule is not null || face.Spawned is not null || Card.Children.Count > 0)
             {
                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
                              Gap="0.45rem" Wrap="FlexWrap.Wrap">
+                    @if (face.Spawned is { } spawnedBy)
+                    {
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@spawnedBy" class="lin"
+                                    title="@face.SpawnedTip" />
+                    }
                     @if (Card.Children.Count > 0)
                     {
                         <RadzenText TextStyle="TextStyle.Caption"
                                     Text="@Text.Format(Strings.Card_Children, Card.Children.Count)" class="lin" />
                     }
-                    @if (Card.AutoComplete)
+                    @if (face.Schedule is not null)
                     {
-                        <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base"
-                                     Text="@Strings.Card_AutoComplete" class="schip" />
-                    }
-                    @if (ScheduleText is not null)
-                    {
-                        <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="@ScheduleText" class="schip" />
+                        <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="@face.Schedule" class="schip" />
                     }
                 </RadzenStack>
             }

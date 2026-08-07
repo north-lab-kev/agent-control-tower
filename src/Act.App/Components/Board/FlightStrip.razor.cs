@@ -1,21 +1,26 @@
-using System.Globalization;
-using Act.App.Resources;
+using Act.App.Cards;
+using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Core.Scheduling;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace Act.App.Components.Board;
 
-public partial class FlightStrip
+// One flight strip. What it *says* is `StripFace`'s — the badge, the rail, the chips, the metrics —
+// and what is left here is what only a component can do: the parameters, the gestures, and which of
+// the two densities is being drawn.
+public partial class FlightStrip(IClock clock)
 {
-    private static CultureInfo Culture => CultureInfo.CurrentCulture;
-
     [Parameter, EditorRequired]
     public Card Card { get; set; } = default!;
 
     [Parameter]
     public BoardDensity Density { get; set; }
+
+    [Parameter]
+    public bool Blink { get; set; } = true;
 
     [Parameter]
     public EventCallback<Card> OnOpen { get; set; }
@@ -24,143 +29,82 @@ public partial class FlightStrip
     public EventCallback<Card> OnLaunch { get; set; }
 
     [Parameter]
+    public EventCallback<Card> OnRetry { get; set; }
+
+    // Whether this card can be retried, decided by the board — the answer depends on whether a
+    // session is live, which is registry state the strip has no business reaching for.
+    [Parameter]
+    public bool Retriable { get; set; }
+
+    [Parameter]
     public EventCallback<Card> OnDragStart { get; set; }
 
     [Parameter]
     public EventCallback OnDragEnd { get; set; }
 
     [Parameter]
+    public EventCallback<Card> OnDragOver { get; set; }
+
+    [Parameter]
+    public EventCallback<Card> OnDrop { get; set; }
+
+    [Parameter]
     public bool IsDragging { get; set; }
+
+    // Which edge the insertion marker sits on, or null when nothing is hovering this strip. Decided
+    // by the board, which is the only side that knows what is being dragged.
+    [Parameter]
+    public string? DropEdge { get; set; }
 
     [Parameter]
     public bool IsLaunching { get; set; }
+
+    // Why this Ready card is not running, decided by the board in one pass over every card — the
+    // same pass the queue runner launches from, so a strip cannot claim a card is queued while it
+    // is starting.
+    [Parameter]
+    public ReadyHold? Hold { get; set; }
+
+    // The card this one was spawned from, resolved by the board for the same reason `Hold` is: the
+    // strip holds one card and the lineage marker needs the *parent's* number, which only something
+    // looking at the whole store can supply.
+    [Parameter]
+    public Card? Parent { get; set; }
+
+    // Recomputed per render on purpose: the quiet chip and the usage countdown are derived from an
+    // instant, so nothing pushes a change when they advance — the board's refresh tick is what makes
+    // the number move.
+    private StripFace Face => StripFace.Of(Card, Hold, clock.Now, Parent);
 
     private bool Draggable => ManualMove.CanDrag(Card.Column);
 
     private bool IsCompact => Density is BoardDensity.Compact;
 
+    // Both densities: a compact board is the one you scan to start work from, so the button that
+    // starts it cannot be the thing density trades away. It goes on the second line as an icon,
+    // beside the path, which leaves the first line's badge exactly the width it had.
+    //
+    // Offered in Preparing as well as Ready: a card you have finished drafting is one you want to
+    // start, and making that cost a drag first was ceremony. The board promotes it — see
+    // `BoardView.LaunchAsync` — so Ready is still passed through rather than skipped.
+    private bool CanLaunch => Card.Column is BoardColumn.Preparing or BoardColumn.Ready;
+
+    private bool CanRetry => Retriable;
+
     private Task OpenAsync() => OnOpen.InvokeAsync(Card);
+
+    private Task LaunchAsync() => OnLaunch.InvokeAsync(Card);
+
+    private Task RetryAsync() => OnRetry.InvokeAsync(Card);
 
     private Task OnDragStartAsync() => Draggable ? OnDragStart.InvokeAsync(Card) : Task.CompletedTask;
 
     private Task OnDragEndAsync() => OnDragEnd.InvokeAsync();
 
+    private Task OnDragOverAsync() => OnDragOver.InvokeAsync(Card);
+
+    private Task OnDropAsync() => OnDrop.InvokeAsync(Card);
+
     private Task OnKeyDownAsync(KeyboardEventArgs args)
         => args.Key is "Enter" or " " ? OnOpen.InvokeAsync(Card) : Task.CompletedTask;
-
-    private string? AttentionClass => Card.NeedsAttention
-        ? Card.Badge is Badge.Error or Badge.Killed ? "attn err" : "attn"
-        : null;
-
-    private string StripClass => string.Join(' ', new[]
-    {
-        "strip",
-        RailClass,
-        AttentionClass,
-        Draggable ? "liftable" : null,
-        IsDragging ? "lifted" : null,
-    }.Where(part => !string.IsNullOrEmpty(part)));
-
-    private string FullBadgeClass => $"badge {BadgeClass}".TrimEnd();
-
-    private string RailClass => Card.Badge switch
-    {
-        Badge.Running or Badge.Compacting => "r-run",
-        Badge.NeedsPermission or Badge.NeedsAnswer => "r-wait",
-        Badge.Error or Badge.Killed => "r-err",
-        Badge.Stale => "r-stale",
-        Badge.Idle => "r-review",
-        _ => Card.Column switch
-        {
-            BoardColumn.Ready => "r-ready",
-            BoardColumn.Completed => "r-done",
-            _ => "r-plan",
-        },
-    };
-
-    // Spacious only: the compact strip has no room for it without pushing the badge out, and the
-    // badge is the signal the density exists to preserve.
-    private bool CanLaunch => Card.Column is BoardColumn.Ready && !IsCompact;
-
-    private Task LaunchAsync() => OnLaunch.InvokeAsync(Card);
-
-    private string? BadgeClass => Card.Badge switch
-    {
-        Badge.Running or Badge.Compacting => "b-run",
-        Badge.NeedsPermission or Badge.NeedsAnswer => "b-wait",
-        Badge.Error or Badge.Killed => "b-err",
-        Badge.Stale => "b-stale",
-        Badge.Idle => "b-review",
-        _ => Card.Column is BoardColumn.Completed ? "b-done" : null,
-    };
-
-    private string? BadgeText => Card.Badge switch
-    {
-        Badge.Running => Strings.Badge_Running,
-        Badge.Compacting => Strings.Badge_Compacting,
-        Badge.NeedsPermission => Strings.Badge_NeedsPermission,
-        Badge.NeedsAnswer => Strings.Badge_NeedsAnswer,
-        Badge.Error => Strings.Badge_Error,
-        Badge.Killed => Strings.Badge_Killed,
-        Badge.Stale => StaleText,
-        Badge.Idle => Strings.Badge_IdleReady,
-        _ => Card.Column is BoardColumn.Completed ? Strings.Badge_Done : null,
-    };
-
-    private string StaleText
-    {
-        get
-        {
-            var since = Card.Metrics?.LastActivityAt;
-            if (since is null)
-                return Strings.Badge_Stale;
-
-            var minutes = (int)(DateTimeOffset.UtcNow - since.Value).TotalMinutes;
-
-            return minutes < 60
-                ? Text.Format(Strings.Badge_StaleMinutes, minutes)
-                : Text.Format(Strings.Badge_StaleHours, minutes / 60);
-        }
-    }
-
-    private string AgentName => Card.AgentType switch
-    {
-        AgentType.ClaudeCode => Strings.Agent_ClaudeCode,
-        AgentType.Codex => Strings.Agent_Codex,
-        _ => Card.AgentType.ToString(),
-    };
-
-    private string AgentSuffix => Card.ObservedModel is null
-        ? $" · {AgentName}"
-        : $" · {AgentName} · {Card.ObservedModel}";
-
-    private string? ScheduleText => Card.Column is not BoardColumn.Ready ? null : Card.Schedule switch
-    {
-        TaskSchedule.Manual => Strings.Schedule_Manual,
-        TaskSchedule.Now => Strings.Schedule_Now,
-        TaskSchedule.NextWindow => Strings.Schedule_NextWindow,
-        TaskSchedule.WindowAfterNext => Strings.Schedule_WindowAfterNext,
-        TaskSchedule.SpecificDateTime => Text.Format(
-            Strings.Schedule_At,
-            Card.ScheduledFor?.ToString(Strings.Schedule_DateFormat, Culture)),
-        _ => null,
-    };
-
-    private static IEnumerable<string> Metrics(CardMetrics m)
-    {
-        if (m.ContextPercent is not null)
-            yield return Text.Format(Strings.Metrics_Context, Thousands(m.ContextUsed), Thousands(m.ContextLimit));
-
-        if (m.TurnCount > 0)
-            yield return Text.Format(Strings.Metrics_Turns, m.TurnCount);
-
-        if (m.Compactions > 0)
-            yield return Text.Format(Strings.Metrics_Compactions, m.Compactions);
-
-        if (m.Cost > 0)
-            yield return m.Cost.ToString("C2", Culture);
-    }
-
-    private static string Thousands(int value)
-        => value >= 1000 ? $"{value / 1000}k" : value.ToString(Culture);
 }

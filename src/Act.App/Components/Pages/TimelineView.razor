@@ -1,0 +1,58 @@
+@page "/card/{CardId:guid}/timeline"
+@using Act.App.Cards
+@using Act.Core.Model
+
+<PageTitle>@(card is null ? "ACT" : $"#{card.Number} — {card.Title}")</PageTitle>
+
+<EscapeKey OnEscape="Back" />
+
+@if (card is null)
+{
+    <div class="timeline missing">
+        <RadzenText TextStyle="TextStyle.Body1" Text="@Strings.Card_NotFound" />
+        <RadzenButton Text="@Strings.Nav_BackToBoard" Icon="arrow_back" Size="ButtonSize.Small"
+                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" Click="Back" />
+    </div>
+}
+else
+{
+    <div class="timeline">
+        <header class="bar">
+            <RadzenButton Icon="arrow_back" Text="@CardExit.Label(card)" Size="ButtonSize.Small"
+                          ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="Back" />
+            <span class="id">#@card.Number</span>
+            <span class="title">@card.Title</span>
+        </header>
+
+        <CardTabs CardId="card.Id" />
+
+        <div class="body">
+            <div class="sheet">
+                @if (Entries.Count == 0)
+                {
+                    @* Body2, like the archive's: an empty page states itself at reading size. Only
+                       a lane's empty note is a whisper, because it sits inside a working surface. *@
+                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Timeline_Empty" class="empty" />
+                }
+                else
+                {
+                    <div class="tl">
+                        @foreach (var entry in Entries)
+                        {
+                            <div class="ev @entry.RailClass">
+                                <span class="tt">
+                                    @entry.Text
+                                    @if (entry.Column is { } column)
+                                    {
+                                        <span class="col">→ @CardVisuals.Column(column)</span>
+                                    }
+                                </span>
+                                <span class="tm" title="@entry.At.ToLocalTime().ToString("f")">@entry.Clock</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}

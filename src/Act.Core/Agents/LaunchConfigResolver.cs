@@ -25,7 +25,7 @@ public static class LaunchConfigResolver
 
         ResolveEffort(agent, capabilities, resolved, adjustments);
 
-        if (!capabilities.PermissionModes.Contains(resolved.PermissionMode))
+        if (!capabilities.Supports(resolved.PermissionMode))
             rejections.Add($"Permission mode '{resolved.PermissionMode}' is not supported by {agent}.");
 
         return new LaunchConfigResolution(resolved, adjustments, rejections);

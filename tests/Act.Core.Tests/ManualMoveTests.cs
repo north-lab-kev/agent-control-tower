@@ -14,13 +14,22 @@ public class ManualMoveTests
     public void A_human_controlled_card_can_be_picked_up(BoardColumn column)
         => ManualMove.CanDrag(column).Should().BeTrue();
 
-    [Theory]
-    [InlineData(BoardColumn.Executing)]
-    [InlineData(BoardColumn.NeedsFeedback)]
-    [InlineData(BoardColumn.ToReview)]
-    [InlineData(BoardColumn.Completed)]
-    public void A_card_past_the_launch_boundary_does_not_lift(BoardColumn column)
-        => ManualMove.CanDrag(column).Should().BeFalse();
+    // It lifts so it can be dropped on Completed — the sign-off — and nowhere else: the drop side
+    // of that transition belongs to `CardCompletion`, not to `IsAllowed`.
+    [Fact]
+    public void A_card_handed_back_to_the_user_lifts_for_the_sign_off()
+        => ManualMove.CanDrag(BoardColumn.YourTurn).Should().BeTrue();
+
+    // Its mirror: Completed lifts for the reopen, whose drop side is `CardReopen`.
+    [Fact]
+    public void A_signed_off_card_lifts_for_the_reopen()
+        => ManualMove.CanDrag(BoardColumn.Completed).Should().BeTrue();
+
+    // The one column that neither lifts nor accepts a drop — mid-flight work is not the user's to
+    // move.
+    [Fact]
+    public void A_card_mid_flight_does_not_lift()
+        => ManualMove.CanDrag(BoardColumn.Executing).Should().BeFalse();
 
     [Fact]
     public void Preparing_and_ready_are_interchangeable_by_hand()
@@ -34,15 +43,14 @@ public class ManualMoveTests
         => ManualMove.IsAllowed(BoardColumn.Ready, BoardColumn.Executing).Should().BeFalse();
 
     [Fact]
-    public void Reopening_is_not_a_manual_move_yet()
-        => ManualMove.IsAllowed(BoardColumn.Completed, BoardColumn.ToReview).Should().BeFalse();
+    public void Reopening_is_not_a_manual_move()
+        => ManualMove.IsAllowed(BoardColumn.Completed, BoardColumn.YourTurn).Should().BeFalse();
 
     [Theory]
     [InlineData(BoardColumn.Preparing)]
     [InlineData(BoardColumn.Ready)]
     [InlineData(BoardColumn.Executing)]
-    [InlineData(BoardColumn.NeedsFeedback)]
-    [InlineData(BoardColumn.ToReview)]
+    [InlineData(BoardColumn.YourTurn)]
     [InlineData(BoardColumn.Completed)]
     public void A_column_never_accepts_a_drop_from_itself(BoardColumn column)
         => ManualMove.IsAllowed(column, column).Should().BeFalse();
@@ -68,7 +76,7 @@ public class ManualMoveTests
     {
         var machineColumns = new[]
         {
-            BoardColumn.Executing, BoardColumn.NeedsFeedback, BoardColumn.ToReview, BoardColumn.Completed,
+            BoardColumn.Executing, BoardColumn.YourTurn, BoardColumn.Completed,
         };
 
         foreach (var target in machineColumns)

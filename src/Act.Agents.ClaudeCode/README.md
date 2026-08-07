@@ -6,13 +6,14 @@ emerges).
 
 Responsibilities:
 
-- **Launch** — spawn `claude` in the task's working dir with a pre-minted
-  `--session-id` and the injected preamble.
-- **Input channel** — the **stream-json control protocol** over stdin/stdout
-  (permission/question control-requests and control-responses). Underdocumented —
-  pin the Claude Code version and verify at build.
-- **Ingestion sources** — HTTP hooks (lifecycle) + file source (status /
-  follow-ups / JSONL enrichment) + process source.
+- **Launch** — spawn `claude` under the pseudo-terminal in the task's working dir
+  with a pre-minted `--session-id`, the task text as its positional prompt, and a
+  generated `--settings` file carrying the hook config.
+- **Input channel** — none. The user types in the embedded terminal; ACT observes
+  and never answers a prompt.
+- **Observers** — HTTP hooks (lifecycle) + process signals, pushed into
+  `IAgentEventSink`. The JSONL transcript tail (enrichment) is **not written yet**
+  — step 8 item 4.
 - **Normalized mappings** — `model` / `effort` / `permissionMode` → CLI flags;
   raw hooks → normalized events; unsupported-value behavior (map or reject, never
   silently drop).

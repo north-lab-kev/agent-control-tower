@@ -15,8 +15,14 @@
   <data name="Shell_FullName" xml:space="preserve">
     <value>Agent Control Tower</value>
   </data>
-  <data name="Shell_AutoExecOn" xml:space="preserve">
-    <value>auto-exec on</value>
+  <data name="Shell_AutoExec" xml:space="preserve">
+    <value>auto-exec</value>
+  </data>
+  <data name="Shell_AutoExecOn_Tip" xml:space="preserve">
+    <value>Scheduled tasks launch on their own. Click to pause all automatic execution.</value>
+  </data>
+  <data name="Shell_AutoExecPaused_Tip" xml:space="preserve">
+    <value>Nothing starts on its own. Launching a task by hand still works. Click to resume.</value>
   </data>
   <data name="Shell_UnhandledError" xml:space="preserve">
     <value>An unhandled error has occurred.</value>
@@ -39,17 +45,89 @@
   <data name="NewTask_Group_Automation" xml:space="preserve">
     <value>Automation</value>
   </data>
-  <data name="NewTask_Group_Advanced" xml:space="preserve">
-    <value>Advanced</value>
+  <data name="NewTask_Locked" xml:space="preserve">
+    <value>This task has launched. Its prompt, directory, agent and automation are fixed — they describe the run that already started. The title and the agent settings can still change, and apply the next time it launches.</value>
+  </data>
+  <data name="NewTask_Archived" xml:space="preserve">
+    <value>This task is archived. It is a record of work that is over: nothing here can be changed and its terminal does not start. Restore it from the archive to work on it again, or duplicate it to start the same task over.</value>
   </data>
   <data name="NewTask_Title" xml:space="preserve">
     <value>Title</value>
+  </data>
+  <data name="NewTask_Title_Placeholder" xml:space="preserve">
+    <value>Written from the prompt if you leave it blank</value>
+  </data>
+  <data name="NewTask_Title_Hint" xml:space="preserve">
+    <value>Yours to write. Leave it blank and saving fills it in from the prompt.</value>
+  </data>
+  <data name="NewTask_Title_Required" xml:space="preserve">
+    <value>Write a title, or a prompt to take one from</value>
+  </data>
+  <data name="NewTask_GenerateTitle" xml:space="preserve">
+    <value>Write a title from the prompt</value>
+  </data>
+  <data name="NewTask_GenerateTitleFailed" xml:space="preserve">
+    <value>Could not reach the agent</value>
+  </data>
+  <data name="NewTask_GenerateTitleFallback" xml:space="preserve">
+    <value>The title was taken from the start of the prompt instead. Edit it as you like.</value>
   </data>
   <data name="NewTask_Prompt" xml:space="preserve">
     <value>Prompt</value>
   </data>
   <data name="NewTask_Prompt_Hint" xml:space="preserve">
     <value>The opening instruction. Kept verbatim for the life of the task.</value>
+  </data>
+  <data name="NewTask_Attachments" xml:space="preserve">
+    <value>Attachments</value>
+  </data>
+  <data name="NewTask_Attachments_Hint" xml:space="preserve">
+    <value>Copied into ACT's own folder and handed to the agent by path when the task runs.</value>
+  </data>
+  <data name="NewTask_Attachments_Drop" xml:space="preserve">
+    <value>Drop files here, paste from the clipboard, or browse</value>
+  </data>
+  <data name="NewTask_Attachments_DropActive" xml:space="preserve">
+    <value>Release to attach</value>
+  </data>
+  <data name="NewTask_Attachments_Browse" xml:space="preserve">
+    <value>Browse files</value>
+  </data>
+  <data name="NewTask_Attachments_Remove" xml:space="preserve">
+    <value>Remove attachment</value>
+  </data>
+  <data name="NewTask_Attachments_None" xml:space="preserve">
+    <value>No attachments.</value>
+  </data>
+  <data name="NewTask_Attachments_TooMany" xml:space="preserve">
+    <value>Too many files</value>
+  </data>
+  <data name="NewTask_Attachments_TooManyDetail" xml:space="preserve">
+    <value>A task takes at most {0} attachments.</value>
+  </data>
+  <data name="NewTask_Attachments_TooLarge" xml:space="preserve">
+    <value>File too large</value>
+  </data>
+  <data name="NewTask_Attachments_TooLargeDetail" xml:space="preserve">
+    <value>{0} was not attached: an attachment may be at most {1}.</value>
+  </data>
+  <data name="NewTask_Attachments_Failed" xml:space="preserve">
+    <value>Could not attach the file</value>
+  </data>
+  <data name="NewTask_Attachments_Open" xml:space="preserve">
+    <value>Open {0}</value>
+  </data>
+  <data name="NewTask_Attachments_OpenFailed" xml:space="preserve">
+    <value>Could not open the file</value>
+  </data>
+  <data name="NewTask_Attachments_OpenFailedDetail" xml:space="preserve">
+    <value>Windows has no application associated with {0}, or it refused to start one.</value>
+  </data>
+  <data name="NewTask_Attachments_Gone" xml:space="preserve">
+    <value>The file is no longer there</value>
+  </data>
+  <data name="NewTask_Attachments_GoneDetail" xml:space="preserve">
+    <value>{0} is not in this task's folder any more.</value>
   </data>
   <data name="NewTask_WorkingDir" xml:space="preserve">
     <value>Working directory</value>
@@ -78,47 +156,32 @@
   <data name="NewTask_Schedule_Hint" xml:space="preserve">
     <value>When the task may launch, once you move it to Ready.</value>
   </data>
+  <data name="NewTask_UnattendedPrompting" xml:space="preserve">
+    <value>This task can start on its own, but its permission mode still asks before acting. ACT never answers a prompt, so it will wait at the first one — holding a slot — until you do. Choose auto, don't ask or bypass for unattended work.</value>
+  </data>
   <data name="NewTask_ScheduledFor" xml:space="preserve">
     <value>Date &amp; time</value>
   </data>
   <data name="NewTask_DateFormat" xml:space="preserve">
     <value>yyyy-MM-dd HH:mm</value>
   </data>
-  <data name="NewTask_AutoComplete" xml:space="preserve">
-    <value>Auto-complete</value>
+  <data name="NewTask_AllowConcurrentWorkingDir" xml:space="preserve">
+    <value>Run even if the folder is busy</value>
   </data>
-  <data name="NewTask_AutoComplete_Hint" xml:space="preserve">
-    <value>Skip review and finish on its own after a clean run.</value>
+  <data name="NewTask_AllowConcurrentWorkingDir_Hint" xml:space="preserve">
+    <value>Launch this task alongside another one already working in the same folder. Both agents then edit the same files.</value>
   </data>
   <data name="NewTask_AutoGit" xml:space="preserve">
-    <value>Git on completion</value>
+    <value>Git when done</value>
   </data>
   <data name="NewTask_AutoGit_Hint" xml:space="preserve">
-    <value>Runs in-session, before the task completes.</value>
+    <value>Added to the prompt, so the agent does it in-session.</value>
   </data>
   <data name="NewTask_NoGitAction" xml:space="preserve">
     <value>none</value>
   </data>
   <data name="NewTask_Draft" xml:space="preserve">
     <value>Draft pull request</value>
-  </data>
-  <data name="NewTask_AllowedTools" xml:space="preserve">
-    <value>Allowed tools</value>
-  </data>
-  <data name="NewTask_DisallowedTools" xml:space="preserve">
-    <value>Disallowed tools</value>
-  </data>
-  <data name="NewTask_Tools_Hint" xml:space="preserve">
-    <value>One per line, or comma-separated. Example: Bash(git *)</value>
-  </data>
-  <data name="NewTask_ExtraFlags" xml:space="preserve">
-    <value>Extra CLI flags</value>
-  </data>
-  <data name="NewTask_Env" xml:space="preserve">
-    <value>Environment variables</value>
-  </data>
-  <data name="NewTask_Env_Hint" xml:space="preserve">
-    <value>One KEY=value per line.</value>
   </data>
   <data name="NewTask_Required" xml:space="preserve">
     <value>Required</value>
@@ -174,9 +237,6 @@
   <data name="ScheduleOption_NextWindow" xml:space="preserve">
     <value>next 5-hour window</value>
   </data>
-  <data name="ScheduleOption_WindowAfterNext" xml:space="preserve">
-    <value>window after next</value>
-  </data>
   <data name="ScheduleOption_DateTime" xml:space="preserve">
     <value>specific date &amp; time</value>
   </data>
@@ -198,11 +258,8 @@
   <data name="Column_Executing" xml:space="preserve">
     <value>Executing</value>
   </data>
-  <data name="Column_NeedsFeedback" xml:space="preserve">
-    <value>Needs feedback</value>
-  </data>
-  <data name="Column_ToReview" xml:space="preserve">
-    <value>To review</value>
+  <data name="Column_YourTurn" xml:space="preserve">
+    <value>Your turn</value>
   </data>
   <data name="Column_Completed" xml:space="preserve">
     <value>Completed</value>
@@ -225,17 +282,8 @@
   <data name="Badge_Killed" xml:space="preserve">
     <value>killed</value>
   </data>
-  <data name="Badge_Stale" xml:space="preserve">
-    <value>stale</value>
-  </data>
-  <data name="Badge_StaleMinutes" xml:space="preserve">
-    <value>stale {0}m</value>
-  </data>
-  <data name="Badge_StaleHours" xml:space="preserve">
-    <value>stale {0}h</value>
-  </data>
-  <data name="Badge_IdleReady" xml:space="preserve">
-    <value>idle · ready</value>
+  <data name="Badge_ToReview" xml:space="preserve">
+    <value>to review</value>
   </data>
   <data name="Badge_Done" xml:space="preserve">
     <value>done</value>
@@ -249,14 +297,56 @@
   <data name="Schedule_NextWindow" xml:space="preserve">
     <value>next win</value>
   </data>
-  <data name="Schedule_WindowAfterNext" xml:space="preserve">
-    <value>win +2</value>
-  </data>
   <data name="Schedule_At" xml:space="preserve">
     <value>⏱ {0}</value>
   </data>
   <data name="Schedule_DateFormat" xml:space="preserve">
     <value>MMM d HH:mm</value>
+  </data>
+  <data name="Hold_Paused" xml:space="preserve">
+    <value>paused</value>
+  </data>
+  <data name="Hold_Paused_Tip" xml:space="preserve">
+    <value>Automatic execution is paused. Launch this task by hand, or click auto-exec paused in the top bar to resume.</value>
+  </data>
+  <data name="Hold_AgentOff" xml:space="preserve">
+    <value>agent off</value>
+  </data>
+  <data name="Hold_AgentOff_Tip" xml:space="preserve">
+    <value>{0} is switched off in Settings, so nothing can start with it.</value>
+  </data>
+  <data name="Hold_Usage" xml:space="preserve">
+    <value>usage {0}</value>
+  </data>
+  <data name="Hold_Usage_Tip" xml:space="preserve">
+    <value>The usage limit for {0} has been reached. This task starts on its own when the window resets at {1}.</value>
+  </data>
+  <data name="Hold_Folder" xml:space="preserve">
+    <value>folder #{0}</value>
+  </data>
+  <data name="Hold_Folder_Tip" xml:space="preserve">
+    <value>#{0} · {1} is working in this folder. This task starts on its own once that one is completed.</value>
+  </data>
+  <data name="Hold_Dependency" xml:space="preserve">
+    <value>after #{0}</value>
+  </data>
+  <data name="Hold_Dependency_Tip" xml:space="preserve">
+    <value>Waiting for #{0} · {1} to be completed.</value>
+  </data>
+  <data name="Hold_Slot" xml:space="preserve">
+    <value>queued {0}/{1}</value>
+  </data>
+  <data name="Hold_Slot_Tip" xml:space="preserve">
+    <value>{0} of {1} tasks are already running. This one starts on its own as soon as a slot frees.</value>
+  </data>
+  <data name="Hold_Hours" xml:space="preserve">
+    <value>{0}h{1:00}m</value>
+  </data>
+  <data name="Hold_Minutes" xml:space="preserve">
+    <value>{0}m</value>
+  </data>
+  <data name="Hold_Days" xml:space="preserve">
+    <value>{0}d{1}h</value>
   </data>
   <data name="Metrics_Context" xml:space="preserve">
     <value>{0}/{1} ctx</value>
@@ -267,11 +357,38 @@
   <data name="Metrics_Compactions" xml:space="preserve">
     <value>{0} compactions</value>
   </data>
+  <data name="Metrics_Tokens" xml:space="preserve">
+    <value>{0} tokens</value>
+  </data>
+  <data name="Metrics_QuietMinutes" xml:space="preserve">
+    <value>quiet {0}m</value>
+  </data>
+  <data name="Metrics_QuietHours" xml:space="preserve">
+    <value>quiet {0}h</value>
+  </data>
   <data name="Card_Children" xml:space="preserve">
     <value>{0} children ⤵</value>
   </data>
-  <data name="Card_AutoComplete" xml:space="preserve">
-    <value>auto-complete</value>
+  <data name="Session_SpawnedBy" xml:space="preserve">
+    <value>Spawned by</value>
+  </data>
+  <data name="Session_FollowUps" xml:space="preserve">
+    <value>Follow-ups</value>
+  </data>
+  <data name="Settings_MaxFollowUps" xml:space="preserve">
+    <value>Follow-ups an agent may create per task</value>
+  </data>
+  <data name="Settings_MaxFollowUps_Hint" xml:space="preserve">
+    <value>A safety limit on agent-created tasks, counted over a task's whole life. Set it to 0 to stop agents creating tasks at all.</value>
+  </data>
+  <data name="Card_SpawnedBy" xml:space="preserve">
+    <value>↳ #{0}</value>
+  </data>
+  <data name="Card_SpawnedBy_Tip" xml:space="preserve">
+    <value>Spawned by #{0} — {1}</value>
+  </data>
+  <data name="Card_SpawnedByUnknown" xml:space="preserve">
+    <value>↳ spawned</value>
   </data>
   <data name="Agent_ClaudeCode" xml:space="preserve">
     <value>claude</value>
@@ -288,14 +405,167 @@
   <data name="Settings_Group_Appearance" xml:space="preserve">
     <value>Appearance</value>
   </data>
+  <data name="Usage_Unavailable" xml:space="preserve">
+    <value>unavailable</value>
+  </data>
+  <data name="Usage_Unavailable_NotSignedIn" xml:space="preserve">
+    <value>not signed in</value>
+  </data>
+  <data name="Usage_Unavailable_Expired" xml:space="preserve">
+    <value>renewing token</value>
+  </data>
+  <data name="Usage_Unavailable_SignInRequired" xml:space="preserve">
+    <value>sign in again</value>
+  </data>
+  <data name="Usage_Unavailable_Unauthorized" xml:space="preserve">
+    <value>token refused</value>
+  </data>
+  <data name="Usage_Unavailable_Unreachable" xml:space="preserve">
+    <value>no connection</value>
+  </data>
+  <data name="Usage_Unavailable_Failed" xml:space="preserve">
+    <value>unreadable reply</value>
+  </data>
+  <data name="Usage_Unavailable_Tooltip" xml:space="preserve">
+    <value>{0} usage is unavailable right now — {1}. Last checked at {2}; ACT keeps trying, and the numbers come back on their own.</value>
+  </data>
+  <data name="Usage_Cause_NotSignedIn" xml:space="preserve">
+    <value>ACT found no credentials for this CLI, so sign in by running it once</value>
+  </data>
+  <data name="Usage_Cause_Expired" xml:space="preserve">
+    <value>the CLI's access token has expired, so ACT has asked the CLI to renew it</value>
+  </data>
+  <data name="Usage_Cause_SignInRequired" xml:space="preserve">
+    <value>this CLI's login has lapsed after too long unused, so run `claude auth login` once to sign in again</value>
+  </data>
+  <data name="Usage_Cause_Unauthorized" xml:space="preserve">
+    <value>the endpoint refused the token, which usually means the login has to be renewed</value>
+  </data>
+  <data name="Usage_Cause_Unreachable" xml:space="preserve">
+    <value>the endpoint could not be reached</value>
+  </data>
+  <data name="Usage_Cause_Failed" xml:space="preserve">
+    <value>the endpoint answered with something ACT could not read</value>
+  </data>
+  <data name="Settings_Group_Execution" xml:space="preserve">
+    <value>Execution</value>
+  </data>
+  <data name="Settings_OneTaskPerFolder" xml:space="preserve">
+    <value>One task at a time per folder</value>
+  </data>
+  <data name="Settings_OneTaskPerFolder_Hint" xml:space="preserve">
+    <value>Stop a task launching while another is still working in the same folder. A task holds its folder until it is completed. A single task can be allowed to run alongside the others from its own page.</value>
+  </data>
+  <data name="Settings_PauseAutoExecution" xml:space="preserve">
+    <value>Pause automatic execution</value>
+  </data>
+  <data name="Settings_PauseAutoExecution_Hint" xml:space="preserve">
+    <value>Nothing starts on its own while this is on, whatever a task is scheduled for. Launching a task by hand still works.</value>
+  </data>
+  <data name="Settings_MaxConcurrent" xml:space="preserve">
+    <value>Tasks running at once</value>
+  </data>
+  <data name="Settings_MaxConcurrent_Hint" xml:space="preserve">
+    <value>How many tasks the queue keeps working at the same time. Each one holds a live agent and its terminal, so this is a real ceiling on the machine. A task waiting to be signed off does not count.</value>
+  </data>
+  <data name="Settings_UsageCeiling" xml:space="preserve">
+    <value>Hold the queue at</value>
+  </data>
+  <data name="Settings_UsageCeiling_Hint" xml:space="preserve">
+    <value>Once a 5-hour or weekly quota reaches this much, auto-execution waits for the window to reset. Below that, tasks launch as usual. Under 100% on purpose: the reading is up to three minutes old and rounded to a whole percent, and a task launched into the last of a quota stops mid-run rather than failing cleanly. Set it lower to keep more of the quota for your own sessions. Manual launches are never held.</value>
+  </data>
+  <data name="Settings_Group_Retention" xml:space="preserve">
+    <value>Retention</value>
+  </data>
+  <data name="Settings_AutoArchive" xml:space="preserve">
+    <value>Archive completed tasks automatically</value>
+  </data>
+  <data name="Settings_AutoArchive_Hint" xml:space="preserve">
+    <value>A signed-off task leaves the board once it is old enough. Nothing is destroyed — it moves to the archive, where you can restore it.</value>
+  </data>
+  <data name="Settings_AutoArchiveDays" xml:space="preserve">
+    <value>Archive after</value>
+  </data>
+  <data name="Settings_AutoArchiveDays_Hint" xml:space="preserve">
+    <value>Days since the task was completed. A task you restore by hand stays on the board.</value>
+  </data>
   <data name="Settings_Group_System" xml:space="preserve">
     <value>System</value>
+  </data>
+  <data name="Settings_Group_Agents" xml:space="preserve">
+    <value>Agents</value>
+  </data>
+  <data name="Settings_AgentEnabled_Hint" xml:space="preserve">
+    <value>Offer this agent when creating a task.</value>
+  </data>
+  <data name="Settings_AgentBinary_NotFound" xml:space="preserve">
+    <value>Nothing is there. A launch will fail until this points at the real executable.</value>
+  </data>
+  <data name="Settings_AgentBinary_NotInstalled" xml:space="preserve">
+    <value>Not found on PATH or anywhere ACT knows to look — this agent may not be installed.</value>
+  </data>
+  <data name="Settings_AgentBinary_NotOnPath" xml:space="preserve">
+    <value>Not on PATH. It is installed at {0}.</value>
+  </data>
+  <data name="Settings_AgentBinary_UseFound" xml:space="preserve">
+    <value>Use it</value>
+  </data>
+  <data name="Settings_AgentBinary_OnPath" xml:space="preserve">
+    <value>Found on PATH.</value>
+  </data>
+  <data name="Settings_AgentBinary_Found" xml:space="preserve">
+    <value>Found.</value>
+  </data>
+  <data name="Settings_Agents_Hint" xml:space="preserve">
+    <value>How each CLI is installed on this machine. These apply to every task using that agent, and take effect on its next launch.</value>
+  </data>
+  <data name="Settings_AgentBinary" xml:space="preserve">
+    <value>Executable</value>
+  </data>
+  <data name="Settings_AgentBinary_Hint" xml:space="preserve">
+    <value>Leave empty to find it on PATH. Set a full path when the install is not there.</value>
+  </data>
+  <data name="Settings_ExtraFlags" xml:space="preserve">
+    <value>Extra CLI flags</value>
+  </data>
+  <data name="Settings_ExtraFlags_Hint" xml:space="preserve">
+    <value>One per line. Added to every launch — a flag ACT already sets, such as the session id or the settings file, will break its own binding.</value>
+  </data>
+  <data name="Settings_Env" xml:space="preserve">
+    <value>Environment variables</value>
+  </data>
+  <data name="Settings_Env_Hint" xml:space="preserve">
+    <value>One KEY=value per line.</value>
+  </data>
+  <data name="Settings_Notifications" xml:space="preserve">
+    <value>Desktop notifications</value>
+  </data>
+  <data name="Settings_Notifications_Hint" xml:space="preserve">
+    <value>Ping when a task needs you or finishes, unless you are already watching the board.</value>
+  </data>
+  <data name="Notify_NeedsPermission" xml:space="preserve">
+    <value>Needs permission</value>
+  </data>
+  <data name="Notify_NeedsAnswer" xml:space="preserve">
+    <value>Needs an answer</value>
+  </data>
+  <data name="Notify_Error" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Notify_Killed" xml:space="preserve">
+    <value>Session killed</value>
+  </data>
+  <data name="Notify_ReadyForReview" xml:space="preserve">
+    <value>Ready for review</value>
+  </data>
+  <data name="Notify_Body" xml:space="preserve">
+    <value>#{0} · {1}</value>
   </data>
   <data name="Settings_KeepAwake" xml:space="preserve">
     <value>Keep the computer awake</value>
   </data>
   <data name="Settings_KeepAwake_Hint" xml:space="preserve">
-    <value>Stop the machine sleeping while ACT is open, so a long run is not cut short.</value>
+    <value>Stop the machine sleeping while there is work running or waiting to start. An idle board is left to sleep.</value>
   </data>
   <data name="Settings_CloseToTray" xml:space="preserve">
     <value>Close to the notification area</value>
@@ -351,8 +621,14 @@
   <data name="Settings_Density_Hint" xml:space="preserve">
     <value>How much detail each flight strip shows.</value>
   </data>
-  <data name="Settings_Density_Spacious" xml:space="preserve">
-    <value>Spacious</value>
+  <data name="Settings_BlinkYourTurn" xml:space="preserve">
+    <value>Blink cards in Your turn</value>
+  </data>
+  <data name="Settings_BlinkYourTurn_Hint" xml:space="preserve">
+    <value>Pulse a card that is waiting on you. Turn it off to keep the colour without the movement.</value>
+  </data>
+  <data name="Settings_Density_Detailed" xml:space="preserve">
+    <value>Detailed</value>
   </data>
   <data name="Settings_Density_Compact" xml:space="preserve">
     <value>Compact</value>
@@ -378,6 +654,9 @@
   <data name="NotFound_Text" xml:space="preserve">
     <value>Sorry, the content you are looking for does not exist.</value>
   </data>
+  <data name="Launch_WorkingDirBusy" xml:space="preserve">
+    <value>#{0} {1} is still working in this folder. Complete it first, or let this task run even if the folder is busy.</value>
+  </data>
   <data name="Session_NoLiveSession" xml:space="preserve">
     <value>No session is running for this card.</value>
   </data>
@@ -402,17 +681,47 @@
   <data name="Session_Turns" xml:space="preserve">
     <value>Turns</value>
   </data>
+  <data name="Session_Tokens" xml:space="preserve">
+    <value>Tokens</value>
+  </data>
+  <data name="Session_Compactions" xml:space="preserve">
+    <value>Compactions</value>
+  </data>
   <data name="Session_OpenInDesktop" xml:space="preserve">
     <value>Open in desktop app</value>
   </data>
-  <data name="Session_Kill" xml:space="preserve">
-    <value>Kill session</value>
+  <data name="Session_RestartTerminal" xml:space="preserve">
+    <value>Restart terminal</value>
+  </data>
+  <data name="Session_RestartFailed" xml:space="preserve">
+    <value>Could not restart the terminal</value>
+  </data>
+  <data name="Session_AttachDrop" xml:space="preserve">
+    <value>Release to insert the file's path</value>
+  </data>
+  <data name="Session_AttachNoSession" xml:space="preserve">
+    <value>Nothing to attach to</value>
+  </data>
+  <data name="Session_AttachNoSessionDetail" xml:space="preserve">
+    <value>This card has no live terminal, so there is nowhere to put the path.</value>
+  </data>
+  <data name="Session_AttachFailed" xml:space="preserve">
+    <value>Could not attach the file</value>
   </data>
   <data name="Session_Open" xml:space="preserve">
     <value>Open terminal</value>
   </data>
   <data name="Board_Launch" xml:space="preserve">
     <value>Launch now</value>
+  </data>
+  <data name="Board_Retry" xml:space="preserve">
+    <value>Retry</value>
+  </data>
+  <data name="Session_Complete" xml:space="preserve">
+    <value>Mark completed</value>
+  </data>
+  <data name="Session_Reopen" xml:space="preserve">
+    <value>Reopen</value>
   </data>
   <data name="Nav_BackToBoard" xml:space="preserve">
     <value>Board</value>
@@ -432,8 +741,20 @@
   <data name="Session_NotLaunchable" xml:space="preserve">
     <value>Move the card to Ready to launch it.</value>
   </data>
+  <data name="Session_Archived" xml:space="preserve">
+    <value>This task is archived. Its terminal does not start — restore it to the board to run it again.</value>
+  </data>
   <data name="Session_LaunchFailed" xml:space="preserve">
     <value>Launch failed</value>
+  </data>
+  <data name="Session_NotLaunched" xml:space="preserve">
+    <value>Not started yet</value>
+  </data>
+  <data name="Session_RetryFailed" xml:space="preserve">
+    <value>Retry failed</value>
+  </data>
+  <data name="Session_RestoreFailed" xml:space="preserve">
+    <value>Terminal not restored</value>
   </data>
   <data name="NewTask_CreateDir" xml:space="preserve">
     <value>Create it</value>
@@ -447,7 +768,7 @@
   <data name="NewTask_DirMissingResolved" xml:space="preserve">
     <value>This directory does not exist yet ({0}).</value>
   </data>
-  <data name="NewTask_Browse" xml:space="preserve">
+  <data name="Picker_Browse" xml:space="preserve">
     <value>Browse</value>
   </data>
   <data name="NewTask_DirNotAbsolute" xml:space="preserve">
@@ -519,6 +840,12 @@
   <data name="Archive_Restore" xml:space="preserve">
     <value>Restore to the board</value>
   </data>
+  <data name="Archive_Open" xml:space="preserve">
+    <value>Open the task, read-only</value>
+  </data>
+  <data name="Archive_AutoArchived" xml:space="preserve">
+    <value>archived automatically</value>
+  </data>
   <data name="Archive_Clear" xml:space="preserve">
     <value>Clear archive</value>
   </data>
@@ -542,5 +869,254 @@
   </data>
   <data name="NewTask_WorkingDir_Placeholder" xml:space="preserve">
     <value>Type a path, or browse</value>
+  </data>
+  <data name="Transition_Launched" xml:space="preserve">
+    <value>Launched</value>
+  </data>
+  <data name="Transition_LaunchedWithAdjustments" xml:space="preserve">
+    <value>Launched with adjustments: {0}</value>
+  </data>
+  <data name="Transition_Retried" xml:space="preserve">
+    <value>Retried — the session was resumed and asked to continue</value>
+  </data>
+  <data name="Transition_RetriedWithAdjustments" xml:space="preserve">
+    <value>Retried with adjustments: {0}</value>
+  </data>
+  <data name="Transition_LaunchFailed" xml:space="preserve">
+    <value>Launch failed: {0}</value>
+  </data>
+  <data name="Transition_MovedByHand" xml:space="preserve">
+    <value>Moved by hand</value>
+  </data>
+  <data name="Transition_CompletedByHand" xml:space="preserve">
+    <value>Marked completed</value>
+  </data>
+  <data name="Transition_Reopened" xml:space="preserve">
+    <value>Reopened</value>
+  </data>
+  <data name="Transition_SessionRestored" xml:space="preserve">
+    <value>Terminal restored</value>
+  </data>
+  <data name="Transition_RestoreFailed" xml:space="preserve">
+    <value>Terminal could not be restored: {0}</value>
+  </data>
+  <data name="Transition_PermissionRequested" xml:space="preserve">
+    <value>Permission requested in the terminal</value>
+  </data>
+  <data name="Transition_QuestionAsked" xml:space="preserve">
+    <value>Question asked in the terminal</value>
+  </data>
+  <data name="Transition_TurnEnded" xml:space="preserve">
+    <value>Turn ended, ready for review</value>
+  </data>
+  <data name="Transition_TurnFailed" xml:space="preserve">
+    <value>The agent reported a failed turn: {0}</value>
+  </data>
+  <data name="Transition_AgentExited" xml:space="preserve">
+    <value>Agent exited with code {0}</value>
+  </data>
+  <data name="Transition_TerminalRestarted" xml:space="preserve">
+    <value>Terminal restarted — the session was resumed in a new one</value>
+  </data>
+  <data name="Transition_ActivityObserved" xml:space="preserve">
+    <value>Activity observed in the terminal</value>
+  </data>
+  <data name="Transition_CompactingStarted" xml:space="preserve">
+    <value>Compacting the context</value>
+  </data>
+  <data name="Transition_CompactingFinished" xml:space="preserve">
+    <value>Compacting finished</value>
+  </data>
+  <data name="Transition_StartupPrompt" xml:space="preserve">
+    <value>Waiting on the CLI's start-up prompt</value>
+  </data>
+  <data name="Transition_SpawnedFollowUp" xml:space="preserve">
+    <value>Spawned a follow-up: {0}</value>
+  </data>
+  <data name="Card_Surface_Timeline" xml:space="preserve">
+    <value>Timeline</value>
+  </data>
+  <data name="Timeline_Empty" xml:space="preserve">
+    <value>Nothing has happened to this task yet.</value>
+  </data>
+  <data name="Timeline_EnteredColumn" xml:space="preserve">
+    <value>Entered {0}</value>
+  </data>
+  <data name="Usage_Agent_ClaudeCode" xml:space="preserve">
+    <value>Claude</value>
+  </data>
+  <data name="Usage_Agent_Codex" xml:space="preserve">
+    <value>Codex</value>
+  </data>
+  <data name="Usage_Window_Session" xml:space="preserve">
+    <value>5h</value>
+  </data>
+  <data name="Usage_Window_Weekly" xml:space="preserve">
+    <value>week</value>
+  </data>
+  <data name="Usage_Window_Monthly" xml:space="preserve">
+    <value>month</value>
+  </data>
+  <data name="Usage_Percent" xml:space="preserve">
+    <value>{0}%</value>
+  </data>
+  <data name="Usage_ResetsIn" xml:space="preserve">
+    <value>· in {0}</value>
+  </data>
+  <data name="Usage_AfterReset" xml:space="preserve">
+    <value>· reset · no activity</value>
+  </data>
+  <data name="Usage_NotStarted" xml:space="preserve">
+    <value>· not started</value>
+  </data>
+  <data name="Usage_DaysHours" xml:space="preserve">
+    <value>{0}d {1}h</value>
+  </data>
+  <data name="Usage_HoursMinutes" xml:space="preserve">
+    <value>{0}h {1}m</value>
+  </data>
+  <data name="Usage_Minutes" xml:space="preserve">
+    <value>{0}m</value>
+  </data>
+  <data name="Usage_Tooltip" xml:space="preserve">
+    <value>{0} — {1} window · resets {2}</value>
+  </data>
+  <data name="Usage_Tooltip_NotStarted" xml:space="preserve">
+    <value>{0} — {1} window · nothing has run in it yet, so no reset is scheduled</value>
+  </data>
+  <data name="Search_Placeholder" xml:space="preserve">
+    <value>Filter by number, title, folder or prompt</value>
+  </data>
+  <data name="Search_Clear" xml:space="preserve">
+    <value>Clear the filter</value>
+  </data>
+  <data name="Search_ArchiveMatches" xml:space="preserve">
+    <value>{0} in the archive ›</value>
+  </data>
+  <data name="Board_ColumnNoMatch" xml:space="preserve">
+    <value>no match</value>
+  </data>
+  <data name="Board_HiddenAttention" xml:space="preserve">
+    <value>{0} hidden</value>
+  </data>
+  <data name="Board_HiddenAttention_Tip" xml:space="preserve">
+    <value>Cards in this column need you but do not match the filter.</value>
+  </data>
+  <data name="Archive_NoMatch" xml:space="preserve">
+    <value>Nothing archived matches the filter.</value>
+  </data>
+  <data name="Board_Density_Tip" xml:space="preserve">
+    <value>How much detail each flight strip shows. Click to switch.</value>
+  </data>
+  <data name="Templates_Title" xml:space="preserve">
+    <value>Task templates</value>
+  </data>
+  <data name="Templates_Hint" xml:space="preserve">
+    <value>What a new task can start from. The default one is used by the New task button and cannot be deleted.</value>
+  </data>
+  <data name="Templates_Default" xml:space="preserve">
+    <value>Default</value>
+  </data>
+  <data name="Templates_DefaultLocked" xml:space="preserve">
+    <value>This is what the New task button starts from. It cannot be renamed or deleted, and it carries no title or prompt — those are the task itself, and every new task writes its own.</value>
+  </data>
+  <data name="Templates_New" xml:space="preserve">
+    <value>New template</value>
+  </data>
+  <data name="Templates_Edit" xml:space="preserve">
+    <value>Edit template</value>
+  </data>
+  <data name="Templates_Delete" xml:space="preserve">
+    <value>Delete template</value>
+  </data>
+  <data name="Templates_DeleteConfirm" xml:space="preserve">
+    <value>Delete the template “{0}”? Tasks already created from it are not affected.</value>
+  </data>
+  <data name="Templates_DeleteYes" xml:space="preserve">
+    <value>Delete it</value>
+  </data>
+  <data name="Templates_NoPrompt" xml:space="preserve">
+    <value>no prompt</value>
+  </data>
+  <data name="Templates_Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Templates_Name_Hint" xml:space="preserve">
+    <value>How it reads in the New task picker.</value>
+  </data>
+  <data name="Templates_Prompt_Hint" xml:space="preserve">
+    <value>The starting point for the task's prompt. Leave it empty to write one each time.</value>
+  </data>
+  <data name="Templates_TaskTitle_Hint" xml:space="preserve">
+    <value>The name every task from this template starts with. Leave it empty and each task is named from its prompt.</value>
+  </data>
+  <data name="Templates_TaskTitle_Placeholder" xml:space="preserve">
+    <value>Named from the prompt</value>
+  </data>
+  <data name="Templates_TitleMeta" xml:space="preserve">
+    <value>titled “{0}”</value>
+  </data>
+  <data name="Templates_Group_Template" xml:space="preserve">
+    <value>Template</value>
+  </data>
+  <data name="TemplateView_NewTitle" xml:space="preserve">
+    <value>New template</value>
+  </data>
+  <data name="Template_NotFound" xml:space="preserve">
+    <value>That template no longer exists.</value>
+  </data>
+  <data name="Templates_Back" xml:space="preserve">
+    <value>Back to templates</value>
+  </data>
+  <data name="Board_NewTaskFrom" xml:space="preserve">
+    <value>New task from a template</value>
+  </data>
+  <data name="Task_SaveAsTemplate" xml:space="preserve">
+    <value>Save as a template</value>
+  </data>
+  <data name="Task_SaveAsTemplate_Prompt" xml:space="preserve">
+    <value>Name the template. It will start a new task with everything on this form except the title.</value>
+  </data>
+  <data name="Task_SaveAsTemplate_Saved" xml:space="preserve">
+    <value>Template saved</value>
+  </data>
+  <data name="Task_SaveAsTemplate_SavedDetail" xml:space="preserve">
+    <value>“{0}” is now in the New task picker.</value>
+  </data>
+  <data name="Settings_Group_Templates" xml:space="preserve">
+    <value>Task templates</value>
+  </data>
+  <data name="Settings_Templates_Hint" xml:space="preserve">
+    <value>What a new task starts from now lives on its own page, so you can keep more than one.</value>
+  </data>
+  <data name="Settings_Templates_Manage" xml:space="preserve">
+    <value>Manage templates</value>
+  </data>
+  <data name="Settings_Group_Diagnostics" xml:space="preserve">
+    <value>Diagnostics</value>
+  </data>
+  <data name="Settings_Telemetry" xml:space="preserve">
+    <value>Help improve ACT</value>
+  </data>
+  <data name="Settings_Telemetry_Hint" xml:space="preserve">
+    <value>Send anonymous usage data and crash reports. Never your prompts, task text, file paths or agent output.</value>
+  </data>
+  <data name="Settings_InstallId" xml:space="preserve">
+    <value>Install ID</value>
+  </data>
+  <data name="Settings_InstallId_Hint" xml:space="preserve">
+    <value>The anonymous identifier the usage data is grouped under. Generated on first launch, tied to nothing else, and safe to quote in a bug report.</value>
+  </data>
+  <data name="Settings_Logs" xml:space="preserve">
+    <value>Log files</value>
+  </data>
+  <data name="Settings_Logs_Hint" xml:space="preserve">
+    <value>One file per day, kept for two weeks. Attach the newest one when you report a problem.</value>
+  </data>
+  <data name="Settings_Logs_Open" xml:space="preserve">
+    <value>Open log folder</value>
+  </data>
+  <data name="Settings_Logs_OpenFailed" xml:space="preserve">
+    <value>ACT could not open {0}.</value>
   </data>
 </root>

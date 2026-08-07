@@ -1,0 +1,61 @@
+@using Act.Core.Abstractions
+
+<div class="picker">
+    <div class="crumbs">
+        <RadzenButton Icon="home" Text="@Strings.Picker_Home" Size="ButtonSize.ExtraSmall"
+                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" ButtonType="ButtonType.Button"
+                      Click="@(() => Open(directories.Home))" />
+        <RadzenButton Icon="storage" Text="@Strings.Picker_Roots" Size="ButtonSize.ExtraSmall"
+                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" ButtonType="ButtonType.Button"
+                      Click="@(() => Open(null))" />
+        <RadzenButton Icon="arrow_upward" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
+                      Variant="Variant.Text" ButtonType="ButtonType.Button" Disabled="@(listing.Parent is null)"
+                      Click="@(() => Open(listing.Parent))" title="@Strings.Picker_Up" />
+        <span class="here">@(listing.Path ?? Strings.Picker_Roots)</span>
+    </div>
+
+    <div class="entries">
+        @if (listing.Error is { } error)
+        {
+            <RadzenText TextStyle="TextStyle.Caption" Text="@ErrorText(error)" class="pickererr" />
+        }
+        else if (listing.Directories.Count == 0 && listing.Files.Count == 0)
+        {
+            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Picker_Empty" class="pickerhint" />
+        }
+        else
+        {
+            @foreach (var entry in listing.Directories)
+            {
+                <button type="button" class="entry" @onclick="@(() => Open(entry.Path))">
+                    <RadzenIcon Icon="folder" />
+                    <span>@entry.Name</span>
+                </button>
+            }
+
+            @* Folders first, then files — walking is the frequent action and stays where it was
+               before files existed. *@
+            @foreach (var entry in listing.Files)
+            {
+                <button type="button" class="entry file" @onclick="@(() => ChooseFileAsync(entry.Path))">
+                    <RadzenIcon Icon="draft" />
+                    <span>@entry.Name</span>
+                </button>
+            }
+        }
+    </div>
+
+    <div class="pickeractions">
+        <RadzenButton Text="@Strings.Picker_Cancel" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
+                      Variant="Variant.Text" ButtonType="ButtonType.Button" Click="CancelAsync" />
+
+        @* Only when the answer is where you are standing. In file mode clicking the file *is* the
+           choice, so a confirm button would be a second way to do the same thing. *@
+        @if (!PickingFiles)
+        {
+            <RadzenButton Text="@Strings.Picker_Use" Icon="check" Size="ButtonSize.ExtraSmall"
+                          ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Button"
+                          Disabled="@(listing.Path is null)" Click="ChooseAsync" />
+        }
+    </div>
+</div>

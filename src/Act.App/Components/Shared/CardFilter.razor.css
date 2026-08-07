@@ -1,0 +1,38 @@
+.cardfilter {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0 0.35rem;
+    border: 1px solid var(--act-line2);
+    border-radius: var(--act-radius);
+    background: var(--act-lane);
+}
+
+.cardfilter:focus-within {
+    border-color: var(--act-line);
+}
+
+::deep .ico {
+    font-size: var(--act-icon);
+    color: var(--act-faint);
+}
+
+::deep .box {
+    width: 15rem;
+    max-width: 40vw;
+    border: none;
+    background: none;
+    box-shadow: none;
+    font-size: var(--act-t4);
+    color: var(--act-ink);
+}
+
+::deep .clear {
+    min-width: 0;
+    padding: 0 0.15rem;
+    color: var(--act-faint);
+}
+
+::deep .clear:hover {
+    color: var(--act-ink);
+}

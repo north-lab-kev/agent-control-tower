@@ -39,6 +39,21 @@ public abstract class AgentAdapterContract
         }
     }
 
+    // The model ACT spends its own tokens on has to be one the agent actually offers, for the same
+    // reason the default does — and it must resolve, because `QueryAsync` builds a command line from
+    // it with no resolver in the way to catch a typo.
+    [Fact]
+    public void Its_utility_model_is_one_of_the_models_it_offers()
+    {
+        var capabilities = CreateAdapter().Capabilities;
+
+        if (capabilities.UtilityModel is not { } model)
+            return;
+
+        capabilities.Model(model).Should().NotBeNull();
+        capabilities.Utility!.Slug.Should().Be(model);
+    }
+
     [Fact]
     public void It_honours_at_least_one_permission_mode()
         => CreateAdapter().Capabilities.PermissionModes.Should().NotBeEmpty();

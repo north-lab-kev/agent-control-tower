@@ -1,5 +1,9 @@
 ﻿<!DOCTYPE html>
-<html lang="@Language">
+@* On the document element, not the layout root: Radzen mounts a dialog's mask and wrapper at
+   <body>, outside the layout, and the `--act-*` tokens — plus the `--rz-*` overrides written in
+   terms of them — have to reach there too. (Dropdown panels turned out to render inline, so this
+   is about dialogs.) Rendered here for the first paint; `actTheme.apply` keeps it current. *@
+<html lang="@Language" data-act-theme="@Theme">
 
 <head>
     <meta charset="utf-8" />
