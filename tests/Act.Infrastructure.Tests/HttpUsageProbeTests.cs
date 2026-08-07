@@ -90,6 +90,31 @@ public class HttpUsageProbeTests
         => (await Probe(new Handler(new TaskCanceledException("timed out"))).ReadAsync())
             .Availability.Should().Be(UsageAvailability.Unreachable);
 
+    // The endpoint override is a hand-edited appsettings value, and a scheme-less or malformed one
+    // throws out of `SendAsync` in types the probe's catches do not name — which would end the usage
+    // pump's polling loop for the life of the process. A config mistake has to read as "usage
+    // unavailable", not as a dead pump.
+    [Theory]
+    [InlineData("api.anthropic.com/usage")]
+    [InlineData("not a url at all")]
+    [InlineData("file:///c:/somewhere.json")]
+    public async Task A_misconfigured_endpoint_is_a_failure_rather_than_a_thrown_request(string endpoint)
+    {
+        var handler = new Handler(HttpStatusCode.OK, "{}");
+        var options = new UsageOptions
+        {
+            Agents = new Dictionary<string, UsageAgentOptions>
+            {
+                ["ClaudeCode"] = new() { Endpoint = endpoint },
+            },
+        };
+
+        var result = await Probe(handler, options: options).ReadAsync();
+
+        result.Availability.Should().Be(UsageAvailability.Failed);
+        handler.Calls.Should().Be(0, "a request that cannot be built must not be attempted");
+    }
+
     [Fact]
     public async Task Usage_switched_off_in_configuration_reports_off()
     {

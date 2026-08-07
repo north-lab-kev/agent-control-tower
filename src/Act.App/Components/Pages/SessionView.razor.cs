@@ -1,6 +1,7 @@
 using Act.App.Attachments;
 using Act.App.Cards;
 using Act.App.Desktop;
+using Act.App.Notifications;
 using Act.App.Resources;
 using Act.App.Sessions;
 using Act.Core.Abstractions;
@@ -57,6 +58,8 @@ public partial class SessionView(
 
     private Card? card;
 
+    private Guid wiredCard;
+
     private bool live;
 
     private bool launching;
@@ -77,61 +80,20 @@ public partial class SessionView(
 
     private static string Route(Card card) => CardRoute.For(card);
 
-    private string TerminalId => terminalId;
-
-    private string DropRootId => dropRootId;
-
-    private string DropInputId => dropInputId;
-
-    private string PreviewId => previewId;
-
-    // Only what can actually be shown. A log or a PDF has no thumbnail, and neither does a file that is
-    // no longer on disk — an empty frame under the cursor reads as a bug rather than as "it is gone".
+    // The row logic is `AttachmentRows`', shared with the task form; what stays here only binds this
+    // page's card and hover state into it.
     private bool Previews(TaskAttachment attachment)
-        => ReferenceEquals(previewing, attachment) && attachment.IsImage && !Missing(attachment);
+        => AttachmentRows.Previews(previewing, attachment, Missing(attachment));
 
-    // The card keeps a *name*; the bytes can go without it. Asked at render time rather than stored, so
-    // the row cannot claim a file that is not there — see the same note on `TaskView`.
     private bool Missing(TaskAttachment attachment)
-        => attachments.ResolveInside(CardId, attachment.FileName) is null;
-
-    private static string RowIcon(TaskAttachment attachment, bool missing) => missing
-        ? "broken_image"
-        : attachment.IsImage ? "image" : "description";
+        => AttachmentRows.Missing(attachments, CardId, attachment);
 
     private string PreviewUrl(TaskAttachment attachment)
-        => AttachmentEndpointExtensions.UrlFor(CardId, attachment);
+        => AttachmentRows.PreviewUrl(CardId, attachment);
 
-    // Names the file as well as the action, so it doubles as the tooltip a truncated name needs — the
-    // rail is 15rem wide and most names are cut short in it. Says the file is gone rather than offering
-    // to open nothing.
-    private static string RowLabel(TaskAttachment attachment, bool missing) => missing
-        ? Text.Format(Strings.NewTask_Attachments_GoneDetail, attachment.FileName)
-        : Text.Format(Strings.NewTask_Attachments_Open, attachment.FileName);
-
-    // The only way to look at an attachment the hover preview cannot show. Works on an archived card
-    // too: the files outlive the session, and opening one changes nothing.
-    private async Task OpenAttachmentAsync(TaskAttachment attachment)
-    {
-        var result = await opener.OpenAsync(CardId, attachment);
-
-        if (result.Outcome is AttachmentOpenOutcome.Opened)
-            return;
-
-        notifications.Notify(new NotificationMessage
-        {
-            Severity = NotificationSeverity.Warning,
-            Summary = result.Outcome is AttachmentOpenOutcome.Missing
-                ? Strings.NewTask_Attachments_Gone
-                : Strings.NewTask_Attachments_OpenFailed,
-            Detail = result.Outcome is AttachmentOpenOutcome.Missing
-                ? Text.Format(Strings.NewTask_Attachments_GoneDetail, attachment.FileName)
-                : result.Detail ?? Text.Format(
-                    Strings.NewTask_Attachments_OpenFailedDetail,
-                    attachment.FileName),
-            Duration = 8000,
-        });
-    }
+    // Works on an archived card too: the files outlive the session, and opening one changes nothing.
+    private Task OpenAttachmentAsync(TaskAttachment attachment)
+        => AttachmentRows.OpenAsync(opener, notifications, CardId, attachment);
 
     private TerminalSize Geometry { get; set; } = TerminalSize.Default;
 
@@ -170,10 +132,26 @@ public partial class SessionView(
         }
     }
 
-    // Synchronous first, load only on a miss — see the same note on TaskView: it keeps the page
-    // title correct on the first render instead of a frame late.
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
+        registry.Changed += OnRegistryChanged;
+
+        // The card moves under this view while the user watches it: a turn ending is what puts the
+        // sign-off within reach, and the badge and the rail's numbers are only true if they follow.
+        board.Changed += OnBoardChanged;
+    }
+
+    // Synchronous first, load only on a miss — see the same note on TaskView: it keeps the page
+    // title correct on the first render instead of a frame late. And on parameters rather than on
+    // initialization, because the rail's lineage links land here: two terminals are the same
+    // component, so following one is a parameter change on this instance, not a fresh page.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (card?.Id == CardId)
+            return;
+
+        previewing = null;
+
         card = board.Card(CardId);
 
         if (card is null)
@@ -182,41 +160,27 @@ public partial class SessionView(
 
             card = board.Card(CardId);
         }
-
-        registry.Changed += OnRegistryChanged;
-
-        // The card moves under this view while the user watches it: a turn ending is what puts the
-        // sign-off within reach, and the badge and the rail's numbers are only true if they follow.
-        board.Changed += OnBoardChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (card is null)
-            return;
-
-        if (firstRender)
+        if (card is not null)
         {
-            owner = DotNetObjectReference.Create(this);
+            owner ??= DotNetObjectReference.Create(this);
 
             // Loaded even for an **archived** card, which renders no terminal at all: the module also
             // owns `place`, and the rail lists this card's attachments either way — the files outlive
             // the session, since only a purge removes them. Gating the import on the terminal being
             // there is precisely the mistake the task form made with `Locked`, where a completed card
             // rendered a preview nothing ever positioned.
-            attach = await js.InvokeAsync<IJSObjectReference>("import", "/js/act-attach.js");
+            attach ??= await js.InvokeAsync<IJSObjectReference>("import", "/js/act-attach.js");
 
-            if (!Archived)
-            {
-                module = await js.InvokeAsync<IJSObjectReference>("import", "/js/act-terminal.js");
-
-                // Bound on the terminal frame, not the page: the rail's buttons are not somewhere a
-                // file means anything, and a paste is only claimed when the clipboard carries files —
-                // so xterm keeps handling a text paste exactly as it did.
-                await attach.InvokeVoidAsync("watch", dropRootId, dropInputId, owner);
-
-                await AttachAsync();
-            }
+            // Keyed on the card rather than on the first render: a lineage link swaps the card under
+            // this same instance, and the xterm it leaves behind holds the other card's session.
+            if (Archived)
+                await UnwireAsync();
+            else if (wiredCard != card.Id)
+                await RewireAsync(card.Id);
         }
 
         // After the render that added it, because the box only has a position once it is in the
@@ -247,13 +211,23 @@ public partial class SessionView(
 
         if (session is not { } running)
         {
-            notifications.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Warning,
-                Summary = Strings.Session_AttachNoSession,
-                Detail = Strings.Session_AttachNoSessionDetail,
-                Duration = 5000,
-            });
+            notifications.Toast(
+                NotificationSeverity.Warning,
+                Strings.Session_AttachNoSession,
+                Strings.Session_AttachNoSessionDetail);
+
+            return;
+        }
+
+        // Refused whole rather than truncated, like the task form's copy of this guard — and it has
+        // to come first: `GetMultipleFiles` throws past its maximum, and an exception out of an
+        // `InputFile` handler takes the whole circuit down, not just the drop.
+        if (args.FileCount > TaskAttachment.MaxPerTask)
+        {
+            notifications.Toast(
+                NotificationSeverity.Warning,
+                Strings.NewTask_Attachments_TooMany,
+                Text.Format(Strings.NewTask_Attachments_TooManyDetail, TaskAttachment.MaxPerTask));
 
             return;
         }
@@ -264,16 +238,13 @@ public partial class SessionView(
         {
             if (file.Size > TaskAttachment.MaxLength)
             {
-                notifications.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Warning,
-                    Summary = Strings.NewTask_Attachments_TooLarge,
-                    Detail = Text.Format(
+                notifications.Toast(
+                    NotificationSeverity.Warning,
+                    Strings.NewTask_Attachments_TooLarge,
+                    Text.Format(
                         Strings.NewTask_Attachments_TooLargeDetail,
                         file.Name,
-                        TaskLabels.FileSize(TaskAttachment.MaxLength)),
-                    Duration = 5000,
-                });
+                        TaskLabels.FileSize(TaskAttachment.MaxLength)));
 
                 continue;
             }
@@ -294,13 +265,7 @@ public partial class SessionView(
             {
                 log.LogError(error, "Attaching {FileName} to the live session failed.", file.Name);
 
-                notifications.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = Strings.Session_AttachFailed,
-                    Detail = error.Message,
-                    Duration = 5000,
-                });
+                notifications.Toast(NotificationSeverity.Error, Strings.Session_AttachFailed, error.Message);
             }
         }
 
@@ -379,6 +344,46 @@ public partial class SessionView(
         owner?.Dispose();
     }
 
+    private async Task RewireAsync(Guid cardId)
+    {
+        await UnwireAsync();
+
+        wiredCard = cardId;
+
+        module ??= await js.InvokeAsync<IJSObjectReference>("import", "/js/act-terminal.js");
+
+        // Bound on the terminal frame, not the page: the rail's buttons are not somewhere a
+        // file means anything, and a paste is only claimed when the clipboard carries files —
+        // so xterm keeps handling a text paste exactly as it did.
+        if (attach is { } dropping && owner is not null)
+            await dropping.InvokeVoidAsync("watch", dropRootId, dropInputId, owner);
+
+        await AttachAsync();
+    }
+
+    private async Task UnwireAsync()
+    {
+        if (wiredCard == Guid.Empty)
+            return;
+
+        wiredCard = Guid.Empty;
+        dragging = false;
+
+        if (session is { } previous)
+        {
+            previous.Terminal.Output -= WriteToTerminalAsync;
+
+            session = null;
+            live = false;
+        }
+
+        if (module is { } loaded)
+            await loaded.InvokeVoidAsync("dispose", terminalId);
+
+        if (attach is { } dropping)
+            await dropping.InvokeVoidAsync("dispose", dropRootId);
+    }
+
     private async Task AttachAsync()
     {
         if (module is not { } loaded || owner is null)
@@ -415,13 +420,7 @@ public partial class SessionView(
 
             if (result.Message is { } message)
             {
-                notifications.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = Strings.Session_RestoreFailed,
-                    Detail = message,
-                    Duration = 5000,
-                });
+                notifications.Toast(NotificationSeverity.Error, Strings.Session_RestoreFailed, message);
             }
 
             card = board.Card(CardId);
@@ -477,13 +476,10 @@ public partial class SessionView(
 
             if (result.Message is { } message)
             {
-                notifications.Notify(new NotificationMessage
-                {
-                    Severity = result.Waiting ? NotificationSeverity.Warning : NotificationSeverity.Error,
-                    Summary = result.Waiting ? Strings.Session_NotLaunched : Strings.Session_LaunchFailed,
-                    Detail = message,
-                    Duration = 5000,
-                });
+                notifications.Toast(
+                    result.Waiting ? NotificationSeverity.Warning : NotificationSeverity.Error,
+                    result.Waiting ? Strings.Session_NotLaunched : Strings.Session_LaunchFailed,
+                    message);
             }
 
             card = board.Card(CardId);
@@ -553,13 +549,7 @@ public partial class SessionView(
 
             if (result.Message is { } message)
             {
-                notifications.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = Strings.Session_RestartFailed,
-                    Detail = message,
-                    Duration = 5000,
-                });
+                notifications.Toast(NotificationSeverity.Error, Strings.Session_RestartFailed, message);
             }
 
             if (module is { } loaded)

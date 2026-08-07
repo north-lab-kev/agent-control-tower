@@ -132,6 +132,28 @@ public class TimelineViewTests : ComponentTest
         Route.Should().Be("archive");
     }
 
+    // The rail is cached against the card's transition count — a chatty board raises `Changed` once
+    // a second for cards that are not this one — so the one thing the cache must prove is that a row
+    // added to *this* card while the page is open still appears.
+    [Fact]
+    public async Task A_transition_added_while_the_page_is_open_becomes_a_row()
+    {
+        var card = Card(BoardColumn.Executing);
+        card.Transitions = [Moved(TransitionReason.Launched, BoardColumn.Executing, Now.AddMinutes(-30))];
+
+        var cut = await Open(card);
+
+        cut.FindAll("div.tl div.ev").Should().ContainSingle();
+
+        var moved = Board.Card(card.Id)!;
+
+        moved.Transitions.Add(Moved(TransitionReason.TurnEnded, BoardColumn.YourTurn, Now.AddMinutes(-1)));
+
+        await Board.UpdateAsync(moved);
+
+        cut.WaitForAssertion(() => cut.FindAll("div.tl div.ev").Should().HaveCount(2));
+    }
+
     private async Task<IRenderedComponent<TimelineView>> Open(Card card)
     {
         await BoardWith(card);

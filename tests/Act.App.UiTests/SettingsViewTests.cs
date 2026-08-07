@@ -3,6 +3,7 @@ using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
 using Act.Core.Scheduling;
+using Act.Core.Spawning;
 using AwesomeAssertions;
 using Bunit;
 
@@ -93,6 +94,27 @@ public class SettingsViewTests : ComponentTest
         RadzenDom.Numeric(cut, "Hold the queue at", Row).Change("80");
 
         Settings.UsageCeilingPercent.Should().Be(80);
+    }
+
+    [Fact]
+    public void The_follow_up_cap_persists()
+    {
+        var cut = Show();
+
+        RadzenDom.Numeric(cut, "Follow-ups an agent may create per task", Row).Change("40");
+
+        Settings.MaxFollowUpsPerCard.Should().Be(40);
+    }
+
+    // `SpawnQuota` owns the bounds and the page only renders them — zero included, because zero is
+    // the legitimate "no agent-spawned work on this board" answer.
+    [Fact]
+    public void The_follow_up_cap_is_held_inside_the_quota_bounds()
+    {
+        var box = RadzenDom.Numeric(Show(), "Follow-ups an agent may create per task", Row);
+
+        box.GetAttribute("aria-valuemin").Should().Be(SpawnQuota.Minimum.ToString());
+        box.GetAttribute("aria-valuemax").Should().Be(SpawnQuota.Maximum.ToString());
     }
 
     // The day box only exists while the sweep does: a retention window for a sweep nobody runs is a number

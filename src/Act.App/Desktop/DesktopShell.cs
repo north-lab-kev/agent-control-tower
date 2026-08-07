@@ -1,8 +1,10 @@
+using Act.App.Cards;
 using Act.App.Resources;
 using Act.App.Sessions;
 using Act.App.Settings;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Core.Scheduling;
 using ElectronNET.API;
 using ElectronNET.API.Entities;
 
@@ -18,6 +20,7 @@ namespace Act.App.Desktop;
 public sealed class DesktopShell(
     UserSettingsService settings,
     SessionRegistry sessions,
+    BoardState board,
     IHostApplicationLifetime lifetime)
 {
     private const int TitleBarHeight = 49;
@@ -302,18 +305,24 @@ public sealed class DesktopShell(
 
     // A native message box rather than the app's own dialog: the window this would have to open in
     // is usually the one the user just closed, and reviving it to ask whether to quit is a strange
-    // thing to do. It says what is lost, because from the tray there is nothing on screen to say it.
+    // thing to do. It says what is lost, because from the tray there is nothing on screen to say it
+    // — and when the board says nothing is lost, it asks nothing and just exits.
     private async Task ConfirmExitAsync()
     {
-        var live = sessions.LiveCount;
+        var stakes = ExitPolicy.Assess(board.All, settings.AutoExecutionPaused);
+
+        if (stakes.Warning is ExitWarning.None)
+        {
+            await ExitAsync();
+
+            return;
+        }
 
         var options = new MessageBoxOptions(Strings.Tray_ExitConfirm)
         {
             Type = MessageBoxType.warning,
             Title = Strings.Tray_Exit,
-            Detail = live == 0
-                ? Strings.Tray_ExitDetail
-                : Text.Format(Strings.Tray_ExitDetailRunning, live),
+            Detail = Detail(stakes),
             Buttons = [Strings.Tray_ExitYes, Strings.NewTask_Cancel],
             DefaultId = 1,
             CancelId = 1,
@@ -348,8 +357,20 @@ public sealed class DesktopShell(
         if (result.Response != 0)
             return;
 
-        // Ended here rather than left to the host's disposal, because the confirmation promised it:
-        // an agent must not outlive the app that was supervising it.
+        await ExitAsync();
+    }
+
+    private static string Detail(ExitStakes stakes) => stakes.Warning switch
+    {
+        ExitWarning.Running => Text.Format(Strings.Tray_ExitDetailRunning, stakes.Running),
+        ExitWarning.RunningAndScheduled => Text.Format(Strings.Tray_ExitDetailBoth, stakes.Running),
+        _ => Strings.Tray_ExitDetailScheduled,
+    };
+
+    // Ended here rather than left to the host's disposal, because the confirmation promised it:
+    // an agent must not outlive the app that was supervising it.
+    private async Task ExitAsync()
+    {
         await sessions.DisposeAsync();
 
         Electron.App.Exit(0);

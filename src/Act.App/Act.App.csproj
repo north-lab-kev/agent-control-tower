@@ -9,6 +9,10 @@
     <ElectronSingleInstance>true</ElectronSingleInstance>
   </PropertyGroup>
 
+  <PropertyGroup Label="ElectronNetCommon">
+    <ElectronSplashScreen>splash.png</ElectronSplashScreen>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(ElectronPackaging)' != 'true'">
     <RuntimeIdentifier></RuntimeIdentifier>
   </PropertyGroup>

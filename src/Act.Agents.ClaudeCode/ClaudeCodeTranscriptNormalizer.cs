@@ -24,21 +24,39 @@ public sealed class ClaudeCodeTranscriptNormalizer : ITranscriptNormalizer
     public TranscriptFold Fold(EnrichmentSnapshot snapshot, IReadOnlyList<string> lines)
     {
         foreach (var line in lines)
-        {
-            if (Parse(line) is not { } entry)
-                continue;
+            snapshot = FoldLine(snapshot, line);
 
-            if (Text(entry, "type") != "assistant")
-                continue;
+        return TranscriptFold.Enrichment(snapshot);
+    }
+
+    // The whole line is read inside the document's own scope — only strings and numbers leave it —
+    // so no per-line `Clone` of the parsed DOM is paid on a catch-up read of a whole transcript.
+    private static EnrichmentSnapshot FoldLine(EnrichmentSnapshot snapshot, string line)
+    {
+        JsonDocument document;
+
+        try
+        {
+            document = JsonDocument.Parse(line);
+        }
+        catch (JsonException)
+        {
+            return snapshot;
+        }
+
+        using (document)
+        {
+            var entry = document.RootElement;
+
+            if (entry.ValueKind is not JsonValueKind.Object || Text(entry, "type") != "assistant")
+                return snapshot;
 
             if (!entry.TryGetProperty("message", out var message)
                 || message.ValueKind is not JsonValueKind.Object)
-                continue;
+                return snapshot;
 
-            snapshot = Apply(snapshot, message);
+            return Apply(snapshot, message);
         }
-
-        return TranscriptFold.Enrichment(snapshot);
     }
 
     // Two different questions answered from the same usage block, and conflating them is the trap.
@@ -66,22 +84,6 @@ public sealed class ClaudeCodeTranscriptNormalizer : ITranscriptNormalizer
             TokensOut = (snapshot.TokensOut ?? 0) + Number(usage, "output_tokens"),
             ContextUsed = context > 0 ? (int)context : snapshot.ContextUsed,
         };
-    }
-
-    private static JsonElement? Parse(string line)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(line);
-
-            return document.RootElement.ValueKind is JsonValueKind.Object
-                ? document.RootElement.Clone()
-                : null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
     }
 
     private static long Number(JsonElement element, string name)

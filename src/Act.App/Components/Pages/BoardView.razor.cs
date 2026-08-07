@@ -1,5 +1,6 @@
 using System.Globalization;
 using Act.App.Cards;
+using Act.App.Notifications;
 using Act.App.Resources;
 using Act.App.Sessions;
 using Act.App.Settings;
@@ -78,7 +79,7 @@ public partial class BoardView(
     {
         board.Changed += OnChanged;
         queue.Evaluated += OnChanged;
-        settings.Changed += OnChanged;
+        settings.Changed += OnSettingsChanged;
 
         _ = RefreshLoopAsync();
     }
@@ -87,7 +88,7 @@ public partial class BoardView(
     {
         board.Changed -= OnChanged;
         queue.Evaluated -= OnChanged;
-        settings.Changed -= OnChanged;
+        settings.Changed -= OnSettingsChanged;
 
         await leaving.CancelAsync();
 
@@ -95,6 +96,13 @@ public partial class BoardView(
     }
 
     private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnSettingsChanged()
+    {
+        pickable = null;
+
+        OnChanged();
+    }
 
     private async Task RefreshLoopAsync()
     {
@@ -117,17 +125,25 @@ public partial class BoardView(
 
     private bool Filtering => CardSearch.IsActive(query);
 
-    private IReadOnlyList<Card> CardsIn(BoardColumn column) => CardSearch.Filter(board.In(column), query);
+    // Everything a column head needs from one `board.In` — the sort behind it runs once per column
+    // per render instead of once per question, and the hidden-attention count is the difference of
+    // two counts rather than a second match of every card against the query.
+    private ColumnFace FaceOf(BoardColumn column)
+    {
+        var all = board.In(column);
+        var shown = CardSearch.Filter(all, query);
 
-    // Reads `shown/total` while a query is live: the filter narrows what is drawn, and the header is
-    // where it admits to it.
-    private string Count(BoardColumn column, int shown) => Filtering
-        ? $"{shown}/{board.In(column).Count}"
-        : shown.ToString(CultureInfo.CurrentCulture);
+        if (!Filtering)
+            return new ColumnFace(shown, shown.Count.ToString(CultureInfo.CurrentCulture), Hidden: 0);
 
-    private int HiddenAttention(BoardColumn column) => Filtering
-        ? board.In(column).Count(card => card.NeedsAttention && !CardSearch.Matches(card, query))
-        : 0;
+        var hidden = all.Count(Attention) - shown.Count(Attention);
+
+        return new ColumnFace(shown, $"{shown.Count}/{all.Count}", hidden);
+    }
+
+    private static bool Attention(Card card) => card.NeedsAttention;
+
+    private sealed record ColumnFace(IReadOnlyList<Card> Cards, string Count, int Hidden);
 
     private int ArchivedMatches => Filtering ? CardSearch.Filter(board.Archived, query).Count : 0;
 
@@ -139,7 +155,10 @@ public partial class BoardView(
     // hold redraws the board that shows it.
     private IReadOnlyDictionary<Guid, ReadyHold> Holds() => queue.Latest.Holds;
 
-    private string? DropEdge(Card card) => drag.EdgeOn(card, board.In(card.Column));
+    // Answered before the column is sorted: `EdgeOn` is null for every strip but the hovered one,
+    // and the board re-renders often enough that a sort per strip per render is real money.
+    private string? DropEdge(Card card)
+        => drag.Over?.Id == card.Id ? drag.EdgeOn(card, board.In(card.Column)) : null;
 
     // Both drops decide first and clear the gesture second, so the state is gone before anything
     // awaits — a drop that takes a moment must not leave a strip looking lifted.
@@ -180,10 +199,13 @@ public partial class BoardView(
 
     private void OpenAsync(Card card) => navigation.NavigateTo(CardRoute.For(card));
 
+    private IReadOnlyList<TaskTemplate>? pickable;
+
     // The default is left out: the button itself is what starts a task from it, so listing it in the
-    // button's own menu offers the same thing twice.
+    // button's own menu offers the same thing twice. Cached because `settings.Templates` deep-copies
+    // and sorts on every call while templates only change on `settings.Changed`, which clears this.
     private IReadOnlyList<TaskTemplate> PickableTemplates
-        => [.. settings.Templates.Where(template => !template.IsDefault)];
+        => pickable ??= [.. settings.Templates.Where(template => !template.IsDefault)];
 
     private void OpenNewTask() => navigation.NavigateTo("/card/new");
 
@@ -216,13 +238,10 @@ public partial class BoardView(
 
             if (result.Message is { } message)
             {
-                notifications.Notify(new NotificationMessage
-                {
-                    Severity = result.Waiting ? NotificationSeverity.Warning : NotificationSeverity.Error,
-                    Summary = result.Waiting ? Strings.Session_NotLaunched : Strings.Session_LaunchFailed,
-                    Detail = message,
-                    Duration = 5000,
-                });
+                notifications.Toast(
+                    result.Waiting ? NotificationSeverity.Warning : NotificationSeverity.Error,
+                    result.Waiting ? Strings.Session_NotLaunched : Strings.Session_LaunchFailed,
+                    message);
             }
         }
         finally
@@ -252,13 +271,10 @@ public partial class BoardView(
 
             if (result.Message is { } message)
             {
-                notifications.Notify(new NotificationMessage
-                {
-                    Severity = result.Waiting ? NotificationSeverity.Warning : NotificationSeverity.Error,
-                    Summary = result.Waiting ? Strings.Session_NotLaunched : Strings.Session_RetryFailed,
-                    Detail = message,
-                    Duration = 5000,
-                });
+                notifications.Toast(
+                    result.Waiting ? NotificationSeverity.Warning : NotificationSeverity.Error,
+                    result.Waiting ? Strings.Session_NotLaunched : Strings.Session_RetryFailed,
+                    message);
             }
         }
         finally

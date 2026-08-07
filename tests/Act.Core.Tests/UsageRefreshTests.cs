@@ -72,7 +72,7 @@ public class UsageRefreshTests
 
     [Fact]
     public void The_wait_never_passes_the_ceiling()
-        => UsageRefresh.Delay(UsageRefresh.Cooldown, UsageRefresh.MostDoublings)
+        => UsageRefresh.Delay(UsageRefresh.Cooldown, UsageBackoff.MostDoublings)
             .Should().Be(UsageRefresh.Ceiling);
 
     [Fact]

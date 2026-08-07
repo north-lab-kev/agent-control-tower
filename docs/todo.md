@@ -1,5 +1,5 @@
-1. review app strings, like settings explaining too much
-2. validate release actions, release notes, and changelog generation, installer
-3. verify existing exception in log file on disk
+1. add radzen notification when a newer version is available (how to detect versions, should we parse github releases web pages?, do github offers an API it would be the best? the notification could have a link to directly download the new version)
+2. review app strings, like settings explaining too much
+3. clean up documentation (readme must be more attractive and professional (why this app, screenshots, use cases), overview needs a huge clean up, roadmap should be deleted while maybe keeping some valuable information somewhere else)
 4. clean git commit history, remove unnecessary files
-5. make repo public and configure permission
+5. make repo public and configure permissions

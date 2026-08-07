@@ -34,16 +34,30 @@ public sealed class SessionRegistry(
 
     public bool IsLive(Guid cardId) => sessions.ContainsKey(cardId);
 
-    public void Add(IAgentSession session)
+    // Whether this *instance* is still the card's session. A restart replaces the instance behind
+    // the same card id, and a loop that keeps a session company — the transcript tail — has to end
+    // with its own session rather than run on because the card got a new one.
+    public bool IsCurrent(IAgentSession session)
+        => ReferenceEquals(sessions.GetValueOrDefault(session.TaskId), session);
+
+    // Refuses a second session for a card rather than displacing the first: an overwrite would
+    // orphan a live process nothing could ever `End`. The launcher serializes starts per card, so a
+    // refusal here is the last line of defense, not a working path.
+    public bool Add(IAgentSession session)
     {
-        sessions[session.TaskId] = session;
+        if (!sessions.TryAdd(session.TaskId, session))
+            return false;
 
         Added?.Invoke(session);
         Changed?.Invoke();
+
+        return true;
     }
 
     // Every hook payload names the transcript, so this is called many times a session and must raise
-    // once: `TryAdd` is the whole guard, and it is why a second tail can never be started for a card.
+    // once: `TryAdd` is the whole guard, and it is why a second tail is never started for a session
+    // — a restart's replacement session starts a fresh tail only because `Forget` cleared the entry
+    // with the session it belonged to.
     public void LocateTranscript(Guid cardId, string path)
     {
         if (sessions.GetValueOrDefault(cardId) is not { } session)

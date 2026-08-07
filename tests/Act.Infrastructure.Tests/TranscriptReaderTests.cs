@@ -74,7 +74,40 @@ public class TranscriptReaderTests
 
         transcript.Replace("fresh\n");
 
-        reader.Read(transcript.Path, first.Offset).Lines.Should().Equal(["fresh"]);
+        var read = reader.Read(transcript.Path, first.Offset);
+
+        read.Lines.Should().Equal(["fresh"]);
+        read.Restarted.Should().BeTrue("the tail's fold state describes a file that is gone");
+    }
+
+    // The restart must be reported even when the replacement holds nothing readable yet, or the
+    // tail would learn of it only after the reset stopped being visible.
+    [Fact]
+    public void A_file_that_shrank_to_nothing_still_reports_the_restart()
+    {
+        using var transcript = new Transcript("one\ntwo\nthree\n");
+
+        var first = reader.Read(transcript.Path, 0);
+
+        transcript.Replace(string.Empty);
+
+        var read = reader.Read(transcript.Path, first.Offset);
+
+        read.Lines.Should().BeEmpty();
+        read.Restarted.Should().BeTrue();
+        read.Offset.Should().Be(0);
+    }
+
+    [Fact]
+    public void An_ordinary_append_is_not_a_restart()
+    {
+        using var transcript = new Transcript("one\n");
+
+        var first = reader.Read(transcript.Path, 0);
+
+        transcript.Append("two\n");
+
+        reader.Read(transcript.Path, first.Offset).Restarted.Should().BeFalse();
     }
 
     // The path arrives from a hook payload, and a card can be read before the CLI has created the

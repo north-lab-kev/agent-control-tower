@@ -19,7 +19,4 @@ public static class McpTransport
     public const string GetTask = "get_task";
 
     public static IReadOnlyList<string> Tools => [CreateFollowUp, ListTasks, GetTask];
-
-    // How a CLI names one of these in its own permission list: `mcp__act__create_followup`.
-    public static string PermissionId(string tool) => $"mcp__{ServerName}__{tool}";
 }

@@ -109,6 +109,45 @@ public class TranscriptTailTests
         tail.Advance().Events.Should().ContainSingle().Which.Should().BeOfType<TurnEnded>();
     }
 
+    // A replaced file is a designed-for case — the reader restarts from zero — and the tail has to
+    // start over with it: its snapshot describes a file that is gone, and Claude Code's fold is
+    // additive, so folding the re-read on top would count every token a second time.
+    [Fact]
+    public void A_replaced_file_is_refolded_from_scratch_rather_than_on_top()
+    {
+        var reader = new FakeReader();
+        var tail = Tail(reader);
+
+        reader.Give("in=100");
+        tail.Advance().Snapshot!.TokensIn.Should().Be(100);
+
+        reader.GiveReplaced("in=100");
+
+        tail.Advance().Snapshot!.TokensIn.Should().Be(100, "the re-read is absolute, not additive");
+    }
+
+    // The other half of the reset: the re-read is the whole new file, so its lines are history again
+    // — an old error replayed as news would move a healthy card back to Your turn.
+    [Fact]
+    public void A_replaced_files_events_are_history_not_news()
+    {
+        var reader = new FakeReader();
+        var tail = Tail(reader);
+
+        reader.Give("turn");
+        tail.Advance();
+        reader.Give("turn");
+        tail.Advance().Events.Should().ContainSingle("after catch-up, events are news");
+
+        reader.GiveReplaced("turn");
+
+        tail.Advance().Events.Should().BeEmpty("the re-read of a replaced file is a fresh catch-up");
+
+        reader.Give("turn");
+
+        tail.Advance().Events.Should().ContainSingle("and news resumes once caught up again");
+    }
+
     // No transcript carries the window for Claude Code, so it comes from the capability list — matched
     // against the model the session reports actually running, not the alias the launch asked for.
     [Fact]
@@ -162,9 +201,21 @@ public class TranscriptTailTests
 
         private long offset;
 
+        private bool restarted;
+
         public List<long> Offsets { get; } = [];
 
         public void Give(string line) => pending.Enqueue(line);
+
+        // What the real reader reports for a file that shrank: the whole new file, from zero,
+        // flagged as a restart.
+        public void GiveReplaced(string line)
+        {
+            pending.Enqueue(line);
+
+            restarted = true;
+            offset = 0;
+        }
 
         public TranscriptRead Read(string path, long from)
         {
@@ -181,12 +232,17 @@ public class TranscriptTailTests
 
             offset += lines.Sum(line => line.Length);
 
-            return new TranscriptRead(offset, lines);
+            var read = new TranscriptRead(offset, lines, restarted);
+
+            restarted = false;
+
+            return read;
         }
     }
 
     // Just enough dialect to prove the tail's own behaviour: `model=<id>` reports a model, `turn`
-    // reports an event, anything else reports nothing.
+    // reports an event, `in=<n>` adds tokens the way Claude Code's real fold does — additively, which
+    // is what makes the replaced-file reset observable.
     private sealed class ModelLineNormalizer : ITranscriptNormalizer
     {
         public AgentType Agent => AgentType.ClaudeCode;
@@ -199,6 +255,12 @@ public class TranscriptTailTests
             {
                 if (line.StartsWith("model=", StringComparison.Ordinal))
                     snapshot = snapshot with { ObservedModel = line["model=".Length..] };
+
+                if (line.StartsWith("in=", StringComparison.Ordinal))
+                    snapshot = snapshot with
+                    {
+                        TokensIn = (snapshot.TokensIn ?? 0) + long.Parse(line["in=".Length..]),
+                    };
 
                 if (line is "turn")
                     events.Add(new TurnEnded("s", DateTimeOffset.UnixEpoch));

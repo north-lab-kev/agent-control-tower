@@ -23,4 +23,9 @@ public sealed record FollowUpRequest(
 
     public static bool Inherits(string? value)
         => string.IsNullOrWhiteSpace(value) || value.Trim().Equals(Inherit, StringComparison.OrdinalIgnoreCase);
+
+    // Null or the trimmed key: the one normalization both the idempotency lookup and the stored
+    // `SpawnKey` read, so a change to it can never make a retry stop matching the key it stored.
+    public string? NormalizedClientKey
+        => string.IsNullOrWhiteSpace(ClientKey) ? null : ClientKey.Trim();
 }

@@ -8,21 +8,6 @@ namespace Act.Core.Tests;
 // names costs an approval prompt on a card nobody is awake to answer.
 public class McpTransportTests
 {
-    [Fact]
-    public void The_permission_id_is_the_shape_both_clis_expect()
-        => McpTransport.PermissionId(McpTransport.CreateFollowUp)
-            .Should().Be("mcp__act__create_followup");
-
-    [Fact]
-    public void Every_tool_has_a_permission_id_and_they_are_distinct()
-    {
-        var ids = McpTransport.Tools.Select(McpTransport.PermissionId).ToList();
-
-        ids.Should().HaveCount(McpTransport.Tools.Count);
-        ids.Should().OnlyHaveUniqueItems();
-        ids.Should().AllSatisfy(id => id.Should().StartWith($"mcp__{McpTransport.ServerName}__"));
-    }
-
     // Three, and only three. The tool list is the agent's whole view of what ACT can be asked for, so a
     // fourth is a capability somebody has to have decided to grant.
     [Fact]

@@ -110,14 +110,91 @@ public class SessionLifetimeTests
         var card = Executing();
 
         var outgoing = await adapter.ResumeAsync(Resume(card));
+
+        registry.Add(outgoing).Should().BeTrue();
+
+        await registry.EndAsync(card.Id);
+
         var incoming = await adapter.ResumeAsync(Resume(card));
 
-        registry.Add(outgoing);
-        registry.Add(incoming);
+        registry.Add(incoming).Should().BeTrue();
 
         (await registry.EndAsync(outgoing)).Should().BeFalse();
 
         registry.For(card.Id).Should().BeSameAs(incoming);
+    }
+
+    // The registry's own half of the double-launch guard: a second session for a live card is
+    // refused rather than silently displacing the first, which would orphan a process nothing could
+    // ever end.
+    [Fact]
+    public async Task A_second_session_for_a_live_card_is_refused()
+    {
+        var registry = new SessionRegistry(
+            new StubHookEndpoint(),
+            new StubAgentConfigFiles(),
+            NullLogger<SessionRegistry>.Instance);
+        var adapter = new MockAgentAdapter(AgentType.ClaudeCode, clock: new FrozenClock(Now))
+        {
+            Script = AgentScript.Empty(),
+        };
+
+        var card = Executing();
+
+        var first = await adapter.ResumeAsync(Resume(card));
+        var second = await adapter.ResumeAsync(Resume(card));
+
+        registry.Add(first).Should().BeTrue();
+        registry.Add(second).Should().BeFalse();
+
+        registry.For(card.Id).Should().BeSameAs(first);
+        registry.LiveCount.Should().Be(1);
+
+        await second.DisposeAsync();
+    }
+
+    // The launcher's half: the queue runner's pass and a click on the same strip both pass a bare
+    // liveness check before either has registered anything, and each would then spawn its own CLI.
+    // Serialized per card, the loser waits, sees the winner's session, and spawns nothing.
+    [Fact]
+    public async Task Concurrent_launches_of_one_card_spawn_exactly_one_session()
+    {
+        var clock = new FrozenClock(Now);
+        var hooks = new StubHookEndpoint();
+        var adapter = new MockAgentAdapter(AgentType.ClaudeCode, clock: clock)
+        {
+            Script = AgentScript.Empty(),
+        };
+        var registry = new SessionRegistry(
+            hooks,
+            new StubAgentConfigFiles(),
+            NullLogger<SessionRegistry>.Instance);
+
+        var card = Ready();
+        var board = new BoardState(new FakeCardStore([card]), new FakeAttachmentStore(), clock);
+
+        await board.LoadAsync();
+
+        var settings = new UserSettingsService(new FakeSettingsStore(), new AppCulture());
+        var launcher = new SessionLauncher(
+            [adapter],
+            registry,
+            board,
+            TestNotifications.Dispatcher(settings, new RecordingNotifier()),
+            settings,
+            new AnyDirectory(),
+            new FakeAttachmentStore(),
+            clock,
+            new RecordingTelemetrySink(),
+            NullLogger<SessionLauncher>.Instance);
+
+        var results = await Task.WhenAll(
+            Enumerable.Range(0, 8).Select(_ =>
+                Task.Run(() => launcher.LaunchAsync(card, TerminalSize.Default))));
+
+        results.Should().OnlyContain(result => result.Launched);
+        adapter.Launches.Should().ContainSingle();
+        registry.LiveCount.Should().Be(1);
     }
 
     private static AgentResumeRequest Resume(Card card) => new(
@@ -191,6 +268,15 @@ public class SessionLifetimeTests
         Badge = Badge.Running,
         WorkingDir = "/dev/act",
         SessionId = "6f0d5d5c-0000-4a2c-9f4d-2f0a3f7c1e11",
+    };
+
+    private static Card Ready() => new()
+    {
+        Number = 1043,
+        Title = "Waiting to go",
+        Column = BoardColumn.Ready,
+        WorkingDir = "/dev/act",
+        Schedule = TaskSchedule.Manual,
     };
 
     private sealed class AnyDirectory : IWorkingDirectories

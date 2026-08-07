@@ -1,7 +1,9 @@
 using Act.App.Components.Pages;
+using Act.App.Resources;
 using Act.Core.Abstractions;
 using Act.Core.Agents;
 using Act.Core.Model;
+using Act.Core.Spawning;
 using Act.TestSupport;
 using AwesomeAssertions;
 using Bunit;
@@ -294,6 +296,22 @@ public class SessionViewTests : ComponentTest
             .Which.Should().Contain("one.md").And.Contain("two.md");
     }
 
+    // `GetMultipleFiles` throws past its maximum and an exception out of an `InputFile` handler
+    // takes the circuit down — so a drop past the cap has to be refused with a toast, exactly as
+    // the task form refuses it, rather than crashing the session page.
+    [Fact]
+    public async Task A_drop_of_more_files_than_the_cap_is_refused_with_a_warning()
+    {
+        var cut = await OpenLive();
+
+        Drop(cut, [.. Enumerable.Range(0, TaskAttachment.MaxPerTask + 1).Select(index => $"file-{index}.md")]);
+
+        Notifications.Messages.Should().ContainSingle()
+            .Which.Summary.Should().Be(Strings.NewTask_Attachments_TooMany);
+        Typed().Should().BeEmpty("nothing was saved, so nothing may be typed");
+        Attachments.CardIds().Should().BeEmpty();
+    }
+
     // Into the folder the launch already granted the CLI access to, and *not* onto the card: the prompt is
     // the opening instruction and stays verbatim.
     [Fact]
@@ -307,6 +325,118 @@ public class SessionViewTests : ComponentTest
         Board.Card(Card.Id)!.Attachments.Should().BeEmpty();
         cut.FindAll("ul.files").Should().BeEmpty();
     }
+
+    // Lineage reads both directions on the rail, each a link — the next question is always "what
+    // was that one?".
+    [Fact]
+    public async Task The_rail_links_the_parent_and_every_follow_up()
+    {
+        var parent = Lineage(1040, "The plan", BoardColumn.YourTurn);
+
+        Card = Lineage(1042, "Rename the widget", BoardColumn.Executing);
+        Card.SessionId = "c0ffee00-0000-4a2c-9f4d-2f0a3f7c1e22";
+        Card.Origin = TaskOrigin.Spawned;
+        Card.ParentId = parent.Id;
+
+        var child = Lineage(1043, "Migrate the tests", BoardColumn.Ready);
+        child.ParentId = Card.Id;
+
+        parent.Children.Add(Card.Id);
+        Card.Children.Add(child.Id);
+
+        await BoardWith(parent, Card, child);
+
+        var cut = Render<SessionView>(p => p.Add(c => c.CardId, Card.Id));
+
+        var links = cut.FindAll("dl a");
+
+        links.Should().HaveCount(2);
+        links[0].TextContent.Should().Contain("#1040").And.Contain("The plan");
+        links[0].GetAttribute("href").Should().Contain(parent.Id.ToString());
+        links[1].TextContent.Should().Contain("#1043").And.Contain("Migrate the tests");
+        links[1].GetAttribute("href").Should().Contain(child.Id.ToString());
+    }
+
+    // Resolved per render off the live board on purpose: creating a follow-up while its parent's
+    // page is open is the point of the tool, and the rail has to show it without a reload.
+    [Fact]
+    public async Task A_follow_up_created_while_the_page_is_open_appears_on_the_rail()
+    {
+        var cut = await OpenLive();
+
+        cut.FindAll("dl a").Should().BeEmpty();
+
+        await FollowUps.CreateAsync(Card.Id, new FollowUpRequest("Clean up", "Do it."));
+
+        cut.WaitForAssertion(() => cut.FindAll("dl a").Should().ContainSingle()
+            .Which.TextContent.Should().Contain("Clean up"));
+    }
+
+    // Two terminals are the same component, so following a lineage link is a parameter change on
+    // this instance rather than a fresh page — the view has to reload for the card the link named,
+    // or the click changes the url and nothing else.
+    [Fact]
+    public async Task Following_the_spawned_by_link_opens_the_parent()
+    {
+        var parent = Lineage(1040, "The plan", BoardColumn.YourTurn);
+
+        Card = Lineage(1042, "Rename the widget", BoardColumn.Executing);
+        Card.Origin = TaskOrigin.Spawned;
+        Card.ParentId = parent.Id;
+        parent.Children.Add(Card.Id);
+
+        await BoardWith(parent, Card);
+
+        var cut = Render<SessionView>(p => p.Add(c => c.CardId, Card.Id));
+
+        cut.Find("header.bar span.title").TextContent.Should().Be("Rename the widget");
+
+        cut.Render(p => p.Add(c => c.CardId, parent.Id));
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Find("header.bar span.id").TextContent.Should().Be("#1040");
+            cut.Find("header.bar span.title").TextContent.Should().Be("The plan");
+        });
+
+        var link = cut.FindAll("dl a").Should().ContainSingle().Subject;
+
+        link.TextContent.Should().Contain("#1042");
+        link.GetAttribute("href").Should().Contain(Card.Id.ToString());
+    }
+
+    // The old card's session must not stay bound under the new card's face: what the rail says and
+    // what a drop types into have to belong to the card being shown.
+    [Fact]
+    public async Task Following_a_lineage_link_rebinds_the_terminal_to_the_card_it_opened()
+    {
+        var cut = await OpenLive();
+
+        var parent = Lineage(1040, "The plan", BoardColumn.YourTurn);
+
+        await BoardWith(parent);
+
+        cut.Render(p => p.Add(c => c.CardId, parent.Id));
+
+        cut.WaitForAssertion(() => cut.Find("div.idle").TextContent.Should().NotBeNullOrWhiteSpace());
+
+        Drop(cut, "notes.md");
+
+        Notifications.Messages.Should().ContainSingle()
+            .Which.Summary.Should().Be(Strings.Session_AttachNoSession);
+        Typed().Should().BeEmpty("the spawned card's session is no longer the one on screen");
+    }
+
+    private static Card Lineage(int number, string title, BoardColumn column) => new()
+    {
+        Number = number,
+        Title = title,
+        Column = column,
+        AgentType = AgentType.ClaudeCode,
+        WorkingDir = "/dev/act",
+        Schedule = TaskSchedule.Manual,
+        LaunchConfig = new LaunchConfig { Model = MockAgentAdapter.FastModel },
+    };
 
     private static IReadOnlyList<string> Actions(IRenderedComponent<SessionView> cut)
         => [.. cut.FindAll("div.actions button").Select(RadzenDom.ButtonText)];

@@ -60,7 +60,7 @@ public static class ClaudeCodeHookSettings
         var allow = new JsonArray();
 
         foreach (var tool in McpTransport.Tools)
-            allow.Add(McpTransport.PermissionId(tool));
+            allow.Add(PermissionId(tool));
 
         var settings = new JsonObject
         {
@@ -73,4 +73,9 @@ public static class ClaudeCodeHookSettings
 
         return settings.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
+
+    // How *this* CLI names an MCP tool in its permission list: `mcp__act__create_followup`. A
+    // dialect fact about Claude Code exactly like its payload shapes — Codex grants nothing this
+    // way — so the format lives with the one CLI that reads it, not in the shared wire constants.
+    private static string PermissionId(string tool) => $"mcp__{McpTransport.ServerName}__{tool}";
 }

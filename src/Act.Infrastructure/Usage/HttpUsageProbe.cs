@@ -16,6 +16,10 @@ public sealed class HttpUsageProbe(
 {
     public const string ClientName = "act-usage";
 
+    // Once per probe lifetime: the pump polls every pass, and a config mistake said 3,600 times an
+    // hour would roll the log off its own retention.
+    private bool badEndpointReported;
+
     public AgentType Agent => dialect.Agent;
 
     public async Task<UsageProbeResult> ReadAsync(CancellationToken cancellationToken = default)
@@ -61,15 +65,36 @@ public sealed class HttpUsageProbe(
         return await RequestAsync(Fallback(configured.Endpoint, dialect.DefaultEndpoint), bearer, cancellationToken);
     }
 
+    // The endpoint may be the user's own appsettings override, and it is validated here rather than
+    // trusted: a scheme-less or malformed string throws out of `SendAsync` in types the catches
+    // below do not name, and an exception that escapes this method ends the usage pump's loop for
+    // the life of the process — the exact failure `BackgroundWork`'s notes warn about.
     private async Task<UsageProbeResult> RequestAsync(
         string endpoint,
         string token,
         CancellationToken cancellationToken)
     {
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var url)
+            || (url.Scheme != Uri.UriSchemeHttp && url.Scheme != Uri.UriSchemeHttps))
+        {
+            if (!badEndpointReported)
+            {
+                badEndpointReported = true;
+
+                log.LogWarning(
+                    "The configured {Agent} usage endpoint '{Endpoint}' is not an absolute http(s) "
+                        + "url; usage stays unavailable until the override is fixed or removed.",
+                    Agent,
+                    endpoint);
+            }
+
+            return Unavailable(UsageAvailability.Failed);
+        }
+
         try
         {
             using var client = clients();
-            using var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
 
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));

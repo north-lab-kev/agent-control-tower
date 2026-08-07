@@ -24,6 +24,16 @@ public sealed class TranscriptTail(
 
         offset = read.Offset;
 
+        // A file that restarted was replaced, not appended to, so what this tail knew describes a
+        // file that is gone. Folding the re-read onto the kept snapshot would add every additive
+        // count a second time, and treating its lines as news would replay history — an old failure
+        // moving a healthy card. Reset, and the re-read is one more catch-up.
+        if (read.Restarted)
+        {
+            snapshot = new EnrichmentSnapshot();
+            caughtUp = false;
+        }
+
         if (read.Lines.Count is 0)
             return TranscriptUpdate.Nothing;
 

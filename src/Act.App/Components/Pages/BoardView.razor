@@ -4,9 +4,11 @@
 <PageTitle>@($"ACT — {Strings.Shell_FullName}")</PageTitle>
 
 @* Once per render, not once per strip: the holds come from a single pass over the whole board, and
-   asking per card would both cost more and let two strips disagree. *@
+   asking per card would both cost more and let two strips disagree. The archive count is hoisted for
+   the same reason — it sorts the whole archive, and the markup asks twice. *@
 @{
     var holds = Holds();
+    var archivedMatches = ArchivedMatches;
 }
 
 <div class="board @DensityClass @(drag.IsActive ? "dragging" : null)">
@@ -15,9 +17,9 @@
 
         @* The board cannot show an archived card, so it says how many it is not showing rather
            than letting the query look like the whole answer. *@
-        @if (ArchivedMatches > 0)
+        @if (archivedMatches > 0)
         {
-            <RadzenLink Path="@ArchiveHref" Text="@Text.Format(Strings.Search_ArchiveMatches, ArchivedMatches)"
+            <RadzenLink Path="@ArchiveHref" Text="@Text.Format(Strings.Search_ArchiveMatches, archivedMatches)"
                         class="archlink" />
         }
 
@@ -40,8 +42,9 @@
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Stretch" Gap="0.5rem" class="cols">
         @foreach (var column in AllColumns)
         {
-            var cards = CardsIn(column);
-            var hidden = HiddenAttention(column);
+            var face = FaceOf(column);
+            var cards = face.Cards;
+            var hidden = face.Hidden;
 
             <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" class="@drag.ColumnClass(column)"
                          @ondragover:preventDefault="true" @ondragenter:preventDefault="true"
@@ -50,7 +53,7 @@
                              class="colhead">
                     <RadzenText TextStyle="TextStyle.Subtitle2" Text="@Label(column)" class="colname" />
                     <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" IsPill="true"
-                                 Text="@Count(column, cards.Count)" class="colcount" />
+                                 Text="@face.Count" class="colcount" />
 
                     @* A filter must never be able to hide the one thing the board is for, so a
                        column whose needs-you cards fell out of the query says so. *@

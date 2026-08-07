@@ -582,10 +582,13 @@
   <data name="Tray_ExitConfirm" xml:space="preserve">
     <value>Quitter ACT?</value>
   </data>
-  <data name="Tray_ExitDetail" xml:space="preserve">
+  <data name="Tray_ExitDetailScheduled" xml:space="preserve">
     <value>Les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
   </data>
   <data name="Tray_ExitDetailRunning" xml:space="preserve">
+    <value>{0} tâche(s) en cours seront arrêtées.</value>
+  </data>
+  <data name="Tray_ExitDetailBoth" xml:space="preserve">
     <value>{0} tâche(s) en cours seront arrêtées, et les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
   </data>
   <data name="Tray_ExitYes" xml:space="preserve">

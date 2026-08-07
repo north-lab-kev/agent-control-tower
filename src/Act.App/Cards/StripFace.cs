@@ -35,7 +35,7 @@ public sealed record StripFace(
 
     public static StripFace Of(Card card, ReadyHold? hold, DateTimeOffset now, Card? parent = null)
     {
-        var agent = AgentName(card.AgentType);
+        var agent = TaskLabels.Agent(card.AgentType);
 
         return new StripFace(
             Identity: Identify(card, agent),
@@ -114,13 +114,6 @@ public sealed record StripFace(
                 ? Text.Format(Strings.Metrics_QuietMinutes, (int)quiet.TotalMinutes)
                 : Text.Format(Strings.Metrics_QuietHours, (int)quiet.TotalHours)
             : null;
-
-    private static string AgentName(AgentType agent) => agent switch
-    {
-        AgentType.ClaudeCode => Strings.Agent_ClaudeCode,
-        AgentType.Codex => Strings.Agent_Codex,
-        _ => agent.ToString(),
-    };
 
     private static string? ScheduleFor(Card card)
         => card.Column is not BoardColumn.Ready ? null : card.Schedule switch

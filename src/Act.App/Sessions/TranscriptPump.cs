@@ -59,11 +59,15 @@ public sealed class TranscriptPump(
 
         // Read before the first wait: the file already holds the whole session, and on a restore
         // that is a session with an hour of numbers in it.
+        //
+        // `IsCurrent`, not `IsLive`: a restart can end this session and register its replacement
+        // between two ticks, and a tail keyed on the card id would see the card live again and never
+        // exit — two tails on one file, every event published twice.
         do
         {
             denied = Poll(session, tail, denied);
         }
-        while (sessions.IsLive(session.TaskId) && await timer.WaitForNextTickAsync(cancellationToken));
+        while (sessions.IsCurrent(session) && await timer.WaitForNextTickAsync(cancellationToken));
     }
 
     // A read that throws must not end the tail: the CLI owns this file and a mid-write moment is a

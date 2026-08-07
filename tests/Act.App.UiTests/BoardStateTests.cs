@@ -303,6 +303,81 @@ public class BoardStateTests
         announcements.Should().Be(1);
     }
 
+    // The spec's lineage consistency rule: both sides in one operation. One announcement is the
+    // observable half of that — a queue pass or a re-render between the child's create and the
+    // parent's update would see a child whose parent does not list it.
+    [Fact]
+    public async Task Linking_a_follow_up_writes_both_sides_and_announces_once()
+    {
+        var parent = Card(BoardColumn.Executing, order: 1);
+        var board = await BoardOf(parent);
+        var announcements = 0;
+
+        var child = Card(BoardColumn.Ready, order: 0, number: 1001);
+        child.ParentId = parent.Id;
+
+        board.Changed += () => announcements++;
+
+        await board.LinkAsync(parent.Id, child);
+
+        announcements.Should().Be(1);
+        board.In(BoardColumn.Ready).Should().ContainSingle().Which.Id.Should().Be(child.Id);
+
+        var linked = board.Card(parent.Id)!;
+
+        linked.Children.Should().ContainSingle().Which.Should().Be(child.Id);
+        linked.Transitions.Should().ContainSingle()
+            .Which.Reason.Should().Be(TransitionReason.SpawnedFollowUp);
+        linked.Transitions.Single().Note.Should().Contain($"#{child.Number}").And.Contain(child.Title);
+    }
+
+    [Fact]
+    public async Task Linking_under_a_parent_that_vanished_still_creates_the_child()
+    {
+        var board = await BoardOf(Card(BoardColumn.Ready, order: 1));
+
+        var child = Card(BoardColumn.Ready, order: 0, number: 1001);
+
+        await board.LinkAsync(Guid.NewGuid(), child);
+
+        board.Card(child.Id).Should().NotBeNull();
+    }
+
+    // The debounced writer's shape: the mutation runs against the instance the board holds at write
+    // time, not against whatever the caller read before — which is what lets a flush carry its
+    // numbers onto a card another writer has replaced in the meantime.
+    [Fact]
+    public async Task A_batched_update_mutates_the_boards_own_instance_and_announces_once()
+    {
+        var one = Card(BoardColumn.Executing, order: 1, number: 1000);
+        var two = Card(BoardColumn.Executing, order: 2, number: 1001);
+        var board = await BoardOf(one, two);
+        var announcements = 0;
+        var mutated = new List<Card>();
+
+        board.Changed += () => announcements++;
+
+        await board.UpdateManyAsync([one.Id, two.Id, Guid.NewGuid()], mutated.Add);
+
+        announcements.Should().Be(1);
+        mutated.Should().HaveCount(2, "an id the board does not know is skipped");
+        mutated[0].Should().BeSameAs(board.Card(one.Id));
+        mutated[1].Should().BeSameAs(board.Card(two.Id));
+    }
+
+    [Fact]
+    public async Task A_batched_update_with_nothing_to_write_stays_silent()
+    {
+        var board = await BoardOf(Card(BoardColumn.Ready, order: 1));
+        var announcements = 0;
+
+        board.Changed += () => announcements++;
+
+        await board.UpdateManyAsync([], _ => { });
+
+        announcements.Should().Be(0);
+    }
+
     // The regression test for the concurrency fix. `BoardState` is a singleton written from one drain
     // task per live session, the transcript pump, the queue runner, the retention sweep and every
     // circuit — and it rebuilds an ordinary dictionary on every write. Unserialised, two writers

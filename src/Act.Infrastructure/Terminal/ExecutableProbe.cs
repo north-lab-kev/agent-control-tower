@@ -5,7 +5,7 @@ namespace Act.Infrastructure.Terminal;
 // The OS half of install discovery. Every method answers "what is there" and none of them throws:
 // a probe runs at startup against paths that may not exist, on a machine where an agent may not be
 // installed at all, and none of that is a failure worth stopping a launch over.
-internal sealed class ExecutableProbe : IExecutableProbe
+internal sealed class ExecutableProbe(ITextFileReader files) : IExecutableProbe
 {
     public string? OnPath(string executable)
     {
@@ -37,17 +37,9 @@ internal sealed class ExecutableProbe : IExecutableProbe
         }
     }
 
-    public string? ReadText(string path)
-    {
-        try
-        {
-            return File.Exists(path) ? File.ReadAllText(path) : null;
-        }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-        {
-            return null;
-        }
-    }
+    // On the probe's port because a *probe* is what discovery is handed; the reading itself is
+    // `TextFileReader`'s, so the swallow-and-return-null file read exists once.
+    public string? ReadText(string path) => files.Read(path);
 
     private static bool Exists(string candidate)
     {

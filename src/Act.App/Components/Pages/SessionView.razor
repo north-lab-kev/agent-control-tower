@@ -45,9 +45,9 @@ else
             {
                 @* A drop lands anywhere over the terminal, and all it does is type the file's path
                    where the cursor already is — never a submit key. See `IAgentTerminal`. *@
-                <div class="terminal @(dragging ? "over" : null)" id="@DropRootId">
+                <div class="terminal @(dragging ? "over" : null)" id="@dropRootId">
                     <div class="screen" id="@terminalId"></div>
-                    <InputFile id="@DropInputId" multiple OnChange="OnAttachmentsDroppedAsync" class="hiddenpick" />
+                    <InputFile id="@dropInputId" multiple OnChange="OnAttachmentsDroppedAsync" class="hiddenpick" />
                     @if (dragging)
                     {
                         <div class="dropnote">
@@ -97,7 +97,7 @@ else
                     @if (Parent is { } parent)
                     {
                         <dt>@Strings.Session_SpawnedBy</dt>
-                        <dd><a href="@Route(parent)">#@parent.Number — @parent.Title</a></dd>
+                        <dd><RadzenLink Path="@Route(parent)" Text="@($"#{parent.Number} — {parent.Title}")" /></dd>
                     }
 
                     @if (Children is { Count: > 0 } children)
@@ -106,7 +106,7 @@ else
                         <dd>
                             @foreach (var child in children)
                             {
-                                <div><a href="@Route(child)">#@child.Number — @child.Title</a></div>
+                                <div><RadzenLink Path="@Route(child)" Text="@($"#{child.Number} — {child.Title}")" /></div>
                             }
                         </dd>
                     }
@@ -137,15 +137,15 @@ else
                                         @{ var gone = Missing(attachment); }
                                         <button type="button" class="open @(gone ? "gone" : null)"
                                                 @onclick="() => OpenAttachmentAsync(attachment)"
-                                                title="@RowLabel(attachment, gone)"
-                                                aria-label="@RowLabel(attachment, gone)">
-                                            <RadzenIcon Icon="@RowIcon(attachment, gone)" />
+                                                title="@AttachmentRows.Label(attachment, gone)"
+                                                aria-label="@AttachmentRows.Label(attachment, gone)">
+                                            <RadzenIcon Icon="@AttachmentRows.Icon(attachment, gone)" />
                                             <span class="name">@attachment.FileName</span>
                                             <span class="size">@TaskLabels.FileSize(attachment.Length)</span>
                                         </button>
                                         @if (Previews(attachment))
                                         {
-                                            <AttachmentPreview Id="@PreviewId" Url="@PreviewUrl(attachment)"
+                                            <AttachmentPreview Id="@previewId" Url="@PreviewUrl(attachment)"
                                                                Alt="@attachment.FileName" />
                                         }
                                     </li>

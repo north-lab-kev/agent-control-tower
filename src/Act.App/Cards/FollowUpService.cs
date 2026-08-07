@@ -6,15 +6,16 @@ using Act.Infrastructure.Logging;
 
 namespace Act.App.Cards;
 
-// The single link routine the spec's lineage consistency rule demands: minting the child, writing
-// `parentId` and `children[]` in one operation, stamping the parent's timeline and persisting both.
-// Nothing else creates a spawned card, so the two copies of the lineage cannot drift.
+// The policy half of a spawn — the budget, the idempotency key, the refusals — over the single link
+// routine `BoardState.LinkAsync` owns. Nothing else creates a spawned card, so the two copies of the
+// lineage cannot drift.
 //
 // It is also the only place the spawn budget is spent, which is why the quota check lives inside the
 // gate rather than at the caller: two tool calls arriving together must not both see the last slot.
 public sealed class FollowUpService(
     BoardState board,
     IAgentCapabilityCatalog catalog,
+    IWorkingDirectories directories,
     UserSettingsService settings,
     IClock clock,
     ILogger<FollowUpService> log)
@@ -48,7 +49,7 @@ public sealed class FollowUpService(
 
         // Checked before the quota and before resolution, so a retried call is answered with the card
         // it already made rather than with a rejection or a duplicate.
-        if (Existing(parent, request.ClientKey) is { } already)
+        if (Existing(parent, request.NormalizedClientKey) is { } already)
             return FollowUpOutcome.Ok(Describe(already, [], alreadyExisted: true));
 
         var cap = settings.MaxFollowUpsPerCard;
@@ -58,26 +59,16 @@ public sealed class FollowUpService(
                 $"Task #{parent.Number} has created its limit of {cap} follow-ups. Ask the user to "
                     + "raise the limit in ACT's settings, or put the remaining work in this task.");
 
-        var resolution = FollowUpResolver.Resolve(parent, request, catalog, clock.Now);
+        var resolution = FollowUpResolver.Resolve(parent, request, catalog, directories, board.All, clock.Now);
 
         if (!resolution.CanCreate)
             return FollowUpOutcome.Refused([.. resolution.Rejections]);
 
         var child = resolution.Card!;
 
-        child.SpawnKey = string.IsNullOrWhiteSpace(request.ClientKey) ? null : request.ClientKey.Trim();
+        child.SpawnKey = request.NormalizedClientKey;
 
-        await board.CreateAsync(child, cancellationToken);
-
-        parent.Children.Add(child.Id);
-        parent.Transitions.Add(new Transition
-        {
-            At = clock.Now,
-            Reason = TransitionReason.SpawnedFollowUp,
-            Note = $"#{child.Number} · {child.Title}",
-        });
-
-        await board.UpdateAsync(parent, cancellationToken);
+        await board.LinkAsync(parent.Id, child, cancellationToken);
 
         using (log.BeginTaskScope(task: parent.Number))
             log.LogInformation(
@@ -110,14 +101,16 @@ public sealed class FollowUpService(
             ? TaskDetail.From(card, callerId)
             : null;
 
-    private Card? Existing(Card parent, string? clientKey)
+    // On-board only, like the two reads: a match the user has deleted or archived would answer the
+    // retry with an id `get_task` then denies, and the work would never reappear. The key arrives
+    // already normalized — `FollowUpRequest.NormalizedClientKey` is the one spelling of that.
+    private Card? Existing(Card parent, string? key)
     {
-        if (string.IsNullOrWhiteSpace(clientKey))
+        if (key is null)
             return null;
 
-        var key = clientKey.Trim();
-
         return board.ChildrenOf(parent)
+            .Where(child => child.IsOnBoard)
             .FirstOrDefault(child => string.Equals(child.SpawnKey, key, StringComparison.Ordinal));
     }
 
@@ -135,13 +128,8 @@ public sealed class FollowUpService(
             Adjustments: [.. adjustments.Select(adjustment => adjustment.Reason)],
             AlreadyExisted: alreadyExisted);
 
-    private static BoardColumn? Column(string? name) => name?.Trim().ToLowerInvariant() switch
-    {
-        "preparing" => BoardColumn.Preparing,
-        "ready" => BoardColumn.Ready,
-        "executing" => BoardColumn.Executing,
-        "your_turn" or "yourturn" => BoardColumn.YourTurn,
-        "completed" => BoardColumn.Completed,
-        _ => null,
-    };
+    // Unknown words mean "no filter" rather than a refusal — pinned by test — so the parse only has
+    // to be the same one the rest of the vocabulary uses.
+    private static BoardColumn? Column(string? name)
+        => TaskWords.TryParse(name, out BoardColumn column) ? column : null;
 }

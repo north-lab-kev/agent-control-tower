@@ -18,7 +18,7 @@
 }
 else
 {
-    <div class="taskview" id="@DropRootId">
+    <div class="taskview" id="@dropRootId">
         <header class="bar">
             @* Named for where it lands, which for an archived card is the archive it was opened
                from — see `CardExit`. *@
@@ -110,7 +110,7 @@ else
                             @if (!Locked)
                             {
                                 <div class="dropzone @(dragging ? "over" : null)">
-                                    <InputFile id="@DropInputId" multiple OnChange="OnAttachmentsPickedAsync"
+                                    <InputFile id="@dropInputId" multiple OnChange="OnAttachmentsPickedAsync"
                                                aria-label="@Strings.NewTask_Attachments_Browse" />
                                     <RadzenIcon Icon="attach_file" />
                                     <RadzenText TextStyle="TextStyle.Caption" Text="@DropZoneText" />
@@ -144,9 +144,9 @@ else
                                             @{ var gone = Missing(attachment); }
                                             <button type="button" class="open @(gone ? "gone" : null)"
                                                     @onclick="() => OpenAttachmentAsync(attachment)"
-                                                    title="@RowLabel(attachment, gone)"
-                                                    aria-label="@RowLabel(attachment, gone)">
-                                                <RadzenIcon Icon="@RowIcon(attachment, gone)" />
+                                                    title="@AttachmentRows.Label(attachment, gone)"
+                                                    aria-label="@AttachmentRows.Label(attachment, gone)">
+                                                <RadzenIcon Icon="@AttachmentRows.Icon(attachment, gone)" />
                                                 <span class="name">@attachment.FileName</span>
                                                 <span class="size">@TaskLabels.FileSize(attachment.Length)</span>
                                             </button>
@@ -155,7 +155,7 @@ else
                                                the whole row — see `AttachmentPreview`. *@
                                             @if (Previews(attachment))
                                             {
-                                                <AttachmentPreview Id="@PreviewId" Url="@PreviewUrl(attachment)"
+                                                <AttachmentPreview Id="@previewId" Url="@PreviewUrl(attachment)"
                                                                    Alt="@attachment.FileName" />
                                             }
                                             @if (!Locked)
@@ -191,9 +191,15 @@ else
                                                   Click="@(() => picking = !picking)" />
                                 }
                             </div>
+                            @* One disk check per render for the three reads below; the validator
+                               keeps its own, because it runs at validation time, not render time. *@
+                            @{
+                                var dir = Dir;
+                            }
+
                             <RadzenRequiredValidator Component="WorkingDir" Text="@Strings.NewTask_Required" />
                             <RadzenCustomValidator Component="WorkingDir" Validator="@(() => WorkingDirValid)"
-                                                   Text="@WorkingDirError" />
+                                                   Text="@WorkingDirError(dir)" />
 
                             @if (picking)
                             {
@@ -204,12 +210,12 @@ else
                             @* Found here rather than at launch: a directory that does not exist is
                                the single most common reason a launch fails, and the form is where
                                the user can still do something about it. *@
-                            @if (WorkingDirMissing)
+                            @if (WorkingDirMissing(dir))
                             {
                                 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
                                              Gap="0.5rem" class="dirwarn">
                                     <RadzenIcon Icon="folder_off" />
-                                    <RadzenText TextStyle="TextStyle.Caption" Text="@WorkingDirMissingText" />
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="@WorkingDirMissingText(dir)" />
                                     <RadzenButton Text="@Strings.NewTask_CreateDir" Icon="create_new_folder"
                                                   Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
                                                   Variant="Variant.Outlined" ButtonType="ButtonType.Button"

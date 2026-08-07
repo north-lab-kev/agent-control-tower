@@ -120,6 +120,49 @@ public class FlightStripTests : ComponentTest
         compact.FindAll("button.launch").Should().ContainSingle();
     }
 
+    // The lineage rail on the detailed strip: a spawned card names its parent, and a parent counts
+    // what it left behind. `StripFaceTests` pins the wording; this pins that both actually render,
+    // and on the elements the CSS paints.
+    [Fact]
+    public void A_detailed_strip_marks_lineage_in_both_directions()
+    {
+        var parent = Card(BoardColumn.Executing);
+        parent.Number = 7;
+
+        var card = Card(BoardColumn.Ready);
+        card.Origin = TaskOrigin.Spawned;
+        card.ParentId = parent.Id;
+        card.Children.Add(Guid.NewGuid());
+        card.Children.Add(Guid.NewGuid());
+
+        var cut = Strip(card, p => p.Add(c => c.Parent, parent));
+
+        var lineage = cut.FindAll(".lin");
+
+        lineage.Should().HaveCount(2);
+        lineage[0].TextContent.Should().Contain("7");
+        lineage[1].TextContent.Should().Contain("2");
+    }
+
+    // Compact still says a card was spawned — one glyph beside the path, where the children counter
+    // deliberately does not fit.
+    [Fact]
+    public void A_compact_strip_keeps_the_spawned_marker_and_gives_up_the_counter()
+    {
+        var parent = Card(BoardColumn.Executing);
+        parent.Number = 7;
+
+        var card = Card(BoardColumn.Ready);
+        card.Origin = TaskOrigin.Spawned;
+        card.ParentId = parent.Id;
+        card.Children.Add(Guid.NewGuid());
+
+        var cut = Strip(card, p => p.Add(c => c.Parent, parent), BoardDensity.Compact);
+
+        cut.FindAll(".lin.clin").Should().ContainSingle().Which.TextContent.Should().Contain("7");
+        cut.FindAll(".lin").Should().ContainSingle("compact trades the children counter away");
+    }
+
     private IRenderedComponent<FlightStrip> Strip(
         Card card,
         Action<ComponentParameterCollectionBuilder<FlightStrip>>? parameters = null,

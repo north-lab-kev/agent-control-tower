@@ -30,6 +30,8 @@ public sealed class StubHookEndpoint : IHookEndpoint
             ? HookTransport.ClaudeRoute
             : HookTransport.CodexRoute);
 
+    public Uri? McpUrl => BaseAddress is null ? null : new Uri(BaseAddress, McpTransport.Route);
+
     // Deterministic, and stable per task: a second launch of the same card must produce the same
     // token, or Codex's hook definition would change and demand fresh approval.
     public string Register(Guid taskId)

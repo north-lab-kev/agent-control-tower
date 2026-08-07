@@ -167,6 +167,78 @@ public class AgentConfigFilesTests
         File.ReadAllText(path).Should().Contain("keep = true");
     }
 
+    // The shape Codex's own save produces, measured in `docs/findings/codex-hooks.md`: ACT's
+    // `[mcp_servers.act]` table comes back *below* `[hooks.state]`, inside the tail the next launch
+    // carries across. Carried verbatim it would sit under the fresh copy of itself, and a table
+    // defined twice is a profile the parser rejects — every launch after the first save would die.
+    [Fact]
+    public void A_table_the_rewrite_defines_again_is_dropped_from_the_tail()
+    {
+        using var temp = new TempDirectory();
+
+        var files = new AgentConfigFiles(temp.Path);
+        var path = Path.Combine(temp.Path, "config.toml");
+
+        files.WriteExternal(path, string.Join(
+            Environment.NewLine,
+            "[[hooks.SessionStart]]",
+            "matcher = \"*\"",
+            "[hooks.state]",
+            "[hooks.state.'C:\\\\act.config.toml:session_start:0:0']",
+            "trusted_hash = \"sha256:8325\"",
+            "[mcp_servers.act]",
+            "url = \"http://127.0.0.1:49711/old\""));
+
+        files.WriteExternalPreservingTail(
+            path,
+            string.Join(
+                Environment.NewLine,
+                "[[hooks.SessionStart]]",
+                "matcher = \"*\"",
+                "[mcp_servers.act]",
+                "url = \"http://127.0.0.1:49712/new\""),
+            "[hooks.state");
+
+        var written = File.ReadAllText(path);
+
+        written.Should().Contain("trusted_hash", "the CLI's trust state is what the tail exists to keep");
+        written.Should().Contain("/new");
+        written.Should().NotContain("/old", "the relocated copy of ACT's own table is stale");
+        written.Split("[mcp_servers.act]").Should().HaveCount(2, "the table must be defined exactly once");
+    }
+
+    // The dropped block ends where the next table the CLI owns begins — trust state written after
+    // ACT's relocated table must not be swallowed with it.
+    [Fact]
+    public void Dropping_a_stale_table_keeps_whatever_follows_it()
+    {
+        using var temp = new TempDirectory();
+
+        var files = new AgentConfigFiles(temp.Path);
+        var path = Path.Combine(temp.Path, "config.toml");
+
+        files.WriteExternal(path, string.Join(
+            Environment.NewLine,
+            "[act]",
+            "generated = 1",
+            "[user]",
+            "before = true",
+            "[act.owned]",
+            "stale = true",
+            "[user.after]",
+            "after = true"));
+
+        files.WriteExternalPreservingTail(
+            path,
+            string.Join(Environment.NewLine, "[act]", "[act.owned]", "fresh = true"),
+            "[user]");
+
+        var written = File.ReadAllText(path);
+
+        written.Should().Contain("before = true").And.Contain("after = true").And.Contain("fresh = true");
+        written.Should().NotContain("stale = true");
+    }
+
     [Fact]
     public void A_file_with_no_marker_is_replaced_whole()
     {

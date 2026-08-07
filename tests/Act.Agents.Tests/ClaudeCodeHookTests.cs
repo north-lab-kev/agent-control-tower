@@ -153,7 +153,8 @@ public class ClaudeCodeHookInjectionTests
 
     // Without the pre-allow the first follow-up of every session costs an approval prompt — which for
     // an unattended card means parking on a question nobody is awake to answer. Scoped to ACT's own
-    // three ids: nothing else in the user's permission surface is widened.
+    // three ids: nothing else in the user's permission surface is widened. The `mcp__act__` shape is
+    // Claude Code's own permission dialect, so it is pinned literally here, in this CLI's suite.
     [Fact]
     public async Task The_settings_file_pre_allows_acts_own_mcp_tools_and_nothing_else()
     {
@@ -170,7 +171,8 @@ public class ClaudeCodeHookInjectionTests
             .Select(entry => entry.GetString())
             .ToList();
 
-        allow.Should().BeEquivalentTo(McpTransport.Tools.Select(McpTransport.PermissionId));
+        allow.Should().BeEquivalentTo(McpTransport.Tools.Select(tool => $"mcp__act__{tool}"));
+        allow.Should().Contain("mcp__act__create_followup");
     }
 
     private static Task<IAgentSession> LaunchAsync(

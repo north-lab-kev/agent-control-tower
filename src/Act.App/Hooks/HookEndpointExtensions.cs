@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Act.Core.Agents;
 using Act.Core.Model;
 using Act.Infrastructure.Hooks;
 using Microsoft.AspNetCore.Diagnostics;
@@ -84,7 +85,7 @@ public static class HookEndpointExtensions
                 if (context.Features.Get<IStatusCodePagesFeature>() is { } pages)
                     pages.Enabled = false;
 
-                var token = context.Request.Headers[HookEndpoint.TokenHeader].ToString();
+                var token = context.Request.Headers[HookTransport.TokenHeader].ToString();
                 var payload = await ReadPayloadAsync(context);
 
                 var result = handler.Handle(agent, token, payload);

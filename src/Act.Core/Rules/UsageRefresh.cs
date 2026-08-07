@@ -8,8 +8,6 @@ public static class UsageRefresh
 
     public static readonly TimeSpan Ceiling = TimeSpan.FromHours(2);
 
-    public const int MostDoublings = 5;
-
     public static bool Answers(UsageAvailability availability)
         => availability is UsageAvailability.Expired;
 
@@ -19,18 +17,12 @@ public static class UsageRefresh
     // Counted on the reading *after* the nudge: a run that left the token expired spent the user's
     // tokens and achieved nothing, and the likeliest cause — a refresh token revoked server-side
     // while its stated expiry is still in the future — does not heal on its own. Unlike
-    // `UsageBackoff`, which throttles requests to someone else's endpoint, this throttles spending.
+    // `UsageBackoff`, which throttles requests to someone else's endpoint, this throttles spending —
+    // a distinct policy over the same arithmetic, which is why the math is borrowed rather than
+    // restated.
     public static int Count(UsageAvailability availability, int failures)
-        => Answers(availability) ? Math.Min(failures + 1, MostDoublings) : 0;
+        => Answers(availability) ? UsageBackoff.Bounded(failures) : 0;
 
     public static TimeSpan Delay(TimeSpan cooldown, int failures)
-    {
-        if (failures <= 0)
-            return cooldown;
-
-        var ceiling = cooldown > Ceiling ? cooldown : Ceiling;
-        var scaled = cooldown * Math.Pow(2, Math.Min(failures, MostDoublings));
-
-        return scaled > ceiling ? ceiling : scaled;
-    }
+        => UsageBackoff.Delay(cooldown, failures, Ceiling);
 }

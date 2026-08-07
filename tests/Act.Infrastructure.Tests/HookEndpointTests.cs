@@ -46,6 +46,22 @@ public class HookEndpointTests
         endpoint.BaseAddress!.Host.Should().Be("127.0.0.1");
     }
 
+    // Derived once, here, for both adapters' generated config — the two used to compute it from
+    // different bases and could silently disagree.
+    [Fact]
+    public void The_mcp_url_shares_the_endpoint_and_owns_its_route()
+    {
+        var endpoint = new HookEndpoint();
+
+        endpoint.McpUrl.Should().BeNull();
+
+        endpoint.Bind(49711);
+
+        endpoint.McpUrl!.AbsolutePath.Should().Be(McpTransport.Route);
+        endpoint.McpUrl.Port.Should().Be(49711);
+        endpoint.McpUrl.Host.Should().Be("127.0.0.1");
+    }
+
     // A resume reuses the card's session; a fresh token would be a new Codex hook definition and a
     // fresh trust prompt with it.
     [Fact]
@@ -62,6 +78,25 @@ public class HookEndpointTests
         var endpoint = new HookEndpoint();
 
         endpoint.Register(TaskId).Should().NotBe(endpoint.Register(Guid.NewGuid()));
+    }
+
+    // Two launch paths can register the same card at once — the queue runner's pass and a click, or
+    // the startup restore and an opened session view. Both must get the one token: a loser's token
+    // orphaned in the resolver would keep authorizing posts for the life of the process, since
+    // `Release` only removes the token the task map holds.
+    [Fact]
+    public async Task Concurrent_registrations_for_one_task_mint_one_token()
+    {
+        var endpoint = new HookEndpoint();
+
+        var tokens = await Task.WhenAll(
+            Enumerable.Range(0, 16).Select(_ => Task.Run(() => endpoint.Register(TaskId))));
+
+        tokens.Distinct().Should().ContainSingle();
+
+        endpoint.Release(TaskId);
+
+        endpoint.TryResolve(tokens[0], out _).Should().BeFalse("releasing the task leaves nothing resolvable");
     }
 
     [Fact]
