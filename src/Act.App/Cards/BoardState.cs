@@ -37,9 +37,9 @@ public sealed class BoardState(ICardStore store, IAttachmentStore attachments, I
     public IReadOnlyList<Card> Archived
         => [.. cards.Where(card => !card.IsOnBoard).OrderByDescending(card => card.DeletedAt ?? card.ArchivedAt)];
 
-    // Unfiltered, everything off the board included — for the one caller that is not a view: the
-    // settings migration, which is looking for what a user once typed and does not care where the
-    // card ended up.
+    // Unfiltered, everything off the board included — for the callers that are not views: the
+    // attachment sweep, the queue rules and the working-directory conflict check, each of which
+    // reasons about every card there is rather than about a column.
     public IReadOnlyList<Card> All => cards;
 
     public bool HasArchived => cards.Any(card => !card.IsOnBoard);

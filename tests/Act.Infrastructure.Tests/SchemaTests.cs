@@ -20,6 +20,22 @@ public class SchemaTests
     }
 
     [Fact]
+    public void A_store_already_at_the_current_version_is_opened_unchanged()
+    {
+        using var temp = new TempDirectory();
+        Stamp(temp.Path, ActSchema.CurrentVersion);
+
+        using (var provider = Provider(temp.Path))
+        {
+            var open = () => provider.GetRequiredService<ICardStore>();
+
+            open.Should().NotThrow();
+        }
+
+        StoredVersion(temp.Path).Should().Be(ActSchema.CurrentVersion);
+    }
+
+    [Fact]
     public void A_store_from_a_newer_build_is_rejected()
     {
         using var temp = new TempDirectory();

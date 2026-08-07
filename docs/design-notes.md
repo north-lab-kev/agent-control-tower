@@ -753,34 +753,36 @@ sandbox never reach the project either.
 
 ## The store
 
-### The first migration: `TaskDefaults` → `Templates` — 2026-08-04
+### The migration list was emptied for the first release — 2026-08-06
 
-Templates replaced the single *New task defaults* block, which is a breaking store change: a
-field became a list, and one document's sub-object became that list's first entry. Two things
-about how it is written are worth keeping, because neither is visible from the code.
+`ActSchema.Migrations` held two entries, both written on 2026-08-04 against stores that only ever
+existed before the first release: `TaskDefaults` → `Templates` (schema 1 → 2, a field becoming a
+list) and `NullFieldsBecomeDefaults` (schema 2 → 3, dropping the nulls LiteDB's `EmptyStringToNull`
+default had written in place of empty strings). Both are gone, and **schema 1 is the release
+baseline**: everyone starts on a store this build created, so there is no older shape for a
+migration to find and nothing the two entries could do but run against a store that cannot exist.
 
-**It is a migration, not a fresh `act.db`.** The pre-release rule still allowed wiping the store,
-and the reason it was not used is that this change is entirely mechanical — the old document has
-every value the new one needs, under the same names — so the only thing wiping would have cost is
-the user's board, for nothing.
+**The machinery stays, only the list is empty.** The version document, the ordered list,
+`CurrentVersion` derived from its length, the newer-build guard and the mapper handed to every
+entry are all still there — the next breaking change is one array entry, not a rebuild of the
+mechanism. The rules the two entries established are kept in `docs/repository-structure.md` rather
+than in the code they came from, because they are what the *next* entry has to obey:
 
-**It writes through the mapper, and the reason is `_id`.** The first draft hand-built the
-template's `BsonDocument` key by key, which is wrong twice over: LiteDB's entity mapper treats an
-`Id` property as the id field and serializes it as **`_id` even on a nested object** (so
-`["Id"] = …` round-trips as `Guid.Empty`, giving every migrated install a default template the
-New-task picker can name but never resolve), and an enum's on-disk encoding is the mapper's choice
-rather than a fact you can assume. So `ActSchema.Apply` now takes the `BsonMapper` that
-`ActDatabase` opened the database with, and the migration deserializes the old sub-document
-straight into `TaskTemplate` — their fields overlap by name — then writes it back with
-`ToDocument`. Nothing in either type's declaration says any of this, which is why
-`SettingsStoreTests` pins the id round-trip rather than trusting it.
+- **Write through the mapper, never by hand.** LiteDB's entity mapper serializes an `Id` property
+  as **`_id` even on a nested object**, so a hand-built `["Id"] = …` round-trips as `Guid.Empty`;
+  an enum's on-disk encoding is likewise the mapper's choice and not a fact you can assume. Read
+  the old document into the new type and write it back with `ToDocument`. `SettingsStoreTests`
+  pins that id round-trip, because nothing in the type declaration says it.
+- **Be a no-op on a document you do not recognise.** A fresh store has no settings document at
+  all, so an invariant cannot be *established* by a migration; `UserSettingsService.Seeded` owns
+  the default-template and install-id invariants for exactly that reason.
 
-**The invariant is seeded outside the migration.** Every reader assumes exactly one template is
-the default, and a migration cannot promise that: a fresh install has no settings document to
-rewrite. `UserSettingsService` seeds it while loading, before anything can read a settings object
-without one, so the migration is free to be a no-op on a document it does not recognise.
+**The cost was paid in stores, and it is the last time.** Emptying the list takes `CurrentVersion`
+from 3 back to 1, so every store already stamped 2 or 3 trips the newer-build guard and has to be
+deleted — acceptable exactly once, under the pre-release rule, and never again after the release
+that makes schema 1 real.
 
-**`InstallId` is seeded too, and that is not the store rule being bent — 2026-08-05.** The
+**`InstallId` is seeded, and that is not the store rule being bent — 2026-08-05.** The
 telemetry `distinct_id` looked like it wanted a migration entry, and it does not. A migration exists
 to stop *two shapes* living on disk; an identity generated once when it is absent is a **seed**, not
 a second shape — after `Seeded` runs there is exactly one shape and no code path that has to ask
@@ -789,23 +791,6 @@ exactly this reason, so it is one more line in a place that is already tested ra
 bump that would rewrite every install's settings document to add a GUID. It is random and never
 derived from the machine: the switch promises anonymous data, and a hardware-derived id would tie
 every install to a device.
-
-### Adding `TaskTemplate.Title` needed no schema bump — 2026-08-04
-
-Templates gained a `title` the day after they landed, which normally means a second migration: the
-documents schema 2 wrote have no such key, and *two shapes on disk* is the thing the store rule
-exists to forbid. It did not, for two reasons worth separating.
-
-**The migration writes through the mapper, so its output tracks the type.** `1 → 2` serializes a
-real `TaskTemplate` with `ToDocument`, so the moment the property existed the migration started
-emitting it — no edit, and no store that has run the migration is missing the key. A hand-built
-`BsonDocument` would have needed a `2 → 3` to catch up, which is the second time that choice paid
-for itself in as many days.
-
-**No real store was at schema 2 yet.** Only this session's scratch stores had run it, so nothing
-was stranded. Had the user's board been at 2, the honest answer would have been a `2 → 3` entry
-stamping the key — *not* leaning on LiteDB filling the property from its initializer, which is a
-read-time shim wearing a default value's clothes.
 
 ### Empty strings were stored as null — measured 2026-08-04
 
@@ -817,20 +802,21 @@ round trip. Nothing in the type says so, and nothing had dereferenced one until
 **second** start of *any* store, fresh ones included. The first start had no settings document to
 read; the first start's own write is what broke the second.
 
-`ActBsonMapper` now sets the flag to `false`, and `NullFieldsBecomeDefaults` (schema 2 → 3) repairs
-what the old default wrote.
+`ActBsonMapper` sets the flag to `false`, and `SettingsStoreTests` pins the round trip — an empty
+string comes back empty, and a `string?` still comes back null — because nothing in the type
+declaration says which one you get. A `NullFieldsBecomeDefaults` entry (schema 2 → 3) repaired the
+stores the old default had already written; it went with the rest of the list on 2026-08-06, since
+no store the release will see was ever written by a build that had the flag wrong.
 
-**The migration removes a null field instead of rewriting it, and the two are not
-interchangeable.** Writing `""` over every null would need to know, per property, whether the type
-declares it nullable — `Model` and `Effort` are `string?` and mean something by being null, while
-`Name` and `Title` are not — which is `NullabilityInfoContext` reflection over every stored type.
-Removing the field instead leaves deserialization to skip it, so the property keeps **its own
-initializer**: `string.Empty` where the declaration is non-nullable, `null` where it is nullable.
-The type stays the single source of truth and the migration needs no per-type knowledge, which is
-also why it can walk every collection generically rather than naming one.
-
-This is not the read-time shim the store rule forbids: the nulls are gone from disk after it runs,
-and a build that later drops the migration still reads exactly one shape.
+**Had that repair been needed after the release, it would still delete the null field rather than
+write `""` over it, and the two are not interchangeable.** Writing `""` everywhere would need to
+know, per property, whether the type declares it nullable — `Model` and `Effort` are `string?` and
+mean something by being null, while `Name` and `Title` are not — which is `NullabilityInfoContext`
+reflection over every stored type. Removing the field instead leaves deserialization to skip it, so
+the property keeps **its own initializer**: `string.Empty` where the declaration is non-nullable,
+`null` where it is nullable. The type stays the single source of truth and the migration needs no
+per-type knowledge, which is also what lets it walk every collection generically rather than
+naming one.
 
 ---
 

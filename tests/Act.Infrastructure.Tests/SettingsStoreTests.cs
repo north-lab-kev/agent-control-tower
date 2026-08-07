@@ -1,7 +1,6 @@
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using AwesomeAssertions;
-using LiteDB;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Act.Infrastructure.Tests;
@@ -122,6 +121,35 @@ public class SettingsStoreTests
         template.GitAction.Should().Be(GitAction.PullRequest);
         template.Draft.Should().BeTrue();
         template.AllowConcurrentWorkingDir.Should().BeTrue();
+    }
+
+    // `BsonMapper.EmptyStringToNull` defaults to `true`, which wrote every empty string to disk as
+    // null and handed a non-nullable property back as null on the way out — see *Empty strings were
+    // stored as null* in `docs/design-notes.md`. `ActBsonMapper` turns it off, and nothing in either
+    // type's declaration says so, which is why the round trip is pinned here.
+    [Fact]
+    public void An_empty_string_survives_a_restart()
+    {
+        using var temp = new TempDirectory();
+
+        using (var writing = Provider(temp.Path))
+        {
+            writing.GetRequiredService<ISettingsStore>().Save(new UserSettings
+            {
+                Templates = [new TaskTemplate { Id = Guid.NewGuid(), IsDefault = true }],
+            });
+        }
+
+        using var reading = Provider(temp.Path);
+
+        var template = reading.GetRequiredService<ISettingsStore>().Load()
+            .Templates.Should().ContainSingle().Subject;
+
+        template.Name.Should().BeEmpty();
+        template.Title.Should().BeEmpty();
+        template.Prompt.Should().BeEmpty();
+        template.WorkingDir.Should().BeEmpty();
+        template.Model.Should().BeNull("the type declares it nullable, so its own default is null");
     }
 
     [Fact]

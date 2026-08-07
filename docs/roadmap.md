@@ -860,11 +860,13 @@ verifiable, and leaves something runnable.
         no promote action. Dressing the picker also turned up two app-wide styling bugs that had been
         there since the shell was built: everything ACT styles itself was set in **Times New Roman**,
         and every outlined button was ringed in near-white off Radzen's raw ramp. Both are in
-        `design-notes.md` → *Styling against Radzen*. The store change is the migration
+        `design-notes.md` → *Styling against Radzen*. The store change shipped as the migration
         list's first real entry
-        (schema 1 → 2). See the spec's *Task templates* and `design-notes.md` → *The store*.
-        Verified live against a hand-written schema-1 store: the old defaults came back as the
-        default template with the rest of the settings document untouched.
+        (schema 1 → 2), verified live against a hand-written schema-1 store: the old defaults came
+        back as the default template with the rest of the settings document untouched. **That entry
+        was retired 2026-08-06** along with the rest of the list — schema 1 is the release baseline
+        and no store that predates it will exist. See the spec's *Task templates* and
+        `design-notes.md` → *The store*.
   - [x] **Retry — built 2026-08-01, and three of the spec's assumptions were dropped on the way.**
     `Act.Core/Rules/CardRetry` is the predicate; `SessionLauncher.RetryAsync` the action, sharing the
     launch path so there is one place a session is started. The button lives on the **flight strip**,

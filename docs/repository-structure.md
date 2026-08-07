@@ -471,11 +471,13 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   (`ActDatabase.Open`) that configures the `BsonMapper` and applies the schema —
   a **version document plus an ordered migration list**, so `CurrentVersion` is
   derived from that list and a store written by a newer build is rejected instead
-  of silently mangled. The list holds **two** entries — schema 1 → 2, `UserSettings.TaskDefaults`
-  becoming `UserSettings.Templates`, and schema 2 → 3, dropping the null fields LiteDB's
-  `EmptyStringToNull` default had written in place of empty strings (both 2026-08-04). Every earlier
-  breaking change was handled by starting a fresh `act.db`, which the pre-release rule still allows;
-  the first release is what makes that stop being an option. Collection names live in one place (`ActCollections`), and
+  of silently mangled. **The list is empty, and schema 1 is the release baseline** —
+  every store the first release will ever see is created by it, so there is nothing
+  older to migrate from. The two entries it used to hold (`TaskDefaults` → `Templates`,
+  and dropping the nulls LiteDB's `EmptyStringToNull` default wrote in place of empty
+  strings) were retired on 2026-08-06 with the pre-release stores they existed for; the
+  machinery around them stays, so the next breaking change is one entry and a version bump.
+  Collection names live in one place (`ActCollections`), and
   the friendly card `number` comes from a counter document that seeds itself
   above any card already stored.
 - **Backward compatibility is a migration, never a mapper.** A read-time shim — a
@@ -488,24 +490,25 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   - **A migration writes through the mapper, never by hand.** The shape it has to produce is
     whatever the *new* type serializes to, and the two things LiteDB does not take verbatim —
     `Id` becomes `_id` even on a nested object, and an enum's encoding is the mapper's choice —
-    are exactly what a hand-built `BsonDocument` gets wrong. So `ActSchema.Apply` takes the
-    `BsonMapper` `ActDatabase` built the database with, and the first migration reads the old
-    sub-document straight into the new type (their field names overlap) and writes the result
-    back with `ToDocument`. A round-trip test in `SettingsStoreTests` is what pins the `_id`
-    half of that, because nothing in the type declaration says it.
+    are exactly what a hand-built `BsonDocument` gets wrong. That is why `ActSchema.Apply` takes
+    the `BsonMapper` `ActDatabase` built the database with and hands it to every entry: read the
+    old document straight into the new type and write the result back with `ToDocument`. A
+    round-trip test in `SettingsStoreTests` is what pins the `_id` half of that, because nothing
+    in the type declaration says it.
   - **A migration must be a no-op on a document it does not recognise**, not a throw: a fresh
-    store has no settings document at all, so the invariant the new shape carries (there is
-    always one default template) is seeded by `UserSettingsService` on the way in and the
+    store has no settings document at all, so an invariant a new shape carries (there is
+    always one default template) is seeded by `UserSettingsService` on the way in and a
     migration only rewrites what it finds.
   - **The mapper's defaults are part of the on-disk shape.** `EmptyStringToNull` defaults to
     `true`, which silently turned every stored empty string into null and every non-nullable
     string property into null on the way back — see *Empty strings were stored as null* in
     `docs/design-notes.md`. `ActBsonMapper` is the one place those defaults are decided, and a
     change to one of them is a store change needing a migration like any other.
-  **A version that was bumped by a shim and then had the
-  shim removed leaves a store no build can open** — `CurrentVersion` goes backwards
-  while the stored version does not, and the only way out is deleting `act.db`,
-  which is what happened on 2026-08-03 (schema 2 against a build back down at 1).
+  **Removing a migration takes `CurrentVersion` backwards, and any store already
+  stamped above it can no longer be opened** — the newer-build guard fires and the only
+  way out is deleting `act.db`. That is the price the 2026-08-06 reset to schema 1
+  charged every pre-release store, and it is why after the first release the list only
+  ever grows.
 - **No sample data.** `Act.App/Seeding/` existed so the board had something to render
   before tasks could be created, along with a compile-time gate to keep it out of Release.
   Creating a real task is now a page and a Save, so the demo cards, the `#if DEBUG` call
