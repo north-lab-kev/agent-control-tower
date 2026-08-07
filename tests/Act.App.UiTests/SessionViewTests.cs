@@ -372,6 +372,61 @@ public class SessionViewTests : ComponentTest
             .Which.TextContent.Should().Contain("Clean up"));
     }
 
+    // Two terminals are the same component, so following a lineage link is a parameter change on
+    // this instance rather than a fresh page — the view has to reload for the card the link named,
+    // or the click changes the url and nothing else.
+    [Fact]
+    public async Task Following_the_spawned_by_link_opens_the_parent()
+    {
+        var parent = Lineage(1040, "The plan", BoardColumn.YourTurn);
+
+        Card = Lineage(1042, "Rename the widget", BoardColumn.Executing);
+        Card.Origin = TaskOrigin.Spawned;
+        Card.ParentId = parent.Id;
+        parent.Children.Add(Card.Id);
+
+        await BoardWith(parent, Card);
+
+        var cut = Render<SessionView>(p => p.Add(c => c.CardId, Card.Id));
+
+        cut.Find("header.bar span.title").TextContent.Should().Be("Rename the widget");
+
+        cut.Render(p => p.Add(c => c.CardId, parent.Id));
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Find("header.bar span.id").TextContent.Should().Be("#1040");
+            cut.Find("header.bar span.title").TextContent.Should().Be("The plan");
+        });
+
+        var link = cut.FindAll("dl a").Should().ContainSingle().Subject;
+
+        link.TextContent.Should().Contain("#1042");
+        link.GetAttribute("href").Should().Contain(Card.Id.ToString());
+    }
+
+    // The old card's session must not stay bound under the new card's face: what the rail says and
+    // what a drop types into have to belong to the card being shown.
+    [Fact]
+    public async Task Following_a_lineage_link_rebinds_the_terminal_to_the_card_it_opened()
+    {
+        var cut = await OpenLive();
+
+        var parent = Lineage(1040, "The plan", BoardColumn.YourTurn);
+
+        await BoardWith(parent);
+
+        cut.Render(p => p.Add(c => c.CardId, parent.Id));
+
+        cut.WaitForAssertion(() => cut.Find("div.idle").TextContent.Should().NotBeNullOrWhiteSpace());
+
+        Drop(cut, "notes.md");
+
+        Notifications.Messages.Should().ContainSingle()
+            .Which.Summary.Should().Be(Strings.Session_AttachNoSession);
+        Typed().Should().BeEmpty("the spawned card's session is no longer the one on screen");
+    }
+
     private static Card Lineage(int number, string title, BoardColumn column) => new()
     {
         Number = number,

@@ -58,6 +58,8 @@ public partial class SessionView(
 
     private Card? card;
 
+    private Guid wiredCard;
+
     private bool live;
 
     private bool launching;
@@ -130,10 +132,26 @@ public partial class SessionView(
         }
     }
 
-    // Synchronous first, load only on a miss — see the same note on TaskView: it keeps the page
-    // title correct on the first render instead of a frame late.
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
+        registry.Changed += OnRegistryChanged;
+
+        // The card moves under this view while the user watches it: a turn ending is what puts the
+        // sign-off within reach, and the badge and the rail's numbers are only true if they follow.
+        board.Changed += OnBoardChanged;
+    }
+
+    // Synchronous first, load only on a miss — see the same note on TaskView: it keeps the page
+    // title correct on the first render instead of a frame late. And on parameters rather than on
+    // initialization, because the rail's lineage links land here: two terminals are the same
+    // component, so following one is a parameter change on this instance, not a fresh page.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (card?.Id == CardId)
+            return;
+
+        previewing = null;
+
         card = board.Card(CardId);
 
         if (card is null)
@@ -142,41 +160,27 @@ public partial class SessionView(
 
             card = board.Card(CardId);
         }
-
-        registry.Changed += OnRegistryChanged;
-
-        // The card moves under this view while the user watches it: a turn ending is what puts the
-        // sign-off within reach, and the badge and the rail's numbers are only true if they follow.
-        board.Changed += OnBoardChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (card is null)
-            return;
-
-        if (firstRender)
+        if (card is not null)
         {
-            owner = DotNetObjectReference.Create(this);
+            owner ??= DotNetObjectReference.Create(this);
 
             // Loaded even for an **archived** card, which renders no terminal at all: the module also
             // owns `place`, and the rail lists this card's attachments either way — the files outlive
             // the session, since only a purge removes them. Gating the import on the terminal being
             // there is precisely the mistake the task form made with `Locked`, where a completed card
             // rendered a preview nothing ever positioned.
-            attach = await js.InvokeAsync<IJSObjectReference>("import", "/js/act-attach.js");
+            attach ??= await js.InvokeAsync<IJSObjectReference>("import", "/js/act-attach.js");
 
-            if (!Archived)
-            {
-                module = await js.InvokeAsync<IJSObjectReference>("import", "/js/act-terminal.js");
-
-                // Bound on the terminal frame, not the page: the rail's buttons are not somewhere a
-                // file means anything, and a paste is only claimed when the clipboard carries files —
-                // so xterm keeps handling a text paste exactly as it did.
-                await attach.InvokeVoidAsync("watch", dropRootId, dropInputId, owner);
-
-                await AttachAsync();
-            }
+            // Keyed on the card rather than on the first render: a lineage link swaps the card under
+            // this same instance, and the xterm it leaves behind holds the other card's session.
+            if (Archived)
+                await UnwireAsync();
+            else if (wiredCard != card.Id)
+                await RewireAsync(card.Id);
         }
 
         // After the render that added it, because the box only has a position once it is in the
@@ -338,6 +342,46 @@ public partial class SessionView(
         }
 
         owner?.Dispose();
+    }
+
+    private async Task RewireAsync(Guid cardId)
+    {
+        await UnwireAsync();
+
+        wiredCard = cardId;
+
+        module ??= await js.InvokeAsync<IJSObjectReference>("import", "/js/act-terminal.js");
+
+        // Bound on the terminal frame, not the page: the rail's buttons are not somewhere a
+        // file means anything, and a paste is only claimed when the clipboard carries files —
+        // so xterm keeps handling a text paste exactly as it did.
+        if (attach is { } dropping && owner is not null)
+            await dropping.InvokeVoidAsync("watch", dropRootId, dropInputId, owner);
+
+        await AttachAsync();
+    }
+
+    private async Task UnwireAsync()
+    {
+        if (wiredCard == Guid.Empty)
+            return;
+
+        wiredCard = Guid.Empty;
+        dragging = false;
+
+        if (session is { } previous)
+        {
+            previous.Terminal.Output -= WriteToTerminalAsync;
+
+            session = null;
+            live = false;
+        }
+
+        if (module is { } loaded)
+            await loaded.InvokeVoidAsync("dispose", terminalId);
+
+        if (attach is { } dropping)
+            await dropping.InvokeVoidAsync("dispose", dropRootId);
     }
 
     private async Task AttachAsync()
