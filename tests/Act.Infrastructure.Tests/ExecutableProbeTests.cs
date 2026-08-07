@@ -1,4 +1,5 @@
 using Act.Core.Abstractions;
+using Act.Infrastructure.FileSystem;
 using Act.Infrastructure.Terminal;
 using AwesomeAssertions;
 
@@ -8,7 +9,7 @@ namespace Act.Infrastructure.Tests;
 [Collection(EnvironmentCollection.Name)]
 public class ExecutableProbeTests
 {
-    private readonly IExecutableProbe probe = new ExecutableProbe();
+    private readonly IExecutableProbe probe = new ExecutableProbe(new TextFileReader());
 
     // A binary this test plants itself rather than one the machine happens to have: the hit case
     // then says something on a build agent with no agent CLI installed, and it does not depend on

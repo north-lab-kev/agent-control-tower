@@ -15,6 +15,8 @@ public class FollowUpResolverTests
 
     private readonly StubCapabilityCatalog catalog = new();
 
+    private readonly StubWorkingDirectories directories = new();
+
     [Fact]
     public void A_minimal_call_inherits_everything_from_the_parent()
     {
@@ -106,7 +108,8 @@ public class FollowUpResolverTests
         var parent = Parent();
         parent.LaunchConfig.PermissionMode = PermissionMode.AcceptEdits;
 
-        var resolution = FollowUpResolver.Resolve(parent, Ask() with { Agent = "codex" }, catalog, Now);
+        var resolution = FollowUpResolver.Resolve(
+            parent, Ask() with { Agent = "codex" }, catalog, directories, [parent], Now);
 
         resolution.CanCreate.Should().BeFalse();
         resolution.Rejections.Should().ContainSingle().Which.Should().Contain("AcceptEdits");
@@ -159,20 +162,36 @@ public class FollowUpResolverTests
         Resolved(Parent(), Ask() with { WorkingDir = "   " }).WorkingDir.Should().Be("C:/repo");
     }
 
+    // The same rule the task form enforces before a card may be saved: a relative path would resolve
+    // against whatever directory ACT happens to be running in, so the MCP path must not store what
+    // the form would refuse.
+    [Fact]
+    public void A_relative_working_directory_is_refused_like_the_form_refuses_it()
+        => Refusals(Parent(), Ask() with { WorkingDir = "src" })
+            .Should().ContainSingle().Which.Should().Contain("absolute");
+
     // Any card, not only a sibling — which is exactly why `list_tasks` exists.
     [Fact]
-    public void Dependencies_are_taken_verbatim_whatever_card_they_name()
+    public void Dependencies_may_name_any_card_the_board_knows()
     {
-        var unrelated = Guid.NewGuid();
+        var unrelated = Card(Guid.NewGuid());
 
-        Resolved(Parent(), Ask() with { DependsOn = [unrelated.ToString()] })
-            .DependsOn.Should().ContainSingle().Which.Should().Be(unrelated);
+        Resolved(Parent(), Ask() with { DependsOn = [unrelated.Id.ToString()] }, unrelated)
+            .DependsOn.Should().ContainSingle().Which.Should().Be(unrelated.Id);
     }
 
     [Fact]
     public void An_id_that_is_not_an_id_is_refused_rather_than_skipped()
         => Refusals(Parent(), Ask() with { DependsOn = ["the second one"] })
             .Should().ContainSingle().Which.Should().Contain("list_tasks");
+
+    // A well-formed GUID that names nothing would be accepted by the parse, gate nothing at launch
+    // (`DependencyGate` treats a missing prerequisite as satisfied), and the ordering the agent asked
+    // for would silently never happen. The refusal at creation is the only moment it can be caught.
+    [Fact]
+    public void An_id_that_names_no_card_is_refused_rather_than_stored()
+        => Refusals(Parent(), Ask() with { DependsOn = [Guid.NewGuid().ToString()] })
+            .Should().ContainSingle().Which.Should().Contain("does not name a task");
 
     [Theory]
     [InlineData("", "Do the thing.")]
@@ -199,7 +218,9 @@ public class FollowUpResolverTests
     [Fact]
     public void An_unavailable_effort_is_substituted_and_reported()
     {
-        var resolution = FollowUpResolver.Resolve(Parent(), Ask() with { Effort = "ludicrous" }, catalog, Now);
+        var parent = Parent();
+        var resolution = FollowUpResolver.Resolve(
+            parent, Ask() with { Effort = "ludicrous" }, catalog, directories, [parent], Now);
 
         resolution.CanCreate.Should().BeTrue();
         resolution.Adjustments.Should().ContainSingle().Which.Field.Should().Be(nameof(LaunchConfig.Effort));
@@ -207,8 +228,12 @@ public class FollowUpResolverTests
 
     [Fact]
     public void A_refused_call_produces_no_card()
-        => FollowUpResolver.Resolve(Parent(), Ask() with { Agent = "gemini" }, catalog, Now)
+    {
+        var parent = Parent();
+
+        FollowUpResolver.Resolve(parent, Ask() with { Agent = "gemini" }, catalog, directories, [parent], Now)
             .Card.Should().BeNull();
+    }
 
     // The other half of every knob: overriding actually overrides. Without these the suite would only
     // prove that inheritance works, and a resolver that ignored explicit values would pass it.
@@ -325,9 +350,9 @@ public class FollowUpResolverTests
         child.LaunchedAt.Should().BeNull();
     }
 
-    private Card Resolved(Card parent, FollowUpRequest request)
+    private Card Resolved(Card parent, FollowUpRequest request, params Card[] others)
     {
-        var resolution = FollowUpResolver.Resolve(parent, request, catalog, Now);
+        var resolution = FollowUpResolver.Resolve(parent, request, catalog, directories, [parent, .. others], Now);
 
         resolution.Rejections.Should().BeEmpty();
 
@@ -335,9 +360,19 @@ public class FollowUpResolverTests
     }
 
     private IReadOnlyList<string> Refusals(Card parent, FollowUpRequest request)
-        => FollowUpResolver.Resolve(parent, request, catalog, Now).Rejections;
+        => FollowUpResolver.Resolve(parent, request, catalog, directories, [parent], Now).Rejections;
 
     private static FollowUpRequest Ask() => new("Rename the widget", "Do the thing.");
+
+    private static Card Card(Guid id) => new()
+    {
+        Id = id,
+        Number = 1040,
+        Title = "Another task",
+        AgentType = AgentType.ClaudeCode,
+        WorkingDir = "C:/elsewhere",
+        Column = BoardColumn.Ready,
+    };
 
     private static Card Parent() => new()
     {

@@ -19,7 +19,9 @@ public static class ClaudeCodeMcpConfig
 {
     public const string FileName = "act-mcp.json";
 
-    public static string Compose(Uri endpoint, string token)
+    // The url arrives already derived — `IHookEndpoint.McpUrl` is the one place that knows it — so
+    // this file and Codex's profile cannot disagree about where the server lives.
+    public static string Compose(Uri mcpEndpoint, string token)
     {
         var config = new JsonObject
         {
@@ -28,7 +30,7 @@ public static class ClaudeCodeMcpConfig
                 [McpTransport.ServerName] = new JsonObject
                 {
                     ["type"] = "http",
-                    ["url"] = new Uri(endpoint, McpTransport.Route).ToString(),
+                    ["url"] = mcpEndpoint.ToString(),
                     ["headers"] = new JsonObject
                     {
                         [HookTransport.TokenHeader] = token,

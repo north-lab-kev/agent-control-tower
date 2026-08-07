@@ -16,6 +16,11 @@ public interface IHookEndpoint
 
     Uri? UrlFor(AgentType agent);
 
+    // The MCP server's url — the same loopback endpoint as the hooks, at its own route — derived
+    // here once so the two adapters' generated config cannot disagree about it. Null exactly when
+    // `BaseAddress` is.
+    Uri? McpUrl { get; }
+
     // Issued per session, carried on the agent process environment rather than in a hook
     // command, so Codex's definition hash stays stable across launches.
     string Register(Guid taskId);

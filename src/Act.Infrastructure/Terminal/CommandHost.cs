@@ -25,6 +25,12 @@ public sealed class CommandHost : ICommandHost
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(90);
 
+    // No BOM: prepended to the prompt it would reach the CLI as garbage characters. The input side
+    // has to be set explicitly — left alone, .NET encodes stdin with the *console code page*, and a
+    // French prompt reaches a UTF-8-reading CLI as mojibake. Measured: under CP 850 the child
+    // received 0x82 for 'é' where UTF-8 C3 A9 was meant.
+    private static readonly UTF8Encoding Utf8Input = new(encoderShouldEmitUTF8Identifier: false);
+
     public async Task<CommandResult> RunAsync(
         CommandStartInfo startInfo,
         CancellationToken cancellationToken = default)
@@ -40,15 +46,24 @@ public sealed class CommandHost : ICommandHost
         var output = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
         var error = process.StandardError.ReadToEndAsync(CancellationToken.None);
 
-        await WriteInputAsync(process, startInfo.Input);
+        // Raced against the deadline rather than trusted with a token: the pipe is a synchronous
+        // handle, so a write blocked on a child that never drains it (a prompt bigger than the pipe
+        // buffer, a CLI wedged before its first read) does not observe cancellation — what unblocks
+        // it is the `Kill` below breaking the pipe.
+        var write = WriteInputAsync(process, startInfo.Input);
 
         try
         {
+            await write.WaitAsync(timeout.Token);
             await process.WaitForExitAsync(timeout.Token);
         }
         catch (OperationCanceledException)
         {
             Kill(process);
+
+            // Now unblocked by the broken pipe; awaited so its close cannot outlive the process
+            // this method is about to dispose. It swallows its own failures.
+            await write;
 
             // The caller's own cancellation is a caller's problem and propagates; the deadline is
             // ours and comes back as a result, because "it took too long" is an answer.
@@ -71,6 +86,7 @@ public sealed class CommandHost : ICommandHost
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardInputEncoding = Utf8Input,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
             WorkingDirectory = startInfo.WorkingDir,
@@ -79,16 +95,15 @@ public sealed class CommandHost : ICommandHost
         if (NeedsShim(executable))
         {
             info.FileName = Environment.GetEnvironmentVariable("COMSPEC") ?? "cmd.exe";
-            info.ArgumentList.Add("/c");
-            info.ArgumentList.Add(executable);
+            info.Arguments = Shim(executable, startInfo.Arguments);
         }
         else
         {
             info.FileName = executable;
-        }
 
-        foreach (var argument in startInfo.Arguments)
-            info.ArgumentList.Add(argument);
+            foreach (var argument in startInfo.Arguments)
+                info.ArgumentList.Add(argument);
+        }
 
         // Assigned rather than merged: the caller already inherited what it wanted to keep, and a
         // half-inherited environment is the harder thing to reason about.
@@ -102,10 +117,29 @@ public sealed class CommandHost : ICommandHost
 
     private static bool NeedsShim(string executable)
         => OperatingSystem.IsWindows()
-            && Path.GetExtension(executable) is ".cmd" or ".bat";
+            && Path.GetExtension(executable) is { } extension
+            && (extension.Equals(".cmd", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".bat", StringComparison.OrdinalIgnoreCase));
+
+    // Composed by hand rather than through `ArgumentList`, because .NET quotes arguments by
+    // `CommandLineToArgvW` rules and `cmd` does not parse by them: a quoted script path followed by
+    // any other quoted argument made it strip the outer quotes and try to run `C:\Users\Jane`.
+    // `/s` pins the sane rule — strip exactly the first and last quote, take everything between
+    // verbatim — so the script path and each argument can be quoted for the *script's* runtime,
+    // which does split by `CommandLineToArgvW`. `/d` skips AutoRun, which could print into stdout.
+    private static string Shim(string executable, IReadOnlyList<string> arguments)
+    {
+        var line = string.Join(
+            ' ',
+            arguments.Select(WindowsArgument.Quote).Prepend(WindowsArgument.Quote(executable)));
+
+        return $"/d /s /c \"{line}\"";
+    }
 
     // Closed either way, and that is the load-bearing half — see the class note. A pipe that has
-    // already gone (a CLI that exited before it read anything) is not a failure of the run.
+    // already gone (a CLI that exited before it read anything, or was killed at the deadline while
+    // this was still blocked) is not a failure of the run — and nothing here may throw, because a
+    // timed-out run abandons this task and only reawaits it after the kill.
     private static async Task WriteInputAsync(Process process, string? input)
     {
         try
@@ -113,12 +147,18 @@ public sealed class CommandHost : ICommandHost
             if (input is { Length: > 0 })
                 await process.StandardInput.WriteAsync(input);
         }
-        catch (IOException)
+        catch (Exception error) when (error is IOException or ObjectDisposedException)
         {
         }
         finally
         {
-            process.StandardInput.Close();
+            try
+            {
+                process.StandardInput.Close();
+            }
+            catch (Exception error) when (error is IOException or ObjectDisposedException)
+            {
+            }
         }
     }
 

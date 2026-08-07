@@ -8,13 +8,15 @@ namespace Act.Infrastructure.Hooks;
 
 public sealed class HookEndpoint : IHookEndpoint
 {
-    public const string TokenHeader = HookTransport.TokenHeader;
-
-    public const string RoutePrefix = HookTransport.RoutePrefix;
-
     private readonly ConcurrentDictionary<string, Guid> byToken = new(StringComparer.Ordinal);
 
     private readonly ConcurrentDictionary<Guid, string> byTask = new();
+
+    // Register and Release write the two dictionaries as one fact, and each op being individually
+    // atomic does not make the pair so: two concurrent registrations would both mint a token, one
+    // of them orphaned in `byToken` where it would keep authorizing posts for the life of the
+    // process. Resolution stays lock-free — it is the per-hook-post hot path and only reads.
+    private readonly Lock gate = new();
 
     public Uri? BaseAddress { get; private set; }
 
@@ -30,25 +32,31 @@ public sealed class HookEndpoint : IHookEndpoint
     {
         AgentType.ClaudeCode => HookTransport.ClaudeRoute,
         AgentType.Codex => HookTransport.CodexRoute,
-        _ => $"{RoutePrefix}/unknown",
+        _ => $"{HookTransport.RoutePrefix}/unknown",
     };
 
     public Uri? UrlFor(AgentType agent)
         => BaseAddress is { } address ? new Uri(address, RouteFor(agent)) : null;
 
+    public Uri? McpUrl
+        => BaseAddress is { } address ? new Uri(address, McpTransport.Route) : null;
+
     // Re-registering a task keeps its existing token: a resume reuses the card's session, and a
     // new token would be a new hook definition for Codex and a fresh trust prompt with it.
     public string Register(Guid taskId)
     {
-        if (byTask.TryGetValue(taskId, out var existing))
-            return existing;
+        lock (gate)
+        {
+            if (byTask.TryGetValue(taskId, out var existing))
+                return existing;
 
-        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+            var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
 
-        byTask[taskId] = token;
-        byToken[token] = taskId;
+            byTask[taskId] = token;
+            byToken[token] = taskId;
 
-        return token;
+            return token;
+        }
     }
 
     public bool TryResolve(string token, out Guid taskId)
@@ -60,7 +68,10 @@ public sealed class HookEndpoint : IHookEndpoint
 
     public void Release(Guid taskId)
     {
-        if (byTask.TryRemove(taskId, out var token))
-            byToken.TryRemove(token, out _);
+        lock (gate)
+        {
+            if (byTask.TryRemove(taskId, out var token))
+                byToken.TryRemove(token, out _);
+        }
     }
 }

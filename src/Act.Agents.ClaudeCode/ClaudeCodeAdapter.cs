@@ -28,31 +28,14 @@ public sealed class ClaudeCodeAdapter(
         => LaunchConfigResolver.Resolve(Agent, Capabilities, config);
 
     // `PATH` first, because that is the install the CLI's own installer produces and the one that
-    // survives an upgrade. The fallbacks are the two shapes that are not on `PATH` on a fresh
-    // machine: the installer's own `~/.local/bin`, and a global npm install.
+    // survives an upgrade. The fallbacks are the shared well-known layouts — see
+    // `AgentInstall.WellKnownPaths`.
     public AgentInstall Locate(IExecutableProbe probe)
     {
         if (probe.OnPath(DefaultBinary) is not null)
             return AgentInstall.OnPath;
 
-        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var npm = Environment.GetEnvironmentVariable("APPDATA");
-
-        List<string> candidates =
-        [
-            Path.Combine(home, ".local", "bin", "claude.exe"),
-            Path.Combine(home, ".local", "bin", "claude"),
-        ];
-
-        if (npm is { Length: > 0 })
-        {
-            candidates.Add(Path.Combine(npm, "npm", "claude.cmd"));
-            candidates.Add(Path.Combine(npm, "npm", "claude"));
-        }
-
-        candidates.Add("/usr/local/bin/claude");
-
-        return probe.FirstExisting(candidates) is { } found
+        return probe.FirstExisting(AgentInstall.WellKnownPaths(DefaultBinary)) is { } found
             ? AgentInstall.At(found)
             : AgentInstall.Missing;
     }
@@ -238,7 +221,7 @@ public sealed class ClaudeCodeAdapter(
     // user's own `.claude/settings.json` is neither read nor written.
     private string? InjectHooks(Guid taskId, List<string> arguments)
     {
-        if (hooks.UrlFor(Agent) is not { } url)
+        if (hooks.UrlFor(Agent) is not { } url || hooks.McpUrl is not { } mcpUrl)
         {
             log.LogWarning(
                 "No hook endpoint for {Agent}; task {TaskId} launches without hooks and will report "
@@ -267,7 +250,7 @@ public sealed class ClaudeCodeAdapter(
             mcp = configFiles.Write(
                 taskId,
                 ClaudeCodeMcpConfig.FileName,
-                ClaudeCodeMcpConfig.Compose(url, token));
+                ClaudeCodeMcpConfig.Compose(mcpUrl, token));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {

@@ -6,6 +6,7 @@ using Act.Core.Abstractions;
 using Act.Core.Agents;
 using Act.Core.Model;
 using Act.Core.Rules;
+using System.Collections.Concurrent;
 using Act.Core.Telemetry;
 using Act.Infrastructure.FileSystem;
 using Act.Infrastructure.Logging;
@@ -33,6 +34,12 @@ public sealed class SessionLauncher(
 {
     private readonly IReadOnlyDictionary<AgentType, IAgentAdapter> byAgent =
         adapters.ToDictionary(adapter => adapter.Agent);
+
+    // One start per card at a time, whoever collides — the queue runner's pass and a click on the
+    // same strip both arrive here, and two starts interleaving between the liveness check and the
+    // registry write would spawn two CLIs and orphan one of them. The loser of the race waits, runs
+    // the same checks, sees the session the winner registered, and returns without spawning.
+    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> starting = new();
 
     // Whether a start says anything about the work, and the only axis the entry points differ on.
     //
@@ -133,7 +140,17 @@ public sealed class SessionLauncher(
     // The scope every line below inherits, and the reason these two are `async` rather than
     // Task-returning: a scope disposed when the method returns would be gone before the work it
     // names has started.
-    private async Task<LaunchResult> StartAsync(
+    private Task<LaunchResult> StartAsync(
+        Card card,
+        TerminalSize size,
+        string? resumeMessage,
+        CancellationToken cancellationToken)
+        => OneStartAtATime(
+            card,
+            token => StartUncontendedAsync(card, size, resumeMessage, token),
+            cancellationToken);
+
+    private async Task<LaunchResult> StartUncontendedAsync(
         Card card,
         TerminalSize size,
         string? resumeMessage,
@@ -174,7 +191,17 @@ public sealed class SessionLauncher(
             cancellationToken);
     }
 
-    private async Task<LaunchResult> ResumeAsync(
+    private Task<LaunchResult> ResumeAsync(
+        Card card,
+        TerminalSize size,
+        TransitionReason reason,
+        CancellationToken cancellationToken)
+        => OneStartAtATime(
+            card,
+            token => ResumeUncontendedAsync(card, size, reason, token),
+            cancellationToken);
+
+    private async Task<LaunchResult> ResumeUncontendedAsync(
         Card card,
         TerminalSize size,
         TransitionReason reason,
@@ -190,6 +217,25 @@ public sealed class SessionLauncher(
         }
 
         return await BeginAsync(card, StartKind.Resume, message: null, size, _ => reason, cancellationToken);
+    }
+
+    private async Task<LaunchResult> OneStartAtATime(
+        Card card,
+        Func<CancellationToken, Task<LaunchResult>> start,
+        CancellationToken cancellationToken)
+    {
+        var gate = starting.GetOrAdd(card.Id, _ => new SemaphoreSlim(1, 1));
+
+        await gate.WaitAsync(cancellationToken);
+
+        try
+        {
+            return await start(cancellationToken);
+        }
+        finally
+        {
+            gate.Release();
+        }
     }
 
     // The body all four entry points share: join the card's config to this machine's, ask the adapter
@@ -234,7 +280,14 @@ public sealed class SessionLauncher(
             return await FailedAsync(card, kind, error, cancellationToken);
         }
 
-        registry.Add(session);
+        if (!registry.Add(session))
+        {
+            log.LogWarning("A session for this card is already live; the duplicate spawn was discarded.");
+
+            await session.DisposeAsync();
+
+            return LaunchResult.Ok();
+        }
 
         if (kind is StartKind.Launch)
             Claim(card, session);

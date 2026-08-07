@@ -17,6 +17,8 @@ public static class FollowUpResolver
         Card parent,
         FollowUpRequest request,
         IAgentCapabilityCatalog catalog,
+        IWorkingDirectories directories,
+        IReadOnlyList<Card> cards,
         DateTimeOffset now)
     {
         var rejections = new List<string>();
@@ -33,8 +35,9 @@ public static class FollowUpResolver
         var agent = ResolveAgent(parent, request.Agent, rejections);
         var schedule = ResolveSchedule(request.Schedule, rejections);
         var autoGit = ResolveAutoGit(parent, request.AutoGit, rejections);
-        var dependsOn = ResolveDependencies(request.DependsOn, rejections);
+        var dependsOn = ResolveDependencies(request.DependsOn, cards, rejections);
         var permission = ResolvePermission(parent, request.Permission, rejections);
+        var workingDir = ResolveWorkingDir(parent, request.WorkingDir, directories, rejections);
 
         if (rejections.Count > 0)
             return FollowUpResolution.Refused([.. rejections]);
@@ -61,9 +64,7 @@ public static class FollowUpResolver
         {
             Title = title,
             InitialPrompt = prompt,
-            WorkingDir = string.IsNullOrWhiteSpace(request.WorkingDir)
-                ? parent.WorkingDir
-                : request.WorkingDir.Trim(),
+            WorkingDir = workingDir,
             AgentType = agent,
             LaunchConfig = launch.Resolved,
             Schedule = schedule,
@@ -87,12 +88,12 @@ public static class FollowUpResolver
         if (FollowUpRequest.Inherits(requested))
             return parent.AgentType;
 
-        return requested!.Trim().ToLowerInvariant() switch
-        {
-            "claude" or "claudecode" or "claude-code" or "claude_code" => AgentType.ClaudeCode,
-            "codex" => AgentType.Codex,
-            _ => Refuse(rejections, parent.AgentType, $"Agent '{requested}' is not one of: same, claude, codex."),
-        };
+        return TaskWords.TryParse(requested, out AgentType agent)
+            ? agent
+            : Refuse(
+                rejections,
+                parent.AgentType,
+                $"Agent '{requested}' is not one of: same, {TaskWords.AgentWords}.");
     }
 
     // No `same`, and the omission is the design: a parent's schedule is a trigger that already
@@ -104,16 +105,12 @@ public static class FollowUpResolver
         if (string.IsNullOrWhiteSpace(requested))
             return TaskSchedule.Manual;
 
-        return requested.Trim().ToLowerInvariant() switch
-        {
-            "manual" => TaskSchedule.Manual,
-            "now" => TaskSchedule.Now,
-            "next_window" or "nextwindow" or "next window" => TaskSchedule.NextWindow,
-            _ => Refuse(
+        return TaskWords.TryParse(requested, out TaskSchedule schedule)
+            ? schedule
+            : Refuse(
                 rejections,
                 TaskSchedule.Manual,
-                $"Schedule '{requested}' is not one of: manual, now, next_window."),
-        };
+                $"Schedule '{requested}' is not one of: {TaskWords.ScheduleWords}.");
     }
 
     private static PermissionMode ResolvePermission(Card parent, string? requested, List<string> rejections)
@@ -121,20 +118,12 @@ public static class FollowUpResolver
         if (FollowUpRequest.Inherits(requested))
             return parent.LaunchConfig.PermissionMode;
 
-        return requested!.Trim().ToLowerInvariant() switch
-        {
-            "default" => PermissionMode.Default,
-            "plan" => PermissionMode.Plan,
-            "acceptedits" or "accept_edits" => PermissionMode.AcceptEdits,
-            "auto" => PermissionMode.Auto,
-            "dontask" or "dont_ask" => PermissionMode.DontAsk,
-            "bypass" or "bypasspermissions" => PermissionMode.Bypass,
-            _ => Refuse(
+        return TaskWords.TryParse(requested, out PermissionMode mode)
+            ? mode
+            : Refuse(
                 rejections,
                 PermissionMode.Default,
-                $"Permission '{requested}' is not one of: same, default, plan, acceptEdits, auto, "
-                    + "dontAsk, bypass."),
-        };
+                $"Permission '{requested}' is not one of: same, {TaskWords.PermissionWords}.");
     }
 
     // `Draft` rides the action rather than being an argument of its own: it only means anything for
@@ -147,33 +136,76 @@ public static class FollowUpResolver
                 ? new AutoGitOptions { Action = inherited.Action, Draft = inherited.Draft }
                 : null;
 
-        return requested!.Trim().ToLowerInvariant() switch
-        {
-            "none" => null,
-            "commit" => new AutoGitOptions { Action = GitAction.Commit },
-            "push" => new AutoGitOptions { Action = GitAction.Push },
-            "pr" or "pullrequest" or "pull_request" => new AutoGitOptions { Action = GitAction.PullRequest },
-            _ => Refuse<AutoGitOptions?>(
+        if (!TaskWords.TryParse(requested, out GitAction? action))
+            return Refuse<AutoGitOptions?>(
                 rejections,
                 null,
-                $"Git action '{requested}' is not one of: same, none, commit, push, pr."),
-        };
+                $"Git action '{requested}' is not one of: same, {TaskWords.GitWords}.");
+
+        return action is { } chosen ? new AutoGitOptions { Action = chosen } : null;
     }
 
-    private static List<Guid> ResolveDependencies(IReadOnlyList<string>? requested, List<string> rejections)
+    // Existence is checked at creation, where the refusal can still teach the agent something. Once
+    // stored, a prerequisite that later disappears counts as satisfied (`DependencyGate`) — but that
+    // tolerance is for cards deleted on purpose, not for ids that never named anything: a mistyped
+    // GUID accepted here would gate nothing and say nothing, and the ordering the agent asked for
+    // would silently never happen.
+    private static List<Guid> ResolveDependencies(
+        IReadOnlyList<string>? requested,
+        IReadOnlyList<Card> cards,
+        List<string> rejections)
     {
         var resolved = new List<Guid>();
 
         foreach (var id in requested ?? [])
         {
-            if (Guid.TryParse(id, out var parsed))
-                resolved.Add(parsed);
-            else
+            if (!Guid.TryParse(id, out var parsed))
+            {
                 rejections.Add($"'{id}' is not a task id. Use the id `create_followup` returned, or one "
                     + "from `list_tasks`.");
+
+                continue;
+            }
+
+            if (cards.All(card => card.Id != parsed))
+            {
+                rejections.Add($"'{id}' does not name a task on the board. Use the id `create_followup` "
+                    + "returned, or one from `list_tasks`.");
+
+                continue;
+            }
+
+            resolved.Add(parsed);
         }
 
         return resolved;
+    }
+
+    // The same rule the task form applies before a card may be saved: a malformed or relative path
+    // is refused rather than stored, because a relative one would resolve against whatever directory
+    // ACT happens to be running in. Merely missing is allowed, exactly as the form allows it with a
+    // warning — the launch is where a directory has to exist.
+    private static string ResolveWorkingDir(
+        Card parent,
+        string? requested,
+        IWorkingDirectories directories,
+        List<string> rejections)
+    {
+        if (string.IsNullOrWhiteSpace(requested))
+            return parent.WorkingDir;
+
+        var typed = requested.Trim();
+        var check = directories.Check(typed);
+
+        if (check.WellFormed)
+            return typed;
+
+        return Refuse(
+            rejections,
+            parent.WorkingDir,
+            check.Error == PathError.NotAbsolute
+                ? $"Working directory '{typed}' is not an absolute path."
+                : $"Working directory '{typed}' is not a usable path.");
     }
 
     // The rejection is what the caller reads; the value returned is only there to keep parsing going,

@@ -35,6 +35,38 @@ public class SchemaTests
         StoredVersion(temp.Path).Should().Be(ActSchema.CurrentVersion);
     }
 
+    // The adopt path: a store written before versioning holds data but no schema document, and it
+    // flows through the whole migration loop — from the baseline up — before the stamp. What it held
+    // has to survive the trip; the loop's bounds are exactly the code a regression here would ship
+    // green, since the other cases cover only a fresh store and a rejection.
+    [Fact]
+    public async Task A_store_written_before_versioning_is_adopted_stamped_and_keeps_its_data()
+    {
+        using var temp = new TempDirectory();
+
+        Directory.CreateDirectory(temp.Path);
+
+        using (var database = new LiteDatabase(DatabasePath(temp.Path)))
+        {
+            database.GetCollection("cards").Insert(new BsonDocument
+            {
+                ["_id"] = Guid.NewGuid(),
+                ["Number"] = 1039,
+                ["Title"] = "Written before versioning",
+            });
+        }
+
+        await using (var provider = Provider(temp.Path))
+        {
+            var store = provider.GetRequiredService<ICardStore>();
+            var cards = await store.GetAllAsync();
+
+            cards.Should().ContainSingle().Which.Title.Should().Be("Written before versioning");
+        }
+
+        StoredVersion(temp.Path).Should().Be(ActSchema.CurrentVersion);
+    }
+
     [Fact]
     public void A_store_from_a_newer_build_is_rejected()
     {

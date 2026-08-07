@@ -1,3 +1,4 @@
+using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Spawning;
 using Act.TestSupport;
@@ -162,6 +163,83 @@ public class FollowUpServiceTests : ComponentTest
 
         Board.In(BoardColumn.Ready).Should().ContainSingle();
         Board.Card(ParentId)!.Children.Should().ContainSingle();
+    }
+
+    // A deleted or archived child is not live work: answering the retry with its id would hand the
+    // agent a card `get_task` then denies exists, and the work would never reappear on the board.
+    [Fact]
+    public async Task A_client_key_whose_card_was_deleted_creates_a_fresh_card()
+    {
+        await BoardWith(Parent());
+
+        var first = await FollowUps.CreateAsync(ParentId, Ask() with { ClientKey = "retry-1" });
+
+        await Board.DeleteAsync(Board.In(BoardColumn.Ready).Single(), includeChildren: false);
+
+        var second = await FollowUps.CreateAsync(ParentId, Ask() with { ClientKey = "retry-1" });
+
+        second.Created.Should().NotBeNull();
+        second.Created!.AlreadyExisted.Should().BeFalse();
+        second.Created.Id.Should().NotBe(first.Created!.Id);
+        Board.In(BoardColumn.Ready).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task A_dependency_may_name_any_card_on_the_board()
+    {
+        var other = Ready(1041, "The prerequisite");
+
+        await BoardWith(Parent(), other);
+
+        var outcome = await FollowUps.CreateAsync(
+            ParentId, Ask() with { DependsOn = [other.Id.ToString()] });
+
+        outcome.Created.Should().NotBeNull();
+        Board.In(BoardColumn.Ready).Single(card => card.Origin == TaskOrigin.Spawned)
+            .DependsOn.Should().ContainSingle().Which.Should().Be(other.Id);
+    }
+
+    [Fact]
+    public async Task A_dependency_that_names_no_card_is_refused_without_touching_the_board()
+    {
+        await BoardWith(Parent());
+
+        var refused = await FollowUps.CreateAsync(
+            ParentId, Ask() with { DependsOn = [Guid.NewGuid().ToString()] });
+
+        refused.Created.Should().BeNull();
+        refused.Refusals.Should().ContainSingle().Which.Should().Contain("does not name a task");
+        Board.In(BoardColumn.Ready).Should().BeEmpty();
+    }
+
+    // The same rule the task form enforces: a working directory the form would refuse to save must
+    // not arrive through the MCP tool instead.
+    [Fact]
+    public async Task A_working_directory_the_form_would_refuse_is_refused_here_too()
+    {
+        await BoardWith(Parent());
+
+        Directories.Checks["src"] = PathCheck.Malformed(PathError.NotAbsolute);
+
+        var refused = await FollowUps.CreateAsync(ParentId, Ask() with { WorkingDir = "src" });
+
+        refused.Created.Should().BeNull();
+        refused.Refusals.Should().ContainSingle().Which.Should().Contain("absolute");
+        Board.In(BoardColumn.Ready).Should().BeEmpty();
+    }
+
+    // One normalization feeds both the store and the lookup, so a key that arrives padded on the
+    // retry still finds the card its trimmed twin created.
+    [Fact]
+    public async Task A_client_key_matches_however_it_is_padded()
+    {
+        await BoardWith(Parent());
+
+        var first = await FollowUps.CreateAsync(ParentId, Ask() with { ClientKey = "  retry-1  " });
+        var second = await FollowUps.CreateAsync(ParentId, Ask() with { ClientKey = "retry-1" });
+
+        second.Created!.Id.Should().Be(first.Created!.Id);
+        second.Created.AlreadyExisted.Should().BeTrue();
     }
 
     // Scoped to the caller, so two tasks using the same obvious key ("1") do not collide.

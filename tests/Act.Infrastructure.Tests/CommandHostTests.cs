@@ -73,6 +73,41 @@ public class CommandHostTests
         result.Succeeded.Should().BeFalse();
     }
 
+    // The deadline has to bound the *write* too. A child that never drains its stdin leaves the
+    // writer blocked on a full pipe — measured at ~4KB on Windows — and a deadline armed only around
+    // the exit wait was never reached: the run hung for as long as the child lived, reporting
+    // nothing. The input below is far bigger than any pipe buffer, and the child sleeps without
+    // reading a byte of it.
+    [Fact]
+    public async Task A_child_that_never_reads_its_stdin_cannot_outlive_the_deadline()
+    {
+        var oversized = new string('x', 1_000_000);
+        var started = System.Diagnostics.Stopwatch.StartNew();
+
+        var result = await RunAsync(Sleep, input: oversized, timeout: TimeSpan.FromSeconds(1));
+
+        started.Stop();
+
+        result.TimedOut.Should().BeTrue();
+        started.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(15), "the deadline, not the child, decides");
+    }
+
+    // The prompt travels on stdin, and the CLIs read it as UTF-8. Left to its default, .NET encodes
+    // the pipe with the console code page — CP 850 on a stock French Windows — and 'é' reaches the
+    // child as 0x82. `findstr` echoes the bytes it was given, so a mangled encoding comes back as
+    // mojibake instead of the word that was sent.
+    [Fact]
+    public async Task Stdin_reaches_the_child_as_utf8_whatever_the_console_code_page()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var result = await RunAsync("findstr .", input: "café été\r\n");
+
+        result.Succeeded.Should().BeTrue(result.Error);
+        result.Output.Should().Contain("café été");
+    }
+
     // The caller's cancellation is the caller's, and must not come back looking like a deadline: a
     // page that has gone away is not a CLI that was too slow.
     [Fact]
@@ -102,6 +137,68 @@ public class CommandHostTests
         Directory.CreateDirectory(temp.Path);
 
         var script = Path.Combine(temp.Path, "act-fake-agent.cmd");
+
+        File.WriteAllText(script, "@echo off\r\necho from the shim\r\n");
+
+        var result = await new CommandHost().RunAsync(
+            new CommandStartInfo(
+                script,
+                [],
+                temp.Path,
+                AgentEnvironment.ForQuery(new Dictionary<string, string>()),
+                null,
+                Patient));
+
+        result.Succeeded.Should().BeTrue(result.Error);
+        result.Output.Should().Be("from the shim");
+    }
+
+    // The measured shim failure: a script path with a space in it plus any further quoted argument —
+    // and the Claude adapter always sends the empty `--tools ""` — made `cmd` strip the wrong quotes
+    // and try to run `C:\Users\Jane`. `/s` with the whole line requoted is the shape that survives
+    // both; the script echoes its arguments back so the test also proves the empty one arrived.
+    [Fact]
+    public async Task A_batch_file_in_a_folder_with_a_space_still_takes_quoted_arguments()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        using var temp = new TempDirectory();
+
+        var spaced = Path.Combine(temp.Path, "dir with space");
+
+        Directory.CreateDirectory(spaced);
+
+        var script = Path.Combine(spaced, "act-fake-agent.cmd");
+
+        File.WriteAllText(script, "@echo off\r\necho got:%*\r\n");
+
+        var result = await new CommandHost().RunAsync(
+            new CommandStartInfo(
+                script,
+                ["--tools", ""],
+                spaced,
+                AgentEnvironment.ForQuery(new Dictionary<string, string>()),
+                null,
+                Patient));
+
+        result.Succeeded.Should().BeTrue(result.Error);
+        result.Output.Should().Contain("--tools").And.Contain("\"\"");
+    }
+
+    // PATHEXT spells the extension in uppercase, so resolution can hand back `.CMD` — which must
+    // take the same shim `.cmd` does rather than depend on how the raw spawn happens to handle it.
+    [Fact]
+    public async Task The_shim_is_applied_whatever_case_the_extension_arrives_in()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        using var temp = new TempDirectory();
+
+        Directory.CreateDirectory(temp.Path);
+
+        var script = Path.Combine(temp.Path, "act-fake-agent.CMD");
 
         File.WriteAllText(script, "@echo off\r\necho from the shim\r\n");
 

@@ -2,6 +2,7 @@ using Act.App.Attachments;
 using Act.App.Cards;
 using Act.App.Components.Shared;
 using Act.App.Desktop;
+using Act.App.Notifications;
 using Act.App.Resources;
 using Act.App.Sessions;
 using Act.App.Settings;
@@ -112,65 +113,24 @@ public partial class TaskView(
 
     private IEnumerable<string> AttachmentNames => form.Attachments.Select(a => a.FileName);
 
-    private string DropRootId => dropRootId;
-
-    private string DropInputId => dropInputId;
-
-    private string PreviewId => previewId;
-
     private string DropZoneText => dragging
         ? Strings.NewTask_Attachments_DropActive
         : Strings.NewTask_Attachments_Drop;
 
-    // Only what can actually be shown. A log or a PDF has no thumbnail, and an empty frame under the
-    // cursor reads as a broken image rather than as "nothing to preview" — and neither does a file that
-    // is no longer on disk, which is what `Missing` covers.
+    // The row logic is `AttachmentRows`', shared with the session rail; what stays here only binds
+    // this form's card and hover state into it.
     private bool Previews(TaskAttachment attachment)
-        => ReferenceEquals(previewing, attachment) && attachment.IsImage && !Missing(attachment);
+        => AttachmentRows.Previews(previewing, attachment, Missing(attachment));
 
-    // The card keeps a *name*; the bytes are a separate thing that can go without it — a purge, a hand
-    // reaching into the data directory. Asked at render time rather than stored, for the same reason the
-    // working directory's existence is: a stored answer would be a stale one. Cheap enough at a handful
-    // of rows, and it is what turns a broken-image icon into a row that says what is actually wrong.
     private bool Missing(TaskAttachment attachment)
-        => attachments.ResolveInside(form.CardId, attachment.FileName) is null;
-
-    private static string RowIcon(TaskAttachment attachment, bool missing) => missing
-        ? "broken_image"
-        : attachment.IsImage ? "image" : "description";
+        => AttachmentRows.Missing(attachments, form.CardId, attachment);
 
     private string PreviewUrl(TaskAttachment attachment)
-        => AttachmentEndpointExtensions.UrlFor(form.CardId, attachment);
+        => AttachmentRows.PreviewUrl(form.CardId, attachment);
 
-    // Names the file as well as the action, so it doubles as the tooltip a truncated name needs — and
-    // says the file is gone rather than offering to open it when there is nothing there.
-    private static string RowLabel(TaskAttachment attachment, bool missing) => missing
-        ? Text.Format(Strings.NewTask_Attachments_GoneDetail, attachment.FileName)
-        : Text.Format(Strings.NewTask_Attachments_Open, attachment.FileName);
-
-    // The only way to look at an attachment the hover preview cannot show, which is everything that is
-    // not an image. Offered on a locked card too: opening a file changes nothing about the run.
-    private async Task OpenAttachmentAsync(TaskAttachment attachment)
-    {
-        var result = await opener.OpenAsync(form.CardId, attachment);
-
-        if (result.Outcome is AttachmentOpenOutcome.Opened)
-            return;
-
-        notifications.Notify(new NotificationMessage
-        {
-            Severity = NotificationSeverity.Warning,
-            Summary = result.Outcome is AttachmentOpenOutcome.Missing
-                ? Strings.NewTask_Attachments_Gone
-                : Strings.NewTask_Attachments_OpenFailed,
-            Detail = result.Outcome is AttachmentOpenOutcome.Missing
-                ? Text.Format(Strings.NewTask_Attachments_GoneDetail, attachment.FileName)
-                : result.Detail ?? Text.Format(
-                    Strings.NewTask_Attachments_OpenFailedDetail,
-                    attachment.FileName),
-            Duration = 8000,
-        });
-    }
+    // Offered on a locked card too: opening a file changes nothing about the run.
+    private Task OpenAttachmentAsync(TaskAttachment attachment)
+        => AttachmentRows.OpenAsync(opener, notifications, form.CardId, attachment);
 
     // An archived card is a record: it opens, because reading it is why the archive keeps it, and
     // nothing on it moves. Restoring is the way back to an editable task, and it lives on the
@@ -272,41 +232,31 @@ public partial class TaskView(
         }
     }
 
+    // Asked once per render — the markup hoists it into a local — because a check is a real syscall
+    // and the section reads it three ways. Deliberately not cached across renders: the create-folder
+    // button fixes the disk without changing the typed text, and the next render's fresh check is
+    // what clears the warning.
     private PathCheck Dir => directories.Check(form.WorkingDir);
 
     // Malformed blocks the save; merely missing does not, because a directory you are about to
-    // create is a perfectly reasonable thing to save a task against.
+    // create is a perfectly reasonable thing to save a task against. The validator calls this at
+    // validation time, outside any render, so it takes its own fresh check.
     private bool WorkingDirValid => string.IsNullOrWhiteSpace(form.WorkingDir) || Dir.WellFormed;
 
-    private string WorkingDirError => Dir.Error switch
+    private static string WorkingDirError(PathCheck dir) => dir.Error switch
     {
         PathError.NotAbsolute => Strings.NewTask_DirNotAbsolute,
         _ => Strings.NewTask_DirMalformed,
     };
 
-    private bool WorkingDirMissing
-    {
-        get
-        {
-            var check = Dir;
-
-            return check.WellFormed && !check.Exists;
-        }
-    }
+    private static bool WorkingDirMissing(PathCheck dir) => dir.WellFormed && !dir.Exists;
 
     // Shows the resolved path too, because the typed one and the real one differ whenever a `~`
     // or a forward slash is involved, and that difference is exactly what confuses people.
-    private string WorkingDirMissingText
-    {
-        get
-        {
-            var resolved = Dir.Resolved;
-
-            return resolved == form.WorkingDir
-                ? Strings.NewTask_DirMissing
-                : Text.Format(Strings.NewTask_DirMissingResolved, resolved);
-        }
-    }
+    private string WorkingDirMissingText(PathCheck dir)
+        => dir.Resolved == form.WorkingDir
+            ? Strings.NewTask_DirMissing
+            : Text.Format(Strings.NewTask_DirMissingResolved, dir.Resolved);
 
     // The picked path is absolute and real, so it replaces whatever was typed rather than being
     // merged with it, and the picker closes — it has done its job.
@@ -326,7 +276,8 @@ public partial class TaskView(
         // kind of partial success nobody notices until the agent asks about a file that never came.
         if (args.FileCount > TaskAttachment.MaxPerTask - form.Attachments.Count)
         {
-            Warn(
+            notifications.Toast(
+                NotificationSeverity.Warning,
                 Strings.NewTask_Attachments_TooMany,
                 Text.Format(Strings.NewTask_Attachments_TooManyDetail, TaskAttachment.MaxPerTask));
 
@@ -339,7 +290,8 @@ public partial class TaskView(
             // message instead of arriving as an `IOException` halfway through the copy.
             if (file.Size > TaskAttachment.MaxLength)
             {
-                Warn(
+                notifications.Toast(
+                    NotificationSeverity.Warning,
                     Strings.NewTask_Attachments_TooLarge,
                     Text.Format(
                         Strings.NewTask_Attachments_TooLargeDetail,
@@ -360,13 +312,7 @@ public partial class TaskView(
             {
                 log.LogError(error, "Attaching {FileName} to the task failed.", file.Name);
 
-                notifications.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = Strings.NewTask_Attachments_Failed,
-                    Detail = error.Message,
-                    Duration = 5000,
-                });
+                notifications.Toast(NotificationSeverity.Error, Strings.NewTask_Attachments_Failed, error.Message);
             }
         }
     }
@@ -384,14 +330,6 @@ public partial class TaskView(
         dragging = active;
 
         StateHasChanged();
-    });
-
-    private void Warn(string summary, string detail) => notifications.Notify(new NotificationMessage
-    {
-        Severity = NotificationSeverity.Warning,
-        Summary = summary,
-        Detail = detail,
-        Duration = 5000,
     });
 
     // Only the follow-ups that are still live. Ones already archived are not a decision the user
@@ -478,13 +416,10 @@ public partial class TaskView(
 
             settings.SaveTemplate(form.ToTemplate(named));
 
-            notifications.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Success,
-                Summary = Strings.Task_SaveAsTemplate_Saved,
-                Detail = Text.Format(Strings.Task_SaveAsTemplate_SavedDetail, named.Trim()),
-                Duration = 5000,
-            });
+            notifications.Toast(
+                NotificationSeverity.Success,
+                Strings.Task_SaveAsTemplate_Saved,
+                Text.Format(Strings.Task_SaveAsTemplate_SavedDetail, named.Trim()));
         }
         finally
         {
@@ -518,13 +453,7 @@ public partial class TaskView(
             using (log.BeginTaskScope(existing.Number, existing.SessionId))
                 log.LogError(error, "Archiving the task failed (with children: {IncludeChildren}).", includeChildren);
 
-            notifications.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Error,
-                Summary = Strings.Task_DeleteFailed,
-                Detail = error.Message,
-                Duration = 5000,
-            });
+            notifications.Toast(NotificationSeverity.Error, Strings.Task_DeleteFailed, error.Message);
 
             deleting = false;
 
@@ -545,13 +474,7 @@ public partial class TaskView(
         {
             log.LogError(error, "Creating the working directory {WorkingDir} failed.", form.WorkingDir);
 
-            notifications.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Error,
-                Summary = Strings.NewTask_CreateDirFailed,
-                Detail = error.Message,
-                Duration = 5000,
-            });
+            notifications.Toast(NotificationSeverity.Error, Strings.NewTask_CreateDirFailed, error.Message);
         }
     }
 
@@ -867,13 +790,10 @@ public partial class TaskView(
         // fills with the prompt's opening words with no explanation looks like a bug rather than a
         // fallback.
         if (suggestion is { Generated: false })
-            notifications.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Warning,
-                Summary = Strings.NewTask_GenerateTitleFailed,
-                Detail = Strings.NewTask_GenerateTitleFallback,
-                Duration = 5000,
-            });
+            notifications.Toast(
+                NotificationSeverity.Warning,
+                Strings.NewTask_GenerateTitleFailed,
+                Strings.NewTask_GenerateTitleFallback);
 
         if (suggestion is { } result)
             form.Title = result.Title;

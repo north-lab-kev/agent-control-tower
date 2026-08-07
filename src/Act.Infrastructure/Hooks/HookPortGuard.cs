@@ -26,6 +26,6 @@ public static class HookPortGuard
     }
 
     private static bool IsAgentPath(string path)
-        => path.StartsWith(HookEndpoint.RoutePrefix, StringComparison.OrdinalIgnoreCase)
+        => path.StartsWith(HookTransport.RoutePrefix, StringComparison.OrdinalIgnoreCase)
             || path.StartsWith(McpTransport.Route, StringComparison.OrdinalIgnoreCase);
 }

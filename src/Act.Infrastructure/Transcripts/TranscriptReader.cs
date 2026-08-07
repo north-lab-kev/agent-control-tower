@@ -18,11 +18,16 @@ public sealed class TranscriptReader : ITranscriptReader
         if (!file.Exists)
             return TranscriptRead.Nothing(offset);
 
+        var restarted = false;
+
         if (file.Length < offset)
+        {
             offset = 0;
+            restarted = true;
+        }
 
         if (file.Length == offset)
-            return TranscriptRead.Nothing(offset);
+            return new TranscriptRead(offset, [], restarted);
 
         using var stream = new FileStream(
             path,
@@ -36,12 +41,12 @@ public sealed class TranscriptReader : ITranscriptReader
         var read = stream.ReadAtLeast(buffer, buffer.Length, throwOnEndOfStream: false);
 
         if (read <= 0)
-            return TranscriptRead.Nothing(offset);
+            return new TranscriptRead(offset, [], restarted);
 
         var lastComplete = Array.LastIndexOf(buffer, (byte)'\n', read - 1);
 
         if (lastComplete < 0)
-            return TranscriptRead.Nothing(offset);
+            return new TranscriptRead(offset, [], restarted);
 
         var text = Encoding.UTF8.GetString(buffer, 0, lastComplete + 1).TrimStart(ByteOrderMark);
 
@@ -49,6 +54,6 @@ public sealed class TranscriptReader : ITranscriptReader
             '\n',
             StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        return new TranscriptRead(offset + lastComplete + 1, lines);
+        return new TranscriptRead(offset + lastComplete + 1, lines, restarted);
     }
 }

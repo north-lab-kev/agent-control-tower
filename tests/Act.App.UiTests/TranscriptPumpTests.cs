@@ -231,6 +231,40 @@ public class TranscriptPumpTests : ComponentTest
         reader.Reads.Should().Be(0);
     }
 
+    // A restart ends the session and registers its replacement inside the same poll gap, and the
+    // card is live again before the old tail's next tick. Keyed on the card id the old tail would
+    // never exit — two tails on one file, every event published twice — so it is keyed on its own
+    // session instance instead.
+    [Fact]
+    public async Task A_restart_does_not_leave_two_tails_on_one_card()
+    {
+        var card = await ALiveSession();
+
+        reader.Lines = [];
+
+        await using var pump = Pump();
+
+        pump.Start();
+        Locate();
+
+        await Until(() => reader.Reads >= 1);
+
+        (await Launcher.RestartAsync(card, TerminalSize.Default)).Launched.Should().BeTrue();
+
+        Registry.LocateTranscript(card.Id, "/transcripts/after-restart.jsonl");
+
+        await Until(() => reader.Paths.Contains("/transcripts/after-restart.jsonl"));
+
+        await Task.Delay(1200);
+
+        var oldTailReads = reader.Paths.Count(path => path == Path);
+
+        await Task.Delay(1200);
+
+        reader.Paths.Count(path => path == Path).Should().Be(oldTailReads, "the replaced session's tail must stop");
+        Registry.IsLive(card.Id).Should().BeTrue();
+    }
+
     [Fact]
     public async Task The_tail_ends_when_the_session_does()
     {
@@ -309,20 +343,36 @@ public class TranscriptPumpTests : ComponentTest
         throw new TimeoutException(because ?? "The tail never reached the expected state.");
     }
 
+    // Locked because the restart test briefly has two tails reading at once — the replaced one's
+    // last tick beside its successor's first.
     private sealed class FakeTranscriptReader : ITranscriptReader
     {
+        private readonly Lock gate = new();
+
+        private readonly List<string> paths = [];
+
         public IReadOnlyList<string> Lines { get; set; } = [];
 
         public Exception? Throws { get; set; }
 
         public int Reads { get; private set; }
 
-        public List<string> Paths { get; } = [];
+        public IReadOnlyList<string> Paths
+        {
+            get
+            {
+                lock (gate)
+                    return [.. paths];
+            }
+        }
 
         public TranscriptRead Read(string path, long offset)
         {
-            Reads++;
-            Paths.Add(path);
+            lock (gate)
+            {
+                Reads++;
+                paths.Add(path);
+            }
 
             if (Throws is { } failure)
                 throw failure;

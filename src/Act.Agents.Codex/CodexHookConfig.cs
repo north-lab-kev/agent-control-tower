@@ -57,7 +57,10 @@ public static class CodexHookConfig
     // Changing this shape is not something to do from the docs: the parser accepts unknown keys in
     // silence, so a wrong shape fails at launch rather than at write. `codex-hooks.md` has
     // the type-probing trick for re-measuring it against a newer CLI.
-    public static string ComposeProfile(string forwarderPath, Uri? mcpEndpoint)
+    // The endpoint is non-nullable on purpose: the only caller sits behind the bound-endpoint guard
+    // — no endpoint means no profile at all, not a profile without the server — so a null branch
+    // here would be a state no launch can produce.
+    public static string ComposeProfile(string forwarderPath, Uri mcpEndpoint)
     {
         var builder = new StringBuilder();
 
@@ -74,8 +77,7 @@ public static class CodexHookConfig
             builder.AppendLine($"command = {Toml(Command(forwarderPath, name))}");
         }
 
-        if (mcpEndpoint is { } endpoint)
-            AppendMcpServer(builder, endpoint);
+        AppendMcpServer(builder, mcpEndpoint);
 
         return builder.ToString();
     }

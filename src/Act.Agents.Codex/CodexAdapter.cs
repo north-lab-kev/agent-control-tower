@@ -66,23 +66,7 @@ public sealed class CodexAdapter(
                 return AgentInstall.At(store);
         }
 
-        var npm = Environment.GetEnvironmentVariable("APPDATA");
-
-        List<string> candidates =
-        [
-            Path.Combine(home, ".local", "bin", "codex.exe"),
-            Path.Combine(home, ".local", "bin", "codex"),
-        ];
-
-        if (npm is { Length: > 0 })
-        {
-            candidates.Add(Path.Combine(npm, "npm", "codex.cmd"));
-            candidates.Add(Path.Combine(npm, "npm", "codex"));
-        }
-
-        candidates.Add("/usr/local/bin/codex");
-
-        return probe.FirstExisting(candidates) is { } found
+        return probe.FirstExisting(AgentInstall.WellKnownPaths(DefaultBinary)) is { } found
             ? AgentInstall.At(found)
             : AgentInstall.Missing;
     }
@@ -314,7 +298,7 @@ public sealed class CodexAdapter(
     // card simply reports only what its process can say.
     private string? InjectHooks(Guid taskId, List<string> arguments)
     {
-        if (hooks.UrlFor(Agent) is null)
+        if (hooks.McpUrl is not { } mcpEndpoint)
         {
             log.LogWarning(
                 "No hook endpoint for {Agent}; task {TaskId} launches without hooks and will report "
@@ -341,7 +325,7 @@ public sealed class CodexAdapter(
             // formatting when it saves, so what ACT wrote does not come back byte-identical.
             configFiles.WriteExternalPreservingTail(
                 CodexHookConfig.ProfilePath(CodexHookConfig.ResolveCodexHome()),
-                CodexHookConfig.ComposeProfile(forwarder, McpEndpoint()),
+                CodexHookConfig.ComposeProfile(forwarder, mcpEndpoint),
                 CodexHookConfig.TrustStateKey);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
@@ -361,10 +345,4 @@ public sealed class CodexAdapter(
 
         return hooks.Register(taskId);
     }
-
-    // The MCP server sits on the same loopback endpoint as the hooks, at its own route. Null when the
-    // endpoint has not bound, which leaves the declaration out of the profile entirely rather than
-    // writing a server the CLI would spend its startup timeout failing to reach.
-    private Uri? McpEndpoint()
-        => hooks.BaseAddress is { } address ? new Uri(address, McpTransport.Route) : null;
 }

@@ -220,6 +220,24 @@ public class BoardViewTests : ComponentTest
             .Which.TextContent.Should().Be("Nightly sweep");
     }
 
+    // The pickable list is cached — `settings.Templates` copies and sorts on every call — so the one
+    // thing the cache must prove is that it empties when the templates change under an open board.
+    [Fact]
+    public async Task A_template_saved_while_the_board_is_open_appears_without_a_reload()
+    {
+        await BoardWith(Card(1, BoardColumn.Ready));
+
+        var cut = Show();
+
+        cut.FindAll("div.rz-splitbutton").Should().BeEmpty();
+
+        await cut.InvokeAsync(() => Settings.SaveTemplate(new TaskTemplate { Name = "Nightly sweep" }));
+
+        cut.WaitForAssertion(() =>
+            cut.FindAll("div.col")[0].QuerySelectorAll("div.rz-splitbutton.newtaskbtn")
+                .Should().ContainSingle());
+    }
+
     [Fact]
     public async Task Starting_from_a_named_template_carries_it_into_the_form()
     {

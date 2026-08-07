@@ -22,7 +22,9 @@ public interface IAgentConfigFiles
     // The same, for a file the CLI writes back into. Codex appends its hook-trust state to the very
     // profile ACT generates, so an unconditional rewrite destroys the trust the user just granted and
     // the review screen returns on every launch. Everything from the first line beginning with
-    // `tailMarker` is carried across verbatim.
+    // `tailMarker` is carried across — except a table `content` defines again, because Codex reorders
+    // ACT's own tables below the marker when it saves, and a table defined twice is a profile the
+    // parser rejects.
     void WriteExternalPreservingTail(string absolutePath, string content, string tailMarker);
 
     void DeleteExternal(string absolutePath);

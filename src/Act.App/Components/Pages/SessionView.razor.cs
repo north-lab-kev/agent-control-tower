@@ -1,6 +1,7 @@
 using Act.App.Attachments;
 using Act.App.Cards;
 using Act.App.Desktop;
+using Act.App.Notifications;
 using Act.App.Resources;
 using Act.App.Sessions;
 using Act.Core.Abstractions;
@@ -77,61 +78,20 @@ public partial class SessionView(
 
     private static string Route(Card card) => CardRoute.For(card);
 
-    private string TerminalId => terminalId;
-
-    private string DropRootId => dropRootId;
-
-    private string DropInputId => dropInputId;
-
-    private string PreviewId => previewId;
-
-    // Only what can actually be shown. A log or a PDF has no thumbnail, and neither does a file that is
-    // no longer on disk — an empty frame under the cursor reads as a bug rather than as "it is gone".
+    // The row logic is `AttachmentRows`', shared with the task form; what stays here only binds this
+    // page's card and hover state into it.
     private bool Previews(TaskAttachment attachment)
-        => ReferenceEquals(previewing, attachment) && attachment.IsImage && !Missing(attachment);
+        => AttachmentRows.Previews(previewing, attachment, Missing(attachment));
 
-    // The card keeps a *name*; the bytes can go without it. Asked at render time rather than stored, so
-    // the row cannot claim a file that is not there — see the same note on `TaskView`.
     private bool Missing(TaskAttachment attachment)
-        => attachments.ResolveInside(CardId, attachment.FileName) is null;
-
-    private static string RowIcon(TaskAttachment attachment, bool missing) => missing
-        ? "broken_image"
-        : attachment.IsImage ? "image" : "description";
+        => AttachmentRows.Missing(attachments, CardId, attachment);
 
     private string PreviewUrl(TaskAttachment attachment)
-        => AttachmentEndpointExtensions.UrlFor(CardId, attachment);
+        => AttachmentRows.PreviewUrl(CardId, attachment);
 
-    // Names the file as well as the action, so it doubles as the tooltip a truncated name needs — the
-    // rail is 15rem wide and most names are cut short in it. Says the file is gone rather than offering
-    // to open nothing.
-    private static string RowLabel(TaskAttachment attachment, bool missing) => missing
-        ? Text.Format(Strings.NewTask_Attachments_GoneDetail, attachment.FileName)
-        : Text.Format(Strings.NewTask_Attachments_Open, attachment.FileName);
-
-    // The only way to look at an attachment the hover preview cannot show. Works on an archived card
-    // too: the files outlive the session, and opening one changes nothing.
-    private async Task OpenAttachmentAsync(TaskAttachment attachment)
-    {
-        var result = await opener.OpenAsync(CardId, attachment);
-
-        if (result.Outcome is AttachmentOpenOutcome.Opened)
-            return;
-
-        notifications.Notify(new NotificationMessage
-        {
-            Severity = NotificationSeverity.Warning,
-            Summary = result.Outcome is AttachmentOpenOutcome.Missing
-                ? Strings.NewTask_Attachments_Gone
-                : Strings.NewTask_Attachments_OpenFailed,
-            Detail = result.Outcome is AttachmentOpenOutcome.Missing
-                ? Text.Format(Strings.NewTask_Attachments_GoneDetail, attachment.FileName)
-                : result.Detail ?? Text.Format(
-                    Strings.NewTask_Attachments_OpenFailedDetail,
-                    attachment.FileName),
-            Duration = 8000,
-        });
-    }
+    // Works on an archived card too: the files outlive the session, and opening one changes nothing.
+    private Task OpenAttachmentAsync(TaskAttachment attachment)
+        => AttachmentRows.OpenAsync(opener, notifications, CardId, attachment);
 
     private TerminalSize Geometry { get; set; } = TerminalSize.Default;
 
@@ -247,13 +207,23 @@ public partial class SessionView(
 
         if (session is not { } running)
         {
-            notifications.Notify(new NotificationMessage
-            {
-                Severity = NotificationSeverity.Warning,
-                Summary = Strings.Session_AttachNoSession,
-                Detail = Strings.Session_AttachNoSessionDetail,
-                Duration = 5000,
-            });
+            notifications.Toast(
+                NotificationSeverity.Warning,
+                Strings.Session_AttachNoSession,
+                Strings.Session_AttachNoSessionDetail);
+
+            return;
+        }
+
+        // Refused whole rather than truncated, like the task form's copy of this guard — and it has
+        // to come first: `GetMultipleFiles` throws past its maximum, and an exception out of an
+        // `InputFile` handler takes the whole circuit down, not just the drop.
+        if (args.FileCount > TaskAttachment.MaxPerTask)
+        {
+            notifications.Toast(
+                NotificationSeverity.Warning,
+                Strings.NewTask_Attachments_TooMany,
+                Text.Format(Strings.NewTask_Attachments_TooManyDetail, TaskAttachment.MaxPerTask));
 
             return;
         }
@@ -264,16 +234,13 @@ public partial class SessionView(
         {
             if (file.Size > TaskAttachment.MaxLength)
             {
-                notifications.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Warning,
-                    Summary = Strings.NewTask_Attachments_TooLarge,
-                    Detail = Text.Format(
+                notifications.Toast(
+                    NotificationSeverity.Warning,
+                    Strings.NewTask_Attachments_TooLarge,
+                    Text.Format(
                         Strings.NewTask_Attachments_TooLargeDetail,
                         file.Name,
-                        TaskLabels.FileSize(TaskAttachment.MaxLength)),
-                    Duration = 5000,
-                });
+                        TaskLabels.FileSize(TaskAttachment.MaxLength)));
 
                 continue;
             }
@@ -294,13 +261,7 @@ public partial class SessionView(
             {
                 log.LogError(error, "Attaching {FileName} to the live session failed.", file.Name);
 
-                notifications.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = Strings.Session_AttachFailed,
-                    Detail = error.Message,
-                    Duration = 5000,
-                });
+                notifications.Toast(NotificationSeverity.Error, Strings.Session_AttachFailed, error.Message);
             }
         }
 
@@ -415,13 +376,7 @@ public partial class SessionView(
 
             if (result.Message is { } message)
             {
-                notifications.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = Strings.Session_RestoreFailed,
-                    Detail = message,
-                    Duration = 5000,
-                });
+                notifications.Toast(NotificationSeverity.Error, Strings.Session_RestoreFailed, message);
             }
 
             card = board.Card(CardId);
@@ -477,13 +432,10 @@ public partial class SessionView(
 
             if (result.Message is { } message)
             {
-                notifications.Notify(new NotificationMessage
-                {
-                    Severity = result.Waiting ? NotificationSeverity.Warning : NotificationSeverity.Error,
-                    Summary = result.Waiting ? Strings.Session_NotLaunched : Strings.Session_LaunchFailed,
-                    Detail = message,
-                    Duration = 5000,
-                });
+                notifications.Toast(
+                    result.Waiting ? NotificationSeverity.Warning : NotificationSeverity.Error,
+                    result.Waiting ? Strings.Session_NotLaunched : Strings.Session_LaunchFailed,
+                    message);
             }
 
             card = board.Card(CardId);
@@ -553,13 +505,7 @@ public partial class SessionView(
 
             if (result.Message is { } message)
             {
-                notifications.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = Strings.Session_RestartFailed,
-                    Detail = message,
-                    Duration = 5000,
-                });
+                notifications.Toast(NotificationSeverity.Error, Strings.Session_RestartFailed, message);
             }
 
             if (module is { } loaded)

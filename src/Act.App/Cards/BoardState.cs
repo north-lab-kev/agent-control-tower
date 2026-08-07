@@ -144,6 +144,62 @@ public sealed class BoardState(ICardStore store, IAttachmentStore attachments, I
             cancellationToken);
     }
 
+    // The link half of the spec's lineage consistency rule, beside the unlink half in
+    // `PurgeArchivedAsync`: the child's create and the parent's `children[]`/timeline write happen
+    // under one gate hold, with one reload and one `Changed` — so no observer can see the child
+    // without its parent listing it, and the parent written is the freshest instance rather than
+    // whatever the caller read before the gate.
+    public Task LinkAsync(Guid parentId, Card child, CancellationToken cancellationToken = default)
+        => WriteAsync(
+            async token =>
+            {
+                Arriving(child);
+
+                await store.AddAsync(child, token);
+
+                if (Card(parentId) is not { } parent)
+                    return;
+
+                parent.Children.Add(child.Id);
+                parent.Transitions.Add(new Transition
+                {
+                    At = clock.Now,
+                    Reason = TransitionReason.SpawnedFollowUp,
+                    Note = $"#{child.Number} · {child.Title}",
+                });
+
+                await store.UpdateAsync(parent, token);
+            },
+            cancellationToken);
+
+    // Several cards in one write: one gate hold, one reload, one `Changed`. `mutate` runs against the
+    // board's own current instance of each card — not the caller's copy — which is what lets a
+    // debounced writer carry its numbers onto a card another writer has replaced in the meantime.
+    public Task UpdateManyAsync(
+        IReadOnlyCollection<Guid> ids,
+        Action<Card> mutate,
+        CancellationToken cancellationToken = default)
+    {
+        if (ids.Count == 0)
+            return Task.CompletedTask;
+
+        return WriteAsync(
+            async token =>
+            {
+                foreach (var id in ids)
+                {
+                    if (Card(id) is not { } card)
+                        continue;
+
+                    mutate(card);
+                    Arriving(card);
+
+                    await store.UpdateAsync(card, token);
+                }
+            },
+            cancellationToken);
+    }
+
     // The copy is a new card in every sense the store cares about — its own id and number — so it
     // goes through the same create path, and the caller gets it back to open it.
     //

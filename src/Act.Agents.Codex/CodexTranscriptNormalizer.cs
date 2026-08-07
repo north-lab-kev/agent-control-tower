@@ -31,49 +31,73 @@ public sealed class CodexTranscriptNormalizer : ITranscriptNormalizer
         var events = new List<AgentEvent>();
         var session = string.Empty;
 
+        // Each line is read inside its document's own scope — only strings and numbers leave it —
+        // so no per-line `Clone` of the parsed DOM is paid on a catch-up read of a whole rollout.
         foreach (var line in lines)
         {
-            if (Parse(line) is not { } entry)
-                continue;
+            JsonDocument document;
 
-            var at = Stamp(entry) ?? DateTimeOffset.UnixEpoch;
-            var payload = Payload(entry);
-
-            switch (Text(entry, "type"))
+            try
             {
-                case "session_meta" when payload is { } meta:
-                    session = Text(meta, "session_id") ?? Text(meta, "id") ?? session;
+                document = JsonDocument.Parse(line);
+            }
+            catch (JsonException)
+            {
+                continue;
+            }
 
-                    break;
-
-                case "event_msg" when payload is { } message:
-                    switch (Text(message, "type"))
-                    {
-                        case "task_started":
-                            snapshot = snapshot with { ContextLimit = Count(message, "model_context_window") ?? snapshot.ContextLimit };
-
-                            break;
-
-                        // A plain turn end is the `Stop` hook's to report. Only the failure is raised
-                        // here, because nothing else can see it.
-                        case "task_complete":
-                            if (Failure(message) is { } failure)
-                                events.Add(new TurnFailed(session, at, failure));
-
-                            break;
-
-                        case "token_count":
-                            snapshot = Tokens(snapshot, message);
-
-                            break;
-                    }
-
-                    break;
-
+            using (document)
+            {
+                if (document.RootElement.ValueKind is JsonValueKind.Object)
+                    snapshot = FoldEntry(document.RootElement, snapshot, events, ref session);
             }
         }
 
         return new TranscriptFold(snapshot, events);
+    }
+
+    private static EnrichmentSnapshot FoldEntry(
+        JsonElement entry,
+        EnrichmentSnapshot snapshot,
+        List<AgentEvent> events,
+        ref string session)
+    {
+        var at = Stamp(entry) ?? DateTimeOffset.UnixEpoch;
+        var payload = Payload(entry);
+
+        switch (Text(entry, "type"))
+        {
+            case "session_meta" when payload is { } meta:
+                session = Text(meta, "session_id") ?? Text(meta, "id") ?? session;
+
+                break;
+
+            case "event_msg" when payload is { } message:
+                switch (Text(message, "type"))
+                {
+                    case "task_started":
+                        snapshot = snapshot with { ContextLimit = Count(message, "model_context_window") ?? snapshot.ContextLimit };
+
+                        break;
+
+                    // A plain turn end is the `Stop` hook's to report. Only the failure is raised
+                    // here, because nothing else can see it.
+                    case "task_complete":
+                        if (Failure(message) is { } failure)
+                            events.Add(new TurnFailed(session, at, failure));
+
+                        break;
+
+                    case "token_count":
+                        snapshot = Tokens(snapshot, message);
+
+                        break;
+                }
+
+                break;
+        }
+
+        return snapshot;
     }
 
     // Codex reports usage in two shapes and ACT wants one of each: the cumulative totals for tokens,
@@ -160,22 +184,6 @@ public sealed class CodexTranscriptNormalizer : ITranscriptNormalizer
                 out var stamp)
             ? stamp
             : null;
-
-    private static JsonElement? Parse(string line)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(line);
-
-            return document.RootElement.ValueKind is JsonValueKind.Object
-                ? document.RootElement.Clone()
-                : null;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
 
     private static int? Count(JsonElement element, string name)
         => element.TryGetProperty(name, out var value)

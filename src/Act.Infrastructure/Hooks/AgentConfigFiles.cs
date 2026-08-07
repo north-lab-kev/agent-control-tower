@@ -51,14 +51,19 @@ public sealed class AgentConfigFiles(string dataDirectory) : IAgentConfigFiles
         File.WriteAllText(absolutePath, content, Utf8);
     }
 
+    // The tail is what the CLI wrote after ACT's marker, minus any table the fresh content defines
+    // again. Codex reorders the file when it saves — measured in `docs/findings/codex-hooks.md`, the
+    // `[mcp_servers.act]` block came back *below* `[hooks.state]` — so a verbatim tail would carry
+    // ACT's own table back in under the fresh copy, and a table defined twice is a profile the
+    // parser rejects: every later launch would die on it.
     public void WriteExternalPreservingTail(string absolutePath, string content, string tailMarker)
     {
-        var tail = Tail(absolutePath, tailMarker);
+        var tail = Tail(absolutePath, tailMarker, TableNames(content));
 
         WriteExternal(absolutePath, tail is null ? content : content + Environment.NewLine + tail);
     }
 
-    private static string? Tail(string absolutePath, string tailMarker)
+    private static string? Tail(string absolutePath, string tailMarker, HashSet<string> ownTables)
     {
         try
         {
@@ -73,12 +78,50 @@ public sealed class AgentConfigFiles(string dataDirectory) : IAgentConfigFiles
             if (start < 0)
                 return null;
 
-            return string.Join(Environment.NewLine, lines[start..]);
+            var kept = new List<string>();
+            var dropping = false;
+
+            foreach (var line in lines[start..])
+            {
+                if (TableName(line) is { } table)
+                    dropping = ownTables.Contains(table);
+
+                if (!dropping)
+                    kept.Add(line);
+            }
+
+            return kept.Count == 0 ? null : string.Join(Environment.NewLine, kept);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
             return null;
         }
+    }
+
+    private static HashSet<string> TableNames(string content)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var line in content.Split('\n'))
+        {
+            if (TableName(line) is { } name)
+                names.Add(name);
+        }
+
+        return names;
+    }
+
+    private static string? TableName(string line)
+    {
+        var trimmed = line.TrimStart();
+
+        if (!trimmed.StartsWith('['))
+            return null;
+
+        var name = trimmed.TrimStart('[');
+        var close = name.IndexOf(']');
+
+        return close < 0 ? null : name[..close].Trim();
     }
 
     public void DeleteExternal(string absolutePath)

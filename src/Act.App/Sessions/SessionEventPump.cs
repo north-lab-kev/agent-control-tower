@@ -13,8 +13,9 @@ namespace Act.App.Sessions;
 // column and badge become, and this only sequences them and persists the result.
 //
 // Writes are split by urgency on purpose. A move is user-visible and lands immediately; metrics
-// alone are debounced, because `BoardState.UpdateAsync` re-reads every card and re-renders the whole
-// board, and a chatty session emits tool events several times a second.
+// alone are debounced and flushed as one batched write, because every board write re-reads every
+// card and re-renders the whole board, and a chatty session emits tool events several times a
+// second.
 public sealed class SessionEventPump(
     SessionRegistry sessions,
     BoardState board,
@@ -116,35 +117,36 @@ public sealed class SessionEventPump(
     // and replaces every instance, so writing back the projected one would clobber whatever else
     // changed, and writing back the board's one would silently drop a second of tool calls and leave
     // `lastActivityAt` behind, which is what makes a working card start claiming it has gone quiet.
-    // So the two fields the projection owns are carried across, and the board's copy is what is
-    // saved.
-    private async Task FlushAsync(CancellationToken cancellationToken)
+    // So the two fields the projection owns are carried across — onto the instance the board holds
+    // *inside* the write gate — and every dirty card lands in the one batched write, so a flush
+    // costs one reload and one re-render however many sessions are talking.
+    private Task FlushAsync(CancellationToken cancellationToken)
     {
-        KeyValuePair<Guid, Card>[] pending;
+        Dictionary<Guid, Card> pending;
 
         lock (gate)
         {
             if (dirty.Count == 0)
-                return;
+                return Task.CompletedTask;
 
-            pending = [.. dirty];
+            pending = new Dictionary<Guid, Card>(dirty);
 
             dirty.Clear();
         }
 
-        foreach (var (taskId, projected) in pending)
-        {
-            if (board.Card(taskId) is not { } card)
-                continue;
-
-            if (!ReferenceEquals(card, projected))
+        return board.UpdateManyAsync(
+            [.. pending.Keys],
+            card =>
             {
+                var projected = pending[card.Id];
+
+                if (ReferenceEquals(card, projected))
+                    return;
+
                 card.Metrics = projected.Metrics;
                 card.ObservedModel = projected.ObservedModel;
-            }
-
-            await board.UpdateAsync(card, cancellationToken);
-        }
+            },
+            cancellationToken);
     }
 
     public async ValueTask DisposeAsync()
