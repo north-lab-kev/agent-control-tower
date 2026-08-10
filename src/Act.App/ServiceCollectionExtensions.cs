@@ -8,6 +8,7 @@ using Act.App.Notifications;
 using Act.App.Sessions;
 using Act.App.Settings;
 using Act.App.Telemetry;
+using Act.App.Updates;
 using Act.App.Usage;
 using Act.Core.Abstractions;
 using Act.Core.Model;
@@ -39,6 +40,7 @@ public static class ServiceCollectionExtensions
         // Scoped because the bridge is: which shell is behind it is decided per circuit.
         services.AddScoped<AttachmentOpener>();
         services.AddSingleton<INotifier, BrowserNotifier>();
+        services.AddSingleton<IUpdater, BrowserUpdater>();
         services.AddSingleton<UiPresence>();
         services.AddSingleton<DeepLinkRouter>();
         services.AddSingleton<NotificationDispatcher>();
@@ -48,6 +50,7 @@ public static class ServiceCollectionExtensions
             .AddActAgents()
             .AddActBoard()
             .AddActSessions()
+            .AddActUpdates()
             .AddActUsage(configuration)
             .AddTelemetry(configuration);
     }
@@ -60,6 +63,17 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<DesktopShell>();
         services.Replace(ServiceDescriptor.Scoped<IDesktopBridge, ElectronDesktopBridge>());
         services.Replace(ServiceDescriptor.Singleton<INotifier, ElectronNotifier>());
+        services.Replace(ServiceDescriptor.Singleton<IUpdater, ElectronUpdater>());
+
+        return services;
+    }
+
+    // Registered for both shells. The pump asks the updater whether it is supported and stands down
+    // in browser mode, which keeps the decision in one place rather than in the composition root.
+    private static IServiceCollection AddActUpdates(this IServiceCollection services)
+    {
+        services.AddSingleton<UpdateState>();
+        services.AddSingleton<UpdatePump>();
 
         return services;
     }

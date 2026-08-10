@@ -1831,6 +1831,18 @@ Independent of the build phases — do whenever you decide to flip the repo publ
 - [ ] **Flip visibility** — repo Settings → change visibility → public.
 - [ ] **Enable the full CI matrix** — turn on Windows + Linux on every push/PR
   (free and uncapped once public).
+- [ ] **Verify auto-update end to end** — it is built and shipped, but
+  `electron-updater` reads the releases anonymously, so every check answers 404
+  while the repo is private. ACT handles that as *could not reach the feed* and
+  carries on, which means **the feature has never actually run**. On flip: cut two
+  stable releases, install the first, and confirm the second is found, downloaded,
+  and applied on exit. Then cut a pre-release and confirm it is **not** offered —
+  both halves of that exclusion (`AllowPrerelease = false`, and no `latest.yml` on
+  a pre-release) are untested against a live feed.
+  - The appId is now `com.northlabkev.act` rather than the `act-app` v0.0.1
+    shipped with, so **v0.0.1 must be uninstalled by hand once** — an update
+    across that change would install beside it, not over it. Nothing after v0.0.1
+    is affected, and the appId must never change again.
 
 ## Deferred — multi-OS release builds
 

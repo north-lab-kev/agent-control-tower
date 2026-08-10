@@ -38,6 +38,12 @@
     white-space: nowrap;
 }
 
+/* The summary is the only part of the row that can run long, so it is the part that gives — the
+   buttons beside it must not be squeezed onto two lines to make room for a sentence. */
+::deep .updaterow .hint {
+    flex: 1 1 auto;
+}
+
 ::deep .control {
     width: var(--act-control-w);
     flex: 0 0 auto;

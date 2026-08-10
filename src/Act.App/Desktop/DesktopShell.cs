@@ -21,6 +21,7 @@ public sealed class DesktopShell(
     UserSettingsService settings,
     SessionRegistry sessions,
     BoardState board,
+    IUpdater updater,
     IHostApplicationLifetime lifetime)
 {
     private const int TitleBarHeight = 49;
@@ -351,7 +352,7 @@ public sealed class DesktopShell(
         {
             Type = MessageBoxType.warning,
             Title = Strings.Tray_Exit,
-            Detail = Detail(stakes),
+            Detail = Detail(stakes, updater.IsReady),
             Buttons = [Strings.Tray_ExitYes, Strings.NewTask_Cancel],
             DefaultId = 1,
             CancelId = 1,
@@ -389,16 +390,25 @@ public sealed class DesktopShell(
         await ExitAsync();
     }
 
-    private static string Detail(ExitStakes stakes) => stakes.Warning switch
+    // The update line is appended rather than folded into the wordings, because it is a second,
+    // independent fact about this exit: what is lost by leaving is one thing, and what leaving will
+    // additionally do is another. Said here and not when nothing is at stake, where the exit is
+    // silent and the toast has already promised exactly this.
+    private static string Detail(ExitStakes stakes, bool updateReady)
     {
-        ExitWarning.Running => Text.Format(
-            Text.Plural(stakes.Running, Strings.Tray_ExitDetailRunning_One, Strings.Tray_ExitDetailRunning_Many),
-            stakes.Running),
-        ExitWarning.RunningAndScheduled => Text.Format(
-            Text.Plural(stakes.Running, Strings.Tray_ExitDetailBoth_One, Strings.Tray_ExitDetailBoth_Many),
-            stakes.Running),
-        _ => Strings.Tray_ExitDetailScheduled,
-    };
+        var detail = stakes.Warning switch
+        {
+            ExitWarning.Running => Text.Format(
+                Text.Plural(stakes.Running, Strings.Tray_ExitDetailRunning_One, Strings.Tray_ExitDetailRunning_Many),
+                stakes.Running),
+            ExitWarning.RunningAndScheduled => Text.Format(
+                Text.Plural(stakes.Running, Strings.Tray_ExitDetailBoth_One, Strings.Tray_ExitDetailBoth_Many),
+                stakes.Running),
+            _ => Strings.Tray_ExitDetailScheduled,
+        };
+
+        return updateReady ? $"{detail}\n\n{Strings.Tray_ExitDetailUpdate}" : detail;
+    }
 
     // Ended here rather than left to the host's disposal, because the confirmation promised it:
     // an agent must not outlive the app that was supervising it.
@@ -406,7 +416,14 @@ public sealed class DesktopShell(
     {
         await sessions.DisposeAsync();
 
-        Electron.App.Exit(0);
+        // The one exit that is not `Exit(0)`. `AutoInstallOnAppQuit` would not cover this path —
+        // `app.exit()` skips the quit handling it hangs off — so a downloaded update would sit on
+        // disk forever for anyone who leaves through the tray. `BaseUpdater.install` ignores a
+        // second caller, so the two routes cannot both fire.
+        if (updater.IsReady)
+            updater.InstallAndExit();
+        else
+            Electron.App.Exit(0);
 
         lifetime.StopApplication();
     }

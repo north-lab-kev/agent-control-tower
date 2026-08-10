@@ -30,6 +30,8 @@ public static class TelemetryProperties
 
     public const string CloseToTray = "close_to_tray";
 
+    public const string Updates = "updates";
+
     public const string PreventConcurrentWorkingDir = "prevent_concurrent_working_dir";
 
     public const string MaxConcurrent = "max_concurrent";
@@ -74,6 +76,7 @@ public static class TelemetryProperties
         KeepAwake,
         Notifications,
         CloseToTray,
+        Updates,
         PreventConcurrentWorkingDir,
         MaxConcurrent,
         AutoExecutionPaused,

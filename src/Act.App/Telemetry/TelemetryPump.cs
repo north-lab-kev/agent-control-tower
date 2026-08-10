@@ -1,6 +1,6 @@
 using System.Globalization;
-using System.Reflection;
 using System.Runtime.InteropServices;
+using Act.App.Hosting;
 using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Core.Telemetry;
@@ -26,7 +26,7 @@ public sealed class TelemetryPump(ITelemetrySink telemetry, UserSettingsService 
     private bool flushed;
 
     public void Start()
-        => telemetry.Capture(settings.TelemetryStarted(Version(), RuntimeInformation.OSDescription, Locale()));
+        => telemetry.Capture(settings.TelemetryStarted(AppVersion.Current, RuntimeInformation.OSDescription, Locale()));
 
     public async ValueTask DisposeAsync()
     {
@@ -39,20 +39,4 @@ public sealed class TelemetryPump(ITelemetrySink telemetry, UserSettingsService 
     }
 
     private static string Locale() => CultureInfo.CurrentUICulture.Name;
-
-    // The informational version, minus the `+<sha>` build metadata — a commit hash is noise in a
-    // funnel and the assembly version alone loses the suffix a release actually carries.
-    private static string Version()
-    {
-        var informational = Assembly.GetEntryAssembly()
-            ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion;
-
-        if (string.IsNullOrEmpty(informational))
-            return Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "unknown";
-
-        var metadata = informational.IndexOf('+', StringComparison.Ordinal);
-
-        return metadata < 0 ? informational : informational[..metadata];
-    }
 }

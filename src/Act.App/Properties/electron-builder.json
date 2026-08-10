@@ -17,6 +17,21 @@
     "allowToChangeInstallationDirectory": true,
     "artifactName": "ACT-Setup-${version}-${arch}.${ext}"
   },
+  // What makes auto-update possible at all: with a publish provider electron-builder writes
+  // `latest.yml` beside the installer and embeds `app-update.yml` in the package. The embedded file
+  // is the *only* way the feed reaches electron-updater — Electron.NET's bridge exposes
+  // `getFeedURL` and no setter, so it cannot be pointed anywhere at runtime.
+  //
+  // `owner` and `repo` are spelled out because the generated `package.json` carries no `repository`
+  // field to infer them from. Nothing is uploaded from here: the update files are written whatever
+  // the publish policy is, and the release workflow attaches them with `gh`.
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "north-lab-kev",
+      "repo": "agent-control-tower"
+    }
+  ],
   // Linux (AppImage + .deb) — décommenter pour l'activer ; doit être buildé sur Linux.
   // "linux": {
   //   "target": [

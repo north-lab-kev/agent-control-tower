@@ -2441,12 +2441,58 @@ as `electron.app.Electron`.
   and the installer's `appId`
   is the **same string** — the NSIS shortcut is what maps the id to the product
   name, so a mismatch there would leave the packaged build no better off.
+  - **They did not match until auto-update forced the issue.** ElectronNET's targets pass
+    `-c.appId "$(ElectronPackageId)"` on the electron-builder command line, and a CLI `-c` overrides
+    the value in `electron-builder.json`; unset, `ElectronPackageId` defaults to the project name,
+    so v0.0.1 shipped as `act-app` while the running app claimed `com.northlabkev.act`. It is now
+    set explicitly in `Act.App.csproj`. **This is a one-way door:** NSIS derives its uninstall key
+    from the appId, so changing it again after auto-update ships would install a second copy beside
+    the first rather than upgrade it. v0.0.1 has to be uninstalled by hand once; nothing after it
+    does.
 - **Unpackaged runs still show the raw id**, because a `dotnet run` has no
   Start-menu shortcut to resolve a name from. Accepted rather than fixed: the
   alternative is ACT writing a display-name key into the user's registry on every
   machine it runs on, which is an installer's job, not a dev session's.
 - The icon rides the notification itself (`icon.ico`, the same file the window and
   tray use) and therefore works in both modes.
+
+### Updates — how a new version reaches an installed copy
+
+`electron-updater` (already a runtime dependency of the Electron host) polls the repository's GitHub
+releases; the user-facing half is the *Automatic updates* setting above. The mechanics are all in
+what gets **published**, and two of them are counter-intuitive enough to write down.
+
+- **A `publish` block in `electron-builder.json` is what makes any of it possible.** It is what makes
+  electron-builder write `latest.yml` beside the installer and embed `app-update.yml` into the
+  package — and the embedded file is the *only* way the feed reaches the updater, because
+  Electron.NET's bridge exposes `getFeedURL` and no setter. `owner` and `repo` are spelled out
+  because the generated `package.json` has no `repository` field to infer them from. Nothing is
+  uploaded by electron-builder: update files are written whatever the publish policy is
+  (`PublishManager.artifactCreated`), and the release workflow attaches them with `gh`.
+- **Pre-releases are excluded twice over, and both are needed.**
+  1. **`AllowPrerelease = false`, forced on every run.** `AppUpdater`'s constructor runs
+     `allowPrerelease = hasPrereleaseComponents(currentVersion)`, quietly overriding its own `false`
+     default — so a `0.1.0-beta.1` install tracks betas unless told otherwise. `AllowDowngrade`
+     stays off beside it, so a beta is never walked back to an older stable.
+  2. **A pre-release release carries no update metadata.** electron-builder writes `latest.yml` for
+     *every* version — the channel comes from the publish config, not from the `-beta.1` on the
+     version — so the exclusion is done in the release job, which attaches the `.yml` and the
+     `.blockmap` only when the version is stable. GitHub's `/releases/latest` already skips
+     pre-releases; this makes it moot if it ever stops.
+
+  The result for a beta tester: they sit still until a stable version semver-greater than their
+  build appears, and then roll forward to it. **Betas are a dead end by design.**
+- **Unsigned is fine, for now.** `NsisUpdater.verifySignature` returns null and skips when
+  `app-update.yml` carries no `publisherName`; HTTPS to GitHub plus the sha512 in `latest.yml`
+  covers integrity. Signing is worth doing, separately.
+- **Two bridge hazards are worked around in `ElectronUpdater`, not endured.** The bridge's
+  `downloadUpdate` handler awaits with no `.catch`, so a failed download never emits its completion
+  and the awaiting task would hang for the life of the process — every call is bounded by a timeout.
+  And `UpdateCheckResult` drops `isUpdateAvailable` crossing the bridge, so availability is read
+  from the `update-available` / `update-not-available` events instead, with the completed check used
+  only to bound the wait.
+- **Development is quiet by construction.** `isUpdaterActive()` is false for an unpacked build, so a
+  `dotnet run` resolves its check with nothing and reports *could not reach the feed*.
 
 ### Shell caveat (build note)
 
@@ -2745,6 +2791,24 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
       back to carry the question — being shown what is about to stop is no bad thing.
       Confirming ends every live session first: the confirmation promised it, and an agent
       must not outlive the app supervising it.
+  - **Automatic updates** (*Updates*, desktop-only) is a three-way rather than a switch, because
+    "check but leave the download to me" is a position people hold — a metered connection makes an
+    unasked hundred megabytes a real cost — and it is not the same position as wanting no updates.
+    **Download quietly, install on exit** is the default; **Tell me, download when I ask** surfaces
+    the version and offers a *Download* button beside it; **Never check** reaches the network not at
+    all. The section also states **the running version**, in both shells and unconditionally — it is
+    the one thing a bug report has to quote and ACT stated it nowhere until now.
+    - **Applied on the way out, never mid-flight.** ACT supervises long-running agents, so an update
+      that restarted the app to install itself would stop work the user did not agree to stop. The
+      tray *Exit* installs instead of quitting when one is downloaded, after ending the sessions —
+      the confirmation promised that and the promise still holds — and says so in its detail line.
+      `AutoInstallOnAppQuit` is left on underneath as the catch-all for closing the last window with
+      close-to-tray off, which never passes through that path; `BaseUpdater.install` ignores whichever
+      of the two arrives second.
+    - **A check that fails is not an error.** Offline, a 404, a feed that does not exist yet: all of
+      them read as *Could not reach the update feed. ACT will try again later*, never as *up to
+      date*. Collapsing the two is the lie that leaves someone on an old build believing otherwise,
+      which is why `UpdateCheck` carries `Completed` separately from the version.
   - **Help improve ACT** (*Diagnostics*, on by default) is the opt-out for anonymous usage
     data and crash reports sent to a cloud telemetry service. **On** by default, because a
     solo-maintained tool learns what to fix from the installs it never sees; one switch

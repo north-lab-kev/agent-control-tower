@@ -7,6 +7,16 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
     <PackageId>Act.App</PackageId>
     <ElectronSingleInstance>true</ElectronSingleInstance>
+
+    <!--
+      The installer's identity, and a one-way door. ElectronNET passes this to electron-builder as
+      `-c.appId` on the command line, which *overrides* the appId in `electron-builder.json` — left
+      unset it defaults to the project name, so v0.0.1 shipped as `act-app` while the app told
+      Windows it was `com.northlabkev.act`. NSIS derives its uninstall key from the appId, so once
+      auto-update is live a change here installs a second copy instead of upgrading the first.
+      Set now, before that matters, at the cost of one manual uninstall of v0.0.1.
+    -->
+    <ElectronPackageId>com.northlabkev.act</ElectronPackageId>
   </PropertyGroup>
 
   <PropertyGroup Label="ElectronNetCommon">

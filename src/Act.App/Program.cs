@@ -5,6 +5,7 @@ using Act.App.Desktop;
 using Act.App.Sessions;
 using Act.App.Settings;
 using Act.App.Telemetry;
+using Act.App.Updates;
 using Act.App.Usage;
 using Act.App.Hooks;
 using Act.App.Hosting;
@@ -70,6 +71,10 @@ app.Services.GetRequiredService<SessionEventPump>().Start();
 app.Services.GetRequiredService<TranscriptPump>().Start();
 app.Services.GetRequiredService<UsagePump>().Start();
 app.Services.GetRequiredService<RetentionPump>().Start();
+
+// Stands itself down in browser mode, where there is no installer to replace. Here rather than in
+// the desktop branch so the pump owns that decision and the composition root does not have to.
+app.Services.GetRequiredService<UpdatePump>().Start();
 
 // The terminals that died with the previous run come back here, and only once the host is actually
 // listening: a resumed agent posts its first hook within moments of starting, and the endpoint that

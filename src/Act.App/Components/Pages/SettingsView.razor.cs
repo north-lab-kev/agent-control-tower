@@ -1,7 +1,9 @@
 using Act.App.Cards;
 using Act.App.Desktop;
+using Act.App.Hosting;
 using Act.App.Resources;
 using Act.App.Settings;
+using Act.App.Updates;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
@@ -17,9 +19,11 @@ public partial class SettingsView(
     IEnumerable<IAgentAdapter> adapters,
     IExecutableProbe probe,
     IDesktopBridge desktop,
+    UpdateState updateState,
+    UpdatePump updates,
     ActLogLocation logs,
     ILogger<SettingsView> log,
-    NavigationManager navigation)
+    NavigationManager navigation) : IDisposable
 {
     private static SettingChoice<LanguagePreference>[] LanguageChoices =>
     [
@@ -33,6 +37,13 @@ public partial class SettingsView(
         new(ThemePreference.System, Strings.Settings_Theme_System),
         new(ThemePreference.Dark, Strings.Settings_Theme_Dark),
         new(ThemePreference.Light, Strings.Settings_Theme_Light),
+    ];
+
+    private static SettingChoice<UpdatePolicy>[] UpdateChoices =>
+    [
+        new(UpdatePolicy.NotifyAndDownload, Strings.Settings_Updates_Download),
+        new(UpdatePolicy.NotifyOnly, Strings.Settings_Updates_NotifyOnly),
+        new(UpdatePolicy.Off, Strings.Settings_Updates_Off),
     ];
 
     private static SettingChoice<BoardDensity>[] DensityChoices =>
@@ -71,6 +82,31 @@ public partial class SettingsView(
 
     private bool IsDesktop => desktop.IsDesktop;
 
+    private static string Version => AppVersion.Current;
+
+    private UpdatePolicy Updates => settings.Updates;
+
+    private UpdateStatus UpdateStatus => updateState.Current;
+
+    // Offered only where it is the answer to what the page is showing: a version was found, and the
+    // policy that found it is the one that will not fetch it on its own.
+    private bool CanDownloadUpdate
+        => UpdateStatus.Stage is UpdateStage.Available && Updates is UpdatePolicy.NotifyOnly;
+
+    private string UpdateSummary => UpdateStatus.Stage switch
+    {
+        UpdateStage.Checking => Strings.Settings_Updates_Checking,
+        UpdateStage.UpToDate => Strings.Settings_Updates_UpToDate,
+        UpdateStage.Available => Text.Format(Strings.Settings_Updates_Available, UpdateStatus.Version),
+        UpdateStage.Downloading => Text.Format(
+            Strings.Settings_Updates_Downloading,
+            UpdateStatus.Version,
+            UpdateStatus.Percent),
+        UpdateStage.Ready => Text.Format(Strings.Settings_Updates_Ready, UpdateStatus.Version),
+        UpdateStage.Unavailable => Strings.Settings_Updates_Unavailable,
+        _ => Strings.Settings_Updates_Idle,
+    };
+
     private bool AutoArchiveCompleted => settings.AutoArchiveCompleted;
 
     private int AutoArchiveCompletedAfterDays => settings.AutoArchiveCompletedAfterDays;
@@ -87,6 +123,8 @@ public partial class SettingsView(
 
     protected override void OnInitialized()
     {
+        updateState.Changed += OnUpdateStateChanged;
+
         foreach (var adapter in adapters)
         {
             var form = AgentDefaultsForm.From(settings.Defaults(adapter.Agent));
@@ -248,6 +286,17 @@ public partial class SettingsView(
     private void OnAutoArchiveCompletedChanged(bool autoArchive) => settings.SetAutoArchiveCompleted(autoArchive);
 
     private void OnAutoArchiveDaysChanged(int days) => settings.SetAutoArchiveCompletedAfterDays(days);
+
+    private void OnUpdatesChanged(UpdatePolicy policy) => settings.SetUpdates(policy);
+
+    private void CheckForUpdate() => updates.CheckNow();
+
+    private void DownloadUpdate() => updates.DownloadNow();
+
+    // The pump runs on its own thread, so a download's progress arrives from outside the renderer.
+    private void OnUpdateStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => updateState.Changed -= OnUpdateStateChanged;
 
     private void BackToBoard() => navigation.NavigateTo("/");
 }

@@ -1,4 +1,3 @@
-using System.Reflection;
 using Act.Core.Abstractions;
 using Act.Infrastructure.Logging;
 
@@ -12,7 +11,7 @@ public static class StartupLog
 
         log.LogInformation(
             "ACT {Version} starting as {Mode} in {Environment}.",
-            Version(),
+            AppVersion.Full,
             desktop ? "the desktop shell" : "a browser app",
             app.Environment.EnvironmentName);
 
@@ -34,10 +33,6 @@ public static class StartupLog
 
         WatchForUnhandled(log);
     }
-
-    private static string Version()
-        => typeof(StartupLog).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-            ?? "unknown";
 
     // The last resort, and the only reason a crash leaves anything in the file at all: a background
     // loop that escapes `BackgroundWork`, or a shutdown path that throws, has no other reporter.

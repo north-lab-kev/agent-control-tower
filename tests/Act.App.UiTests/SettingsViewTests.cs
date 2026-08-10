@@ -1,4 +1,6 @@
 using Act.App.Components.Pages;
+using Act.App.Hosting;
+using Act.App.Updates;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
@@ -397,6 +399,129 @@ public class SettingsViewTests : ComponentTest
 
         open.Should().NotThrow();
         cut.FindAll("div.binwarn").Should().ContainSingle();
+    }
+
+    // The only place ACT states its own version, and it belongs in both shells: a bug report that has to
+    // guess the version is a bug report nobody can act on.
+    [Fact]
+    public void The_version_is_stated_in_either_shell()
+    {
+        Show().Markup.Should().Contain("This copy of ACT").And.Contain(AppVersion.Current);
+
+        Desktop.IsDesktop = true;
+
+        Show().Markup.Should().Contain("This copy of ACT").And.Contain(AppVersion.Current);
+    }
+
+    // Desktop-only for the same reason as close-to-tray: a browser tab cannot replace its own installer,
+    // so there is nothing here for the setting to govern.
+    [Fact]
+    public void The_update_policy_is_absent_in_a_browser()
+    {
+        var cut = Show();
+
+        RadzenDom.HasRow(cut, "Automatic updates", Row).Should().BeFalse();
+        cut.FindAll("button").Select(RadzenDom.ButtonText).Should().NotContain("Check now");
+    }
+
+    [Fact]
+    public void The_update_policy_offers_its_three_positions_under_the_desktop_shell()
+    {
+        Desktop.IsDesktop = true;
+
+        RadzenDom.Options(Show(), "Automatic updates", Row).Should().Equal(
+            "Download quietly, install on exit",
+            "Tell me, download when I ask",
+            "Never check");
+    }
+
+    [Fact]
+    public void The_update_policy_writes_through()
+    {
+        Desktop.IsDesktop = true;
+
+        RadzenDom.Choose(Show(), "Automatic updates", "Never check", Row);
+
+        Settings.Updates.Should().Be(UpdatePolicy.Off);
+    }
+
+    [Fact]
+    public void The_summary_reports_what_the_last_check_concluded()
+    {
+        Desktop.IsDesktop = true;
+
+        Updates.Publish(new UpdateStatus(UpdateStage.Ready, "1.2.0"));
+
+        Show().Markup.Should().Contain("1.2.0").And.Contain("exit ACT");
+    }
+
+    // The state ACT ships in until the release feed is reachable. It must read as "ask again later" and
+    // never as "you are up to date".
+    [Fact]
+    public void A_feed_it_could_not_reach_does_not_claim_the_app_is_current()
+    {
+        Desktop.IsDesktop = true;
+
+        Updates.Publish(new UpdateStatus(UpdateStage.Unavailable));
+
+        var markup = Show().Markup;
+
+        markup.Should().Contain("try again later");
+        markup.Should().NotContain("newest release");
+    }
+
+    // Offered only where it is the answer to what the page is showing: a version was found, under the one
+    // policy that will not fetch it on its own.
+    [Fact]
+    public void Downloading_is_offered_only_when_the_policy_will_not_do_it_for_you()
+    {
+        Desktop.IsDesktop = true;
+
+        Updates.Publish(new UpdateStatus(UpdateStage.Available, "1.2.0"));
+
+        Show().FindAll("button").Select(RadzenDom.ButtonText).Should().NotContain("Download");
+
+        Settings.SetUpdates(UpdatePolicy.NotifyOnly);
+
+        Show().FindAll("button").Select(RadzenDom.ButtonText).Should().Contain("Download");
+    }
+
+    [Fact]
+    public void There_is_nothing_to_download_while_the_app_is_current()
+    {
+        Desktop.IsDesktop = true;
+
+        Settings.SetUpdates(UpdatePolicy.NotifyOnly);
+        Updates.Publish(new UpdateStatus(UpdateStage.UpToDate));
+
+        Show().FindAll("button").Select(RadzenDom.ButtonText).Should().NotContain("Download");
+    }
+
+    // A second click while a check is in flight would only join the first, but a button that stays live
+    // says otherwise.
+    [Fact]
+    public void Checking_again_is_refused_while_a_check_is_running()
+    {
+        Desktop.IsDesktop = true;
+
+        Updates.Publish(new UpdateStatus(UpdateStage.Checking));
+
+        Show().FindAll("button")
+            .Single(button => RadzenDom.ButtonText(button) == "Check now")
+            .HasAttribute("disabled").Should().BeTrue();
+    }
+
+    // The pump runs on its own thread, so progress arrives from outside the renderer.
+    [Fact]
+    public void The_page_follows_a_download_it_is_not_driving()
+    {
+        Desktop.IsDesktop = true;
+
+        var cut = Show();
+
+        Updates.Publish(new UpdateStatus(UpdateStage.Downloading, "1.2.0", 42));
+
+        cut.WaitForAssertion(() => cut.Markup.Should().Contain("42"));
     }
 
     // A pointer to the page that owns them rather than a second place to edit the same thing.
