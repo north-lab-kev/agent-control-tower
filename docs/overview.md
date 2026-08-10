@@ -1941,10 +1941,10 @@ a 20-second backstop tick.
   limit, and **no reading is not a limit either** — an unreadable credential file
   must not freeze an overnight run, so the queue launches and lets the CLI be the
   one to refuse. So `schedule` is *intent*; cap and backpressure are *reality*.
-- **Spent is 98%, not 100% — and it is a setting.** *Hold the queue at* (default
-  **98**, any percentage 1–100, `UsageCeiling`) is the percentage **at or above
+- **Spent is 95%, not 100% — and it is a setting.** *Hold the queue at* (default
+  **95**, any percentage 1–100, `UsageCeiling`) is the percentage **at or above
   which** a window counts as spent: at the default a card launches at 0%, at 49%
-  and at 97%, and waits from 98% up. It is one threshold, not a band — nothing is
+  and at 94%, and waits from 95% up. It is one threshold, not a band — nothing is
   held below it. 100 is the wrong place to stop for three compounding reasons: the
   percentage ACT holds is up to `Usage:PollSeconds` old (180 s by default), a
   5-hour window moves about a third of a percent a minute, and the vendor rounds
