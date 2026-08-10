@@ -36,6 +36,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ICardStore, LiteDbCardStore>();
         services.AddSingleton<ITranscriptReader, TranscriptReader>();
         services.AddSingleton<ITextFileReader, TextFileReader>();
+        services.AddSingleton<IFileWatcher, FileWatcher>();
 
         return services.AddHookEndpoint(dataDirectory);
     }

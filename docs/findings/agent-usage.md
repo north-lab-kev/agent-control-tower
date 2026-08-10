@@ -184,6 +184,18 @@ The response also carries `email`, `user_id` and `account_id`. **ACT lifts the
   three outcomes that reached the network. `NotSignedIn` and `Expired` are decided
   locally without a request, so they stay on the base interval and recover as soon as
   the user signs in. One success clears the count.
+- **A rewritten credential file ends the backoff wait early.** The backoff protects the
+  vendor's endpoint, not the local file — and a 401 is cured by exactly one thing, a new
+  token, which arrives as a rewrite of that file whenever any CLI run refreshes it. So
+  while an outcome a new credential can cure is showing (`NotSignedIn`, `Expired`,
+  `SignInRequired`, `Unauthorized`), `UsagePump` watches the credential file and a change
+  triggers the next probe immediately, resetting the backoff — held to the 60-second
+  floor, so the wake can never break the one-a-minute contract. Added 2026-08-10, after a
+  Codex token refreshed by a task launched *through ACT* sat unread for 10+ minutes
+  because the pump was asleep at the 15-minute ceiling. `UsageWake` (`Act.Core/Rules`)
+  names the outcomes and the floor; `IFileWatcher` (`Act.Infrastructure/FileSystem`)
+  is the watch itself, and a directory that does not exist yet simply leaves the plain
+  wait in place.
 - **Unavailable is displayed, not swallowed.** Every failure path resolves to a
   `UsageAvailability` — `NotSignedIn`, `Expired`, `Unauthorized`, `Unreachable`,
   `Failed` — and the top bar renders an *unavailable* chip in place of that agent's

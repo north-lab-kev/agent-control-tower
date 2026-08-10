@@ -83,7 +83,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ FileSystem/                #   IWorkingDirectories: ~ expansion, path validation, browsing.
 │  │  │                            #     Also IAttachmentStore + AttachmentStore — a task's files
 │  │  │                            #     under attachments/<cardId>/, with the name sanitising,
-│  │  │                            #     collision suffixing and prune/copy/clear the lifecycle needs
+│  │  │                            #     collision suffixing and prune/copy/clear the lifecycle needs.
+│  │  │                            #     Also IFileWatcher + FileWatcher — a change signal on one
+│  │  │                            #     file, how UsagePump ends a backoff wait early
 │  │  ├─ Power/                     #   ISleepInhibitor: SetThreadExecutionState (Windows),
 │  │  │                            #     caffeinate (macOS), systemd-inhibit (Linux)
 │  │  ├─ Terminal/                  #   IPtyHost over Porta.Pty: spawn, incremental UTF-8 decode,
@@ -160,7 +162,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     at what), DeepLinkRouter (clicked toast → that card)
 │  │  ├─ Usage/                     #   UsageState (latest result per agent, reading or named
 │  │  │                            #     unavailability) + UsagePump (one poll loop per probe,
-│  │  │                            #     backing off on a failure that cost a request);
+│  │  │                            #     backing off on a failure that cost a request, woken
+│  │  │                            #     early when the credential file changes);
 │  │  │                            #     UsageIndicator renders both in the top bar
 │  │  ├─ Telemetry/                 #   ConsentedTelemetrySink (the front gate: the switch read on
 │  │  │                            #     every capture, never once at startup), TelemetryPump (one

@@ -2,6 +2,8 @@ using Act.App.Settings;
 using Act.App.Usage;
 using Act.Core.Abstractions;
 using Act.Core.Model;
+using Act.Core.Rules;
+using Act.Infrastructure.FileSystem;
 using Act.Infrastructure.Usage;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -20,6 +22,8 @@ public class UsagePumpTests
     private readonly UsageState state = new();
 
     private readonly FakeUsageProbe claude = new(AgentType.ClaudeCode);
+
+    private readonly FakeFileWatcher watcher = new();
 
     [Fact]
     public async Task A_reading_reaches_the_state()
@@ -201,6 +205,73 @@ public class UsagePumpTests
     }
 
     [Fact]
+    public async Task A_credential_file_change_wakes_a_refused_token_out_of_its_backoff()
+    {
+        claude.Answers = Unavailable(UsageAvailability.Unauthorized);
+        claude.Then = Available(55);
+        watcher.Watch.Changes = true;
+
+        await using var pump = Pump(Enabled(AgentType.ClaudeCode));
+
+        pump.Start();
+
+        await Until(() => state.Results.Any(result => result.IsAvailable));
+
+        claude.Reads.Should().Be(2, "the change is what earns the early second reading");
+        watcher.Paths.Should().Contain(claude.CredentialsPath);
+        watcher.Watch.LastFloor.Should().Be(UsageWake.Floor);
+        watcher.Watch.Resets.Should().BeGreaterThanOrEqualTo(2, "the watch is re-armed before every reading");
+    }
+
+    [Fact]
+    public async Task No_file_change_leaves_the_backoff_wait_standing()
+    {
+        claude.Answers = Unavailable(UsageAvailability.Unauthorized);
+
+        await using var pump = Pump(Enabled(AgentType.ClaudeCode));
+
+        pump.Start();
+
+        await Until(() => watcher.Watch.Waits == 1);
+
+        claude.Reads.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task An_available_reading_is_not_watched_for_file_changes()
+    {
+        claude.Answers = Available(40);
+        watcher.Watch.Changes = true;
+
+        await using var pump = Pump(Enabled(AgentType.ClaudeCode));
+
+        pump.Start();
+
+        await Until(() => state.Results.Count == 1);
+        await Task.Delay(50);
+
+        claude.Reads.Should().Be(1);
+        watcher.Watch.Waits.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task A_failure_no_credential_can_cure_waits_out_its_backoff_unwatched()
+    {
+        claude.Answers = Unavailable(UsageAvailability.Unreachable);
+        watcher.Watch.Changes = true;
+
+        await using var pump = Pump(Enabled(AgentType.ClaudeCode));
+
+        pump.Start();
+
+        await Until(() => state.Results.Count == 1);
+        await Task.Delay(50);
+
+        claude.Reads.Should().Be(1);
+        watcher.Watch.Waits.Should().Be(0);
+    }
+
+    [Fact]
     public async Task Disposing_stops_the_loop()
     {
         claude.Answers = Available(40);
@@ -241,6 +312,7 @@ public class UsagePumpTests
             state,
             options ?? new UsageOptions(),
             settings,
+            watcher,
             new FrozenClock(Now),
             NullLogger<UsagePump>.Instance);
 
@@ -292,6 +364,8 @@ public class UsagePumpTests
     {
         public AgentType Agent => agent;
 
+        public string CredentialsPath => $"{agent}-credentials.json";
+
         // What the first read answers, and what every read after it answers — a poll loop reads
         // forever, so a queue of one would run dry mid-test.
         public UsageProbeResult Answers { get; set; } = UsageProbeResult.Unavailable(agent, UsageAvailability.Failed, Now);
@@ -321,6 +395,53 @@ public class UsagePumpTests
             Attempts++;
 
             return Task.FromResult(Delivers);
+        }
+    }
+
+    private sealed class FakeFileWatcher : IFileWatcher
+    {
+        public FakeFileWatch Watch { get; } = new();
+
+        public List<string> Paths { get; } = [];
+
+        IFileWatch IFileWatcher.Watch(string path)
+        {
+            Paths.Add(path);
+
+            return Watch;
+        }
+    }
+
+    private sealed class FakeFileWatch : IFileWatch
+    {
+        public bool Changes { get; set; }
+
+        public int Waits { get; private set; }
+
+        public int Resets { get; private set; }
+
+        public TimeSpan? LastFloor { get; private set; }
+
+        public void Reset() => Resets++;
+
+        public async Task<bool> WaitForChangeAsync(
+            TimeSpan wait,
+            TimeSpan floor,
+            CancellationToken cancellationToken = default)
+        {
+            Waits++;
+            LastFloor = floor;
+
+            if (Changes)
+                return true;
+
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+
+            return false;
+        }
+
+        public void Dispose()
+        {
         }
     }
 }

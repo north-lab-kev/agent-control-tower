@@ -2153,6 +2153,13 @@ Five rules the design turns on:
   (`UsageBackoff`). A failure decided locally — no credentials, an expired Claude token —
   spends no request and so keeps the base interval, because backing off would only delay
   the recovery. A disabled agent is not polled at all.
+  - **A rewritten credential file ends the wait early.** The backoff protects the
+    vendor's endpoint, not the local file: while an outcome a new credential can cure is
+    showing (not signed in, expired, sign-in required, refused), the pump watches the
+    credential file, and a change probes again immediately — held to the one-minute
+    floor — and resets the backoff (`UsageWake`). Any CLI run refreshes the token and
+    rewrites that file, so a login renewed outside ACT reaches the bar in about a minute
+    instead of after a backoff that may be 15 minutes deep.
 - **Unavailable is a state the bar shows, not a silence.** Every failure path resolves to
   a `UsageAvailability`, and the agent's meters are replaced by an **unavailable chip** —
   the agent name, the word *unavailable* in the error colour, and the cause in one mono
