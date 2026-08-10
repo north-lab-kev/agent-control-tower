@@ -172,6 +172,12 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: act-desktop-win-x64-${{ inputs.version }}
+          # Transit only: this copy exists to carry the installer from the Windows runner to the
+          # release job minutes later, and the permanent copies are the release assets, which are
+          # free. Actions storage is neither — it shares one 500 MB quota with Packages, billed on
+          # the month's average daily usage, so the default 90 days would keep paying for a file
+          # nothing reads after the run that made it.
+          retention-days: 1
           # The blockmap and latest.yml travel with the installer: the release job decides whether
           # to publish them, and it cannot attach what was never carried across.
           path: |
