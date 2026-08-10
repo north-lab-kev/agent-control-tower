@@ -158,12 +158,26 @@ jobs:
               throw "Expected $expected in artifacts/desktop/win-x64; found: $found"
           }
 
+          # Asserted for the same reason as the installer, and it matters more: an installer with no
+          # `latest.yml` looks like a perfectly good release and silently strands every copy already
+          # installed, because that file is the only thing they poll. It appears only while the
+          # `publish` block is in `electron-builder.json`, so this is what catches its removal.
+          if (-not (Test-Path "artifacts/desktop/win-x64/latest.yml")) {
+              $found = (Get-ChildItem "artifacts/desktop/win-x64" | ForEach-Object Name) -join ", "
+              throw "No latest.yml in artifacts/desktop/win-x64; auto-update would be dead on arrival. Found: $found"
+          }
+
           "name=$expected" >> $env:GITHUB_OUTPUT
 
       - uses: actions/upload-artifact@v7
         with:
           name: act-desktop-win-x64-${{ inputs.version }}
-          path: artifacts/desktop/win-x64/*.exe
+          # The blockmap and latest.yml travel with the installer: the release job decides whether
+          # to publish them, and it cannot attach what was never carried across.
+          path: |
+            artifacts/desktop/win-x64/*.exe
+            artifacts/desktop/win-x64/*.blockmap
+            artifacts/desktop/win-x64/latest.yml
           if-no-files-found: error
 
   release:
@@ -230,12 +244,38 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $asset = Join-Path 'artifacts' $env:INSTALLER
-          $prerelease = if ($env:VERSION -match '-') { @('--prerelease') } else { @() }
+          [string[]]$assets = @(Join-Path 'artifacts' $env:INSTALLER)
+
+          [string[]]$prerelease = @()
+          if ($env:VERSION -match '-') {
+              $prerelease = @('--prerelease')
+          }
+
+          # **The update metadata ships on stable releases only.** electron-builder writes
+          # `latest.yml` for every version — its channel comes from the publish config, not from the
+          # `-beta.1` on the version — so excluding pre-releases is done here, by not attaching it.
+          # A pre-release then carries the installer alone and no client can resolve an update from
+          # it, which is belt-and-braces with the `AllowPrerelease = false` the app sets: GitHub's
+          # `/releases/latest` already skips pre-releases, and this makes it moot if it ever did not.
+          if ($prerelease) {
+              Write-Host "Pre-release: publishing the installer only, no update metadata."
+          }
+          else {
+              $assets += (Get-ChildItem 'artifacts' -Filter *.blockmap | ForEach-Object FullName)
+              $assets += (Join-Path 'artifacts' 'latest.yml')
+          }
+
+          foreach ($asset in $assets) {
+              if (-not (Test-Path $asset)) {
+                  throw "Release asset $asset is missing from the downloaded artifact."
+              }
+          }
+
+          Write-Host ("Publishing: " + (($assets | Split-Path -Leaf) -join ', '))
 
           gh release create $env:TAG `
               --title "ACT $env:TAG" `
               --notes-file '${{ steps.notes.outputs.path }}' `
               --verify-tag `
               @prerelease `
-              $asset
+              @assets

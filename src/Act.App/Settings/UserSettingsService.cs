@@ -30,6 +30,8 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
 
     public bool CloseToTray => current.CloseToTray;
 
+    public UpdatePolicy Updates => current.Updates;
+
     public bool Telemetry => current.Telemetry;
 
     public string InstallId => current.InstallId;
@@ -289,6 +291,14 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
             return;
 
         Update(settings => settings.Notifications = notifications);
+    }
+
+    public void SetUpdates(UpdatePolicy updates)
+    {
+        if (updates == current.Updates)
+            return;
+
+        Update(settings => settings.Updates = updates);
     }
 
     public void SetCloseToTray(bool closeToTray)

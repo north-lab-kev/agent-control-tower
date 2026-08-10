@@ -22,10 +22,11 @@ public sealed class ElectronNotifier(DesktopShell shell, DeepLinkRouter links) :
         });
     }
 
-    private async Task OpenAsync(Guid taskId)
+    private async Task OpenAsync(Guid? taskId)
     {
         await shell.RevealAsync();
 
-        links.Open(taskId);
+        if (taskId is { } card)
+            links.Open(card);
     }
 }

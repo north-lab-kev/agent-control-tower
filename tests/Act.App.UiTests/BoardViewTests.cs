@@ -87,6 +87,7 @@ public class BoardViewTests : ComponentTest
         cut.Find("div.cardfilter input.box").Input("widget");
 
         cut.FindAll("div.col .hiddenattn").Should().ContainSingle();
+        cut.Find("div.col .hiddenattn").TextContent.Should().Contain("1 hidden");
     }
 
     [Fact]

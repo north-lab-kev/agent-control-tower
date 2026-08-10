@@ -60,7 +60,7 @@
                     @if (hidden > 0)
                     {
                         <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" IsPill="true"
-                                     Text="@Text.Format(Strings.Board_HiddenAttention, hidden)"
+                                     Text="@Text.Format(Text.Plural(hidden, Strings.Board_HiddenAttention_One, Strings.Board_HiddenAttention_Many), hidden)"
                                      class="hiddenattn" title="@Strings.Board_HiddenAttention_Tip" />
                     }
 

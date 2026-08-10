@@ -18,6 +18,11 @@ public sealed class UserSettings
 
     public bool CloseToTray { get; set; } = true;
 
+    // How far ACT may go on its own towards a newer version — see `UpdatePolicy`. Desktop-only in
+    // effect: a browser tab cannot replace its own installer, so the updater there is a no-op and
+    // the setting is hidden.
+    public UpdatePolicy Updates { get; set; } = UpdatePolicy.NotifyAndDownload;
+
     // The opt-out for the cloud usage metrics, read on every capture rather than at startup so the
     // switch takes effect the moment it moves — see `ConsentedTelemetrySink`.
     public bool Telemetry { get; set; } = true;

@@ -492,6 +492,54 @@
   <data name="Settings_Group_System" xml:space="preserve">
     <value>Système</value>
   </data>
+  <data name="Settings_Group_Updates" xml:space="preserve">
+    <value>Mises à jour</value>
+  </data>
+  <data name="Settings_Version" xml:space="preserve">
+    <value>Cette copie d'ACT</value>
+  </data>
+  <data name="Settings_Updates" xml:space="preserve">
+    <value>Mises à jour automatiques</value>
+  </data>
+  <data name="Settings_Updates_Hint" xml:space="preserve">
+    <value>ACT cherche une version plus récente sur GitHub toutes les quelques heures. Les préversions ne sont jamais proposées.</value>
+  </data>
+  <data name="Settings_Updates_Download" xml:space="preserve">
+    <value>Télécharger discrètement, installer à la sortie</value>
+  </data>
+  <data name="Settings_Updates_NotifyOnly" xml:space="preserve">
+    <value>M'avertir, télécharger sur demande</value>
+  </data>
+  <data name="Settings_Updates_Off" xml:space="preserve">
+    <value>Ne jamais vérifier</value>
+  </data>
+  <data name="Settings_Updates_Check" xml:space="preserve">
+    <value>Vérifier</value>
+  </data>
+  <data name="Settings_Updates_Fetch" xml:space="preserve">
+    <value>Télécharger</value>
+  </data>
+  <data name="Settings_Updates_Idle" xml:space="preserve">
+    <value>Aucune vérification des mises à jour.</value>
+  </data>
+  <data name="Settings_Updates_Checking" xml:space="preserve">
+    <value>Vérification…</value>
+  </data>
+  <data name="Settings_Updates_UpToDate" xml:space="preserve">
+    <value>Il s'agit de la version la plus récente.</value>
+  </data>
+  <data name="Settings_Updates_Available" xml:space="preserve">
+    <value>La version {0} est disponible.</value>
+  </data>
+  <data name="Settings_Updates_Downloading" xml:space="preserve">
+    <value>Téléchargement de la version {0} — {1} %.</value>
+  </data>
+  <data name="Settings_Updates_Ready" xml:space="preserve">
+    <value>La version {0} est téléchargée et s'installera à votre prochaine sortie d'ACT.</value>
+  </data>
+  <data name="Settings_Updates_Unavailable" xml:space="preserve">
+    <value>Impossible de joindre le flux de mises à jour. ACT réessaiera plus tard.</value>
+  </data>
   <data name="Settings_Group_Agents" xml:space="preserve">
     <value>Agents</value>
   </data>
@@ -558,6 +606,18 @@
   <data name="Notify_ReadyForReview" xml:space="preserve">
     <value>Prêt pour révision</value>
   </data>
+  <data name="Notify_UpdateAvailable" xml:space="preserve">
+    <value>Une mise à jour d'ACT est disponible</value>
+  </data>
+  <data name="Notify_UpdateAvailable_Body" xml:space="preserve">
+    <value>Version {0}. Téléchargez-la depuis les paramètres quand vous voulez.</value>
+  </data>
+  <data name="Notify_UpdateReady" xml:space="preserve">
+    <value>Une mise à jour d'ACT est prête</value>
+  </data>
+  <data name="Notify_UpdateReady_Body" xml:space="preserve">
+    <value>La version {0} s'installera à votre prochaine sortie d'ACT.</value>
+  </data>
   <data name="Notify_Body" xml:space="preserve">
     <value>#{0} · {1}</value>
   </data>
@@ -573,6 +633,12 @@
   <data name="Settings_CloseToTray_Hint" xml:space="preserve">
     <value>Fermer la fenêtre laisse ACT actif derrière son icône; les agents continuent. Quittez depuis cette icône.</value>
   </data>
+  <data name="Tray_Tooltip_One" xml:space="preserve">
+    <value>{0} — {1} tâche en attente de votre intervention</value>
+  </data>
+  <data name="Tray_Tooltip_Many" xml:space="preserve">
+    <value>{0} — {1} tâches en attente de votre intervention</value>
+  </data>
   <data name="Tray_Open" xml:space="preserve">
     <value>Ouvrir ACT</value>
   </data>
@@ -585,11 +651,20 @@
   <data name="Tray_ExitDetailScheduled" xml:space="preserve">
     <value>Les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
   </data>
-  <data name="Tray_ExitDetailRunning" xml:space="preserve">
-    <value>{0} tâche(s) en cours seront arrêtées.</value>
+  <data name="Tray_ExitDetailRunning_One" xml:space="preserve">
+    <value>{0} tâche en cours sera arrêtée.</value>
   </data>
-  <data name="Tray_ExitDetailBoth" xml:space="preserve">
-    <value>{0} tâche(s) en cours seront arrêtées, et les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
+  <data name="Tray_ExitDetailRunning_Many" xml:space="preserve">
+    <value>{0} tâches en cours seront arrêtées.</value>
+  </data>
+  <data name="Tray_ExitDetailBoth_One" xml:space="preserve">
+    <value>{0} tâche en cours sera arrêtée, et les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
+  </data>
+  <data name="Tray_ExitDetailBoth_Many" xml:space="preserve">
+    <value>{0} tâches en cours seront arrêtées, et les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
+  </data>
+  <data name="Tray_ExitDetailUpdate" xml:space="preserve">
+    <value>Une mise à jour d'ACT déjà téléchargée s'installera à votre sortie.</value>
   </data>
   <data name="Tray_ExitYes" xml:space="preserve">
     <value>Quitter</value>
@@ -852,14 +927,20 @@
   <data name="Archive_Clear" xml:space="preserve">
     <value>Vider les archives</value>
   </data>
-  <data name="Archive_ClearConfirm" xml:space="preserve">
-    <value>Supprimer définitivement les {0} tâche(s) archivée(s) ? Cette action est irréversible.</value>
+  <data name="Archive_ClearConfirm_One" xml:space="preserve">
+    <value>Supprimer définitivement la tâche archivée ? Cette action est irréversible.</value>
+  </data>
+  <data name="Archive_ClearConfirm_Many" xml:space="preserve">
+    <value>Supprimer définitivement les {0} tâches archivées ? Cette action est irréversible.</value>
   </data>
   <data name="Archive_ClearYes" xml:space="preserve">
     <value>Supprimer définitivement</value>
   </data>
-  <data name="Task_DeleteFollowUps" xml:space="preserve">
-    <value>Cette tâche a {0} tâche(s) de suivi. Les archiver aussi ?</value>
+  <data name="Task_DeleteFollowUps_One" xml:space="preserve">
+    <value>Cette tâche a {0} tâche de suivi. L'archiver aussi ?</value>
+  </data>
+  <data name="Task_DeleteFollowUps_Many" xml:space="preserve">
+    <value>Cette tâche a {0} tâches de suivi. Les archiver aussi ?</value>
   </data>
   <data name="Task_DeleteWithFollowUps" xml:space="preserve">
     <value>Archiver avec les suivis</value>
@@ -999,8 +1080,11 @@
   <data name="Board_ColumnNoMatch" xml:space="preserve">
     <value>aucun résultat</value>
   </data>
-  <data name="Board_HiddenAttention" xml:space="preserve">
-    <value>{0} masquée(s)</value>
+  <data name="Board_HiddenAttention_One" xml:space="preserve">
+    <value>{0} masquée</value>
+  </data>
+  <data name="Board_HiddenAttention_Many" xml:space="preserve">
+    <value>{0} masquées</value>
   </data>
   <data name="Board_HiddenAttention_Tip" xml:space="preserve">
     <value>Des tâches de cette colonne demandent votre attention mais ne correspondent pas au filtre.</value>

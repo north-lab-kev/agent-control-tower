@@ -57,6 +57,7 @@ public static class TelemetryEvents
             [TelemetryProperties.KeepAwake] = settings.KeepAwake,
             [TelemetryProperties.Notifications] = settings.Notifications,
             [TelemetryProperties.CloseToTray] = settings.CloseToTray,
+            [TelemetryProperties.Updates] = settings.Updates,
             [TelemetryProperties.PreventConcurrentWorkingDir] = settings.PreventConcurrentWorkingDir,
             [TelemetryProperties.MaxConcurrent] = settings.MaxConcurrent,
             [TelemetryProperties.AutoExecutionPaused] = settings.AutoExecutionPaused,

@@ -5,6 +5,7 @@ using Act.App.Desktop;
 using Act.App.Notifications;
 using Act.App.Sessions;
 using Act.App.Settings;
+using Act.App.Updates;
 using Act.App.Usage;
 using Act.Core.Abstractions;
 using Act.Core.Model;
@@ -69,6 +70,7 @@ public abstract class ComponentTest : BunitContext, IAsyncLifetime
         Services.AddSingleton<IExecutableProbe>(Probe);
         Services.AddSingleton<IDesktopBridge>(Desktop);
         Services.AddSingleton<INotifier>(Notifier);
+        Services.AddSingleton<IUpdater>(Updater);
         Services.AddSingleton<ITelemetrySink>(Telemetry);
         Services.AddSingleton<ISleepInhibitor>(Sleep);
         Services.AddSingleton<IHookEndpoint>(new StubHookEndpoint());
@@ -89,6 +91,11 @@ public abstract class ComponentTest : BunitContext, IAsyncLifetime
         Services.AddSingleton<NotificationDispatcher>();
         Services.AddSingleton<SessionLauncher>();
         Services.AddSingleton<UsageState>();
+
+        // Registered but never started: the settings page injects both, and a pump that ran here
+        // would put an update check behind every component test that happens to render it.
+        Services.AddSingleton<UpdateState>();
+        Services.AddSingleton<UpdatePump>();
         Services.AddSingleton<TerminalGeometry>();
         Services.AddSingleton<QueueRunner>();
         Services.AddSingleton<CardCompleter>();
@@ -134,6 +141,8 @@ public abstract class ComponentTest : BunitContext, IAsyncLifetime
 
     internal RecordingNotifier Notifier { get; } = new();
 
+    internal FakeUpdater Updater { get; } = new();
+
     internal RecordingTelemetrySink Telemetry { get; } = new();
 
     internal FakeSleepInhibitor Sleep { get; } = new();
@@ -164,6 +173,8 @@ public abstract class ComponentTest : BunitContext, IAsyncLifetime
     internal FollowUpService FollowUps => Services.GetRequiredService<FollowUpService>();
 
     internal UsageState Usage => Services.GetRequiredService<UsageState>();
+
+    internal UpdateState Updates => Services.GetRequiredService<UpdateState>();
 
     internal BunitNavigationManager Navigation => Services.GetRequiredService<BunitNavigationManager>();
 

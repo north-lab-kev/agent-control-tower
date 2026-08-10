@@ -72,6 +72,52 @@
                 </RadzenStack>
             </RadzenFieldset>
 
+            <RadzenFieldset Text="@Strings.Settings_Group_Updates">
+                <RadzenStack Gap="1rem">
+                    @* Shown in both modes, and the only place ACT states its own version — a bug
+                       report that has to guess it is a bug report you cannot act on. *@
+                    <RadzenStack Gap="0.1rem">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Version" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@Version" class="hint path" />
+                    </RadzenStack>
+
+                    @* Desktop-only, like close-to-tray: a browser tab cannot replace its own
+                       installer, so there is nothing here for the switch to govern. *@
+                    @if (IsDesktop)
+                    {
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                     JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Updates" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Updates_Hint" class="hint" />
+                            </RadzenStack>
+                            <RadzenDropDown TValue="UpdatePolicy" Value="Updates" ValueChanged="OnUpdatesChanged"
+                                            Data="UpdateChoices" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="false" class="control" />
+                        </RadzenStack>
+
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                     JustifyContent="JustifyContent.SpaceBetween" Gap="1rem" class="logrow updaterow">
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@UpdateSummary" class="hint" />
+
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                @if (CanDownloadUpdate)
+                                {
+                                    <RadzenButton Icon="download" Text="@Strings.Settings_Updates_Fetch"
+                                                  Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                                  Variant="Variant.Outlined" Click="DownloadUpdate" />
+                                }
+
+                                <RadzenButton Icon="refresh" Text="@Strings.Settings_Updates_Check"
+                                              Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                              Variant="Variant.Outlined" Disabled="@UpdateStatus.IsBusy"
+                                              Click="CheckForUpdate" />
+                            </RadzenStack>
+                        </RadzenStack>
+                    }
+                </RadzenStack>
+            </RadzenFieldset>
+
             <RadzenFieldset Text="@Strings.Settings_Group_Appearance">
                 <RadzenStack Gap="1rem">
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"

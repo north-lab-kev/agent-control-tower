@@ -2441,12 +2441,58 @@ as `electron.app.Electron`.
   and the installer's `appId`
   is the **same string** — the NSIS shortcut is what maps the id to the product
   name, so a mismatch there would leave the packaged build no better off.
+  - **They did not match until auto-update forced the issue.** ElectronNET's targets pass
+    `-c.appId "$(ElectronPackageId)"` on the electron-builder command line, and a CLI `-c` overrides
+    the value in `electron-builder.json`; unset, `ElectronPackageId` defaults to the project name,
+    so v0.0.1 shipped as `act-app` while the running app claimed `com.northlabkev.act`. It is now
+    set explicitly in `Act.App.csproj`. **This is a one-way door:** NSIS derives its uninstall key
+    from the appId, so changing it again after auto-update ships would install a second copy beside
+    the first rather than upgrade it. v0.0.1 has to be uninstalled by hand once; nothing after it
+    does.
 - **Unpackaged runs still show the raw id**, because a `dotnet run` has no
   Start-menu shortcut to resolve a name from. Accepted rather than fixed: the
   alternative is ACT writing a display-name key into the user's registry on every
   machine it runs on, which is an installer's job, not a dev session's.
 - The icon rides the notification itself (`icon.ico`, the same file the window and
   tray use) and therefore works in both modes.
+
+### Updates — how a new version reaches an installed copy
+
+`electron-updater` (already a runtime dependency of the Electron host) polls the repository's GitHub
+releases; the user-facing half is the *Automatic updates* setting above. The mechanics are all in
+what gets **published**, and two of them are counter-intuitive enough to write down.
+
+- **A `publish` block in `electron-builder.json` is what makes any of it possible.** It is what makes
+  electron-builder write `latest.yml` beside the installer and embed `app-update.yml` into the
+  package — and the embedded file is the *only* way the feed reaches the updater, because
+  Electron.NET's bridge exposes `getFeedURL` and no setter. `owner` and `repo` are spelled out
+  because the generated `package.json` has no `repository` field to infer them from. Nothing is
+  uploaded by electron-builder: update files are written whatever the publish policy is
+  (`PublishManager.artifactCreated`), and the release workflow attaches them with `gh`.
+- **Pre-releases are excluded twice over, and both are needed.**
+  1. **`AllowPrerelease = false`, forced on every run.** `AppUpdater`'s constructor runs
+     `allowPrerelease = hasPrereleaseComponents(currentVersion)`, quietly overriding its own `false`
+     default — so a `0.1.0-beta.1` install tracks betas unless told otherwise. `AllowDowngrade`
+     stays off beside it, so a beta is never walked back to an older stable.
+  2. **A pre-release release carries no update metadata.** electron-builder writes `latest.yml` for
+     *every* version — the channel comes from the publish config, not from the `-beta.1` on the
+     version — so the exclusion is done in the release job, which attaches the `.yml` and the
+     `.blockmap` only when the version is stable. GitHub's `/releases/latest` already skips
+     pre-releases; this makes it moot if it ever stops.
+
+  The result for a beta tester: they sit still until a stable version semver-greater than their
+  build appears, and then roll forward to it. **Betas are a dead end by design.**
+- **Unsigned is fine, for now.** `NsisUpdater.verifySignature` returns null and skips when
+  `app-update.yml` carries no `publisherName`; HTTPS to GitHub plus the sha512 in `latest.yml`
+  covers integrity. Signing is worth doing, separately.
+- **Two bridge hazards are worked around in `ElectronUpdater`, not endured.** The bridge's
+  `downloadUpdate` handler awaits with no `.catch`, so a failed download never emits its completion
+  and the awaiting task would hang for the life of the process — every call is bounded by a timeout.
+  And `UpdateCheckResult` drops `isUpdateAvailable` crossing the bridge, so availability is read
+  from the `update-available` / `update-not-available` events instead, with the completed check used
+  only to bound the wait.
+- **Development is quiet by construction.** `isUpdaterActive()` is false for an unpacked build, so a
+  `dotnet run` resolves its check with nothing and reports *could not reach the feed*.
 
 ### Shell caveat (build note)
 
@@ -2726,6 +2772,17 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     way back and nothing else — sessions belong to the registry, not to a view, so agents
     keep working across the gap and the terminal re-attaches. The switch is hidden in browser
     mode, where there is no window to close and no tray to close it into.
+    - **The tray tooltip carries the waiting count** — `Agent Control Tower — 3 tasks
+      waiting for you`, with a **separate singular wording** per language (`1 task waiting
+      for you`) rather than a `task(s)` that reads as unfinished. It falls back to the bare
+      name when nothing is waiting, because a zero in a tooltip reads as a number worth
+      checking — which is also what spares the plural from having to answer for zero, where
+      English and French disagree. Counted with `NotificationTrigger`
+      rather than by column, so the tooltip, the toast and the blink can never disagree about
+      what "the ball is in your court" means. **Not `app.setBadgeCount`:** that is macOS and
+      Linux-Unity only, its Windows counterpart `setOverlayIcon` is not in the Electron.NET
+      bridge, and with close-to-tray on there is no taskbar button to hang an overlay from
+      anyway — the tray icon is the only surface that exists at the moment the count matters.
     - **Exit lives on the tray icon, behind a confirmation** that names what is lost: the
       running tasks it will stop (with a count, when there are any) and the scheduled tasks
       that will not run while ACT is closed. It is a **native message box**, because the
@@ -2734,6 +2791,24 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
       back to carry the question — being shown what is about to stop is no bad thing.
       Confirming ends every live session first: the confirmation promised it, and an agent
       must not outlive the app supervising it.
+  - **Automatic updates** (*Updates*, desktop-only) is a three-way rather than a switch, because
+    "check but leave the download to me" is a position people hold — a metered connection makes an
+    unasked hundred megabytes a real cost — and it is not the same position as wanting no updates.
+    **Download quietly, install on exit** is the default; **Tell me, download when I ask** surfaces
+    the version and offers a *Download* button beside it; **Never check** reaches the network not at
+    all. The section also states **the running version**, in both shells and unconditionally — it is
+    the one thing a bug report has to quote and ACT stated it nowhere until now.
+    - **Applied on the way out, never mid-flight.** ACT supervises long-running agents, so an update
+      that restarted the app to install itself would stop work the user did not agree to stop. The
+      tray *Exit* installs instead of quitting when one is downloaded, after ending the sessions —
+      the confirmation promised that and the promise still holds — and says so in its detail line.
+      `AutoInstallOnAppQuit` is left on underneath as the catch-all for closing the last window with
+      close-to-tray off, which never passes through that path; `BaseUpdater.install` ignores whichever
+      of the two arrives second.
+    - **A check that fails is not an error.** Offline, a 404, a feed that does not exist yet: all of
+      them read as *Could not reach the update feed. ACT will try again later*, never as *up to
+      date*. Collapsing the two is the lie that leaves someone on an old build believing otherwise,
+      which is why `UpdateCheck` carries `Completed` separately from the version.
   - **Help improve ACT** (*Diagnostics*, on by default) is the opt-out for anonymous usage
     data and crash reports sent to a cloud telemetry service. **On** by default, because a
     solo-maintained tool learns what to fix from the installs it never sees; one switch
@@ -2803,6 +2878,21 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   `$0.74` and `Mar 3 09:00`. Changing the language **reloads the page** (the whole
   render tree must re-run under the new culture); theme and density apply in
   place.
+  - **A counted phrase ships as a `_One`/`_Many` pair**, picked by `Text.Plural`.
+    `task(s)` reads as a string nobody finished, and French is worse off than English
+    for it — the count reaches the adjective and the verb too (`1 tâche en cours
+    **sera arrêtée**` against `2 tâches en cours **seront arrêtées**`), so a
+    parenthetical `(s)` cannot be right there at any count.
+  - **Singular at one only, and zero belongs to the caller.** English wants
+    "0 tasks" where French wants "0 tâche", so a shared rule would be wrong in one of
+    them; every caller establishes the count is non-zero first, because a phrase
+    counting nothing is a phrase not worth showing.
+  - A language that does not inflect keeps both halves anyway — `Board_HiddenAttention`
+    is `{0} hidden` twice in English and `masquée`/`masquées` in French. The pair is a
+    property of the *key*, not of one language, and `TextPluralTests` sweeps the resx
+    to pin it: every `_One` has a `_Many`, both resolve in every shipped language,
+    each half carries the same placeholders as its translation, and no singular
+    reaches for an argument its plural never names.
 
 ---
 

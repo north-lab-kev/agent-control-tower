@@ -33,6 +33,13 @@ public partial class ArchiveView(
 
     private IReadOnlyList<Card> Rows => CardSearch.Filter(board.Archived, query);
 
+    // Named rather than composed at the call site so the wording the only irreversible action asks
+    // with can be asserted: Radzen builds `Confirm` from a render fragment, so the message never
+    // reaches the dialog parameters a test can read back.
+    internal string PurgeQuestion => Text.Format(
+        Text.Plural(board.Archived.Count, Strings.Archive_ClearConfirm_One, Strings.Archive_ClearConfirm_Many),
+        board.Archived.Count);
+
     protected override void OnInitialized() => board.Changed += OnChanged;
 
     // Once: a cascading value changing must not throw away what the user has typed since.
@@ -78,7 +85,7 @@ public partial class ArchiveView(
             return;
 
         var confirmed = await dialogService.Confirm(
-            Text.Format(Strings.Archive_ClearConfirm, board.Archived.Count),
+            PurgeQuestion,
             Strings.Archive_Clear,
             new ConfirmOptions
             {
