@@ -2465,10 +2465,23 @@ what gets **published**, and two of them are counter-intuitive enough to write d
 - **A `publish` block in `electron-builder.json` is what makes any of it possible.** It is what makes
   electron-builder write `latest.yml` beside the installer and embed `app-update.yml` into the
   package — and the embedded file is the *only* way the feed reaches the updater, because
-  Electron.NET's bridge exposes `getFeedURL` and no setter. `owner` and `repo` are spelled out
-  because the generated `package.json` has no `repository` field to infer them from. Nothing is
-  uploaded by electron-builder: update files are written whatever the publish policy is
-  (`PublishManager.artifactCreated`), and the release workflow attaches them with `gh`.
+  Electron.NET's bridge exposes `getFeedURL` and no setter. Nothing is uploaded by electron-builder:
+  update files are written whatever the publish policy is (`PublishManager.artifactCreated`), and the
+  release workflow attaches them with `gh`.
+- **The provider is `generic`, pointed at GitHub's own asset route — and that is load-bearing.**
+  The obvious `github` provider **cannot package without a `GH_TOKEN`**. Electron.NET's targets never
+  pass `-p` to electron-builder, so `PublishManager` picks the policy itself and lands on
+  `onTagOrDraft`; its `isCi` is `require("ci-info")` — the module *object*, always truthy — so this
+  happens on a developer's machine as readily as on CI. It then constructs a publisher before
+  deciding it has nothing to upload, and `GitHubPublisher`'s constructor throws on a missing token.
+  `createPublisher` short-circuits `generic` to `null` ahead of all that, so packaging needs no
+  credential and makes no network call, while `latest.yml` and `app-update.yml` are still written —
+  `PublishManager` says so in as many words: *"file should be generated regardless of publish
+  state"*. `releases/latest/download/` resolves to the newest stable release and serves assets by
+  name, which is where the `github` provider would have arrived anyway, and `GenericProvider`
+  resolves the `.exe` and `.blockmap` from that same base. **ACT holds no publishing token: the only
+  token in the pipeline is the ephemeral `secrets.GITHUB_TOKEN` the release job hands to `gh`, which
+  cannot be avoided because creating a release requires one.**
 - **Pre-releases are excluded twice over, and both are needed.**
   1. **`AllowPrerelease = false`, forced on every run.** `AppUpdater`'s constructor runs
      `allowPrerelease = hasPrereleaseComponents(currentVersion)`, quietly overriding its own `false`
@@ -2477,7 +2490,7 @@ what gets **published**, and two of them are counter-intuitive enough to write d
   2. **A pre-release release carries no update metadata.** electron-builder writes `latest.yml` for
      *every* version — the channel comes from the publish config, not from the `-beta.1` on the
      version — so the exclusion is done in the release job, which attaches the `.yml` and the
-     `.blockmap` only when the version is stable. GitHub's `/releases/latest` already skips
+     `.blockmap` only when the version is stable. The `releases/latest/download` route already skips
      pre-releases; this makes it moot if it ever stops.
 
   The result for a beta tester: they sit still until a stable version semver-greater than their

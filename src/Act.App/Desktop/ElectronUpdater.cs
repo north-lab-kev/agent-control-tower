@@ -8,14 +8,18 @@ namespace Act.App.Desktop;
 // **Pre-releases are forced off.** `AppUpdater`'s constructor runs
 // `allowPrerelease = hasPrereleaseComponents(currentVersion)`, which quietly overrides its own
 // `false` default — so a `0.1.0-beta.1` install tracks betas unless told otherwise, and the setting
-// that says otherwise has to be written on every run. With it off the provider asks GitHub for
-// `/releases/latest`, which skips pre-releases, and a beta simply waits for the stable that
+// that says otherwise has to be written on every run. With it off a pre-release version named in the
+// feed is refused, and the feed is not offering one anyway: `latest.yml` is served from the
+// `releases/latest/download` route, which resolves to the newest *stable* release, and the release
+// job attaches the file to stable versions only. So a beta simply waits for the stable that
 // supersedes it. `AllowDowngrade` stays off so it is never walked backwards to an older stable.
 //
-// **Nothing here throws.** Until the repository is public every check answers 404, and offline is
-// forever a possibility; both are ordinary and both must look like "nothing new" rather than an
-// error the user has to dismiss. An unpacked development build is quieter still — `isUpdaterActive`
-// returns false there and the check resolves with nothing.
+// **Nothing here throws.** Until the repository is public every check answers 404 —
+// `GenericProvider.getLatestVersion` turns that into `ERR_UPDATER_CHANNEL_FILE_NOT_FOUND`, which
+// arrives as an `error` event, not as a rejected check — and offline is forever a possibility. Both
+// are ordinary and both must look like "nothing new" rather than an error the user has to dismiss.
+// An unpacked development build is quieter still — `isUpdaterActive` returns false there and the
+// check resolves with nothing.
 //
 // **Every call is bounded.** The bridge's `downloadUpdate` handler awaits with no `.catch`
 // (`.electron/api/autoUpdater.js`), so a failed download never emits its completion and the task

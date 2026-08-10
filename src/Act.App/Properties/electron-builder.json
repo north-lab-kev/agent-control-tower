@@ -22,14 +22,24 @@
   // is the *only* way the feed reaches electron-updater — Electron.NET's bridge exposes
   // `getFeedURL` and no setter, so it cannot be pointed anywhere at runtime.
   //
-  // `owner` and `repo` are spelled out because the generated `package.json` carries no `repository`
-  // field to infer them from. Nothing is uploaded from here: the update files are written whatever
-  // the publish policy is, and the release workflow attaches them with `gh`.
+  // **`generic` rather than `github`, and that is not a detail.** electron-builder never receives a
+  // `-p` flag from Electron.NET's targets, so `PublishManager` resolves the policy itself and lands
+  // on `onTagOrDraft` — its `isCi` is `require("ci-info")`, the module object, so that branch is
+  // taken on every machine, not only on CI. A `github` provider is then *constructed*, and
+  // `GitHubPublisher`'s constructor throws when `GH_TOKEN` is unset. `generic` is short-circuited to
+  // `null` before any of that, so packaging needs no token and contacts nothing. **Do not switch
+  // this back to `github` to "match the repository": it buys nothing here and costs a token.**
+  //
+  // The URL is GitHub's own by-name asset route on the newest non-pre-release release, which is what
+  // the `github` provider resolves to anyway. `resolveFiles` reads the installer from the same base,
+  // so the `.exe` and the `.blockmap` are found beside the `.yml` the release job attaches.
+  //
+  // Nothing is uploaded from here: the update files are written whatever the publish policy is, and
+  // the release workflow attaches them with `gh`.
   "publish": [
     {
-      "provider": "github",
-      "owner": "north-lab-kev",
-      "repo": "agent-control-tower"
+      "provider": "generic",
+      "url": "https://github.com/north-lab-kev/agent-control-tower/releases/latest/download"
     }
   ],
   // Linux (AppImage + .deb) — décommenter pour l'activer ; doit être buildé sur Linux.
