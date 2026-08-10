@@ -2488,10 +2488,20 @@ what gets **published**, and two of them are counter-intuitive enough to write d
      default — so a `0.1.0-beta.1` install tracks betas unless told otherwise. `AllowDowngrade`
      stays off beside it, so a beta is never walked back to an older stable.
   2. **A pre-release release carries no update metadata.** electron-builder writes `latest.yml` for
-     *every* version — the channel comes from the publish config, not from the `-beta.1` on the
-     version — so the exclusion is done in the release job, which attaches the `.yml` and the
+     *every* version, so the exclusion is done in the release job, which attaches the `.yml` and the
      `.blockmap` only when the version is stable. The `releases/latest/download` route already skips
      pre-releases; this makes it moot if it ever stops.
+
+     **That "every version" is bought by `detectUpdateChannel: false`, and it is not the default.**
+     Left on, electron-builder reads a channel out of the version's pre-release tag —
+     `appInfo.channel` returns the first component, so `0.0.1-alpha.1` becomes `alpha` — and names
+     the file after it (`updateInfoBuilder`: `publishConfig.channel || "latest"`). The build then
+     emits `alpha.yml` and **no `latest.yml` at all**, which the release job's assertion catches as
+     "auto-update would be dead on arrival". The `github` provider silently ignored the derived
+     channel (`getResolvedPublishConfig` only applies it via `checkAndResolveOptions`, which exists
+     on the S3 classes alone), so this trap was invisible until the move to `generic`, which applies
+     it directly. One channel is what ACT wants: betas are excluded by withholding metadata, not by
+     giving testers a channel of their own.
 
   The result for a beta tester: they sit still until a stable version semver-greater than their
   build appears, and then roll forward to it. **Betas are a dead end by design.**

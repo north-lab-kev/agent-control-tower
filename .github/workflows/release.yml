@@ -161,7 +161,9 @@ jobs:
           # Asserted for the same reason as the installer, and it matters more: an installer with no
           # `latest.yml` looks like a perfectly good release and silently strands every copy already
           # installed, because that file is the only thing they poll. It appears only while the
-          # `publish` block is in `electron-builder.json`, so this is what catches its removal.
+          # `publish` block is in `electron-builder.json` and only under this name while
+          # `detectUpdateChannel` is off there, so this is what catches either one being disturbed —
+          # as it did when a pre-release quietly emitted `alpha.yml` instead.
           if (-not (Test-Path "artifacts/desktop/win-x64/latest.yml")) {
               $found = (Get-ChildItem "artifacts/desktop/win-x64" | ForEach-Object Name) -join ", "
               throw "No latest.yml in artifacts/desktop/win-x64; auto-update would be dead on arrival. Found: $found"
@@ -258,8 +260,9 @@ jobs:
           }
 
           # **The update metadata ships on stable releases only.** electron-builder writes
-          # `latest.yml` for every version — its channel comes from the publish config, not from the
-          # `-beta.1` on the version — so excluding pre-releases is done here, by not attaching it.
+          # `latest.yml` for every version — `detectUpdateChannel: false` in `electron-builder.json`
+          # is what stops a `-beta.1` from renaming it to `beta.yml` — so excluding pre-releases is
+          # done here, by not attaching it.
           # A pre-release then carries the installer alone and no client can resolve an update from
           # it, which is belt-and-braces with the `AllowPrerelease = false` the app sets: GitHub's
           # `/releases/latest` already skips pre-releases, and this makes it moot if it ever did not.
