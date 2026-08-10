@@ -180,12 +180,3 @@ then `preview_start` with `{"url": "http://localhost:5290"}`. Both flags reach
 
   Finished code ships without comments; let clear names and small functions
   carry the meaning.
-
-<!--
-More build-time guidance to add:
-- architecture guardrails (dependency direction, ports-and-adapters)
-- domain vocabulary to use verbatim (cards, columns, badges, transitions, adapters, sources)
-- commands and workflow rules
-
-See docs/overview.md for the spec and docs/roadmap.md for the build sequence.
--->

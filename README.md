@@ -5,7 +5,8 @@
 **One board for every coding-agent session on your machine.**
 
 See all your Claude Code and Codex sessions at a glance, know instantly which
-one needs you, and keep your agents working around the clock.
+one needs you, and stage tasks in advance — scheduled to launch when a usage
+window opens, so none of it goes to waste.
 
 </div>
 
@@ -13,18 +14,19 @@ one needs you, and keep your agents working around the clock.
 
 ## Why ACT exists
 
-Coding agents made it cheap to run five tasks at once — and expensive to keep
+Coding agents made it cheap to run multiple tasks at once — and expensive to keep
 track of them. Each session lives in its own terminal, and none of them tells
 you what the others are doing. The result is a familiar set of problems:
 
 - **You can't see who needs you.** One agent is waiting on a permission prompt,
-  another asked a question twenty minutes ago, a third crashed — and all three
+  another asked a question twenty minutes ago, a third is waiting for your review — and all three
   look like idle terminal tabs until you alt-tab through every one of them.
-- **Waiting time is wasted time.** An agent parked on a question at 11 pm sits
-  idle all night. A usage window resets at 3 am and nothing is queued to use it.
-- **There is no record.** What was the original prompt? When did it block? How
-  many tokens has this task actually burned? A scrollback buffer is not an
-  answer.
+- **A waiting session is wasted time.** An agent parked on a question sits
+  idle until you notice it.
+- **Usage windows go to waste.** A token window resets with nothing queued to
+  use it, because there is nowhere to stage work in advance — ACT lets you
+  prepare tasks ahead and schedules their launch for when your usage window
+  becomes available.
 
 ACT is the control tower for that traffic. Every task is a card on a Kanban
 board — styled as an air-traffic **flight strip** — that moves itself through
@@ -35,6 +37,38 @@ badge on each card says exactly why it is where it is: `running`,
 
 The name doubles as the verb *to act*: the tool's whole job is helping you
 decide which session needs attention — and act on it.
+
+## Features
+
+- **A live board, not a process list.** Cards move themselves as the session
+  runs, driven by the agent's own lifecycle events. Amber blinks for a blocked
+  prompt, red for an error, calm blue for work awaiting your review.
+- **The real terminal, embedded.** ACT hosts each agent's actual interactive
+  TUI — answer a permission prompt, reply to a question, or steer the session
+  without leaving the board.
+- **Prepare now, run later.** The board lets you draft and stage as many tasks
+  as you want without executing anything right away — launch them yourself, or
+  hand them to the scheduler.
+- **Scheduling that knows your usage limits.** Queue tasks for *now*, *the next
+  5-hour window*, or a specific time. The runner watches your live usage and
+  holds the queue when a window is nearly spent, so tasks launch when your
+  token window becomes available instead of dying mid-run.
+- **Native OS notifications.** When you're not watching the board, the toast is
+  the "needs you" signal — a blocked prompt, a finished task, a usage limit
+  reached. Clicking it drops you straight into that card's terminal.
+- **Task templates.** Save a recurring shape of work — "bugfix on repo X,
+  Codex, accept-edits" — with its prompt skeleton and launch config, and create
+  tasks from it in one click.
+- **Follow-up tasks.** Agents can spawn follow-up tasks onto the board (a plan
+  decomposing into implementation steps, a review handing off its leftovers),
+  with lineage and dependency ordering — and you still gate every launch.
+- **Attachments.** Hand a task screenshots, logs, or specs alongside its
+  prompt; the agent reads them right off your disk.
+- **A full account of every task.** Immutable original prompt, a timeline of
+  every transition, and live metrics: tokens in/out, context usage,
+  compactions, turns, tool calls.
+- **Local-first.** Everything runs on your machine — a single embedded
+  database file, no server, no account, no telemetry.
 
 ## Screenshots
 
@@ -53,35 +87,6 @@ decide which session needs attention — and act on it.
 *Every card keeps its full timeline — every launch, block, and hand-back:*
 
 ![Task timeline](docs/screenshots/timeline.png)
-
-## Features
-
-- **A live board, not a process list.** Cards move themselves as the session
-  runs, driven by the agent's own lifecycle events. Amber blinks for a blocked
-  prompt, red for an error, calm blue for work awaiting your review.
-- **The real terminal, embedded.** ACT hosts each agent's actual interactive
-  TUI — answer a permission prompt, reply to a question, or steer the session
-  without leaving the board.
-- **Scheduling that knows your usage limits.** Queue tasks for *now*, *the next
-  5-hour window*, or a specific time. The runner watches your live usage and
-  holds the queue when a window is nearly spent, so an overnight run resumes at
-  the reset instead of dying mid-task.
-- **Native OS notifications.** When you're not watching the board, the toast is
-  the "needs you" signal — a blocked prompt, a finished task, a usage limit
-  reached. Clicking it drops you straight into that card's terminal.
-- **Task templates.** Save a recurring shape of work — "bugfix on repo X,
-  Codex, accept-edits" — with its prompt skeleton and launch config, and create
-  tasks from it in one click.
-- **Follow-up tasks.** Agents can spawn follow-up tasks onto the board (a plan
-  decomposing into implementation steps, a review handing off its leftovers),
-  with lineage and dependency ordering — and you still gate every launch.
-- **Attachments.** Hand a task screenshots, logs, or specs alongside its
-  prompt; the agent reads them right off your disk.
-- **A full account of every task.** Immutable original prompt, a timeline of
-  every transition, and live metrics: tokens in/out, context usage,
-  compactions, turns, tool calls.
-- **Local-first.** Everything runs on your machine — a single embedded
-  database file, no server, no account, no telemetry.
 
 ## Supported agents
 
