@@ -35,7 +35,7 @@ WebApplication? host = null;
 if (runElectron)
 {
     builder.Services.AddActDesktopShell();
-    builder.UseElectron(args, () => host!.Services.GetRequiredService<DesktopShell>().StartAsync());
+    builder.UseElectron(args, StartDesktopAsync);
 }
 
 var app = builder.Build();
@@ -72,10 +72,6 @@ app.Services.GetRequiredService<TranscriptPump>().Start();
 app.Services.GetRequiredService<UsagePump>().Start();
 app.Services.GetRequiredService<RetentionPump>().Start();
 
-// Stands itself down in browser mode, where there is no installer to replace. Here rather than in
-// the desktop branch so the pump owns that decision and the composition root does not have to.
-app.Services.GetRequiredService<UpdatePump>().Start();
-
 // The terminals that died with the previous run come back here, and only once the host is actually
 // listening: a resumed agent posts its first hook within moments of starting, and the endpoint that
 // answers it is this app's. Not awaited — restoring several agents is several process spawns, and
@@ -91,6 +87,24 @@ async Task RestoreThenRunAsync()
     await app.Services.GetRequiredService<SessionRestorer>().RestoreAllAsync(app.Lifetime.ApplicationStopping);
 
     app.Services.GetRequiredService<QueueRunner>().Start();
+}
+
+// Everything Electron, in the one callback that means Electron is up. The update pump belongs here
+// and not beside the other pumps above, because `ElectronUpdater.Configure` writes
+// `Electron.AutoUpdater` properties and every one of those setters goes through the bridge socket —
+// which does not exist until this fires. Started earlier, the first write threw a
+// `NullReferenceException` on the startup thread and the packaged app died behind its own splash
+// screen with nothing on screen to say why. Browser mode never reaches this and needs nothing:
+// `BrowserUpdater.IsSupported` is false and the pump stands itself down.
+//
+// Not folded into `DesktopShell`, which is where it looks like it belongs: `ElectronNotifier` takes
+// a `DesktopShell`, so a shell that took the pump would close the loop
+// `INotifier -> DesktopShell -> UpdatePump -> INotifier` and the container refuses to build.
+async Task StartDesktopAsync()
+{
+    await host!.Services.GetRequiredService<DesktopShell>().StartAsync();
+
+    host!.Services.GetRequiredService<UpdatePump>().Start();
 }
 
 // Before everything: the two ports mean different things, and the guard is what says so — hooks
