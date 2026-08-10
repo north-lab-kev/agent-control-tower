@@ -43,10 +43,23 @@ public sealed class UpdatePump(
         if (!updater.IsSupported)
             return;
 
+        // Guarded because this runs inside the desktop shell's startup, and an update check is the
+        // least important thing happening there. `Configure` reaches into Electron, so a bridge that
+        // has moved under it throws — and unguarded that took the shell down with it, leaving a
+        // packaged ACT stuck on its splash screen. Nothing else here is allowed to cost the window.
+        try
+        {
+            updater.Configure();
+        }
+        catch (Exception error)
+        {
+            log.LogError(error, "The updater could not be configured; ACT will not check for updates this run.");
+
+            return;
+        }
+
         started = true;
         known = settings.Updates;
-
-        updater.Configure();
 
         settings.Changed += OnSettingsChanged;
 
@@ -151,8 +164,9 @@ public sealed class UpdatePump(
     {
         state.Publish(new UpdateStatus(UpdateStage.Downloading, version, 0, at));
 
-        var progress = new Progress<int>(percent =>
-            state.Publish(new UpdateStatus(UpdateStage.Downloading, version, percent, at)));
+        // Not a `Publish` of its own: a report can outlive the download it belongs to, and only the
+        // state can refuse a late one without a gap between deciding and writing.
+        var progress = new Progress<int>(percent => state.PublishProgress(version, percent));
 
         if (await updater.DownloadAsync(progress, cancellationToken))
         {

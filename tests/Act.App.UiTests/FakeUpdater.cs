@@ -25,10 +25,25 @@ internal sealed class FakeUpdater : IUpdater
 
     public bool DownloadSucceeds { get; set; } = true;
 
+    // What a bridge that has moved under `ElectronUpdater` looks like from here: `Configure` is the
+    // one call that touches Electron before anything is running, and it threw for real.
+    public Exception? ConfigureThrows { get; set; }
+
     // Reported before the download resolves, so a test can pin the progress the page renders.
     public int[] ProgressSteps { get; set; } = [];
 
-    public void Configure() => Configured++;
+    // Kept so a test can fire a report *after* the download resolved, which is not a contrivance:
+    // `Progress<T>` posts its callback rather than running it inline, so that is the ordinary
+    // arrival order and the one that used to bury the finished download.
+    public IProgress<int>? Reporter { get; private set; }
+
+    public void Configure()
+    {
+        Configured++;
+
+        if (ConfigureThrows is { } error)
+            throw error;
+    }
 
     public Task<UpdateCheck> CheckAsync(CancellationToken cancellationToken)
     {
@@ -40,6 +55,8 @@ internal sealed class FakeUpdater : IUpdater
     public Task<bool> DownloadAsync(IProgress<int> progress, CancellationToken cancellationToken)
     {
         Downloads++;
+
+        Reporter = progress;
 
         foreach (var percent in ProgressSteps)
             progress.Report(percent);

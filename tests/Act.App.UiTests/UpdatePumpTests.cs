@@ -75,6 +75,50 @@ public class UpdatePumpTests
         updater.Checks.Should().Be(0);
     }
 
+    // The pump starts from inside the desktop shell's startup, so an exception escaping `Start` is
+    // not "updates are broken" — it is a packaged ACT that never gets past its splash screen. That
+    // happened: `ElectronUpdater.Configure` threw a `NullReferenceException` because it ran before
+    // Electron's bridge existed. The ordering is fixed where it is started; this is the guarantee
+    // that a bridge moving again costs the feature and not the window.
+    [Fact]
+    public async Task A_updater_that_cannot_be_configured_does_not_take_the_shell_down()
+    {
+        updater.ConfigureThrows = new NullReferenceException("the bridge is not up yet");
+
+        await using var pump = Pump();
+
+        var start = () => pump.Start();
+
+        start.Should().NotThrow();
+
+        await Task.Delay(100);
+
+        updater.Configured.Should().Be(1, "it was tried once and not retried behind the user's back");
+        updater.Checks.Should().Be(0, "a pump that never configured must not go on to poll");
+        state.Current.Stage.Should().Be(UpdateStage.Idle);
+        notifier.Shown.Should().BeEmpty();
+    }
+
+    // The Settings page reaches the same pump, and its buttons must not resurrect a start that
+    // failed — `Check now` on an unconfigured updater is the crash again, on a click this time.
+    [Fact]
+    public async Task A_failed_start_leaves_the_settings_buttons_inert()
+    {
+        updater.ConfigureThrows = new NullReferenceException("the bridge is not up yet");
+
+        await using var pump = Pump();
+
+        pump.Start();
+
+        pump.CheckNow();
+        pump.DownloadNow();
+
+        await Task.Delay(100);
+
+        updater.Checks.Should().Be(0);
+        updater.Downloads.Should().Be(0);
+    }
+
     [Fact]
     public async Task Notify_only_finds_the_version_and_stops_there()
     {
@@ -160,6 +204,52 @@ public class UpdatePumpTests
         updater.Downloads.Should().Be(1);
 
         notifier.Shown.Should().ContainSingle().Which.Body.Should().Contain("1.2.0");
+    }
+
+    // The report that outlives its download. `Progress<T>` posts rather than runs, so this ordering
+    // is the normal one, not the unlucky one — and painted over `Ready` it does not heal, because a
+    // pass that finds a version already downloaded returns without touching the state again. The
+    // page would promise a download that finished and never mention the update waiting to install.
+    [Fact]
+    public async Task A_report_that_lands_after_the_download_does_not_bury_it()
+    {
+        updater.Answer = UpdateCheck.Found("1.2.0");
+        updater.ProgressSteps = [10, 60];
+
+        await using var pump = Pump();
+
+        pump.Start();
+
+        await Until(() => state.Current.Stage is UpdateStage.Ready);
+
+        updater.Reporter!.Report(60);
+
+        await Task.Delay(100);
+
+        state.Current.Stage.Should().Be(UpdateStage.Ready);
+        state.Current.Percent.Should().Be(100);
+    }
+
+    // The same arrival on the other branch. Less costly — the next pass retries a failed download —
+    // but "Downloading 60%" while nothing is downloading is a lie for up to six hours.
+    [Fact]
+    public async Task A_report_that_lands_after_a_failed_download_does_not_bury_it()
+    {
+        updater.Answer = UpdateCheck.Found("1.2.0");
+        updater.DownloadSucceeds = false;
+        updater.ProgressSteps = [10, 60];
+
+        await using var pump = Pump();
+
+        pump.Start();
+
+        await Until(() => state.Current.Stage is UpdateStage.Available);
+
+        updater.Reporter!.Report(60);
+
+        await Task.Delay(100);
+
+        state.Current.Stage.Should().Be(UpdateStage.Available);
     }
 
     // A notification about the app itself has no card behind it, which is why `TaskId` is nullable.

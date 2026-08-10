@@ -33,4 +33,32 @@ public sealed class UpdateState
 
         Changed?.Invoke();
     }
+
+    // **A percentage may only ever refine a download that is still running.** `Progress<T>` does not
+    // invoke its callback inline — it posts to a synchronization context or the thread pool — so a
+    // report routinely lands *after* the download it describes has already finished, and a plain
+    // `Publish` would then paint `Downloading 60%` over the `Ready` that followed it. That one does
+    // not heal: `UpdatePump.PassAsync` stops looking once a version is ready to install, so the
+    // settings page keeps promising a download that finished hours ago and the user is never told
+    // the update is waiting for them. The same arrival after a failed download buries `Available`.
+    //
+    // Decided under the write's own lock rather than by the caller, because a check outside it is a
+    // window: the reporting thread could pass the test and be preempted before it wrote.
+    public void PublishProgress(string version, int percent)
+    {
+        lock (gate)
+        {
+            if (current.Stage is not UpdateStage.Downloading || current.Version != version)
+                return;
+
+            var moved = current with { Percent = percent };
+
+            if (current == moved)
+                return;
+
+            current = moved;
+        }
+
+        Changed?.Invoke();
+    }
 }
