@@ -59,9 +59,11 @@ decide which session needs attention — and act on it.
 - **Task templates.** Save a recurring shape of work — "bugfix on repo X,
   Codex, accept-edits" — with its prompt skeleton and launch config, and create
   tasks from it in one click.
-- **Follow-up tasks.** Agents can spawn follow-up tasks onto the board (a plan
-  decomposing into implementation steps, a review handing off its leftovers),
-  with lineage and dependency ordering — and you still gate every launch.
+- **A built-in MCP server — agents spawn tasks themselves.** Every session is
+  wired to ACT over MCP, so an agent can create new tasks on the board: a plan
+  decomposes itself into implementation tasks, a review hands its leftovers to
+  a follow-up. Lineage and dependency ordering are tracked — and you still
+  gate every launch.
 - **Attachments.** Hand a task screenshots, logs, or specs alongside its
   prompt; the agent reads them right off your disk.
 - **A full account of every task.** Immutable original prompt, a timeline of
