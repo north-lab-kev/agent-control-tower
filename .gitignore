@@ -431,6 +431,9 @@ FodyWeavers.xsd
 
 # ---- ACT-specific ----
 
+# Persistent sandbox store used to stage the README screenshots
+.screenshot-store/
+
 # Electron.NET build output (bloat + secrets risk on go-public)
 obj/Host/
 bin/Host/

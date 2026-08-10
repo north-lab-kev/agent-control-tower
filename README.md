@@ -1,51 +1,124 @@
+<div align="center">
+
 # ACT — Agent Control Tower
 
-A column-based (Kanban) control surface that shows all your coding-agent
-sessions (Claude Code first, Codex later) and their states at a glance, so you
-can spot which ones need your attention. The name doubles as the verb *to act*:
-the tool's whole job is helping you decide which session needs attention — and
-act on it.
+**One board for every coding-agent session on your machine.**
 
-## Status
+See all your Claude Code and Codex sessions at a glance, know instantly which
+one needs you, and keep your agents working around the clock.
 
-Early scaffolding. The design is complete; implementation has not started. See:
+</div>
 
-- [docs/overview.md](docs/overview.md) — the full specification
-- [docs/roadmap.md](docs/roadmap.md) — the 16-step build plan
-- [docs/repository-structure.md](docs/repository-structure.md) — this layout, explained
+---
 
-## Tech stack
+## Why ACT exists
 
-| Layer | Choice |
-|---|---|
-| Runtime / UI | .NET 10 (LTS) + Blazor Server |
-| UI components | Radzen.Blazor (free) |
-| Desktop shell | Electron.NET (thin window) |
-| Data store | LiteDB (embedded, single-file) |
-| Ingestion | Pluggable multi-source (HTTP/command hooks, FileSystemWatcher, process signals, stream-json control channel) |
+Coding agents made it cheap to run five tasks at once — and expensive to keep
+track of them. Each session lives in its own terminal, and none of them tells
+you what the others are doing. The result is a familiar set of problems:
 
-## Architecture
+- **You can't see who needs you.** One agent is waiting on a permission prompt,
+  another asked a question twenty minutes ago, a third crashed — and all three
+  look like idle terminal tabs until you alt-tab through every one of them.
+- **Waiting time is wasted time.** An agent parked on a question at 11 pm sits
+  idle all night. A usage window resets at 3 am and nothing is queued to use it.
+- **There is no record.** What was the original prompt? When did it block? How
+  many tokens has this task actually burned? A scrollback buffer is not an
+  answer.
 
-Ports-and-adapters (hexagonal). `Act.Core` depends on nothing infrastructural;
-adapters, infrastructure, and UI all point *inward* to its `Abstractions/` interfaces.
-**The project boundaries are the architecture.**
+ACT is the control tower for that traffic. Every task is a card on a Kanban
+board — styled as an air-traffic **flight strip** — that moves itself through
+*Preparing → Ready → Executing → Your turn → Completed* as the session runs. A
+badge on each card says exactly why it is where it is: `running`,
+`needs permission`, `needs answer`, `error`, `to review`. One glance separates
+"something is stuck" from "something is done", without reading a word.
 
-## Development
+The name doubles as the verb *to act*: the tool's whole job is helping you
+decide which session needs attention — and act on it.
 
-**Prerequisites:** the **.NET 10 SDK** and **Node.js** (LTS). Node is required
-because the Electron desktop shell stages its runtime during the build — see
-[CONTRIBUTING.md](CONTRIBUTING.md#prerequisites) for one-line install commands
-per OS.
+## Screenshots
 
-```bash
-dotnet run --project src/Act.App --launch-profile http
-```
+*The board — every session, its state, and whose turn it is:*
 
-Serves the browser dev loop at `http://localhost:5210`. The Electron.NET desktop
-build is a packaging step over the same app (`scripts/package-desktop.ps1`).
+![Main board](docs/screenshots/board.png)
+
+*Creating a task — prompt, agent, model, permissions, and schedule in one form:*
+
+![Task creation](docs/screenshots/task-creation.png)
+
+*Inside a task — the agent's real terminal, hosted by ACT:*
+
+![Task terminal](docs/screenshots/terminal.png)
+
+*Every card keeps its full timeline — every launch, block, and hand-back:*
+
+![Task timeline](docs/screenshots/timeline.png)
+
+## Features
+
+- **A live board, not a process list.** Cards move themselves as the session
+  runs, driven by the agent's own lifecycle events. Amber blinks for a blocked
+  prompt, red for an error, calm blue for work awaiting your review.
+- **The real terminal, embedded.** ACT hosts each agent's actual interactive
+  TUI — answer a permission prompt, reply to a question, or steer the session
+  without leaving the board.
+- **Scheduling that knows your usage limits.** Queue tasks for *now*, *the next
+  5-hour window*, or a specific time. The runner watches your live usage and
+  holds the queue when a window is nearly spent, so an overnight run resumes at
+  the reset instead of dying mid-task.
+- **Native OS notifications.** When you're not watching the board, the toast is
+  the "needs you" signal — a blocked prompt, a finished task, a usage limit
+  reached. Clicking it drops you straight into that card's terminal.
+- **Task templates.** Save a recurring shape of work — "bugfix on repo X,
+  Codex, accept-edits" — with its prompt skeleton and launch config, and create
+  tasks from it in one click.
+- **Follow-up tasks.** Agents can spawn follow-up tasks onto the board (a plan
+  decomposing into implementation steps, a review handing off its leftovers),
+  with lineage and dependency ordering — and you still gate every launch.
+- **Attachments.** Hand a task screenshots, logs, or specs alongside its
+  prompt; the agent reads them right off your disk.
+- **A full account of every task.** Immutable original prompt, a timeline of
+  every transition, and live metrics: tokens in/out, context usage,
+  compactions, turns, tool calls.
+- **Local-first.** Everything runs on your machine — a single embedded
+  database file, no server, no account, no telemetry.
+
+## Supported agents
+
+- **Claude Code**
+- **Codex**
+
+Each agent plugs in through an adapter that normalizes its events into one
+model, so ACT is open to supporting other agents in the future.
+
+## Supported platforms
+
+**Windows** and **Linux**, in a browser or as a desktop app. macOS is not
+supported yet, but the stack is portable and it is open for the future.
+
+## Getting started
+
+Download the installer for your platform from the
+[Releases](https://github.com/north-lab-kev/agent-control-tower/releases) page,
+run it, and ACT opens as a desktop app. You'll need at least one supported
+agent CLI installed and signed in — ACT finds it on its own.
+
+To build and run from source instead, see
+[docs/development.md](docs/development.md).
+
+## Documentation
+
+- [docs/overview.md](docs/overview.md) — the full specification: state model,
+  data model, scheduling, notifications, UI direction.
+
+## Contributing
+
+ACT is **not accepting external contributions right now** — see
+[CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and issues are welcome.
 
 ## License
 
-**Functional Source License (FSL)** — source-available, not OSI "open source".
-Each release auto-converts to Apache 2.0 after two years. See
+**Functional Source License (FSL)** — source-available. Anyone may read, use,
+modify, and redistribute the code; only competing commercial use is prohibited.
+Each release auto-converts to **Apache 2.0 after two years**. See
 [LICENSE.md](LICENSE.md). *Not legal advice.*
