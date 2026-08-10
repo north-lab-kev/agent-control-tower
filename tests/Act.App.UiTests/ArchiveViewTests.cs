@@ -232,6 +232,38 @@ public class ArchiveViewTests : ComponentTest
         cut.WaitForAssertion(() => cut.FindAll("div.row").Should().BeEmpty());
     }
 
+    [Fact]
+    public async Task The_question_counts_what_it_would_delete()
+    {
+        await BoardWith(Archived(1, "One"), Archived(2, "Two"));
+
+        Show().Instance.PurgeQuestion.Should().Contain("all 2 archived tasks");
+    }
+
+    // The archive spends most of its life small, so the singular is not the rare case — and it is the
+    // one the old `archived task(s)` read worst for.
+    [Fact]
+    public async Task One_archived_task_is_asked_about_in_the_singular()
+    {
+        await BoardWith(Archived(1, "One"));
+
+        Show().Instance.PurgeQuestion.Should().Contain("the archived task?").And.NotContain("1");
+    }
+
+    // A filter narrows the list but not what emptying would take, so the question must go on counting
+    // the archive rather than the rows on screen.
+    [Fact]
+    public async Task The_question_counts_the_archive_and_not_the_filtered_rows()
+    {
+        await BoardWith(Archived(1, "Rename the widget"), Archived(2, "Something else"));
+
+        var cut = Show();
+
+        cut.Find("div.cardfilter input.box").Input("widget");
+
+        cut.Instance.PurgeQuestion.Should().Contain("all 2 archived tasks");
+    }
+
     private IRenderedComponent<ArchiveView> Show() => Render<ArchiveView>();
 
     private Card Archived(int number, string title)

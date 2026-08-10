@@ -2726,6 +2726,17 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
     way back and nothing else — sessions belong to the registry, not to a view, so agents
     keep working across the gap and the terminal re-attaches. The switch is hidden in browser
     mode, where there is no window to close and no tray to close it into.
+    - **The tray tooltip carries the waiting count** — `Agent Control Tower — 3 tasks
+      waiting for you`, with a **separate singular wording** per language (`1 task waiting
+      for you`) rather than a `task(s)` that reads as unfinished. It falls back to the bare
+      name when nothing is waiting, because a zero in a tooltip reads as a number worth
+      checking — which is also what spares the plural from having to answer for zero, where
+      English and French disagree. Counted with `NotificationTrigger`
+      rather than by column, so the tooltip, the toast and the blink can never disagree about
+      what "the ball is in your court" means. **Not `app.setBadgeCount`:** that is macOS and
+      Linux-Unity only, its Windows counterpart `setOverlayIcon` is not in the Electron.NET
+      bridge, and with close-to-tray on there is no taskbar button to hang an overlay from
+      anyway — the tray icon is the only surface that exists at the moment the count matters.
     - **Exit lives on the tray icon, behind a confirmation** that names what is lost: the
       running tasks it will stop (with a count, when there are any) and the scheduled tasks
       that will not run while ACT is closed. It is a **native message box**, because the
@@ -2803,6 +2814,21 @@ remains for build time. Reference: `act-ui-preview-v2.html`.
   `$0.74` and `Mar 3 09:00`. Changing the language **reloads the page** (the whole
   render tree must re-run under the new culture); theme and density apply in
   place.
+  - **A counted phrase ships as a `_One`/`_Many` pair**, picked by `Text.Plural`.
+    `task(s)` reads as a string nobody finished, and French is worse off than English
+    for it — the count reaches the adjective and the verb too (`1 tâche en cours
+    **sera arrêtée**` against `2 tâches en cours **seront arrêtées**`), so a
+    parenthetical `(s)` cannot be right there at any count.
+  - **Singular at one only, and zero belongs to the caller.** English wants
+    "0 tasks" where French wants "0 tâche", so a shared rule would be wrong in one of
+    them; every caller establishes the count is non-zero first, because a phrase
+    counting nothing is a phrase not worth showing.
+  - A language that does not inflect keeps both halves anyway — `Board_HiddenAttention`
+    is `{0} hidden` twice in English and `masquée`/`masquées` in French. The pair is a
+    property of the *key*, not of one language, and `TextPluralTests` sweeps the resx
+    to pin it: every `_One` has a `_Many`, both resolve in every shipped language,
+    each half carries the same placeholders as its translation, and no singular
+    reaches for an argument its plural never names.
 
 ---
 

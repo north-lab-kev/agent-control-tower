@@ -29,7 +29,18 @@ public class ArchiveFollowUpsDialogTests : ComponentTest
     public void The_question_says_how_many_there_are()
     {
         Dialog(FollowUp(7, "Fix the sweep"), FollowUp(8, "Update the notes"))
-            .Host.WaitForElement("div.askfollowups").TextContent.Should().Contain("2");
+            .Host.WaitForElement("div.askfollowups").TextContent
+            .Should().Contain("2 follow-up tasks").And.Contain("Archive them too?");
+    }
+
+    // A single follow-up is the common case — a task usually spawns one — so it is the wording most
+    // users see, and `follow-up task(s)` was what they saw before.
+    [Fact]
+    public void One_follow_up_asks_in_the_singular()
+    {
+        Dialog(FollowUp(7, "Fix the sweep"))
+            .Host.WaitForElement("div.askfollowups").TextContent
+            .Should().Contain("1 follow-up task.").And.Contain("Archive it too?");
     }
 
     // Position is only how the buttons are found; what is pinned is that each closes with its own

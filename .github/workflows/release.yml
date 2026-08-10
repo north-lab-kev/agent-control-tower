@@ -231,7 +231,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $asset = Join-Path 'artifacts' $env:INSTALLER
-          $prerelease = if ($env:VERSION -match '-') { @('--prerelease') } else { @() }
+
+          [string[]]$prerelease = @()
+          if ($env:VERSION -match '-') {
+              $prerelease = @('--prerelease')
+          }
 
           gh release create $env:TAG `
               --title "ACT $env:TAG" `

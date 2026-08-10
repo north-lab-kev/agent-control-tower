@@ -16,7 +16,9 @@ public partial class ArchiveFollowUpsDialog(DialogService dialogService)
     [Parameter, EditorRequired]
     public IReadOnlyList<Card> FollowUps { get; set; } = [];
 
-    private string Question => Text.Format(Strings.Task_DeleteFollowUps, FollowUps.Count);
+    private string Question => Text.Format(
+        Text.Plural(FollowUps.Count, Strings.Task_DeleteFollowUps_One, Strings.Task_DeleteFollowUps_Many),
+        FollowUps.Count);
 
     private void Close(FollowUpChoice choice) => dialogService.Close(choice);
 }

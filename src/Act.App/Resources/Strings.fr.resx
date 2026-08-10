@@ -573,6 +573,12 @@
   <data name="Settings_CloseToTray_Hint" xml:space="preserve">
     <value>Fermer la fenêtre laisse ACT actif derrière son icône; les agents continuent. Quittez depuis cette icône.</value>
   </data>
+  <data name="Tray_Tooltip_One" xml:space="preserve">
+    <value>{0} — {1} tâche en attente de votre intervention</value>
+  </data>
+  <data name="Tray_Tooltip_Many" xml:space="preserve">
+    <value>{0} — {1} tâches en attente de votre intervention</value>
+  </data>
   <data name="Tray_Open" xml:space="preserve">
     <value>Ouvrir ACT</value>
   </data>
@@ -585,11 +591,17 @@
   <data name="Tray_ExitDetailScheduled" xml:space="preserve">
     <value>Les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
   </data>
-  <data name="Tray_ExitDetailRunning" xml:space="preserve">
-    <value>{0} tâche(s) en cours seront arrêtées.</value>
+  <data name="Tray_ExitDetailRunning_One" xml:space="preserve">
+    <value>{0} tâche en cours sera arrêtée.</value>
   </data>
-  <data name="Tray_ExitDetailBoth" xml:space="preserve">
-    <value>{0} tâche(s) en cours seront arrêtées, et les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
+  <data name="Tray_ExitDetailRunning_Many" xml:space="preserve">
+    <value>{0} tâches en cours seront arrêtées.</value>
+  </data>
+  <data name="Tray_ExitDetailBoth_One" xml:space="preserve">
+    <value>{0} tâche en cours sera arrêtée, et les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
+  </data>
+  <data name="Tray_ExitDetailBoth_Many" xml:space="preserve">
+    <value>{0} tâches en cours seront arrêtées, et les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
   </data>
   <data name="Tray_ExitYes" xml:space="preserve">
     <value>Quitter</value>
@@ -852,14 +864,20 @@
   <data name="Archive_Clear" xml:space="preserve">
     <value>Vider les archives</value>
   </data>
-  <data name="Archive_ClearConfirm" xml:space="preserve">
-    <value>Supprimer définitivement les {0} tâche(s) archivée(s) ? Cette action est irréversible.</value>
+  <data name="Archive_ClearConfirm_One" xml:space="preserve">
+    <value>Supprimer définitivement la tâche archivée ? Cette action est irréversible.</value>
+  </data>
+  <data name="Archive_ClearConfirm_Many" xml:space="preserve">
+    <value>Supprimer définitivement les {0} tâches archivées ? Cette action est irréversible.</value>
   </data>
   <data name="Archive_ClearYes" xml:space="preserve">
     <value>Supprimer définitivement</value>
   </data>
-  <data name="Task_DeleteFollowUps" xml:space="preserve">
-    <value>Cette tâche a {0} tâche(s) de suivi. Les archiver aussi ?</value>
+  <data name="Task_DeleteFollowUps_One" xml:space="preserve">
+    <value>Cette tâche a {0} tâche de suivi. L'archiver aussi ?</value>
+  </data>
+  <data name="Task_DeleteFollowUps_Many" xml:space="preserve">
+    <value>Cette tâche a {0} tâches de suivi. Les archiver aussi ?</value>
   </data>
   <data name="Task_DeleteWithFollowUps" xml:space="preserve">
     <value>Archiver avec les suivis</value>
@@ -999,8 +1017,11 @@
   <data name="Board_ColumnNoMatch" xml:space="preserve">
     <value>aucun résultat</value>
   </data>
-  <data name="Board_HiddenAttention" xml:space="preserve">
-    <value>{0} masquée(s)</value>
+  <data name="Board_HiddenAttention_One" xml:space="preserve">
+    <value>{0} masquée</value>
+  </data>
+  <data name="Board_HiddenAttention_Many" xml:space="preserve">
+    <value>{0} masquées</value>
   </data>
   <data name="Board_HiddenAttention_Tip" xml:space="preserve">
     <value>Des tâches de cette colonne demandent votre attention mais ne correspondent pas au filtre.</value>

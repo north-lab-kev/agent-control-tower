@@ -573,6 +573,12 @@
   <data name="Settings_CloseToTray_Hint" xml:space="preserve">
     <value>Closing the window leaves ACT running behind its tray icon; agents carry on. Exit from that icon.</value>
   </data>
+  <data name="Tray_Tooltip_One" xml:space="preserve">
+    <value>{0} — {1} task waiting for you</value>
+  </data>
+  <data name="Tray_Tooltip_Many" xml:space="preserve">
+    <value>{0} — {1} tasks waiting for you</value>
+  </data>
   <data name="Tray_Open" xml:space="preserve">
     <value>Open ACT</value>
   </data>
@@ -585,11 +591,17 @@
   <data name="Tray_ExitDetailScheduled" xml:space="preserve">
     <value>Scheduled tasks will not run while ACT is closed.</value>
   </data>
-  <data name="Tray_ExitDetailRunning" xml:space="preserve">
-    <value>{0} running task(s) will be stopped.</value>
+  <data name="Tray_ExitDetailRunning_One" xml:space="preserve">
+    <value>{0} running task will be stopped.</value>
   </data>
-  <data name="Tray_ExitDetailBoth" xml:space="preserve">
-    <value>{0} running task(s) will be stopped, and scheduled tasks will not run while ACT is closed.</value>
+  <data name="Tray_ExitDetailRunning_Many" xml:space="preserve">
+    <value>{0} running tasks will be stopped.</value>
+  </data>
+  <data name="Tray_ExitDetailBoth_One" xml:space="preserve">
+    <value>{0} running task will be stopped, and scheduled tasks will not run while ACT is closed.</value>
+  </data>
+  <data name="Tray_ExitDetailBoth_Many" xml:space="preserve">
+    <value>{0} running tasks will be stopped, and scheduled tasks will not run while ACT is closed.</value>
   </data>
   <data name="Tray_ExitYes" xml:space="preserve">
     <value>Exit</value>
@@ -852,14 +864,20 @@
   <data name="Archive_Clear" xml:space="preserve">
     <value>Clear archive</value>
   </data>
-  <data name="Archive_ClearConfirm" xml:space="preserve">
-    <value>Permanently delete all {0} archived task(s)? This cannot be undone.</value>
+  <data name="Archive_ClearConfirm_One" xml:space="preserve">
+    <value>Permanently delete the archived task? This cannot be undone.</value>
+  </data>
+  <data name="Archive_ClearConfirm_Many" xml:space="preserve">
+    <value>Permanently delete all {0} archived tasks? This cannot be undone.</value>
   </data>
   <data name="Archive_ClearYes" xml:space="preserve">
     <value>Delete permanently</value>
   </data>
-  <data name="Task_DeleteFollowUps" xml:space="preserve">
-    <value>This task has {0} follow-up task(s). Archive them too?</value>
+  <data name="Task_DeleteFollowUps_One" xml:space="preserve">
+    <value>This task has {0} follow-up task. Archive it too?</value>
+  </data>
+  <data name="Task_DeleteFollowUps_Many" xml:space="preserve">
+    <value>This task has {0} follow-up tasks. Archive them too?</value>
   </data>
   <data name="Task_DeleteWithFollowUps" xml:space="preserve">
     <value>Archive with follow-ups</value>
@@ -999,7 +1017,10 @@
   <data name="Board_ColumnNoMatch" xml:space="preserve">
     <value>no match</value>
   </data>
-  <data name="Board_HiddenAttention" xml:space="preserve">
+  <data name="Board_HiddenAttention_One" xml:space="preserve">
+    <value>{0} hidden</value>
+  </data>
+  <data name="Board_HiddenAttention_Many" xml:space="preserve">
     <value>{0} hidden</value>
   </data>
   <data name="Board_HiddenAttention_Tip" xml:space="preserve">

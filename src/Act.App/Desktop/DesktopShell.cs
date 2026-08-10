@@ -59,6 +59,8 @@ public sealed class DesktopShell(
 
     private bool trayShown;
 
+    private string tooltip = string.Empty;
+
     public async Task StartAsync()
     {
         if (OperatingSystem.IsWindows())
@@ -67,6 +69,7 @@ public sealed class DesktopShell(
         Electron.Menu.SetApplicationMenu([]);
 
         settings.Changed += ApplyCloseBehaviour;
+        board.Changed += RefreshTooltip;
 
         ApplyCloseBehaviour();
 
@@ -266,7 +269,6 @@ public sealed class DesktopShell(
             return;
 
         Electron.Tray.Show(IconPath, TrayMenu());
-        Electron.Tray.SetToolTip(Strings.Shell_FullName);
 
         // Subscribed here, after the icon exists, because Electron.NET drops a registration made
         // before it: every handler in its tray bridge is guarded by `if (tray.value)`. The pair of
@@ -284,6 +286,8 @@ public sealed class DesktopShell(
         }
 
         trayShown = true;
+
+        RefreshTooltip();
     }
 
     private void HideTray()
@@ -294,6 +298,31 @@ public sealed class DesktopShell(
         Electron.Tray.Destroy();
 
         trayShown = false;
+
+        // Forgotten with the icon, so the tray rebuilt by toggling the setting back on is told its
+        // text again rather than being left with the name because the count has not moved since.
+        lock (gate)
+            tooltip = string.Empty;
+    }
+
+    // Called on every board write, which is far more often than the count changes — and every call
+    // that gets past the cache is a socket round trip to redraw a string nobody is hovering over.
+    private void RefreshTooltip()
+    {
+        if (!trayShown)
+            return;
+
+        var text = TrayTooltip.For(board.All);
+
+        lock (gate)
+        {
+            if (text == tooltip)
+                return;
+
+            tooltip = text;
+        }
+
+        Electron.Tray.SetToolTip(text);
     }
 
     private MenuItem[] TrayMenu() =>
@@ -362,8 +391,12 @@ public sealed class DesktopShell(
 
     private static string Detail(ExitStakes stakes) => stakes.Warning switch
     {
-        ExitWarning.Running => Text.Format(Strings.Tray_ExitDetailRunning, stakes.Running),
-        ExitWarning.RunningAndScheduled => Text.Format(Strings.Tray_ExitDetailBoth, stakes.Running),
+        ExitWarning.Running => Text.Format(
+            Text.Plural(stakes.Running, Strings.Tray_ExitDetailRunning_One, Strings.Tray_ExitDetailRunning_Many),
+            stakes.Running),
+        ExitWarning.RunningAndScheduled => Text.Format(
+            Text.Plural(stakes.Running, Strings.Tray_ExitDetailBoth_One, Strings.Tray_ExitDetailBoth_Many),
+            stakes.Running),
         _ => Strings.Tray_ExitDetailScheduled,
     };
 
