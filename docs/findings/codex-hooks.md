@@ -1,6 +1,6 @@
 # Codex hooks — how they actually work, and the wrong turns taken to find out
 
-**Status as of 2026-07-31: hooks fire, and ACT's ingestion through them works.** Verified
+**Status: hooks fire, and ACT's ingestion through them works.** Verified
 live on `codex-cli 0.146.0-alpha.3.1` (card #1091): `SessionStarted`, `ActivityObserved` ×3
 and `TurnEnded` normalized from real payloads, plus `PermissionRequested` (`apply_patch`)
 raising a `needs permission` badge on card #1092 from a prompt ACT never touched.
@@ -12,7 +12,7 @@ exist. Every hook died with `hook exited with code 1` and the script was never r
 rule, measured rather than guessed: **the program token must be unquoted; everything after it
 may be quoted**, because from there `cmd` is doing the parsing. See *The exec failure*.
 
-That also reverses two conclusions this file used to carry: the 2026-07-29 status
+That also reverses two conclusions this file used to carry: the original status
 (*"discovered and parsed, never executed"* — they execute) and the claim that Codex can never
 report a waiting prompt (it can, via `PermissionRequest`). The upstream issue
 <https://github.com/openai/codex/issues/17532> is no longer what stands in the way.
@@ -24,8 +24,8 @@ hooks say so. The accepted cost: answering the hook-review screen with *"Continu
 trusting"* leaves a Codex card with no payloads, so nothing names its rollout and it reports
 only what its process can say.
 
-Companion reading: the *Codex facts* and *Codex hook findings* sections of
-`../roadmap.md`, and *Local-endpoint security* in `../overview.md`.
+Companion reading: `../spec/local-endpoint-security.md`, and *Agent ↔ ACT
+contract* in `../spec/rules-engine.md`.
 
 ---
 
@@ -33,7 +33,7 @@ Companion reading: the *Codex facts* and *Codex hook findings* sections of
 
 ### Where hooks are declared: `[[hooks.*]]` tables in ACT's `--profile` layer
 
-**ACT writes TOML tables, and this is the shape that works** — measured 2026-07-31 and
+**ACT writes TOML tables, and this is the shape that works** — measured and
 pinned by `CodexHookTests`:
 
 ```toml
@@ -45,7 +45,7 @@ type = "command"
 command = "C:\\WINDOWS\\system32\\cmd.exe /c \"C:\\…\\act-hook-forward.cmd\" SessionStart"
 ```
 
-> ⚠️ **This section said the exact opposite until 2026-07-31**, under a heading claiming it was
+> ⚠️ **This section once said the exact opposite**, under a heading claiming it was
 > verified: that `hooks` is a *string* path to a json file and that a `[[hooks.*]]` table is
 > rejected. On this CLI it is the string form that is rejected — *"invalid type: string …
 > expected struct HooksToml"* — and every Codex launch died on exit code 1 with an empty
@@ -95,7 +95,7 @@ how it was mapped):
 - Only `type: "command"` handlers run. `prompt` / `agent` handler types parse and are
   skipped.
 
-### The exec failure, and the rule that fixes it — measured 2026-07-31
+### The exec failure, and the rule that fixes it — measured
 
 **A quoted program token is never executable.** Codex does not strip quotes when resolving
 the program, so `"C:\path\x.cmd" SessionStart` asks for a program literally named
@@ -142,7 +142,7 @@ Ruled out along the way, so nobody re-checks them:
 so there is nothing to read, only experiments to run. Distinct probe files that each log their
 own name, one per event, turn a yes/no into a table for the price of one trust prompt.
 
-### `needs answer` — verified live 2026-07-31, by typing `/plan` in ACT's own terminal
+### `needs answer` — verified live, by typing `/plan` in ACT's own terminal
 
 Codex's ask-the-user tool is **`request_user_input`**, named in the base instructions the rollout
 records: *"Use the `request_user_input` tool only when it is listed in the available tools for this
@@ -159,7 +159,7 @@ style should the greeting use?"* — and the card badged **`needs answer`**. The
 text came from the **`questions` array** branch, each entry carrying a `question` field, so that is
 the real shape; `prompt` and `question` remain as fallbacks.
 
-Measured 2026-07-31 about how it is reached:
+Measured, about how it is reached:
 
 - Asked to call it in Default mode, the CLI replies *"I can't use `request_user_input` in the current
   Default mode"*, asks the question in prose, and ends the turn — so the card lands on `to review`,
@@ -172,7 +172,7 @@ Measured 2026-07-31 about how it is reached:
 - ACT's `PermissionMode.Plan` is a different axis entirely — it resolves to
   `--ask-for-approval never --sandbox read-only`, which does not change the collaboration mode.
 
-**Decided 2026-07-31: ACT adds nothing for this.** Not a Codex-only collaboration-mode field (there is
+**Decided: ACT adds nothing for this.** Not a Codex-only collaboration-mode field (there is
 nothing to set — `/plan` is typed into the TUI, and ACT does not drive the TUI), and certainly not Plan
 mode by default: Plan mode *proposes* work instead of doing it, which would make every Codex card a
 plan and defeat the unattended queue Phase 5 is built for. The classification stays because it is cheap
@@ -240,8 +240,8 @@ id for the same call.
 
 ### Trust is written into ACT's own profile, and ACT used to destroy it
 
-The 2026-07-29 note below says trust lands in the user's `~/.codex/config.toml`. **It does
-not.** Measured 2026-07-31: Codex writes `[hooks.state.…]` into the *file the hook was
+The original note (kept under *History*) says trust lands in the user's `~/.codex/config.toml`.
+**It does not.** Measured: Codex writes `[hooks.state.…]` into the *file the hook was
 declared in* — which for ACT is `~/.codex/act.config.toml`, ACT's own generated profile,
 whose header reads *"Overwritten on every launch"*. So ACT threw away the review the user
 had just answered and the nine-hook gate returned every launch.
@@ -338,12 +338,12 @@ per launch — the forwarder and the profile — and `CodexHookTests` pins their
 
 ---
 
-## History: the two months this file spent being wrong
+## History: the stretch this file spent being wrong
 
 Kept because the *methods* are reusable and because it shows how confidently a wrong
 measurement can be written down. Nothing below is current guidance.
 
-**2026-07-29 — "hooks do not fire at all."** Discovered and parsed, never executed. Tried:
+**The first measurement — "hooks do not fire at all."** Discovered and parsed, never executed. Tried:
 
 | Variable | Values tried |
 |---|---|
@@ -396,8 +396,8 @@ Still-useful mechanics, none of them hook-specific:
 
 ### Other tripwires hit while testing, worth not re-discovering
 
-- `codex debug models` no longer matches the roadmap's effort table (`gpt-5.6-sol` is
-  listed now), and the ChatGPT-account entitlement is narrower than the catalog:
+- `codex debug models` drifts between runs (`gpt-5.6-sol` appeared between two
+  measurements), and the ChatGPT-account entitlement is narrower than the catalog:
   `gpt-5.4`, `gpt-5.6-sol` and `gpt-5.4-mini` were all rejected with *"not supported when
   using Codex with a ChatGPT account"*; `gpt-5.5` worked. Resolve models at runtime rather
   than pinning a table. **`gpt-5.4` is still `~/.codex/config.toml`'s default**, so a Codex card
@@ -412,7 +412,7 @@ Still-useful mechanics, none of them hook-specific:
 
 ---
 
-## MCP: `mcp_servers` in ACT's profile layer — type-probed 2026-08-06
+## MCP: `mcp_servers` in ACT's profile layer — type-probed
 
 ACT declares its own MCP server (`create_followup`, `list_tasks`, `get_task`) in the same
 generated `$CODEX_HOME/act.config.toml` the hooks live in. The vendor docs describe
@@ -438,7 +438,7 @@ already reads it, and the profile stays byte-identical across launches — the p
 hook-trust hash depends on. `http_headers` would put the secret in a file on disk that Codex
 itself rewrites. `CodexHookTests` pins both halves.
 
-✅ **Verified live 2026-08-06, card #1002 → #1003.** A Codex card launched with the block above in
+✅ **Verified live, card #1002 → #1003.** A Codex card launched with the block above in
 its profile, reached its TUI, called `create_followup`, and the child landed on the board. Two
 things came out of it worth keeping:
 

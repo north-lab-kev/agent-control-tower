@@ -82,8 +82,8 @@ public static class CodexHookConfig
         return builder.ToString();
     }
 
-    // ACT's own MCP server, in the same profile layer as the hooks. Type-probed against the CLI on
-    // 2026-08-06 rather than taken from the docs, which only describe `mcp_servers` at config root:
+    // ACT's own MCP server, in the same profile layer as the hooks. Type-probed against the CLI
+    // rather than taken from the docs, which only describe `mcp_servers` at config root:
     // `mcp_servers.act.url` wants a string and `mcp_servers.act.env_http_headers` wants a map, both
     // reported by name, so the layer really does parse this table.
     //

@@ -1,13 +1,13 @@
 # Agent usage — where the 5-hour and weekly numbers come from
 
 **Status: resolved.** Both agents expose a live HTTP usage endpoint, and ACT reads
-both. Measured 2026-07-31 against `claude-code 2.1.220` and the Codex CLI at
+both. Measured against `claude-code 2.1.220` and the Codex CLI at
 `AppData\Local\OpenAI\Codex\bin\…\codex.exe`.
 
-This supersedes the roadmap's old open question, *"`/usage` scriptability +
-reset-time detection"*. It is not scriptable — and it does not need to be.
+Neither CLI prints usage non-interactively, so `/usage` is not scriptable — and
+it does not need to be.
 
-Companion reading: *Usage indicator* in `../overview.md`, and the usage rows in
+Companion reading: *Usage indicator* in `../spec/scheduling.md`, and the usage rows in
 `../repository-structure.md`.
 
 ---
@@ -88,7 +88,7 @@ load-bearing.
 
 ### `resets_at: null` — a window that has not started
 
-Measured 2026-08-03. **The 5-hour clock starts on the first request of a window**, so
+Measured live. **The 5-hour clock starts on the first request of a window**, so
 an account that has been idle reports the session window at 0% with **no reset at
 all** — Claude's own usage panel shows `5-hour limit 0%` with a reset time beside the
 weekly row and nothing beside the 5-hour one. The same body proves the shape is real:
@@ -184,6 +184,18 @@ The response also carries `email`, `user_id` and `account_id`. **ACT lifts the
   three outcomes that reached the network. `NotSignedIn` and `Expired` are decided
   locally without a request, so they stay on the base interval and recover as soon as
   the user signs in. One success clears the count.
+- **A rewritten credential file ends the backoff wait early.** The backoff protects the
+  vendor's endpoint, not the local file — and a 401 is cured by exactly one thing, a new
+  token, which arrives as a rewrite of that file whenever any CLI run refreshes it. So
+  while an outcome a new credential can cure is showing (`NotSignedIn`, `Expired`,
+  `SignInRequired`, `Unauthorized`), `UsagePump` watches the credential file and a change
+  triggers the next probe immediately, resetting the backoff — held to the 60-second
+  floor, so the wake can never break the one-a-minute contract. Added after a
+  Codex token refreshed by a task launched *through ACT* sat unread for 10+ minutes
+  because the pump was asleep at the 15-minute ceiling. `UsageWake` (`Act.Core/Rules`)
+  names the outcomes and the floor; `IFileWatcher` (`Act.Infrastructure/FileSystem`)
+  is the watch itself, and a directory that does not exist yet simply leaves the plain
+  wait in place.
 - **Unavailable is displayed, not swallowed.** Every failure path resolves to a
   `UsageAvailability` — `NotSignedIn`, `Expired`, `Unauthorized`, `Unreachable`,
   `Failed` — and the top bar renders an *unavailable* chip in place of that agent's
@@ -208,7 +220,7 @@ The response also carries `email`, `user_id` and `account_id`. **ACT lifts the
 
 ## The expiry nudge — asking the CLI to refresh its own token
 
-Measured 2026-08-04 against **claude-code 2.1.220**.
+Measured against **claude-code 2.1.220**.
 
 `Expired` used to be a dead end: the meter went dark and stayed dark until the user
 happened to run the CLI again. That is a real state to be in — a subscription user who
@@ -263,7 +275,7 @@ nudge answers, whether the cooldown has passed, and how far a wasted nudge lengt
 
 ### `auth status` was measured and rejected
 
-**Measured 2026-08-04 against a genuinely expired access token** (the honest test: the
+**Measured against a genuinely expired access token** (the honest test: the
 real install, its own file, a refresh token still valid for 20 days — no copied
 credentials, so nothing could consume the user's refresh token):
 
@@ -348,7 +360,7 @@ rather than being folded into `Expired`.
 - **Codex rollout `rate_limits`.** Codex writes the same block into
   `$CODEX_HOME/sessions/**/rollout-*.jsonl` on `token_count` events, which ACT
   already tails. Rejected as the primary source because it is only as fresh as the
-  last session: measured 2026-07-31, the endpoint reported 5% while the newest
+  last session: measured, the endpoint reported 5% while the newest
   rollout (two days old) still said 0%. Kept here as a documented fallback.
 - **`anthropic-ratelimit-unified-*` / `x-codex-*` response headers.** Real, but ACT
   does not make the API calls; only `--debug api` surfaces them, into the pty the

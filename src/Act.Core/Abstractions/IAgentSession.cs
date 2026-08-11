@@ -4,8 +4,8 @@ namespace Act.Core.Abstractions;
 
 // One live agent session: its terminal, and the observations ACT makes about it. There is
 // deliberately no way to answer a permission request or a question from here — ACT hosts
-// the agent's real TUI and the user answers there, so the only input ACT itself supplies is
-// what `IAgentTerminal.SubmitAsync` carries. Disposal ends the session, and the process
+// the agent's real TUI and the user answers there; ACT itself writes only the resize, the
+// teardown, and a dropped file's path. Disposal ends the session, and the process
 // stays alive for as long as the card is active rather than only for a turn, so a disposed
 // session must complete its event stream rather than merely stop yielding.
 public interface IAgentSession : IAsyncDisposable

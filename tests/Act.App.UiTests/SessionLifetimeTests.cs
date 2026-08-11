@@ -250,7 +250,7 @@ public class SessionLifetimeTests
     //
     // The budget is a *ceiling*, not a cost: the loop leaves the moment the condition holds, so a
     // passing test is as fast at 6s as at 2s and only a genuine hang pays the difference. Raised from
-    // 2s on 2026-08-05 for headroom under a loaded machine — but note that the flake it was raised for
+    // 2s for headroom under a loaded machine — but note that the flake it was raised for
     // was **not** slowness, and raising this did not fix it: the caller was waiting on a condition that
     // goes true a beat before the one it asserts. Wait on the property under test, not on a neighbour
     // of it, and this loop's ceiling stops mattering.

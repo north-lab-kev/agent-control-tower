@@ -13,10 +13,19 @@ permissions:
   contents: read
 
 jobs:
+  # Both platforms, because a Linux-only run does not see the spawn layer of the platform ACT
+  # actually ships to: a handful of tests in `CommandHostTests` and `AgentConfigFilesTests` return
+  # early off Windows, and a dozen more (`WindowsArgument`, `ExecutableResolver`, the Codex
+  # forwarder) assert whatever the running platform spells — so on ubuntu alone the cmd.exe shim,
+  # PATHEXT resolution and argument quoting are verified nowhere.
   build-test:
-    # Linux-only while the repo is private (Windows drains the free tier at 2x).
-    # Add a windows-latest matrix leg at go-public.
-    runs-on: ubuntu-latest
+    strategy:
+      # Both legs finish: which platforms a failure reaches is the first thing worth knowing, and
+      # fail-fast cancels exactly that answer.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
 
@@ -35,7 +44,12 @@ jobs:
   # A job of its own rather than more steps on the one above, for two reasons: the fast suite keeps
   # reporting in seconds instead of waiting behind a browser, and a red here is legible at a glance as
   # "the browser tier" rather than hiding in a log with 1800 unit tests. It costs one extra solution
-  # build; on ubuntu that is 1x minutes.
+  # build.
+  #
+  # One leg only, unlike `build-test`: this tier drives Blazor in Chromium, and nothing it asserts is
+  # the host platform's — even the Windows clipboard is covered by synthesising the measured shape in
+  # the browser (`Clipboard.cs`), which behaves the same either way. A second leg would pay another
+  # Release build and another browser download to re-run the same assertions.
   e2e:
     runs-on: ubuntu-latest
     steps:

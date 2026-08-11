@@ -3,6 +3,7 @@ using Act.App.Settings;
 using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
+using Act.Infrastructure.FileSystem;
 using Act.Infrastructure.Usage;
 
 namespace Act.App.Usage;
@@ -13,6 +14,7 @@ public sealed class UsagePump(
     UsageState state,
     UsageOptions options,
     UserSettingsService settings,
+    IFileWatcher watcher,
     IClock clock,
     ILogger<UsagePump> log) : IAsyncDisposable
 {
@@ -34,6 +36,8 @@ public sealed class UsagePump(
     // one — `UsageBackoff` lengthens it after a failure that actually reached the network.
     private async Task PollAsync(IUsageProbe probe, CancellationToken cancellationToken)
     {
+        using var credentials = watcher.Watch(probe.CredentialsPath);
+
         var failures = 0;
         var reported = (UsageAvailability?)null;
         var nudged = (DateTimeOffset?)null;
@@ -42,12 +46,15 @@ public sealed class UsagePump(
         while (true)
         {
             var wait = options.PollInterval;
+            var wakeable = false;
 
             // Checked every pass rather than once at startup, so switching an agent off stops the
             // polling immediately and switching it back on resumes it — without a restart, and
             // without a second timer to manage.
             if (settings.EnabledAgents.Contains(probe.Agent))
             {
+                credentials.Reset();
+
                 var result = await probe.ReadAsync(cancellationToken);
 
                 // An expired token is the one unavailable outcome ACT can act on: the CLI owns the
@@ -88,6 +95,7 @@ public sealed class UsagePump(
 
                 failures = UsageBackoff.Count(result.Availability, failures);
                 wait = UsageBackoff.Delay(options.PollInterval, failures);
+                wakeable = UsageWake.Wakes(result.Availability);
 
                 if (result.Availability != reported)
                 {
@@ -116,7 +124,21 @@ public sealed class UsagePump(
                 nudgeFailures = 0;
             }
 
-            await Task.Delay(wait, cancellationToken);
+            if (wakeable)
+            {
+                if (await credentials.WaitForChangeAsync(wait, UsageWake.Floor, cancellationToken))
+                {
+                    failures = 0;
+
+                    log.LogInformation(
+                        "The {Agent} credential file changed; usage is checked now rather than after the backoff.",
+                        probe.Agent);
+                }
+            }
+            else
+            {
+                await Task.Delay(wait, cancellationToken);
+            }
         }
     }
 

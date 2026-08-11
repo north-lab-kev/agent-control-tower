@@ -171,7 +171,7 @@ public class TelemetryContainmentTests
         ActTelemetry.Transport(provider, options, "install").Should().BeOfType<PostHogTelemetrySink>();
     }
 
-    // The shutdown crash of 2026-08-05, as a test. The consent gate runs on the client's send path,
+    // The shutdown crash, as a test. The consent gate runs on the client's send path,
     // and a run's last send happens as the app closes — after the container has been disposed. Asking
     // the provider there threw `ObjectDisposedException` out of the flush and took the closing batch
     // with it, so the predicate has to hold what it needs rather than go looking for it.

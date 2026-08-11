@@ -255,13 +255,8 @@ public class TranscriptPumpTests : ComponentTest
 
         await Until(() => reader.Paths.Contains("/transcripts/after-restart.jsonl"));
 
-        await Task.Delay(1200);
+        await ReadsStop(() => reader.Paths.Count(path => path == Path), "the replaced session's tail must stop");
 
-        var oldTailReads = reader.Paths.Count(path => path == Path);
-
-        await Task.Delay(1200);
-
-        reader.Paths.Count(path => path == Path).Should().Be(oldTailReads, "the replaced session's tail must stop");
         Registry.IsLive(card.Id).Should().BeTrue();
     }
 
@@ -281,13 +276,7 @@ public class TranscriptPumpTests : ComponentTest
 
         await Registry.EndAsync(card.Id);
 
-        await Task.Delay(1200);
-
-        var reads = reader.Reads;
-
-        await Task.Delay(1200);
-
-        reader.Reads.Should().Be(reads);
+        await ReadsStop(() => reader.Reads, "the tail must stop when the session ends");
 
         await pump.DisposeAsync();
     }
@@ -341,6 +330,39 @@ public class TranscriptPumpTests : ComponentTest
         }
 
         throw new TimeoutException(because ?? "The tail never reached the expected state.");
+    }
+
+    // That a tail has stopped cannot be read off a fixed sleep: its next tick is due a whole poll
+    // interval away, and on a loaded agent that tick lands either side of any span picked here — so
+    // "sleep, sample, sleep, compare" fails whenever the last read falls between the two samples.
+    // What is waited for instead is a count that has not moved for longer than the poll interval,
+    // which a tail still looping cannot produce however late its ticks run.
+    private static async Task ReadsStop(Func<int> reads, string because)
+    {
+        const int Quiet = 60;
+
+        var last = reads();
+        var still = 0;
+
+        for (var waited = 0; waited < 600; waited++)
+        {
+            await Task.Delay(50);
+
+            var now = reads();
+
+            if (now != last)
+            {
+                last = now;
+                still = 0;
+
+                continue;
+            }
+
+            if (++still >= Quiet)
+                return;
+        }
+
+        throw new TimeoutException(because);
     }
 
     // Locked because the restart test briefly has two tails reading at once — the replaced one's

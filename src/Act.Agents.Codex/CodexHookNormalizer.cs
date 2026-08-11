@@ -5,8 +5,8 @@ using Act.Core.Model;
 
 namespace Act.Agents.Codex;
 
-// Written blind against the documented payload contract, and **proven against real payloads on
-// 2026-07-31**: `SessionStart`, `UserPromptSubmit`, the tool events, `Stop` and `PermissionRequest`
+// Written blind against the documented payload contract, and **proven against real
+// payloads**: `SessionStart`, `UserPromptSubmit`, the tool events, `Stop` and `PermissionRequest`
 // all normalized correctly on the first live run. See `docs/findings/codex-hooks.md`.
 //
 // The one place Codex is richer than Claude Code: `PermissionRequest` is an explicit event, so a

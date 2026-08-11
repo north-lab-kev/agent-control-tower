@@ -52,7 +52,7 @@ public sealed class UserSettings
 
     // Where a quota window counts as spent. Under 100 on purpose — see `UsageCeiling`, which owns the
     // default and the bounds.
-    public int UsageCeilingPercent { get; set; } = 98;
+    public int UsageCeilingPercent { get; set; } = 95;
 
     // One entry per agent, holding what its install looks like on this machine. A list rather than
     // a property per agent, so adding an adapter does not mean touching the settings model.

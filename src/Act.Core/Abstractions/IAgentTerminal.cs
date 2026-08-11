@@ -6,12 +6,11 @@ namespace Act.Core.Abstractions;
 // show an empty one; it is bounded, so a redrawing TUI cannot grow it without limit.
 //
 // `WriteAsync` carries the user's own keystrokes, arriving from the xterm in their browser.
-// ACT composes no *instruction* beside them: send-back was cut on 2026-08-01, and what the agent
-// is told after launch, the user says.
+// ACT composes no *instruction* beside them: what the agent is told after launch, the user says.
 //
 // The one write ACT authors is a dropped file's own path, inserted where the cursor is and never
 // followed by a submit key — the same completion of a drag gesture every terminal emulator
-// performs, and the reason it is not the send-back that was cut: nothing is phrased, nothing is
+// performs, not ACT answering on the user's behalf: nothing is phrased, nothing is
 // decided, and nothing is sent until the user presses Enter.
 public interface IAgentTerminal
 {

@@ -145,7 +145,7 @@ public class CommandHostTests
                 script,
                 [],
                 temp.Path,
-                AgentEnvironment.ForQuery(new Dictionary<string, string>()),
+                AgentEnvironment.ForQuery(new Dictionary<string, string>(), scrub: null),
                 null,
                 Patient));
 
@@ -178,7 +178,7 @@ public class CommandHostTests
                 script,
                 ["--tools", ""],
                 spaced,
-                AgentEnvironment.ForQuery(new Dictionary<string, string>()),
+                AgentEnvironment.ForQuery(new Dictionary<string, string>(), scrub: null),
                 null,
                 Patient));
 
@@ -207,7 +207,7 @@ public class CommandHostTests
                 script,
                 [],
                 temp.Path,
-                AgentEnvironment.ForQuery(new Dictionary<string, string>()),
+                AgentEnvironment.ForQuery(new Dictionary<string, string>(), scrub: null),
                 null,
                 Patient));
 
@@ -230,7 +230,7 @@ public class CommandHostTests
                 shell,
                 [flag, script],
                 Path.GetTempPath(),
-                AgentEnvironment.ForQuery(new Dictionary<string, string>()),
+                AgentEnvironment.ForQuery(new Dictionary<string, string>(), scrub: null),
                 input,
                 timeout ?? Patient),
             cancellationToken);

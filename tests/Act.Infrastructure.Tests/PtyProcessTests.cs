@@ -6,8 +6,8 @@ using Porta.Pty;
 
 namespace Act.Infrastructure.Tests;
 
-// The byte pipeline every session runs through, and until 2026-08-02 it had no tests at all — which
-// is where a silent-terminal-death bug lived (see *the decoder* below). Nothing here needs a real
+// The byte pipeline every session runs through — long untested, which is where a
+// silent-terminal-death bug lived (see *the decoder* below). Nothing here needs a real
 // process: `PtyProcess` takes `IPtyConnection`, so a fake stream is the whole harness.
 public class PtyProcessTests
 {

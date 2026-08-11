@@ -4,14 +4,12 @@ using AwesomeAssertions;
 
 namespace Act.Agents.Tests;
 
-// Line shapes measured from real rollout files on 2026-07-31 (`codex-cli 0.146.0-alpha.3.1`), not
+// Line shapes measured from real rollout files (`codex-cli 0.146.0-alpha.3.1`), not
 // taken from documentation.
 //
-// **Enrichment only, since 2026-07-31.** This class used to report activity, turn ends and the
-// turn/tool counts, because Codex's hooks were believed not to fire; they do, so those moved to the
-// hooks and these tests moved with them. What is asserted here now is the same surface
-// `ClaudeCodeTranscriptNormalizer` has — tokens, context, the window, the last message — plus the one
-// event a hook has never been seen to report, `TurnFailed`.
+// **Enrichment only.** Activity, turn ends and the turn/tool counts are the hooks' to report; what
+// is asserted here is the same surface `ClaudeCodeTranscriptNormalizer` has — tokens, context, the
+// window, the last message — plus the one event a hook has never been seen to report, `TurnFailed`.
 public class CodexTranscriptTests
 {
     private const string Meta = """

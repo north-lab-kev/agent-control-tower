@@ -15,7 +15,7 @@ namespace Act.Core.Scheduling;
 // forever, which is what the master switch already says plainly.
 public static class UsageCeiling
 {
-    public const int Default = 98;
+    public const int Default = 95;
 
     public const int Minimum = 1;
 

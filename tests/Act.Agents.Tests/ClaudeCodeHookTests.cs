@@ -290,7 +290,7 @@ public class ClaudeCodeHookNormalizerTests
         => Normalize("""{ "hook_event_name": "Stop", "session_id": "abc" }""")
             .Events.Should().ContainSingle().Which.Should().BeOfType<TurnEnded>();
 
-    // Measured live on 2026-07-30 against `claude-code v2.1.220`, and the type is what ACT keys on:
+    // Measured live against `claude-code v2.1.220`, and the type is what ACT keys on:
     // the wording is shared with the question tool's prompt, the type is not shared with the idle
     // nudge.
     [Fact]

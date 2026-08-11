@@ -2,6 +2,11 @@
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/refs/heads/master/packages/app-builder-lib/scheme.json",
   "productName": "ACT — Agent Control Tower",
   "appId": "com.northlabkev.act",
+  // Set explicitly because the default is wrong: electron-builder falls back to
+  // `Copyright © <year> ${author}`, and the `author` in the package.json ElectronNET generates is
+  // the project name, so the installer and the executable's file properties would both claim
+  // "Act.App" owns the copyright.
+  "copyright": "Copyright © 2026 north-lab-kev",
   "compression": "maximum",
   "win": {
     "icon": "bin/icon.ico",
@@ -52,13 +57,23 @@
       "url": "https://github.com/north-lab-kev/agent-control-tower/releases/latest/download"
     }
   ],
-  // Linux (AppImage + .deb) — décommenter pour l'activer ; doit être buildé sur Linux.
-  // "linux": {
-  //   "target": [
-  //     "AppImage",
-  //     "deb"
-  //   ],
-  //   "executableArgs": [ "--no-sandbox" ],
-  //   "artifactName": "${name}-${arch}-${version}.${ext}"
-  // }
+  // AppImage only, and that is a choice: it is the one Linux target electron-updater can actually
+  // update (AppImageUpdater reads the same generic feed via `latest-linux.yml`; a .deb or .rpm would
+  // ship dead auto-update), and it runs on any distro without root. Must be built on Linux.
+  //
+  // `--no-sandbox` because Electron's SUID sandbox needs `chrome-sandbox` to be setuid root, which a
+  // file inside a user-mounted AppImage can never be — without the flag the app dies on launch on
+  // distros that also block unprivileged user namespaces (Ubuntu 24.04+ AppArmor).
+  "linux": {
+    "icon": "bin/icon.png",
+    "category": "Development",
+    "target": [
+      {
+        "target": "AppImage",
+        "arch": "x64"
+      }
+    ],
+    "executableArgs": [ "--no-sandbox" ],
+    "artifactName": "ACT-${version}-${arch}.${ext}"
+  }
 }

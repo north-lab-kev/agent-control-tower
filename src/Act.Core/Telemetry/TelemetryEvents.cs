@@ -11,13 +11,13 @@ namespace Act.Core.Telemetry;
 // path — none of which appears below, and `TelemetryPayload` would drop them if it did.
 //
 // **The scope is the app, not the work.** Three events: the run starting with the settings it ran
-// under, what a launch looked like, and the crashes. Four more were written and removed on 2026-08-05
-// — a `task_completed` carrying turn counts, tool calls, token totals and compactions, which measures
-// the agent's work rather than the app's use of it; an `agent_discovered` per adapter per startup,
-// whose one useful fact `enabled_agents` already carries; an `app_stopped` uptime, which nobody was
-// going to act on; and a separate `settings_snapshot`, folded into `AppStarted` because two events
-// cost twice the quota to say one thing. Prefer removing an event to adding one: every payload here
-// is something a user has to be willing to send, and the meter counts events, not bytes.
+// under, what a launch looked like, and the crashes. Deliberately absent: a `task_completed` (turn
+// counts and token totals measure the agent's work rather than the app's use of it), an
+// `agent_discovered` (its one useful fact `enabled_agents` already carries), an `app_stopped`
+// uptime (nobody would act on it), and a separate `settings_snapshot` (folded into `AppStarted`,
+// because two events cost twice the quota to say one thing). Prefer removing an event to adding
+// one: every payload here is something a user has to be willing to send, and the meter counts
+// events, not bytes.
 public static class TelemetryEvents
 {
     public static class Names

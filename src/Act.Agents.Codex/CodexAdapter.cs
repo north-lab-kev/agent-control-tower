@@ -33,11 +33,9 @@ public sealed class CodexAdapter(
     // the way `claude://resume?session=` does, so ACT does not pretend to offer one.
     public string? DesktopHandoffUrl(string sessionId, string workingDir) => null;
 
-    // No substitution left to make. `Auto` used to launch as `on-request` with a recorded adjustment,
-    // because the form offered every mode to every agent and Codex had to do *something* with a
-    // classifier tier it does not have. `CodexCapabilities` no longer offers it, so the honest outcome
-    // is the resolver's rejection — and a card still carrying `Auto` from before says so at launch
-    // instead of quietly running as a different mode.
+    // No substitution is made. `CodexCapabilities` does not offer `Auto` — Codex has no classifier
+    // tier — so the honest outcome is the resolver's rejection: a card carrying a mode this agent
+    // cannot honour says so at launch instead of quietly running as a different one.
     public LaunchConfigResolution Resolve(LaunchConfig config)
         => LaunchConfigResolver.Resolve(Agent, Capabilities, config);
 
@@ -208,6 +206,9 @@ public sealed class CodexAdapter(
                     ? AttachmentInstruction.Append(prompt, attachments.PathsOf(image: false))
                     : prompt);
 
+        // No scrub: what a Codex session sets for its own children was never measured, so there is
+        // nothing here that is known to be worth subtracting. `docs/design-notes.md` records the
+        // check to run before that becomes a claim.
         var process = await pty.StartAsync(
             new PtyStartInfo(
                 resolved.AgentBinary ?? DefaultBinary,
@@ -216,6 +217,7 @@ public sealed class CodexAdapter(
                 AgentEnvironment.For(
                     taskId,
                     resolved.Env,
+                    scrub: null,
                     hookToken,
                     hooks.UrlFor(Agent)?.ToString()),
                 size),
@@ -277,7 +279,7 @@ public sealed class CodexAdapter(
                 request.Machine?.Binary is { Length: > 0 } binary ? binary.Trim() : DefaultBinary,
                 arguments,
                 scratch,
-                AgentEnvironment.ForQuery(request.Machine?.Env ?? new Dictionary<string, string>()),
+                AgentEnvironment.ForQuery(request.Machine?.Env ?? new Dictionary<string, string>(), scrub: null),
                 request.Prompt,
                 request.Timeout),
             cancellationToken);

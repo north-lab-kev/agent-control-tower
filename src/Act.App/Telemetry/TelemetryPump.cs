@@ -11,16 +11,13 @@ namespace Act.App.Telemetry;
 // under. Started early in `Program` and stopped by the container on the way out, which is where the
 // last flush lives.
 //
-// **Crashes are not here.** They used to be, as subscriptions to `AppDomain.UnhandledException` and
-// `TaskScheduler.UnobservedTaskException` — which are only two of the four places an unhandled
-// exception lands, and not the two that matter most: a Blazor event handler never reaches either, so
-// most of ACT's exceptions were invisible. `TelemetryErrorBridge` listens where all four converge
-// instead, and `StartupLog` already logs these two with the exception attached, so keeping them here
-// would only have reported them twice.
+// **Crashes are not here.** `AppDomain.UnhandledException` and `TaskScheduler.UnobservedTaskException`
+// are only two of the four places an unhandled exception lands — a Blazor event handler reaches
+// neither — so `TelemetryErrorBridge` listens where all four converge, and `StartupLog` already logs
+// those two with the exception attached; reporting them here as well would report them twice.
 //
 // Shutdown sends nothing of its own. It only flushes: a queued batch that never left would take the
-// run's events with it. (An `app_stopped` uptime was here until 2026-08-05 and was removed as an
-// event nobody would act on.)
+// run's events with it.
 public sealed class TelemetryPump(ITelemetrySink telemetry, UserSettingsService settings) : IAsyncDisposable
 {
     private bool flushed;

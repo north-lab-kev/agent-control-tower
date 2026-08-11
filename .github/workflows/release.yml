@@ -18,8 +18,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Everything that does not need Windows stays on Linux: Windows minutes bill at
-  # 2x while the repo is private, so only the packaging job pays that.
+  # Validation only, and first: a bad version, an existing tag or a missing secret
+  # should fail in seconds, before anything is built or tested.
   gate:
     runs-on: ubuntu-latest
     env:
@@ -43,8 +43,8 @@ jobs:
           }
 
       # Checked here rather than only where it is used: the stamp happens in the
-      # Windows job, and a release that got that far to fail on a missing secret
-      # would have paid for Windows minutes to learn it. Failing rather than
+      # packaging jobs, and a release that ran the whole suite on two platforms
+      # only to fail on a missing secret wasted all of it. Failing rather than
       # shipping without it is deliberate — an installer with no token sends
       # nothing, and a silent skip is how you find that out a month later.
       - name: Validate release secrets
@@ -62,6 +62,20 @@ jobs:
               throw "POSTHOG_PROJECT_TOKEN does not look like a project API key (expected phc_...). A personal API key must never be shipped in the app."
           }
 
+  # The same two legs `ci` runs, for the same reason: the Windows-only tests are the spawn layer of
+  # the platform the installer targets, and a release gated on Linux alone would ship it unverified.
+  # Re-run here rather than trusted from `ci`, because a release is dispatched against whatever ref
+  # the operator chose.
+  test:
+    needs: gate
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
@@ -74,10 +88,10 @@ jobs:
         shell: pwsh
         run: ./scripts/build.ps1
 
-  package:
+  package-windows:
     # Windows targets must be built on Windows (electron-builder cross-platform rule).
     runs-on: windows-latest
-    needs: gate
+    needs: test
     env:
       VERSION: ${{ inputs.version }}
     outputs:
@@ -93,52 +107,14 @@ jobs:
         with:
           node-version: 22
 
-      # The key is not in the repo and never will be: `appsettings.json` ships an
-      # empty one, so a fork or a build from source gets `NullTelemetrySink` and
-      # points at nobody's project. Only a release carries a real value, stamped
-      # into the checkout here and thrown away with the runner.
-      #
-      # It is written base64-encoded so the installer does not carry it in clear.
-      # Be clear about what that is worth: it is obfuscation, not protection. A
-      # PostHog *project* key is write-only by design — PostHog publishes it in the
-      # script tag of every site that uses them — so there is nothing here to
-      # defend, and base64 would not defend it. **Nothing that is genuinely secret
-      # may be added to this step on the strength of it being encoded.**
+      # Why the token is stamped at all, why base64, and what may never ride on it
+      # are documented in the script — it runs once per packaging job, so the
+      # reasoning lives in one place.
       - name: Stamp the telemetry token
         shell: pwsh
         env:
           POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:POSTHOG_PROJECT_TOKEN)) {
-              throw "The POSTHOG_PROJECT_TOKEN secret is empty or not set; refusing to package an installer that would send nothing."
-          }
-
-          $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($env:POSTHOG_PROJECT_TOKEN))
-
-          # Actions masks the secret itself, but not a transform of it. Registering
-          # the encoded form keeps a later `set -x` or a stack trace from printing
-          # what the raw value is masked to hide.
-          Write-Host "::add-mask::$encoded"
-
-          $path = 'src/Act.App/appsettings.json'
-          $settings = Get-Content $path -Raw | ConvertFrom-Json
-
-          $settings.Telemetry.ProjectToken = $encoded
-          $settings | ConvertTo-Json -Depth 10 | Set-Content $path -Encoding utf8
-
-          # Read back and decode rather than trust the write: a renamed section would
-          # leave the key unset, and the installer would look perfectly healthy.
-          $written = (Get-Content $path -Raw | ConvertFrom-Json).Telemetry
-          $roundTripped = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($written.ProjectToken))
-
-          if ($roundTripped -ne $env:POSTHOG_PROJECT_TOKEN) {
-              throw "The telemetry token in $path does not decode back to the secret."
-          }
-          if (-not $written.Enabled) {
-              throw "Telemetry is disabled in $path; the installer would ship with it off."
-          }
-
-          Write-Host "Telemetry token stamped (base64, $($encoded.Length) chars); host $($written.Host)."
+        run: ./scripts/stamp-telemetry.ps1
 
       # -Version becomes $(Version): the SDK stamps it into
       # AssemblyInformationalVersion (what the running app reports) and
@@ -188,24 +164,102 @@ jobs:
             artifacts/desktop/win-x64/latest.yml
           if-no-files-found: error
 
+  package-linux:
+    # Linux targets must be built on Linux (same electron-builder rule that pins
+    # the Windows job to Windows). AppImage is the one Linux format
+    # electron-updater can auto-update — the choice is argued in
+    # `electron-builder.json`, beside the `linux` block.
+    runs-on: ubuntu-latest
+    needs: test
+    env:
+      VERSION: ${{ inputs.version }}
+    outputs:
+      installer: ${{ steps.installer.outputs.name }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Stamp the telemetry token
+        shell: pwsh
+        env:
+          POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
+        run: ./scripts/stamp-telemetry.ps1
+
+      - name: Package desktop (linux-x64)
+        shell: pwsh
+        run: ./scripts/package-desktop.ps1 -Rid linux-x64 -Version $env:VERSION
+
+      # The version is asserted but the arch suffix is globbed: electron-builder
+      # renders `${arch}` for an AppImage in uname style (`x86_64`), and pinning
+      # that spelling here would fail the release over a cosmetic rename.
+      - name: Locate installer
+        id: installer
+        shell: pwsh
+        run: |
+          $dir = "artifacts/desktop/linux-x64"
+          $appImages = @(Get-ChildItem $dir -Filter "ACT-$env:VERSION-*.AppImage")
+
+          if ($appImages.Count -ne 1) {
+              $found = (Get-ChildItem $dir | ForEach-Object Name) -join ", "
+              throw "Expected exactly one ACT-$env:VERSION-*.AppImage in $dir; found: $found"
+          }
+
+          # Same reasoning as `latest.yml` in the Windows job: without this file the
+          # release looks healthy and silently strands every installed AppImage,
+          # because it is the only thing they poll.
+          if (-not (Test-Path "$dir/latest-linux.yml")) {
+              $found = (Get-ChildItem $dir | ForEach-Object Name) -join ", "
+              throw "No latest-linux.yml in $dir; auto-update would be dead on arrival. Found: $found"
+          }
+
+          "name=$($appImages[0].Name)" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: act-desktop-linux-x64-${{ inputs.version }}
+          # Transit only, same as the Windows artifact: the permanent copies are the
+          # release assets.
+          retention-days: 1
+          path: |
+            artifacts/desktop/linux-x64/*.AppImage
+            artifacts/desktop/linux-x64/*.blockmap
+            artifacts/desktop/linux-x64/latest-linux.yml
+          if-no-files-found: error
+
   release:
     runs-on: ubuntu-latest
-    needs: package
+    needs: [package-windows, package-linux]
     permissions:
       contents: write
     env:
       VERSION: ${{ inputs.version }}
       TAG: v${{ inputs.version }}
-      INSTALLER: ${{ needs.package.outputs.installer }}
+      INSTALLER: ${{ needs.package-windows.outputs.installer }}
+      APPIMAGE: ${{ needs.package-linux.outputs.installer }}
     steps:
       - uses: actions/checkout@v7
         with:
           # Full history + tags: the release notes are a commit range.
           fetch-depth: 0
 
+      # Both land in the same directory: the filenames cannot collide (.exe vs
+      # .AppImage, latest.yml vs latest-linux.yml), and one flat folder is what the
+      # asset list below walks.
       - uses: actions/download-artifact@v7
         with:
           name: act-desktop-win-x64-${{ inputs.version }}
+          path: artifacts
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: act-desktop-linux-x64-${{ inputs.version }}
           path: artifacts
 
       - name: Build release notes
@@ -222,6 +276,8 @@ jobs:
 
           $notes = @('## ACT ' + $env:TAG, '')
           $notes += 'Windows installer (win-x64, NSIS): `' + $env:INSTALLER + '`'
+          $notes += ''
+          $notes += 'Linux (x64, AppImage): `' + $env:APPIMAGE + '` — `chmod +x`, then run.'
           $notes += ''
           $notes += '### Changes'
           $notes += ''
@@ -252,7 +308,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          [string[]]$assets = @(Join-Path 'artifacts' $env:INSTALLER)
+          [string[]]$assets = @(
+              (Join-Path 'artifacts' $env:INSTALLER),
+              (Join-Path 'artifacts' $env:APPIMAGE)
+          )
 
           [string[]]$prerelease = @()
           if ($env:VERSION -match '-') {
@@ -260,18 +319,19 @@ jobs:
           }
 
           # **The update metadata ships on stable releases only.** electron-builder writes
-          # `latest.yml` for every version — `detectUpdateChannel: false` in `electron-builder.json`
-          # is what stops a `-beta.1` from renaming it to `beta.yml` — so excluding pre-releases is
-          # done here, by not attaching it.
-          # A pre-release then carries the installer alone and no client can resolve an update from
+          # `latest.yml` (and `latest-linux.yml`) for every version — `detectUpdateChannel: false`
+          # in `electron-builder.json` is what stops a `-beta.1` from renaming them per-channel —
+          # so excluding pre-releases is done here, by not attaching them.
+          # A pre-release then carries the installers alone and no client can resolve an update from
           # it, which is belt-and-braces with the `AllowPrerelease = false` the app sets: GitHub's
           # `/releases/latest` already skips pre-releases, and this makes it moot if it ever did not.
           if ($prerelease) {
-              Write-Host "Pre-release: publishing the installer only, no update metadata."
+              Write-Host "Pre-release: publishing the installers only, no update metadata."
           }
           else {
               $assets += (Get-ChildItem 'artifacts' -Filter *.blockmap | ForEach-Object FullName)
               $assets += (Join-Path 'artifacts' 'latest.yml')
+              $assets += (Join-Path 'artifacts' 'latest-linux.yml')
           }
 
           foreach ($asset in $assets) {

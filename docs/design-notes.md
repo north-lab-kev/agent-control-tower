@@ -3,13 +3,14 @@
 **What this file is for.** The code says what it guarantees; this file remembers *how we found
 out*. Measurements against a pinned CLI version, shapes that were tried and rejected, classes that
 were deleted and why — all of it is worth keeping and none of it belongs in a comment beside the
-code, because prose that outlives its subject is worse than no prose. Two dead members were found
-in the 2026-08-02 review precisely because their comments were still confidently describing
-behaviour that had been deleted.
+code, because prose that outlives its subject is worse than no prose. A review once found two dead
+members precisely because their comments were still confidently describing behaviour that had been
+deleted.
 
 **The rule the comments follow.** A comment may *cite* a measurement in a clause — "measured
-2026-07-30, ~0.8 s" — but it may not *narrate* one. Anything longer than a clause, anything about
-a previous implementation, and anything that would be wrong if the code changed lives here.
+against 2.1.220, ~0.8 s" — but it may not *narrate* one, and it names the CLI version rather than
+a date. Anything longer than a clause, anything about a previous implementation, and anything that
+would be wrong if the code changed lives here.
 
 **Companion files**, which already do this for their own areas and are not duplicated below:
 
@@ -23,7 +24,7 @@ a previous implementation, and anything that would be wrong if the code changed 
 
 ## Rules and scheduling
 
-### A tool event may not clear a permission block — measured 2026-07-31
+### A tool event may not clear a permission block — measured
 
 A Codex card sat on `running` with a Bash approval still on screen: a tool event arrived *after*
 the `PermissionRequested` and was indistinguishable from a keystroke. Either the CLI reports the
@@ -49,11 +50,11 @@ Within-turn gaps in real Claude Code transcripts: p50 1.3 s, p90 7.2 s, p99 45 s
 three minutes turned out to be a session waiting on its human rather than working. Fifteen minutes
 is ~20× the p99 — far outside normal chatter, still short enough to notice overnight.
 
-It replaces the `stale` badge and its watchdog, **deleted 2026-07-31**. The badge claimed something
+It replaces the `stale` badge and its watchdog, both **deleted**. The badge claimed something
 no signal supported and overwrote the one thing ACT did know; the chip states the gap instead of
 guessing at its cause. See the spec's *No stale badge — the quiet chip instead*.
 
-### The pre-session prompt is reported by silence — measured 2026-07-30
+### The pre-session prompt is reported by silence — measured
 
 Both CLIs open on a directory-trust prompt for a working directory they have not seen, and it
 blocks *before* the session exists, so no hook can report it. Measured against `claude-code`: with
@@ -69,7 +70,7 @@ hook is activity and puts the card back.
 
 ## The command line
 
-### Windows argument quoting — measured 2026-07-30
+### Windows argument quoting — measured
 
 Windows has no `argv`. A process receives one command-line *string* and each runtime re-splits it,
 so whoever builds that string owns the escaping — and `Porta.Pty`'s own escaping doubles quotes
@@ -111,7 +112,7 @@ The rule, for any flag added to a launch command line from here on:
 - The adapter tests pin the *form* — the bound spelling present, the bare one absent, the prompt still
   the final argument — because a unit test cannot re-derive commander's or clap's parsing.
 
-### `codex --image` must bind its value with `=` — measured 2026-08-04
+### `codex --image` must bind its value with `=` — measured
 
 `-i, --image <FILE>...` is variadic, so `-i C:\a\shot.png "the prompt"` does **not** mean one image
 and a prompt: clap keeps collecting positionals into the image list, the prompt is swallowed as a
@@ -125,7 +126,7 @@ sets for `ClaudeCodeAdapter.QueryAsync`, and the same answer: **keep the prompt 
 flag's value.** `CodexAdapterTests` pins the `=` form and asserts the prompt is still the last
 argument, because nothing in the flag's own help says any of this.
 
-### Attachments travel as paths, never as contents — decided 2026-08-04
+### Attachments travel as paths, never as contents
 
 The opening prompt is a positional command-line argument for both agents, and Windows caps a command
 line at ~32,767 characters. Inlining an attached file's *contents* would therefore spend the whole
@@ -141,7 +142,7 @@ prompt of its own, and an agent handed a path under `%LOCALAPPDATA%\ACT\attachme
 it without stopping. Codex needs no grant at all: it reads outside `--cd` under both `read-only` and
 `workspace-write`, also measured.
 
-### A pasted screenshot may not be in `clipboardData.files` — measured 2026-08-04
+### A pasted screenshot may not be in `clipboardData.files` — measured
 
 Read off a real Windows clipboard, a screenshot is `PNG` + `Bitmap` + `DeviceIndependentBitmap` +
 `Format17` and **no `FileDrop`**: no path, no filename, nothing to reference. That is the measurement
@@ -174,7 +175,7 @@ tool's own filename instead of the one the browser invents, which is why this sh
 pasted nominate any file on the disk for ACT to copy and hand to an agent. Only real `File` objects
 the browser itself put in `files`/`items` are taken — the browser has already gated those.
 
-### The hover thumbnail has to be `position: fixed` — measured 2026-08-05
+### The hover thumbnail has to be `position: fixed` — measured
 
 An overlay anchored to an attachment chip with `position: absolute` is clipped by the task sheet,
 because `.body` is the page's scroll container (`overflow-y: auto`) and absolute positioning does not
@@ -196,18 +197,122 @@ leaves a favicon at its own size instead of blowing it up.
 
 ### Inserting a dropped file's path is not the send-back that was cut
 
-Send-back (deleted 2026-08-01) composed a message and pressed the agent's submit key, which put ACT
+Send-back (deleted) composed a message and pressed the agent's submit key, which put ACT
 in the business of guessing when a TUI was ready to be typed into. A file dropped on the Terminal tab
 does neither: it inserts **the file's own path**, quoted, where the cursor already is, and sends
 nothing. Every terminal emulator does this with a dragged file, and the user still has to read what
 landed and press Enter. `IAgentTerminal`'s doc comment was amended rather than quietly contradicted —
 the invariant is that ACT composes no *instruction*, not that it never writes.
 
+### A session ACT was launched from must not be passed on to the agents it spawns — measured
+
+`AgentEnvironment` copies ACT's own process environment into every CLI it starts, and that is right
+for `PATH`, a proxy, or credentials. It is wrong for the variables a *Claude Code session* sets for
+its children: ACT started with `dotnet run` from inside a session — which is how ACT is developed and
+verified — inherits them, hands them to the `claude` it spawns, and that CLI comes up believing it is
+a nested session rather than a fresh one.
+
+**Measured, in a `claude-desktop`-hosted session:** `CLAUDECODE=1`, `CLAUDE_CODE_ENTRYPOINT`,
+`CLAUDE_CODE_SESSION_ID`, `CLAUDE_CODE_HOST_SESSION_ID`, `CLAUDE_CODE_CHILD_SESSION`, `CLAUDE_PID`,
+`CLAUDE_AGENT_SDK_VERSION`, `CLAUDE_CODE_OAUTH_SCOPES`, both `CLAUDE_CODE_SDK_HAS_*_REFRESH`, and
+five internal feature flags. Seventeen variables, of which the workaround this replaced neutralised
+six.
+
+That count is the argument for the prefix. **The set differs by host and by release** — a terminal
+session carries fewer than a desktop one, and `CLAUDE_CODE_REPORT_FINDINGS` is plainly not a variable
+that existed a year ago. A named list of the six that were noticed is one CLI release from letting a
+new marker through in silence, so `ClaudeCodeEnvironmentScrub` removes `CLAUDECODE` and everything
+prefixed `CLAUDE_`.
+
+**It lives with the adapter, not in `Act.Core`.** Which variables one CLI must not inherit is a fact
+about that CLI, and the first draft of this put it in `AgentEnvironment` — where it would have been
+Claude Code's private contract sitting in the project that is supposed to know nothing about either
+vendor. So `Act.Core` owns the seam and nothing else: `IEnvironmentScrub`, one call, applied to the
+inherited environment *before* ACT's own variables and before the install's overrides. The parameter
+is spelled at every call site rather than defaulted, because an agent that subtracts nothing is a
+claim, and a claim should be visible at the point it is made.
+
+**Removed, not set to `0` or `""`.** The CLI's own code paths are written against these being
+*absent* on a first launch; whether it reads `CLAUDECODE=0` as falsy is an assumption nobody has
+tested, and an empty `CLAUDE_CODE_ENTRYPOINT` is a value the CLI never sets itself. Deleting the keys
+reproduces exactly what a top-level launch sees, which is the only shape that needs no assumption.
+
+**Gated on `CLAUDECODE` rather than unconditional, and the gate is what makes the prefix safe.** The
+marker's presence *is* the detection — there is no other way those variables reach ACT — so its
+absence means ACT was launched normally and a `CLAUDE_*` in its environment is the user's own machine
+config. Wiping that would silently undo a setting they made. Inside a session the two are
+indistinguishable and a machine-wide knob goes with the markers; the install's own `Env` is where it
+comes back, applied after the scrub so an override still wins.
+
+**`CLAUDE_CONFIG_DIR` is the one exemption**, because ACT reads it itself:
+`ClaudeCodeUsageDialect.DefaultCredentialsPath` honours it when locating `.credentials.json`. A CLI
+that could not see it would authenticate against a different install than the usage meter reports on.
+
+**What is still unmeasured, and what to re-test on a CLI bump.** Which of the seventeen actually
+changes the child's behaviour was never isolated — the original workaround was assembled until a
+symptom stopped, and this entry generalises it rather than proving it. Codex's equivalents were not
+measured at all, so nothing `CODEX_*` is touched. The check is the one from
+`docs/findings/agent-title.md`: spawn a task from an ACT that was itself started inside a session and
+confirm the agent opens a session of its own.
+
 ---
+
+## The pty
+
+### A pseudo-console outlives the process attached to it
+
+`IPtyConnection` is `IDisposable`, and ending the agent without disposing the connection leaks one
+`conhost.exe` per session ACT ever launches — found by watching the process tree after a session
+ended. `PtyProcess.DisposeAsync` disposes the connection last, and disposal is the only teardown a
+session has, so no path can skip it.
+
+### A pty does not walk `PATH`
+
+It spawns with an explicit image path, so a bare `claude` / `codex` is looked for in the working
+directory and fails. Resolution lives in `Act.Infrastructure/Terminal/ExecutableResolver` — the one
+layer allowed to know about `PATHEXT`.
+
+### Rejected liveness routes
+
+Three alternatives to hosting the real TUI under a pty were built or probed and rejected:
+
+- **stream-json control protocol** (`claude -p --input-format stream-json`) — ACT holding the
+  pipes and answering control-requests itself. Rejected for the reason that outranks its
+  elegance: it **replaces the interactive session the user actually wants** with a headless one,
+  forcing ACT to re-implement every prompt surface the TUI already renders well — permission
+  dialogs, AskUserQuestion, plan approval, `/`-commands — and to keep re-implementing them as the
+  CLI evolves. It is also underdocumented, so each re-implementation would be pinned to an
+  unversioned protocol. Kept on the table as a possible future unattended mode, where there is no
+  human to hand a terminal to and re-implementing prompts is moot.
+- **Desktop-only handoff as the launch mode** — `claude://code/new?q=…` prefills but **never
+  auto-sends** (deliberate safety), registers none of ACT's hooks, and writes to an opaque store.
+  A card launched that way would have no badges, no metrics and no completion signal. Hence
+  handoff is an *action on an observed session*, not a way to start one.
+- **Desktop GUI automation** (synthetic Enter / Playwright) — Electron's single-instance lock
+  strips `--remote-debugging-port` (breaks Playwright/CDP attach); synthetic keystrokes need OS
+  Accessibility permission and fight focus/timing races. It only "helps" the unattended case,
+  which a non-prompting `permissionMode` handles cleanly.
+
+## The MCP server
+
+### `[McpHeader]` is not how a tool reads an HTTP header — measured on SDK 2.1.0
+
+A parameter carrying the attribute is still published in the tool's input schema, so the model sees
+a `token` argument it cannot supply and every call fails. ACT reads the header off
+`IHttpContextAccessor` instead, and `FollowUpTests` pins the tool schema so the mistake cannot come
+back.
+
+### Streamable HTTP on the hook port, never stdio
+
+stdio would mean one child process per session, and ACT has already paid once for leaking a process
+per session (the `conhost` leak above). The server rides the existing hook listener at `/mcp`,
+reuses `x-act-hook-token`, and resolves the token **per request** rather than at initialize — a
+streamable-HTTP session is long-lived and `SessionRegistry.Forget` releases the token when the
+session ends, so a token read once at connect would let a dead card keep a working connection.
 
 ## Ingestion
 
-### Codex transcript guessing is gone — deleted 2026-07-31
+### Codex transcript guessing is gone
 
 Codex had a second way for ACT to find its transcript: `CodexRolloutFinder` inferred the file from
 the folder layout and a cwd/timestamp match, written because its hooks were believed dead. They are
@@ -224,7 +329,7 @@ process can say.
 A `FileSystemWatcher` on an appended file needs its own debounce and reports late anyway. A read
 from a stored offset once a second is a few kilobytes.
 
-### The Codex normalizer used to report liveness — moved to hooks 2026-07-31
+### The Codex normalizer used to report liveness — moved to hooks
 
 It reported activity, turn ends and the turn/tool counts, because the hooks were believed not to
 fire. All of that moved to the hooks, which report first-hand instead of a poll behind a file, and
@@ -234,6 +339,12 @@ which count the same things Claude Code's do. Hooks own the counts; the transcri
 `error` is the CLI saying the turn failed while its process stays alive and would exit zero — the
 failure `ProcessExited` cannot see — and no hook has been *observed* reporting it. Measured, not
 assumed: drop it only after watching a real failed turn's `Stop` payload.
+
+Reproducing it is narrower than it looks: it needs a model the **CLI accepts but the account
+cannot use** (the original measurement's `gpt-5.4`), so a session starts and the *request* is
+rejected. A client-side-invalid name exits with code 2 before any session exists — that path is
+`ProcessExited` → `error`, not `TurnFailed` — and `OPENAI_BASE_URL` is ignored under ChatGPT
+auth, so pointing it at an unreachable host does not fail a turn either.
 
 ---
 
@@ -312,7 +423,7 @@ Content-type"* — a 400 that says nothing true about what happened.
 
 ## The desktop shell
 
-### The splash screen is the Electron host's, not ACT's — decided 2026-08-07
+### The splash screen is the Electron host's, not ACT's
 
 The splash is a PNG named by `<ElectronSplashScreen>` in `Act.App.csproj`. The ElectronNET.Core
 build targets copy it into the `.electron` output and write it into the host manifest's
@@ -342,7 +453,7 @@ baked in; that loses nothing today because `Shell_FullName` is identical in both
 `SplashScreenTests` pins the csproj property, the file's existence, and that the PNG stays within
 the smallest work area the app itself accepts (1000×320), since nothing compiles against any of it.
 
-### Five pumps, one lifetime — consolidated 2026-08-02
+### Five pumps, one lifetime
 
 `QueueRunner`, `SessionEventPump`, `TranscriptPump`, `UsagePump` and `RetentionPump` each wrote out
 their own cancellation source, loop, catch policy and disposal. The copies had drifted into
@@ -361,7 +472,7 @@ and the next tick tries again.
 
 ## Logging
 
-### Four traps between MEL and Serilog — measured 2026-08-04
+### Four traps between MEL and Serilog — measured
 
 ACT logs through `Microsoft.Extensions.Logging` and keeps Serilog behind
 `Act.Infrastructure/Logging/`. Getting that boundary to actually hold turned up four things,
@@ -397,7 +508,7 @@ rendering is why `QueueRunner.Report` switches on the hold reason instead of usi
 `ReadyHold`'s fields are null or zero for every hold that says nothing about them, so a single line
 would read `until null, 0 of 0 slots in use` most of the time.
 
-### The log file is UTF-8 **with** a BOM — decided 2026-08-04
+### The log file is UTF-8 **with** a BOM
 
 Serilog's file sink defaults to UTF-8 without one, and the content is correct either way. The BOM is
 for the readers: without it every Windows tool that falls back to the ANSI codepage — PowerShell
@@ -405,7 +516,7 @@ for the readers: without it every Windows tool that falls back to the ANSI codep
 file. `QueueRunner` logs the sentence it showed the user, which is localised, and a Windows profile
 name can carry accents. It cost one parameter.
 
-### Four layers catch an unhandled exception — verified 2026-08-04
+### Four layers catch an unhandled exception — verified
 
 Worth writing down because only two of them are ACT's code, and the reflex on reading
 `StartupLog` is to assume the other two are missing.
@@ -430,7 +541,7 @@ full stack trace, and ASP.NET's request scope (`TraceId`, `RequestPath`, `Connec
 renders in the context group for free — `ActLogFormatter` names no keys of its own, so any
 scope the framework pushes comes through.
 
-**Crash telemetry rides on this table, and learned it the hard way — 2026-08-05.**
+**Crash telemetry rides on this table, and learned it the hard way.**
 `TelemetryPump` originally subscribed to the top two rows directly, which looks like the
 obvious way to catch a crash and misses **most of them**: a throwing button handler is row
 four, and Blazor's renderer swallows it into an `ILogger` without ever raising
@@ -468,7 +579,7 @@ it, because that is the identifier a user reads off a strip. Two consequences wo
   collapses to one — `A_repeated_scope_is_not_written_twice` pins it, because the alternative
   (`[Task=1031 Task=1031]`) is the sort of thing nobody notices until a log is unreadable.
 
-### Which level a swallowed exception gets — settled 2026-08-05
+### Which level a swallowed exception gets — settled
 
 A review of every `catch` that logs and carries on found the levels had drifted, and the fix is a rule
 rather than a sweep, because two of the sites that look wrong are right.
@@ -507,7 +618,7 @@ guard:
 
 ## Telemetry
 
-### Telemetry is not a log — rejected 2026-08-05
+### Telemetry is not a log — rejected
 
 The obvious way to send usage metrics from a codebase that already logs through
 `Microsoft.Extensions.Logging` is a second `ILoggerProvider` beside the file sink. It genuinely
@@ -534,7 +645,7 @@ through `ILogger<PostHogTelemetrySink>`, the same way `HttpUsageProbe` does. Nev
 
 ### What telemetry may carry
 
-**First, how much of it there should be — trimmed 2026-08-05.** The first cut shipped a
+**First, how much of it there should be — trimmed.** The first cut shipped a
 `task_completed` event carrying `turn_count`, `tool_calls`, `tokens_total`, `compactions`,
 `transition_count` and a duration, and it was wrong in a way that is worth naming because it is the
 easy mistake: those are measurements of **the agent's work**, not of ACT's use. They are also already
@@ -617,7 +728,7 @@ predicate. PostHog drops an event whose `BeforeSend` returns null (verified agai
 `PostHogClient.CaptureBatchAsync`, 2.12.2 — hence the `null!`, which is the contract rather than an
 oversight). Together they make "off" true of the queue as well as of the call sites.
 
-### What a crash report may carry, and what the first one didn't — fixed 2026-08-05
+### What a crash report may carry, and what the first one didn't — fixed
 
 The first real `app_error` to arrive said `System.AggregateException`, `fatal: false`, and nothing
 else. No frames at all. Two separate faults, and neither was the sanitizer being too strict.
@@ -647,7 +758,7 @@ line still resolve under a **Release** build, which is what
 `A_frame_carries_the_source_file_and_line` pins by regex. Inlining can still merge or drop a frame;
 that is a property of optimized builds, not of this code.
 
-### `CaptureException` is not usable here — measured 2026-08-05
+### `CaptureException` is not usable here — measured
 
 The SDK has a `CaptureException` that feeds PostHog's Error Tracking product — grouping, issues,
 occurrence counts — and `app_error` looks exactly like the thing that should be using it. It cannot,
@@ -691,7 +802,7 @@ docs, `filename`, `lineno` and source context are **optional** — the required 
 `TelemetryEvents`. It was not done, because it trades a shape the SDK maintains for one we own and
 must re-verify on every bump, and grouped crash reports are not worth that yet.
 
-### The consent gate must not outlive its provider — crashed 2026-08-05
+### The consent gate must not outlive its provider — learned from a crash
 
 First real shutdown after telemetry went live threw `ObjectDisposedException: IServiceProvider` out of
 `PostHogClient.ApplyBeforeSend`. The gate was written as `Func<IServiceProvider, bool>` and resolved
@@ -724,7 +835,7 @@ Two things fell out of it worth keeping:
   an SDK that stops flushing on dispose — but it is not what is currently saving the events, and
   anyone reasoning about the shutdown path should know which of the two is load-bearing.
 
-### The token is encoded, and that is not security — decided 2026-08-05
+### The token is encoded, and that is not security
 
 The project key reaches a release through a `POSTHOG_PROJECT_TOKEN` GitHub secret: the `gate` job
 fails if it is empty or does not start with `phc_`, and the `package` job base64-encodes it into
@@ -753,7 +864,7 @@ even though the pipeline's read-back would pass; and `Anything_that_is_not_a_pro
 unconfigured` makes a malformed value mean *no client* rather than a client that fails every batch
 silently at the far end.
 
-### `PostHog`, not `PostHog.AspNetCore` — decided 2026-08-05
+### `PostHog`, not `PostHog.AspNetCore`
 
 `PostHog.AspNetCore` 2.8.2 depends on `PostHog >= 2.12.2` plus `Microsoft.FeatureManagement`, and
 everything it adds over the core package is feature-flags-in-a-web-request:
@@ -783,9 +894,9 @@ sandbox never reach the project either.
 
 ## The store
 
-### The migration list was emptied for the first release — 2026-08-06
+### The migration list was emptied for the first release
 
-`ActSchema.Migrations` held two entries, both written on 2026-08-04 against stores that only ever
+`ActSchema.Migrations` held two entries, both written against stores that only ever
 existed before the first release: `TaskDefaults` → `Templates` (schema 1 → 2, a field becoming a
 list) and `NullFieldsBecomeDefaults` (schema 2 → 3, dropping the nulls LiteDB's `EmptyStringToNull`
 default had written in place of empty strings). Both are gone, and **schema 1 is the release
@@ -812,7 +923,7 @@ from 3 back to 1, so every store already stamped 2 or 3 trips the newer-build gu
 deleted — acceptable exactly once, under the pre-release rule, and never again after the release
 that makes schema 1 real.
 
-**`InstallId` is seeded, and that is not the store rule being bent — 2026-08-05.** The
+**`InstallId` is seeded, and that is not the store rule being bent.** The
 telemetry `distinct_id` looked like it wanted a migration entry, and it does not. A migration exists
 to stop *two shapes* living on disk; an identity generated once when it is absent is a **seed**, not
 a second shape — after `Seeded` runs there is exactly one shape and no code path that has to ask
@@ -822,7 +933,17 @@ bump that would rewrite every install's settings document to add a GUID. It is r
 derived from the machine: the switch promises anonymous data, and a hardware-derived id would tie
 every install to a device.
 
-### Empty strings were stored as null — measured 2026-08-04
+### Renaming a persisted enum value is never only a rename — measured
+
+LiteDB persists enums by name and its deserializer throws on a name the build no longer has —
+measured, not assumed: `ArgumentException: Requested value 'Spacious' was not found`. Where the
+value loads decides the blast radius: a retired `Badge` costs one unreadable card, but settings
+load in a constructor at start-up, so a retired `BoardDensity` name took the **whole app** down.
+Before the first public release the answer is a fresh store; after it, a rename needs a schema
+migration in `ActSchema` or a tolerant `RegisterType` in `ActBsonMapper` — in the same commit as
+the rename, every time.
+
+### Empty strings were stored as null — measured
 
 `BsonMapper.EmptyStringToNull` **defaults to `true`** in LiteDB 5. Every empty string ACT ever
 wrote went to disk as BSON null and came back as `null`, so a property declared
@@ -835,7 +956,7 @@ read; the first start's own write is what broke the second.
 `ActBsonMapper` sets the flag to `false`, and `SettingsStoreTests` pins the round trip — an empty
 string comes back empty, and a `string?` still comes back null — because nothing in the type
 declaration says which one you get. A `NullFieldsBecomeDefaults` entry (schema 2 → 3) repaired the
-stores the old default had already written; it went with the rest of the list on 2026-08-06, since
+stores the old default had already written; it went with the rest of the list, since
 no store the release will see was ever written by a build that had the flag wrong.
 
 **Had that repair been needed after the release, it would still delete the null field rather than
@@ -852,7 +973,7 @@ naming one.
 
 ## Styling against Radzen
 
-Two bugs found on 2026-08-04 while making the New task picker presentable. Both had been in the app
+Two bugs found while making the New task picker presentable. Both had been in the app
 since the shell was built, both were invisible in code review, and both were found the same way:
 reading `getComputedStyle` off the real page rather than trusting the CSS to mean what it says.
 
@@ -946,7 +1067,7 @@ What the chosen route costs, and why the fixture looks the way it does:
   directory out of `builder.Configuration` on its second line, before any `ConfigureWebHost` callback has
   run. That is also why the assembly disables test parallelisation.
 
-### Knowing a Blazor page is ready to be clicked — the one-in-six flake, 2026-08-06
+### Knowing a Blazor page is ready to be clicked — the one-in-six flake
 
 `GoAsync` waits for three things before a spec touches the page, and the third is the only one that
 answers the question that matters. The history is worth keeping, because two earlier gates each looked

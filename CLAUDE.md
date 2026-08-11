@@ -4,7 +4,8 @@ Instructions for Claude Code when working in this repository.
 
 ## Project docs
 
-- **`docs/overview.md` — MUST READ.** The authoritative spec: state model,
+- **`docs/overview.md` — MUST READ.** The index of the authoritative spec, which
+  is split one file per area under `docs/spec/`: state model,
   data model, ingestion, rules engine, UI direction. Read it before any
   non-trivial change, and follow it when it disagrees with a mockup or with the
   existing code. Keep it updated when a decision changes.
@@ -14,9 +15,6 @@ Instructions for Claude Code when working in this repository.
   `Abstractions/` interfaces). Read it before adding a project, folder, or file so
   new code lands where the architecture expects it, and keep it updated when the
   layout changes.
-- **`docs/roadmap.md` — read when needed.** Build sequence and step status.
-  Consult it to know what comes next or what a step's *verify* line requires;
-  tick steps off as they land.
 - **`docs/design-notes.md` — read when a comment points at it, or before undoing something
   that looks arbitrary.** How the non-obvious decisions were reached: measurements against a
   pinned CLI, shapes that were tried and rejected, code that was deleted and why. The code
@@ -66,7 +64,7 @@ Instructions for Claude Code when working in this repository.
 instance and mine are then one database, one archive and one attachments folder.
 
 **Never run a destructive action against it.** Emptying the archive, deleting cards, purging
-— these act on *every* matching row, not the ones you made. On 2026-08-05 a session emptied
+— these act on *every* matching row, not the ones you made. A session once emptied
 the archive several times without reading it and lost an attachment off a live task; whatever
 else was archived went with it, and none of it is recoverable.
 
@@ -120,8 +118,8 @@ then `preview_start` with `{"url": "http://localhost:5290"}`. Both flags reach
 - **Aim for full coverage of what you touched**, and mean it: not just the happy
   path, but every refusal, every boundary, every branch a bad argument reaches.
   The paths that go untested are exactly the ones no screen shows you.
-- **Put each test in the cheapest tier that can hold it** — see the spec's
-  *Testing* section for the tiers. Pure logic goes in `Act.Core.Tests`; anything
+- **Put each test in the cheapest tier that can hold it** — see the *Testing*
+  section of `docs/development.md` for the tiers. Pure logic goes in `Act.Core.Tests`; anything
   needing the app's service graph goes in `Act.App.UiTests` (`ComponentTest` has
   the graph already assembled); the browser tier is for what only a browser can
   show. A service is *not* exempt because it lives in `Act.App` — only the
@@ -180,12 +178,3 @@ then `preview_start` with `{"url": "http://localhost:5290"}`. Both flags reach
 
   Finished code ships without comments; let clear names and small functions
   carry the meaning.
-
-<!--
-More build-time guidance to add:
-- architecture guardrails (dependency direction, ports-and-adapters)
-- domain vocabulary to use verbatim (cards, columns, badges, transitions, adapters, sources)
-- commands and workflow rules
-
-See docs/overview.md for the spec and docs/roadmap.md for the build sequence.
--->

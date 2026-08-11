@@ -22,13 +22,15 @@ public sealed class HttpUsageProbe(
 
     public AgentType Agent => dialect.Agent;
 
+    public string CredentialsPath
+        => Fallback(options.For(Agent).CredentialsPath, dialect.DefaultCredentialsPath());
+
     public async Task<UsageProbeResult> ReadAsync(CancellationToken cancellationToken = default)
     {
         if (!options.Enabled)
             return Unavailable(UsageAvailability.Off);
 
-        var configured = options.For(Agent);
-        var path = Fallback(configured.CredentialsPath, dialect.DefaultCredentialsPath());
+        var path = CredentialsPath;
 
         if (files.Read(path) is not { } credentials)
         {
@@ -62,7 +64,10 @@ public sealed class HttpUsageProbe(
             return Unavailable(UsageAvailability.NotSignedIn);
         }
 
-        return await RequestAsync(Fallback(configured.Endpoint, dialect.DefaultEndpoint), bearer, cancellationToken);
+        return await RequestAsync(
+            Fallback(options.For(Agent).Endpoint, dialect.DefaultEndpoint),
+            bearer,
+            cancellationToken);
     }
 
     // The endpoint may be the user's own appsettings override, and it is validated here rather than

@@ -133,6 +133,29 @@ public class HttpUsageProbeTests
         => (await Probe(new Handler(HttpStatusCode.Unauthorized, "nope")).ReadAsync())
             .At.Should().Be(Now);
 
+    [Fact]
+    public void The_credentials_path_is_the_dialects_discovered_default()
+        => Probe(new Handler(HttpStatusCode.OK, "{}")).CredentialsPath.Should().Be("credentials.json");
+
+    [Theory]
+    [InlineData(@"D:\elsewhere\auth.json", @"D:\elsewhere\auth.json")]
+    [InlineData("", "credentials.json")]
+    [InlineData("   ", "credentials.json")]
+    public void A_configured_credentials_path_wins_and_a_blank_one_configures_nothing(
+        string configured,
+        string expected)
+    {
+        var options = new UsageOptions
+        {
+            Agents = new Dictionary<string, UsageAgentOptions>
+            {
+                ["ClaudeCode"] = new() { CredentialsPath = configured },
+            },
+        };
+
+        Probe(new Handler(HttpStatusCode.OK, "{}"), options: options).CredentialsPath.Should().Be(expected);
+    }
+
     private static HttpUsageProbe Probe(
         Handler handler,
         string? credentials = "{}",

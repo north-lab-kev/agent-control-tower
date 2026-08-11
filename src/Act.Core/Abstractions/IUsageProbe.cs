@@ -6,5 +6,7 @@ public interface IUsageProbe
 {
     AgentType Agent { get; }
 
+    string CredentialsPath { get; }
+
     Task<UsageProbeResult> ReadAsync(CancellationToken cancellationToken = default);
 }
