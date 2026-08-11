@@ -206,6 +206,9 @@ public sealed class CodexAdapter(
                     ? AttachmentInstruction.Append(prompt, attachments.PathsOf(image: false))
                     : prompt);
 
+        // No scrub: what a Codex session sets for its own children was never measured, so there is
+        // nothing here that is known to be worth subtracting. `docs/design-notes.md` records the
+        // check to run before that becomes a claim.
         var process = await pty.StartAsync(
             new PtyStartInfo(
                 resolved.AgentBinary ?? DefaultBinary,
@@ -214,6 +217,7 @@ public sealed class CodexAdapter(
                 AgentEnvironment.For(
                     taskId,
                     resolved.Env,
+                    scrub: null,
                     hookToken,
                     hooks.UrlFor(Agent)?.ToString()),
                 size),
@@ -275,7 +279,7 @@ public sealed class CodexAdapter(
                 request.Machine?.Binary is { Length: > 0 } binary ? binary.Trim() : DefaultBinary,
                 arguments,
                 scratch,
-                AgentEnvironment.ForQuery(request.Machine?.Env ?? new Dictionary<string, string>()),
+                AgentEnvironment.ForQuery(request.Machine?.Env ?? new Dictionary<string, string>(), scrub: null),
                 request.Prompt,
                 request.Timeout),
             cancellationToken);

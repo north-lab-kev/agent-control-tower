@@ -150,6 +150,7 @@ public sealed class ClaudeCodeAdapter(
                 AgentEnvironment.For(
                     taskId,
                     resolved.Env,
+                    ClaudeCodeEnvironmentScrub.Shared,
                     hookToken,
                     hooks.UrlFor(Agent)?.ToString()),
                 size),
@@ -207,7 +208,9 @@ public sealed class ClaudeCodeAdapter(
                 request.Machine?.Binary is { Length: > 0 } binary ? binary.Trim() : DefaultBinary,
                 arguments,
                 configFiles.ScratchDirectory(),
-                AgentEnvironment.ForQuery(request.Machine?.Env ?? new Dictionary<string, string>()),
+                AgentEnvironment.ForQuery(
+                    request.Machine?.Env ?? new Dictionary<string, string>(),
+                    ClaudeCodeEnvironmentScrub.Shared),
                 request.Prompt,
                 request.Timeout),
             cancellationToken);

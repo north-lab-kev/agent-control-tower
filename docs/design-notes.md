@@ -204,6 +204,57 @@ nothing. Every terminal emulator does this with a dragged file, and the user sti
 landed and press Enter. `IAgentTerminal`'s doc comment was amended rather than quietly contradicted —
 the invariant is that ACT composes no *instruction*, not that it never writes.
 
+### A session ACT was launched from must not be passed on to the agents it spawns — measured
+
+`AgentEnvironment` copies ACT's own process environment into every CLI it starts, and that is right
+for `PATH`, a proxy, or credentials. It is wrong for the variables a *Claude Code session* sets for
+its children: ACT started with `dotnet run` from inside a session — which is how ACT is developed and
+verified — inherits them, hands them to the `claude` it spawns, and that CLI comes up believing it is
+a nested session rather than a fresh one.
+
+**Measured, in a `claude-desktop`-hosted session:** `CLAUDECODE=1`, `CLAUDE_CODE_ENTRYPOINT`,
+`CLAUDE_CODE_SESSION_ID`, `CLAUDE_CODE_HOST_SESSION_ID`, `CLAUDE_CODE_CHILD_SESSION`, `CLAUDE_PID`,
+`CLAUDE_AGENT_SDK_VERSION`, `CLAUDE_CODE_OAUTH_SCOPES`, both `CLAUDE_CODE_SDK_HAS_*_REFRESH`, and
+five internal feature flags. Seventeen variables, of which the workaround this replaced neutralised
+six.
+
+That count is the argument for the prefix. **The set differs by host and by release** — a terminal
+session carries fewer than a desktop one, and `CLAUDE_CODE_REPORT_FINDINGS` is plainly not a variable
+that existed a year ago. A named list of the six that were noticed is one CLI release from letting a
+new marker through in silence, so `ClaudeCodeEnvironmentScrub` removes `CLAUDECODE` and everything
+prefixed `CLAUDE_`.
+
+**It lives with the adapter, not in `Act.Core`.** Which variables one CLI must not inherit is a fact
+about that CLI, and the first draft of this put it in `AgentEnvironment` — where it would have been
+Claude Code's private contract sitting in the project that is supposed to know nothing about either
+vendor. So `Act.Core` owns the seam and nothing else: `IEnvironmentScrub`, one call, applied to the
+inherited environment *before* ACT's own variables and before the install's overrides. The parameter
+is spelled at every call site rather than defaulted, because an agent that subtracts nothing is a
+claim, and a claim should be visible at the point it is made.
+
+**Removed, not set to `0` or `""`.** The CLI's own code paths are written against these being
+*absent* on a first launch; whether it reads `CLAUDECODE=0` as falsy is an assumption nobody has
+tested, and an empty `CLAUDE_CODE_ENTRYPOINT` is a value the CLI never sets itself. Deleting the keys
+reproduces exactly what a top-level launch sees, which is the only shape that needs no assumption.
+
+**Gated on `CLAUDECODE` rather than unconditional, and the gate is what makes the prefix safe.** The
+marker's presence *is* the detection — there is no other way those variables reach ACT — so its
+absence means ACT was launched normally and a `CLAUDE_*` in its environment is the user's own machine
+config. Wiping that would silently undo a setting they made. Inside a session the two are
+indistinguishable and a machine-wide knob goes with the markers; the install's own `Env` is where it
+comes back, applied after the scrub so an override still wins.
+
+**`CLAUDE_CONFIG_DIR` is the one exemption**, because ACT reads it itself:
+`ClaudeCodeUsageDialect.DefaultCredentialsPath` honours it when locating `.credentials.json`. A CLI
+that could not see it would authenticate against a different install than the usage meter reports on.
+
+**What is still unmeasured, and what to re-test on a CLI bump.** Which of the seventeen actually
+changes the child's behaviour was never isolated — the original workaround was assembled until a
+symptom stopped, and this entry generalises it rather than proving it. Codex's equivalents were not
+measured at all, so nothing `CODEX_*` is touched. The check is the one from
+`docs/findings/agent-title.md`: spawn a task from an ACT that was itself started inside a session and
+confirm the agent opens a session of its own.
+
 ---
 
 ## The pty

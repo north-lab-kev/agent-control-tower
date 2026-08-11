@@ -7,9 +7,5 @@
      stable releases, install the first, confirm the second is found/downloaded/applied on exit;
      then cut a pre-release and confirm it is *not* offered. v0.0.1 shipped under the old `act-app`
      appId and must be uninstalled by hand once; nothing after it is affected.
-6. decide where the nested-session env block belongs: the global Claude Code agent defaults carry
-   `CLAUDECODE=0`, `CLAUDE_CODE_ENTRYPOINT=cli` and four empty `CLAUDE_*` variables (lifted from a
-   card that worked around ACT being launched from inside a Claude Code session) — should that be
-   ACT's own spawn code instead of a user setting?
-7. decide what an `e2e` CI failure means long-term — it blocks every push today; if it starts
+6. decide what an `e2e` CI failure means long-term — it blocks every push today; if it starts
    flaking, move it to `schedule` + `workflow_dispatch` rather than `continue-on-error`

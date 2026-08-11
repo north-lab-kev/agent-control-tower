@@ -69,9 +69,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │                               #     ITranscriptReader, ITranscriptNormalizer,
 │  │                               #     IUsageProbe, IUsageDialect, ITextFileReader,
 │  │                               #     IAgentCapabilityCatalog, ICardStore, INotifier, IClock,
-│  │                               #     ITelemetrySink…
+│  │                               #     ITelemetrySink, IEnvironmentScrub (what one CLI must not
+│  │                               #     inherit is the adapter's fact, not Core's)…
 │  ├─ Act.Agents.ClaudeCode/        # Claude Code adapter (pty command line, hook + mcp settings,
-│  │                               #   claude:// handoff, mappings)
+│  │                               #   claude:// handoff, mappings, the enclosing-session scrub)
 │  ├─ Act.Agents.Codex/             # Codex adapter
 │  ├─ Act.Infrastructure/           # LiteDB store, localhost hook + mcp host, transcript tailer,
 │  │  │                            #   process supervision, Serilog wiring
