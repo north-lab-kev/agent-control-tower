@@ -12,7 +12,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 ├─ .github/
 │  ├─ workflows/
 │  │  ├─ ci.yml                      # build + fast test suite (Linux on push; Windows occasional while private)
-│  │  └─ release.yml                 # manual (Release Version input): gate (Linux) → package (Windows) → tag + release (Linux)
+│  │  └─ release.yml                 # manual (Release Version input): gate (Linux) → package-windows + package-linux → tag + release (Linux)
 │  ├─ ISSUE_TEMPLATE/
 │  ├─ PULL_REQUEST_TEMPLATE.md
 │  └─ dependabot.yml
@@ -211,7 +211,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │
 ├─ scripts/
 │  ├─ build.ps1                     # repeatable build + test (CI hook); cross-platform pwsh
-│  └─ package-desktop.ps1           # Electron.NET desktop packaging
+│  ├─ package-desktop.ps1           # Electron.NET desktop packaging
+│  └─ stamp-telemetry.ps1           # writes the PostHog token into appsettings.json (release.yml, both packaging jobs)
 │
 ├─ Act.slnx                         # XML solution format
 ├─ Directory.Build.props            # shared: <Nullable>enable</Nullable>, analyzers, warnings-as-errors on core

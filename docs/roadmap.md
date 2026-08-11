@@ -1846,13 +1846,18 @@ Independent of the build phases — do whenever you decide to flip the repo publ
 
 ## Deferred — multi-OS release builds
 
-`release.yml` currently packages **Windows only** (`win-x64` portable `.exe`).
+`release.yml` packages Windows (`win-x64` NSIS) and Linux (`linux-x64` AppImage).
 Electron artifacts are per-OS — a Windows build does not run on Linux/macOS — so
 shipping cross-platform means a build per target:
 
-- [ ] **Linux** — `linux-x64` (`.tar.xz`, already configured in
-  `electron-builder.json`). Cheapest to add: another matrix leg on
-  `ubuntu-latest` running `package-desktop.ps1 -Rid linux-x64`.
+- [x] **Linux** — `linux-x64` AppImage, built in a `package-linux` job on
+  `ubuntu-latest` running `package-desktop.ps1 -Rid linux-x64`. AppImage rather
+  than `.deb`/`.rpm` because it is the one Linux target `electron-updater` can
+  auto-update (`latest-linux.yml`, attached to stable releases only, same rule
+  as `latest.yml`); the choice is argued beside the `linux` block in
+  `electron-builder.json`. **Never run on a real Linux desktop yet** — the
+  first AppImage needs a manual smoke test (launch, board loads, agents
+  detected) before it is announced anywhere.
 - [ ] **macOS** — `osx-arm64`/`osx-x64`. Most work: needs a `mac` target added,
   must build on a `macos-latest` runner, and wants Apple signing + notarization
   to run without Gatekeeper warnings.

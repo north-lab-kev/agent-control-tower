@@ -4,9 +4,8 @@
 
 **One board for every coding-agent session on your machine.**
 
-See all your Claude Code and Codex sessions at a glance, know instantly which
-one needs you, and stage tasks in advance — scheduled to launch when a usage
-window opens, so none of it goes to waste.
+See every Claude Code and Codex session at a glance, know instantly which one
+needs you, and stage upcoming tasks to launch as soon as a usage window opens.
 
 </div>
 
@@ -29,23 +28,19 @@ you what the others are doing. The result is a familiar set of problems:
   becomes available.
 
 ACT is the control tower for that traffic. Every task is a card on a Kanban
-board — styled as an air-traffic **flight strip** — that moves itself through
+board that moves itself through
 *Preparing → Ready → Executing → Your turn → Completed* as the session runs. A
 badge on each card says exactly why it is where it is: `running`,
-`needs permission`, `needs answer`, `error`, `to review`. One glance separates
-"something is stuck" from "something is done", without reading a word.
+`needs permission`, `needs answer`, `error`, `to review`.
 
 The name doubles as the verb *to act*: the tool's whole job is helping you
 decide which session needs attention — and act on it.
 
 ## Features
 
-- **A live board, not a process list.** Cards move themselves as the session
-  runs, driven by the agent's own lifecycle events. Amber blinks for a blocked
-  prompt, red for an error, calm blue for work awaiting your review.
-- **The real terminal, embedded.** ACT hosts each agent's actual interactive
-  TUI — answer a permission prompt, reply to a question, or steer the session
-  without leaving the board.
+- **A live board.** Cards move themselves as the session
+  runs, driven by the agent's own lifecycle events.
+- **An embedded terminal.**
 - **Prepare now, run later.** The board lets you draft and stage as many tasks
   as you want without executing anything right away — launch them yourself, or
   hand them to the scheduler.
@@ -53,24 +48,16 @@ decide which session needs attention — and act on it.
   5-hour window*, or a specific time. The runner watches your live usage and
   holds the queue when a window is nearly spent, so tasks launch when your
   token window becomes available instead of dying mid-run.
-- **Native OS notifications.** When you're not watching the board, the toast is
-  the "needs you" signal — a blocked prompt, a finished task, a usage limit
-  reached. Clicking it drops you straight into that card's terminal.
-- **Task templates.** Save a recurring shape of work — "bugfix on repo X,
-  Codex, accept-edits" — with its prompt skeleton and launch config, and create
-  tasks from it in one click.
+- **Native OS notifications.**
+- **Task templates.** Save a recurring shape of work with its prompt skeleton
+  and launch config, and create tasks from it in one click.
 - **A built-in MCP server — agents spawn tasks themselves.** Every session is
   wired to ACT over MCP, so an agent can create new tasks on the board: a plan
-  decomposes itself into implementation tasks, a review hands its leftovers to
-  a follow-up. Lineage and dependency ordering are tracked — and you still
-  gate every launch.
-- **Attachments.** Hand a task screenshots, logs, or specs alongside its
-  prompt; the agent reads them right off your disk.
-- **A full account of every task.** Immutable original prompt, a timeline of
-  every transition, and live metrics: tokens in/out, context usage,
-  compactions, turns, tool calls.
-- **Local-first.** Everything runs on your machine — a single embedded
-  database file, no server, no account, no telemetry.
+  decomposes itself into implementation tasks.
+- **Attachments.** Hand a task screenshots or log files.
+- **Timeline and metrics.** Every card keeps a timeline of its transitions and
+  live metrics — tokens, context usage, compactions, turns, tool calls.
+- **Local-first.** Everything runs on your machine.
 
 ## Screenshots
 
@@ -86,7 +73,7 @@ decide which session needs attention — and act on it.
 
 ![Task terminal](docs/screenshots/terminal.png)
 
-*Every card keeps its full timeline — every launch, block, and hand-back:*
+*Every card keeps its full timeline:*
 
 ![Task timeline](docs/screenshots/timeline.png)
 
@@ -95,12 +82,9 @@ decide which session needs attention — and act on it.
 - **Claude Code**
 - **Codex**
 
-Each agent plugs in through an adapter that normalizes its events into one
-model, so ACT is open to supporting other agents in the future.
-
 ## Supported platforms
 
-**Windows** and **Linux**, in a browser or as a desktop app. macOS is not
+**Windows** and **Linux** as a desktop app. macOS is not
 supported yet, but the stack is portable and it is open for the future.
 
 ## Getting started
@@ -110,13 +94,9 @@ Download the installer for your platform from the
 run it, and ACT opens as a desktop app. You'll need at least one supported
 agent CLI installed and signed in — ACT finds it on its own.
 
-To build and run from source instead, see
-[docs/development.md](docs/development.md).
-
 ## Documentation
 
-- [docs/overview.md](docs/overview.md) — the full specification: state model,
-  data model, scheduling, notifications, UI direction.
+- [docs/overview.md](docs/overview.md) — the full specification.
 
 ## Contributing
 

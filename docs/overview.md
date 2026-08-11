@@ -2512,6 +2512,10 @@ what gets **published**, and two of them are counter-intuitive enough to write d
 
   The result for a beta tester: they sit still until a stable version semver-greater than their
   build appears, and then roll forward to it. **Betas are a dead end by design.**
+- **Linux ships as an AppImage because of this machinery.** `AppImageUpdater` is the one Linux
+  updater in electron-updater that works against this feed — a `.deb` or `.rpm` would ship with
+  auto-update dead on arrival. It reads `latest-linux.yml` from the same generic base, and the
+  release job attaches that file under the same stable-only rule as `latest.yml`.
 - **Unsigned is fine, for now.** `NsisUpdater.verifySignature` returns null and skips when
   `app-update.yml` carries no `publisherName`; HTTPS to GitHub plus the sha512 in `latest.yml`
   covers integrity. Signing is worth doing, separately.
