@@ -7,3 +7,4 @@
      stable releases, install the first, confirm the second is found/downloaded/applied on exit;
      then cut a pre-release and confirm it is *not* offered. v0.0.1 shipped under the old `act-app`
      appId and must be uninstalled by hand once; nothing after it is affected.
+6. promote it

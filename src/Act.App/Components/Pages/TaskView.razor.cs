@@ -29,6 +29,7 @@ public partial class TaskView(
     SessionRegistry registry,
     IAgentCapabilityCatalog agents,
     TaskTitles titles,
+    TitleBackfill backfill,
     UserSettingsService settings,
     IWorkingDirectories directories,
     IAttachmentStore attachments,
@@ -501,6 +502,10 @@ public partial class TaskView(
             card = null;
             missing = false;
             form = NewTaskForm.From(settings.TemplateOrDefault(TemplateId));
+
+            if (string.IsNullOrWhiteSpace(form.WorkingDir))
+                form.WorkingDir = settings.LastWorkingDir;
+
             Rebase();
             discarded = false;
 
@@ -869,10 +874,7 @@ public partial class TaskView(
 
         try
         {
-            // Silent here, unlike the button: the user was saving, not asking for a title, and a
-            // toast about how the title was arrived at is an interruption they did not invite.
-            if (string.IsNullOrWhiteSpace(form.Title) && await TitleAsync() is { } suggestion)
-                form.Title = suggestion.Title;
+            var untitled = string.IsNullOrWhiteSpace(form.Title);
 
             var saved = card;
 
@@ -886,10 +888,21 @@ public partial class TaskView(
                 saved = form.ToCard(clock.Now);
 
                 await board.CreateAsync(saved);
+
+                settings.SetLastWorkingDir(saved.WorkingDir);
             }
 
             if (ready && ManualMove.IsAllowed(saved.Column, BoardColumn.Ready))
                 await board.MoveAsync(saved, BoardColumn.Ready);
+
+            // Silent here, unlike the button — the user was saving, not asking a question — and
+            // deliberately not awaited: the card is already on the board under the prompt's opening
+            // words, and the agent's answer replaces them when it arrives. A typed title instead
+            // withdraws any answer still owed to an earlier save.
+            if (untitled)
+                backfill.Start(saved);
+            else
+                backfill.Cancel(saved.Id);
 
             // After the write, so the card and the directory agree from here on: an attachment the
             // user removed on this visit is what loses its bytes, and only once the removal is real.

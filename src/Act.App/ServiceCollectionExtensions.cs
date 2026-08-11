@@ -98,6 +98,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<AgentInstallDiscovery>();
         services.AddSingleton<BoardState>();
         services.AddSingleton<TaskTitles>();
+        services.AddSingleton<TitleBackfill>();
         services.AddSingleton<RetentionPump>();
         services.AddSingleton<AttachmentSweep>();
         services.AddSingleton<CardCompleter>();

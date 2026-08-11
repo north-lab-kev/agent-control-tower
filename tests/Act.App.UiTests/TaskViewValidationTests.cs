@@ -142,8 +142,82 @@ public class TaskViewValidationTests : ComponentTest
         Fill(cut, prompt: "Rename the widget everywhere", workingDir: "/dev/act");
 
         await Submit(cut);
+        await Backfill.Idle;
 
         Board.All.Should().ContainSingle().Which.Title.Should().Be("Rename the widget");
+    }
+
+    // The save never waits on the CLI: the card lands on the board immediately under the prompt's
+    // opening words, marked pending, and the agent's answer replaces them when it arrives.
+    [Fact]
+    public async Task The_save_returns_to_the_board_before_the_title_arrives()
+    {
+        Claude.QueryHeld = new TaskCompletionSource();
+        Claude.Answer = "Rename the widget";
+
+        var cut = Show();
+
+        Fill(cut, prompt: "Rename the widget everywhere", workingDir: "/dev/act");
+
+        await Submit(cut);
+
+        Route.Should().BeEmpty();
+
+        var saved = Board.All.Should().ContainSingle().Subject;
+
+        saved.Title.Should().Be("Rename the widget everywhere");
+        Backfill.IsPending(saved.Id).Should().BeTrue();
+
+        Claude.QueryHeld.SetResult();
+
+        await Backfill.Idle;
+
+        Board.Card(saved.Id)!.Title.Should().Be("Rename the widget");
+        Backfill.IsPending(saved.Id).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_typed_title_asks_nobody()
+    {
+        var cut = Show();
+
+        Fill(cut, title: "My own words", prompt: "Rename the widget everywhere", workingDir: "/dev/act");
+
+        await Submit(cut);
+
+        Board.All.Should().ContainSingle().Which.Title.Should().Be("My own words");
+        Claude.Queries.Should().BeEmpty();
+    }
+
+    // The one race a user can actually run: save untitled, reopen, type the real name before the
+    // agent answers. The typed save withdraws the pending answer instead of being overwritten by it.
+    [Fact]
+    public async Task Saving_a_typed_title_withdraws_a_pending_backfill()
+    {
+        Claude.QueryHeld = new TaskCompletionSource();
+        Claude.Answer = "Rename the widget";
+
+        var create = Show();
+
+        Fill(create, prompt: "Rename the widget everywhere", workingDir: "/dev/act");
+
+        await Submit(create);
+
+        var saved = Board.All.Should().ContainSingle().Subject;
+
+        Backfill.IsPending(saved.Id).Should().BeTrue();
+
+        var edit = Render<TaskView>(p => p.Add(c => c.CardId, saved.Id));
+
+        Fill(edit, title: "My own words");
+
+        await Submit(edit);
+
+        Backfill.IsPending(saved.Id).Should().BeFalse();
+
+        Claude.QueryHeld.SetResult();
+
+        Board.Card(saved.Id)!.Title.Should().Be("My own words");
     }
 
     // Silent on save, unlike the button: the user was saving, not asking for a title, and a toast about how
@@ -158,6 +232,7 @@ public class TaskViewValidationTests : ComponentTest
         Fill(cut, prompt: "Rename the widget everywhere", workingDir: "/dev/act");
 
         await Submit(cut);
+        await Backfill.Idle;
 
         Board.All.Should().ContainSingle().Which.Title.Should().NotBeNullOrWhiteSpace();
         Notifications.Messages.Should().BeEmpty();

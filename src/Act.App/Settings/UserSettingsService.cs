@@ -236,6 +236,24 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
         }
     }
 
+    public string LastWorkingDir => current.LastWorkingDir;
+
+    // Straight to the store like the window, and silent on an empty folder: a task created without
+    // one is not a reason to forget the folder the previous one used.
+    public void SetLastWorkingDir(string workingDir)
+    {
+        var folder = workingDir.Trim();
+
+        if (folder.Length == 0 || folder == current.LastWorkingDir)
+            return;
+
+        lock (gate)
+        {
+            current.LastWorkingDir = folder;
+            store.Save(current);
+        }
+    }
+
     public bool AgentInstallsProbed => current.AgentInstallsProbed;
 
     public void MarkAgentInstallsProbed() => Update(settings => settings.AgentInstallsProbed = true);

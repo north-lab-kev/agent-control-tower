@@ -90,9 +90,8 @@ public sealed class MockAgentAdapter(
     // is not there at all — and its callers are supposed to survive that rather than propagate it.
     public Exception? QueryFails { get; set; }
 
-    // A query a test can hold open, so whatever is waiting on it can be looked at mid-flight — the
-    // one-shot title query is the only slow step a save has, and a form's busy state only exists
-    // while it runs.
+    // A query a test can hold open, so whatever is waiting on it can be looked at mid-flight — a
+    // card's pending-title state only exists while the one-shot title query runs.
     public TaskCompletionSource? QueryHeld { get; set; }
 
     public async Task<string?> QueryAsync(

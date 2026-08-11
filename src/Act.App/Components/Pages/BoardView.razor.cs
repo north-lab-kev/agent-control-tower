@@ -16,6 +16,7 @@ namespace Act.App.Components.Pages;
 
 public partial class BoardView(
     BoardState board,
+    TitleBackfill backfill,
     SessionLauncher launcher,
     QueueRunner queue,
     TerminalGeometry geometry,
@@ -78,6 +79,7 @@ public partial class BoardView(
     protected override void OnInitialized()
     {
         board.Changed += OnChanged;
+        backfill.Changed += OnChanged;
         queue.Evaluated += OnChanged;
         settings.Changed += OnSettingsChanged;
 
@@ -87,6 +89,7 @@ public partial class BoardView(
     public async ValueTask DisposeAsync()
     {
         board.Changed -= OnChanged;
+        backfill.Changed -= OnChanged;
         queue.Evaluated -= OnChanged;
         settings.Changed -= OnSettingsChanged;
 

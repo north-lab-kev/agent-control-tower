@@ -488,6 +488,53 @@ public class UserSettingsServiceTests
         settings.Window.Should().BeNull();
     }
 
+    [Fact]
+    public void The_last_working_directory_is_remembered_trimmed_and_persisted()
+    {
+        var (settings, store) = ServiceOf();
+
+        settings.SetLastWorkingDir("  /dev/act  ");
+
+        settings.LastWorkingDir.Should().Be("/dev/act");
+        store.Load().LastWorkingDir.Should().Be("/dev/act");
+    }
+
+    // A task created without a folder is not a reason to forget the folder the previous one used —
+    // "the last folder used" survives a create that used none.
+    [Fact]
+    public void A_blank_folder_does_not_displace_the_remembered_one()
+    {
+        var (settings, _) = ServiceOf();
+
+        settings.SetLastWorkingDir("/dev/act");
+        settings.SetLastWorkingDir("   ");
+
+        settings.LastWorkingDir.Should().Be("/dev/act");
+    }
+
+    // Written on every create and bound to nothing on screen, so it goes straight to the store the
+    // way the window bounds do.
+    [Fact]
+    public void Remembering_the_last_working_directory_announces_nothing()
+    {
+        var (settings, store) = ServiceOf();
+        var announcements = 0;
+
+        settings.Changed += () => announcements++;
+
+        settings.SetLastWorkingDir("/dev/act");
+        settings.SetLastWorkingDir("/dev/act");
+
+        announcements.Should().Be(0);
+        store.Load().LastWorkingDir.Should().Be("/dev/act");
+    }
+
+    [Fact]
+    public void Nothing_is_remembered_before_the_first_task_names_a_folder()
+    {
+        ServiceOf().Item1.LastWorkingDir.Should().BeEmpty();
+    }
+
     // What makes "disable an agent ACT cannot find" a first impression rather than a rule that keeps
     // undoing the user.
     [Fact]

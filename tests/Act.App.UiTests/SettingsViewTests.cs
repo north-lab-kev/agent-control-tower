@@ -406,11 +406,11 @@ public class SettingsViewTests : ComponentTest
     [Fact]
     public void The_version_is_stated_in_either_shell()
     {
-        Show().Markup.Should().Contain("This copy of ACT").And.Contain(AppVersion.Current);
+        Show().Markup.Should().Contain("Version").And.Contain(AppVersion.Current);
 
         Desktop.IsDesktop = true;
 
-        Show().Markup.Should().Contain("This copy of ACT").And.Contain(AppVersion.Current);
+        Show().Markup.Should().Contain("Version").And.Contain(AppVersion.Current);
     }
 
     // Desktop-only for the same reason as close-to-tray: a browser tab cannot replace its own installer,

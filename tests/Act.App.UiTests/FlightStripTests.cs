@@ -163,6 +163,42 @@ public class FlightStripTests : ComponentTest
         cut.FindAll(".lin").Should().ContainSingle("compact trades the children counter away");
     }
 
+    // The spinner says a better title is on its way; the placeholder stays legible beside it, so a
+    // pending strip is still a searchable one. Both densities carry it — a title being written is
+    // worth the same pixel wherever the title is read.
+    [Theory]
+    [InlineData(BoardDensity.Detailed)]
+    [InlineData(BoardDensity.Compact)]
+    public async Task A_pending_title_spins_beside_the_placeholder(BoardDensity density)
+    {
+        Claude.QueryHeld = new TaskCompletionSource();
+
+        var card = Card(BoardColumn.Preparing);
+        card.InitialPrompt = "Rename the widget everywhere";
+
+        await BoardWith(card);
+        Backfill.Start(card);
+
+        var cut = Strip(card, density: density);
+
+        cut.Find(".ttlspin").GetAttribute("title").Should().Be("Generating a title…");
+        cut.Find(".ttl").TextContent.Should().Be("Rename the widget");
+
+        Claude.QueryHeld.SetResult();
+
+        await Backfill.Idle;
+
+        cut.Render();
+
+        cut.FindAll(".ttlspin").Should().BeEmpty();
+    }
+
+    [Fact]
+    public void A_settled_title_shows_no_spinner()
+    {
+        Strip(Card(BoardColumn.Preparing)).FindAll(".ttlspin").Should().BeEmpty();
+    }
+
     private IRenderedComponent<FlightStrip> Strip(
         Card card,
         Action<ComponentParameterCollectionBuilder<FlightStrip>>? parameters = null,

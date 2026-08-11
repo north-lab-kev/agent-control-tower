@@ -52,6 +52,84 @@ public class TaskViewTests : ComponentTest
         cut.Find("header.bar .title").TextContent.Should().Be("New task");
     }
 
+    // The commonest sequence of creates is several tasks against the same repository, so the folder —
+    // unlike the title and the prompt — is worth carrying from one create to the next.
+    [Fact]
+    public async Task A_created_tasks_folder_pre_fills_the_next_create()
+    {
+        var first = Show();
+
+        first.Find("textarea").Change("Do the thing");
+        first.Find("div.dirrow input").Change("/dev/act");
+
+        await first.Find("form").SubmitAsync();
+        await Backfill.Idle;
+
+        WorkingDir(Show()).Should().Be("/dev/act");
+    }
+
+    [Fact]
+    public void A_template_that_names_a_folder_wins_over_the_last_used_one()
+    {
+        Settings.SetLastWorkingDir("/dev/act");
+
+        var template = Template("Nightly sweep", "/dev/nightly", AgentType.Codex);
+
+        Settings.SaveTemplate(template);
+        Navigation.NavigateTo($"/card/new?template={template.Id}");
+
+        WorkingDir(Show()).Should().Be("/dev/nightly");
+    }
+
+    [Fact]
+    public void A_template_that_leaves_the_folder_blank_falls_back_to_the_last_used_one()
+    {
+        Settings.SetLastWorkingDir("/dev/act");
+
+        var template = Template("Nightly sweep", string.Empty, AgentType.Codex);
+
+        Settings.SaveTemplate(template);
+        Navigation.NavigateTo($"/card/new?template={template.Id}");
+
+        WorkingDir(Show()).Should().Be("/dev/act");
+    }
+
+    // The remembered folder is the *created* task's, so an edit — whatever it changes — moves nothing.
+    [Fact]
+    public async Task Editing_a_card_does_not_change_the_remembered_folder()
+    {
+        Settings.SetLastWorkingDir("/dev/act");
+
+        var card = Card(BoardColumn.Ready);
+
+        await BoardWith(card);
+
+        var edit = Show(card.Id);
+
+        edit.Find("div.dirrow input").Change("/dev/elsewhere");
+
+        await edit.Find("form").SubmitAsync();
+
+        Settings.LastWorkingDir.Should().Be("/dev/act");
+    }
+
+    // The pre-fill lands before the dirty baseline is taken, so a create opened and immediately left
+    // has nothing to ask about.
+    [Fact]
+    public void A_pre_filled_create_is_not_dirty()
+    {
+        Settings.SetLastWorkingDir("/dev/act");
+
+        var cut = Show();
+
+        WorkingDir(cut).Should().Be("/dev/act");
+
+        cut.Find("header.bar button").Click();
+
+        DialogsOpened.Should().BeEmpty();
+        Route.Should().BeEmpty();
+    }
+
     // The board is read synchronously first, which is what makes the heading right on the *first* render
     // rather than "New task" corrected a frame later.
     [Fact]

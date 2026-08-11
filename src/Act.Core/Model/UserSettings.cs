@@ -71,6 +71,10 @@ public sealed class UserSettings
     // deleted. `UserSettingsService` guarantees it exists, so every reader can assume one.
     public IList<TaskTemplate> Templates { get; set; } = [];
 
+    // The folder the last created task named. Not a choice the settings page offers: it only
+    // pre-fills the new-task form when the template being started from leaves the folder blank.
+    public string LastWorkingDir { get; set; } = string.Empty;
+
     // Where the desktop window was last left. Null until the shell has run once.
     public WindowBounds? Window { get; set; }
 }

@@ -508,7 +508,7 @@
     <value>Updates</value>
   </data>
   <data name="Settings_Version" xml:space="preserve">
-    <value>This copy of ACT</value>
+    <value>Version</value>
   </data>
   <data name="Settings_Updates" xml:space="preserve">
     <value>Automatic updates</value>
@@ -809,6 +809,9 @@
   </data>
   <data name="Board_Retry" xml:space="preserve">
     <value>Retry</value>
+  </data>
+  <data name="Board_TitlePending" xml:space="preserve">
+    <value>Generating a title…</value>
   </data>
   <data name="Session_Complete" xml:space="preserve">
     <value>Mark completed</value>

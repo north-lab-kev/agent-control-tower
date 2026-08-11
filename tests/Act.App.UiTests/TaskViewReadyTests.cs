@@ -51,6 +51,7 @@ public class TaskViewReadyTests : ComponentTest
         Fill(cut, prompt: "Rename the widget everywhere", workingDir: "/dev/act");
 
         await Ready(cut);
+        await Backfill.Idle;
 
         Board.All.Should().ContainSingle().Which.Title.Should().Be("Rename the widget");
     }
@@ -127,45 +128,30 @@ public class TaskViewReadyTests : ComponentTest
         RadzenDom.IsFilled(actions[1]).Should().BeTrue();
     }
 
-    // Both buttons go inert while a save runs — one save at a time — but only the pressed one spins:
-    // two spinners read as two things happening at once.
+    // The queue door does not wait on the CLI either: the card is in Ready with the prompt's opening
+    // words while the query is still out, and the answer lands on the board afterwards.
     [Fact]
-    public async Task Only_the_button_that_was_pressed_spins()
+    public async Task The_queue_door_returns_before_the_title_arrives()
     {
         Claude.QueryHeld = new TaskCompletionSource();
+        Claude.Answer = "Rename the widget";
 
         var cut = Show();
 
         Fill(cut, prompt: "Rename the widget everywhere", workingDir: "/dev/act");
 
-        var click = Ready(cut);
+        await Ready(cut);
 
-        RadzenDom.IsBusy(cut.Find("div.foot button.ready")).Should().BeTrue();
-        RadzenDom.IsBusy(cut.Find("div.foot button.save")).Should().BeFalse();
-        cut.Find("div.foot button.save").HasAttribute("disabled").Should().BeTrue();
+        var saved = Board.In(BoardColumn.Ready).Should().ContainSingle().Subject;
 
-        Claude.QueryHeld.SetResult();
-
-        await click;
-    }
-
-    [Fact]
-    public async Task An_ordinary_save_spins_on_its_own_button()
-    {
-        Claude.QueryHeld = new TaskCompletionSource();
-
-        var cut = Show();
-
-        Fill(cut, prompt: "Rename the widget everywhere", workingDir: "/dev/act");
-
-        var submit = cut.Find("form").SubmitAsync();
-
-        RadzenDom.IsBusy(cut.Find("div.foot button.save")).Should().BeTrue();
-        RadzenDom.IsBusy(cut.Find("div.foot button.ready")).Should().BeFalse();
+        saved.Title.Should().Be("Rename the widget everywhere");
+        Backfill.IsPending(saved.Id).Should().BeTrue();
 
         Claude.QueryHeld.SetResult();
 
-        await submit;
+        await Backfill.Idle;
+
+        Board.Card(saved.Id)!.Title.Should().Be("Rename the widget");
     }
 
     [Fact]

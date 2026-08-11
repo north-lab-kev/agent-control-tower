@@ -380,10 +380,11 @@ else
                         <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
                                       Size="ButtonSize.Small" ButtonType="ButtonType.Button" Click="Back"
                                       title="@Strings.NewTask_Cancel" aria-label="@Strings.NewTask_Cancel" />
-                        @* Busy, not just disabled: a save that has to write a title first waits on a
-                           CLI for a few seconds, and a button that only greys out reads as a hang.
-                           Absent rather than disabled on an archived card — a greyed Save invites
-                           the user to look for what would re-enable it, and nothing would. *@
+                        @* Absent rather than disabled on an archived card — a greyed Save invites
+                           the user to look for what would re-enable it, and nothing would. The save
+                           itself is quick: a missing title is written from the prompt and the
+                           agent's better one is backfilled on the board, so nothing here waits on
+                           a CLI. *@
                         @if (!ReadOnly)
                         {
                             <RadzenButton Text="@SaveText" Icon="save" ButtonStyle="ButtonStyle.Primary"

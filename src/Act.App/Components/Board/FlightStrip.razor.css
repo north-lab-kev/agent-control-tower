@@ -109,6 +109,23 @@
     overflow-wrap: anywhere;
 }
 
+/* The spinner joins the title without ever being what the ellipsis squeezes: the title gives up
+   width, the ring keeps its box, on both densities. `line-height: 0` stops the inline-flex span
+   from adding a text baseline taller than the ring itself. */
+::deep .ttlrow {
+    min-width: 0;
+}
+
+::deep .ttlrow .ttl {
+    min-width: 0;
+}
+
+::deep .ttlspin {
+    flex: 0 0 auto;
+    display: inline-flex;
+    line-height: 0;
+}
+
 ::deep .path {
     font-size: var(--act-t2);
     color: var(--act-dim);

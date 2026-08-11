@@ -102,6 +102,7 @@ public abstract class ComponentTest : BunitContext, IAsyncLifetime
         Services.AddSingleton<CardReopener>();
         Services.AddSingleton<FollowUpService>();
         Services.AddSingleton<TaskTitles>();
+        Services.AddSingleton<TitleBackfill>();
         Services.AddSingleton<AttachmentOpener>();
 
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -171,6 +172,8 @@ public abstract class ComponentTest : BunitContext, IAsyncLifetime
     internal QueueRunner Queue => Services.GetRequiredService<QueueRunner>();
 
     internal FollowUpService FollowUps => Services.GetRequiredService<FollowUpService>();
+
+    internal TitleBackfill Backfill => Services.GetRequiredService<TitleBackfill>();
 
     internal UsageState Usage => Services.GetRequiredService<UsageState>();
 

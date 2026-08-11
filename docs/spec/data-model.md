@@ -211,6 +211,14 @@ the adapter and is the only place they meet.
   which would otherwise resolve against wherever ACT happens to be running) from merely
   **missing** (a warning plus *Create it*, and the task still saves, because a directory
   you are about to make is a reasonable thing to plan against).
+  - **A create opens on the last folder a created task named** whenever the template it
+    starts from leaves the folder blank; a template that names one wins. The commonest
+    sequence of creates is several tasks against the same repository, so the folder — unlike
+    the title and the prompt, which the default template is forbidden to carry precisely so
+    tasks do not begin as copies of each other — is worth carrying forward. Stored in the
+    settings document (`lastWorkingDir`), written by every create that names a folder, and
+    deliberately **not a setting the UI offers**: it is a memory, not a choice, and a create
+    without a folder does not erase it.
 - `agentBinary` — path to the executable, **per agent in settings, not per task**.
   Resolved against `PATH` at launch, since a pty spawns with an explicit image path and
   does not search for one.
@@ -542,11 +550,24 @@ whole design is about making that cost nothing:
 - **A title costs ~5,000–7,000 tokens, and the prompt is not what drives it** — the
   CLI's own preamble is, so a long prompt is never truncated before asking. The
   measured breakdown per agent is in `docs/findings/agent-title.md`.
+- **A save never waits for it.** The query takes five to seven seconds, and a save
+  is not allowed to cost that: the card lands on the board immediately, titled with
+  the prompt's opening words, and `TitleBackfill` runs the query behind it — the
+  strip shows a small spinner beside the placeholder while the answer is out, and
+  the agent's title replaces it when it arrives. The backfill only ever replaces
+  the exact placeholder it was started with, so a rename made in the meantime wins,
+  and a later save that types a title withdraws the pending answer outright. The
+  pending state is deliberately in memory only: the stored card is always properly
+  titled, so a restart mid-query simply keeps the placeholder. The button beside
+  the box is the one place that still waits in place — the user asked a question
+  there, and the box is where the answer goes.
 - **It never fails.** A missing CLI, a refusal, an expired login, an exhausted
   quota, a timeout or an unusable answer falls back to the prompt's own opening
-  words. A save refused over a field ACT offered to fill in would be worse than the
-  form that made the user type a title. The button says so with a toast; a save
-  does it silently, because the user was saving rather than asking a question.
+  words — which the save already wrote, so a failed backfill just stops the
+  spinner and keeps them. A save refused over a field ACT offered to fill in would
+  be worse than the form that made the user type a title. The button says so with
+  a toast; a save does it silently, because the user was saving rather than asking
+  a question.
 - **`title` is still required — it is only optional to *type*.** The field carries
   a validator that accepts blank *while there is a prompt to derive one from*, and
   refuses the save when both are empty; a plain required validator would have
