@@ -90,15 +90,24 @@ public sealed class MockAgentAdapter(
     // is not there at all — and its callers are supposed to survive that rather than propagate it.
     public Exception? QueryFails { get; set; }
 
-    public Task<string?> QueryAsync(
+    // A query a test can hold open, so whatever is waiting on it can be looked at mid-flight — the
+    // one-shot title query is the only slow step a save has, and a form's busy state only exists
+    // while it runs.
+    public TaskCompletionSource? QueryHeld { get; set; }
+
+    public async Task<string?> QueryAsync(
         AgentQueryRequest request,
         CancellationToken cancellationToken = default)
     {
         Queries.Add(request);
 
-        return QueryFails is { } failure
-            ? Task.FromException<string?>(failure)
-            : Task.FromResult(Answer);
+        if (QueryHeld is { } held)
+            await held.Task;
+
+        if (QueryFails is { } failure)
+            throw failure;
+
+        return Answer;
     }
 
     private void Refuse(LaunchConfig config)

@@ -189,6 +189,18 @@
   <data name="NewTask_Save" xml:space="preserve">
     <value>Save</value>
   </data>
+  <data name="NewTask_SaveReady" xml:space="preserve">
+    <value>Save + Ready</value>
+  </data>
+  <data name="NewTask_Create" xml:space="preserve">
+    <value>Create</value>
+  </data>
+  <data name="NewTask_CreateReady" xml:space="preserve">
+    <value>Create + Ready</value>
+  </data>
+  <data name="NewTask_SaveReady_Hint" xml:space="preserve">
+    <value>Goes straight into Ready, where the queue can launch it.</value>
+  </data>
   <data name="NewTask_Cancel" xml:space="preserve">
     <value>Cancel</value>
   </data>
@@ -638,6 +650,9 @@
   </data>
   <data name="Tray_Tooltip_Many" xml:space="preserve">
     <value>{0} — {1} tasks waiting for you</value>
+  </data>
+  <data name="Menu_Edit" xml:space="preserve">
+    <value>Edit</value>
   </data>
   <data name="Tray_Open" xml:space="preserve">
     <value>Open ACT</value>

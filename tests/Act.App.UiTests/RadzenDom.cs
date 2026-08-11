@@ -83,6 +83,16 @@ internal static class RadzenDom
     internal static string ButtonText(IElement button)
         => button.QuerySelector("span.rz-button-text")?.TextContent.Trim() ?? button.TextContent.Trim();
 
+    // Filled rather than outlined, which is all a `Variant` leaves in the markup — and the only way to
+    // read which of two buttons a page put its weight behind.
+    internal static bool IsFilled(IElement button) => button.ClassList.Contains("rz-variant-flat");
+
+    // `IsBusy` swaps a button's own icon and label for a `refresh` glyph with a rotation animation
+    // inlined on it. The animation is the tell rather than the missing label, which an icon-only
+    // button lacks anyway.
+    internal static bool IsBusy(IElement button)
+        => button.QuerySelector("i[style*='rotation']") is not null;
+
     private static bool Labelled(IElement row, string label)
         => row.TextContent.TrimStart().StartsWith(label, StringComparison.Ordinal);
 

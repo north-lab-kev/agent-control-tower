@@ -1,4 +1,6 @@
 using System.Globalization;
+using Act.Agents.ClaudeCode;
+using Act.Agents.Codex;
 using Act.App.Cards;
 using Act.Core.Model;
 using Act.Core.Rules;
@@ -118,13 +120,38 @@ public class StripFaceTests
         face.FullBadgeClass.Should().Be("badge");
     }
 
+    // Named the way the task form names it, from the id the transcript actually reports: the strip and
+    // the dropdown that chose the model have to read as one vocabulary.
     [Fact]
     public void The_identity_line_names_the_agent_and_the_model_it_is_really_running()
     {
         var card = Card(BoardColumn.Executing);
         card.ObservedModel = "claude-opus-5";
 
-        Face(card).Identity.Should().Be("#1042 · claude · claude-opus-5");
+        Face(card).Identity.Should().Be("#1042 · claude · opus");
+    }
+
+    // A real id the user can look up beats nothing at all — and beats a guess.
+    [Fact]
+    public void A_model_no_capability_list_claims_is_named_as_it_came()
+    {
+        var card = Card(BoardColumn.Executing);
+        card.ObservedModel = "claude-instant-1.2";
+
+        Face(card).Identity.Should().Be("#1042 · claude · claude-instant-1.2");
+    }
+
+    // Codex reports what it was asked for, so there is nothing to shorten and nothing to lose.
+    [Fact]
+    public void An_id_that_is_already_the_slug_is_left_alone()
+    {
+        var card = Card(BoardColumn.Executing);
+
+        card.AgentType = AgentType.Codex;
+        card.ObservedModel = "gpt-5.5";
+
+        StripFace.Of(card, null, Now, null, CodexCapabilities.Current).Identity
+            .Should().Be("#1042 · codex · gpt-5.5");
     }
 
     [Fact]
@@ -322,9 +349,13 @@ public class StripFaceTests
     public void A_manual_card_is_not_marked_even_if_a_parent_is_supplied()
         => Face(Card(BoardColumn.Ready), Parent()).Spawned.Should().BeNull();
 
-    private static StripFace Face(Card card, Card? parent) => StripFace.Of(card, null, Now, parent);
+    // The real capability list rather than a stand-in: the mapping from an observed id to a slug is
+    // only worth anything if it holds for the models ACT actually ships with.
+    private static StripFace Face(Card card, Card? parent)
+        => StripFace.Of(card, null, Now, parent, ClaudeCodeCapabilities.Current);
 
-    private static StripFace Face(Card card, ReadyHold? hold = null) => StripFace.Of(card, hold, Now);
+    private static StripFace Face(Card card, ReadyHold? hold = null)
+        => StripFace.Of(card, hold, Now, null, ClaudeCodeCapabilities.Current);
 
     private static Card Spawned()
     {

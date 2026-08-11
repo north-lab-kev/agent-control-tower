@@ -1,5 +1,6 @@
 using System.Globalization;
 using Act.App.Resources;
+using Act.Core.Abstractions;
 using Act.Core.Model;
 using Act.Core.Rules;
 using Act.Core.Scheduling;
@@ -33,12 +34,17 @@ public sealed record StripFace(
 {
     public string FullBadgeClass => $"badge {BadgeClass}".TrimEnd();
 
-    public static StripFace Of(Card card, ReadyHold? hold, DateTimeOffset now, Card? parent = null)
+    public static StripFace Of(
+        Card card,
+        ReadyHold? hold,
+        DateTimeOffset now,
+        Card? parent = null,
+        AgentCapabilities? capabilities = null)
     {
         var agent = TaskLabels.Agent(card.AgentType);
 
         return new StripFace(
-            Identity: Identify(card, agent),
+            Identity: Identify(card, agent, capabilities),
             BadgeText: BadgeTextFor(card),
             BadgeClass: BadgeClassFor(card),
             RailClass: RailClassFor(card),
@@ -67,8 +73,11 @@ public sealed record StripFace(
             dropEdge,
         }.Where(part => !string.IsNullOrEmpty(part)));
 
-    private static string Identify(Card card, string agent)
-        => card.ObservedModel is { } model
+    // The model is named the way the task form names it — `sonnet`, not the `claude-sonnet-5` the
+    // transcript reports — so the strip and the dropdown that chose it read as one vocabulary. An id
+    // no capability list claims is shown verbatim: a real id the user can look up beats nothing.
+    private static string Identify(Card card, string agent, AgentCapabilities? capabilities)
+        => (capabilities?.ModelFor(card.ObservedModel)?.Slug ?? card.ObservedModel) is { } model
             ? $"#{card.Number} · {agent} · {model}"
             : $"#{card.Number} · {agent}";
 

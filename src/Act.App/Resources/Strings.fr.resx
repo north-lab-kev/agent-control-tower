@@ -189,6 +189,18 @@
   <data name="NewTask_Save" xml:space="preserve">
     <value>Enregistrer</value>
   </data>
+  <data name="NewTask_SaveReady" xml:space="preserve">
+    <value>Enregistrer + Prêt</value>
+  </data>
+  <data name="NewTask_Create" xml:space="preserve">
+    <value>Créer</value>
+  </data>
+  <data name="NewTask_CreateReady" xml:space="preserve">
+    <value>Créer + Prêt</value>
+  </data>
+  <data name="NewTask_SaveReady_Hint" xml:space="preserve">
+    <value>Va directement dans « Prêt », où la file peut la démarrer.</value>
+  </data>
   <data name="NewTask_Cancel" xml:space="preserve">
     <value>Annuler</value>
   </data>
@@ -638,6 +650,9 @@
   </data>
   <data name="Tray_Tooltip_Many" xml:space="preserve">
     <value>{0} — {1} tâches en attente de votre intervention</value>
+  </data>
+  <data name="Menu_Edit" xml:space="preserve">
+    <value>Édition</value>
   </data>
   <data name="Tray_Open" xml:space="preserve">
     <value>Ouvrir ACT</value>

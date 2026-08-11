@@ -37,7 +37,7 @@ else
             <CardTabs CardId="saved.Id" />
         }
 
-        <RadzenTemplateForm TItem="NewTaskForm" Data="form" Submit="OnSubmitAsync" class="newtask">
+        <RadzenTemplateForm @ref="sheet" TItem="NewTaskForm" Data="form" Submit="OnSubmitAsync" class="newtask">
             <div class="body">
             <RadzenStack Gap="1.5rem" class="sheet">
 
@@ -93,8 +93,8 @@ else
                             @* Read-only rather than disabled: a launched card's prompt is the thing
                                you most often come back to read, and a disabled textarea is neither
                                selectable nor legible. *@
-                            <RadzenTextArea Name="Prompt" @bind-Value="form.Prompt" Rows="8" class="wide"
-                                            ReadOnly="Locked" />
+                            <RadzenTextArea Name="Prompt" @ref="promptBox" @bind-Value="form.Prompt"
+                                            Rows="14" class="wide" ReadOnly="Locked" />
                             <RadzenRequiredValidator Component="Prompt" Text="@Strings.NewTask_Required" />
                         </RadzenStack>
 
@@ -375,8 +375,8 @@ else
 
                     <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End"
                                  Gap="0.5rem">
-                        @* Icon-only, like delete — but both keep a title and an aria-label, because
-                           an unlabelled button is only unambiguous to the person who wrote it. *@
+                        @* Icon-only, like delete — and it keeps a title and an aria-label, because an
+                           unlabelled button is only unambiguous to the person who wrote it. *@
                         <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
                                       Size="ButtonSize.Small" ButtonType="ButtonType.Button" Click="Back"
                                       title="@Strings.NewTask_Cancel" aria-label="@Strings.NewTask_Cancel" />
@@ -386,10 +386,18 @@ else
                            the user to look for what would re-enable it, and nothing would. *@
                         @if (!ReadOnly)
                         {
-                            <RadzenButton Icon="save" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat"
-                                          Size="ButtonSize.Small" ButtonType="ButtonType.Submit" Disabled="saving"
-                                          IsBusy="saving"
-                                          title="@Strings.NewTask_Save" aria-label="@Strings.NewTask_Save" />
+                            <RadzenButton Text="@SaveText" Icon="save" ButtonStyle="ButtonStyle.Primary"
+                                          Variant="Variant.Outlined" Size="ButtonSize.Small"
+                                          ButtonType="ButtonType.Submit" Disabled="saving" IsBusy="SaveBusy"
+                                          class="save" />
+                        }
+                        @if (CanReady)
+                        {
+                            <RadzenButton Text="@ReadyText" Icon="play_arrow" ButtonStyle="ButtonStyle.Primary"
+                                          Variant="Variant.Flat" Size="ButtonSize.Small"
+                                          ButtonType="ButtonType.Button" Disabled="saving" IsBusy="readying"
+                                          Click="SaveReadyAsync" title="@Strings.NewTask_SaveReady_Hint"
+                                          aria-label="@ReadyText" class="ready" />
                         }
                     </RadzenStack>
                 </div>

@@ -11,6 +11,9 @@ namespace Act.App.UiTests;
 // the card rather than the work, and the whole launch config is what the *next* launch will use.
 public class TaskViewLockTests : ComponentTest
 {
+    // Blazor's own identifier for `ElementReference.FocusAsync`, which bUnit records but keeps internal.
+    private const string BlazorFocus = "Blazor._internal.domWrapper.focus";
+
     [Fact]
     public async Task Nothing_on_a_draft_is_frozen()
     {
@@ -70,6 +73,22 @@ public class TaskViewLockTests : ComponentTest
 
         textarea.HasAttribute("readonly").Should().BeTrue();
         textarea.HasAttribute("disabled").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task A_launched_card_puts_no_caret_in_a_prompt_that_cannot_be_typed_in()
+    {
+        await Open(BoardColumn.Executing);
+
+        JSInterop.VerifyNotInvoke(BlazorFocus);
+    }
+
+    [Fact]
+    public async Task An_archived_card_puts_no_caret_in_a_prompt_that_cannot_be_typed_in()
+    {
+        await Archived();
+
+        JSInterop.VerifyNotInvoke(BlazorFocus);
     }
 
     [Fact]

@@ -56,6 +56,24 @@ function theme(host) {
     };
 }
 
+// xterm maps every Ctrl+letter to its control character, so Ctrl+V is SYN (0x16): it sends that to
+// the agent and cancels the keydown, and the browser never gets as far as pasting. That is why the
+// terminal would only ever paste from the context menu, which goes through the `paste` event xterm
+// does listen for. Handing the key back — returning false, so xterm processes nothing — lets the
+// native paste run, and xterm's own listener then puts the text on the pty, bracketed when the CLI
+// asked for bracketing.
+//
+// **V alone.** The rest of the Ctrl range belongs to the agents, and a key taken here is taken for
+// good: Ctrl+C is the interrupt, Ctrl+X opens Claude Code's `ctrl+x ctrl+e`, Ctrl+A is
+// beginning-of-line, Ctrl+Z suspends. Shift is deliberately not tested, so Ctrl+Shift+V — what every
+// other terminal binds — pastes as well.
+function isPasteKey(event) {
+    return event.type === 'keydown'
+        && (event.ctrlKey || event.metaKey)
+        && !event.altKey
+        && event.key?.toLowerCase() === 'v';
+}
+
 export async function attach(elementId, owner) {
     await ensureXterm();
 
@@ -72,6 +90,8 @@ export async function attach(elementId, owner) {
         allowProposedApi: true,
         theme: theme(host),
     });
+
+    term.attachCustomKeyEventHandler(event => !isPasteKey(event));
 
     const fit = new window.FitAddon.FitAddon();
     term.loadAddon(fit);

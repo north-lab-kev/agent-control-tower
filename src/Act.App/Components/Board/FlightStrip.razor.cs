@@ -11,7 +11,7 @@ namespace Act.App.Components.Board;
 // One flight strip. What it *says* is `StripFace`'s — the badge, the rail, the chips, the metrics —
 // and what is left here is what only a component can do: the parameters, the gestures, and which of
 // the two densities is being drawn.
-public partial class FlightStrip(IClock clock)
+public partial class FlightStrip(IClock clock, IAgentCapabilityCatalog agents)
 {
     [Parameter, EditorRequired]
     public Card Card { get; set; } = default!;
@@ -74,7 +74,7 @@ public partial class FlightStrip(IClock clock)
     // Recomputed per render on purpose: the quiet chip and the usage countdown are derived from an
     // instant, so nothing pushes a change when they advance — the board's refresh tick is what makes
     // the number move.
-    private StripFace Face => StripFace.Of(Card, Hold, clock.Now, Parent);
+    private StripFace Face => StripFace.Of(Card, Hold, clock.Now, Parent, agents.For(Card.AgentType));
 
     private bool Draggable => ManualMove.CanDrag(Card.Column);
 

@@ -77,6 +77,13 @@ exists yet. Reached either manually from Preparing, or by being **spawned** from
 another task (see Task spawning & lineage). Exits: launch → Executing, or
 manually back to Preparing if the prompt needs work.
 
+The manual move has two gestures, and both are the same transition (recorded as
+moved by hand): the **drag** on the board, and **Save + Ready** on the task
+form, which saves the card and moves it in one press so drafting a task and
+queueing it is not two trips to two surfaces. The form's button is offered only
+while the card is still in Preparing — it performs the move the board allows, and
+never a second door into any other column.
+
 **3. Executing** *(machine-controlled)*
 First automated transition. On launch, ACT generates the session UUID, spawns
 the agent CLI (e.g. `claude`) in the task's working directory with that

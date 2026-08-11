@@ -70,6 +70,32 @@ public class TaskViewTests : ComponentTest
     }
 
     [Fact]
+    public void The_prompt_opens_tall_enough_to_draft_in()
+    {
+        Show().Find("textarea").GetAttribute("rows").Should().Be("14");
+    }
+
+    [Fact]
+    public void A_create_starts_with_the_caret_in_the_prompt()
+    {
+        Show();
+
+        JSInterop.VerifyFocusAsyncInvoke();
+    }
+
+    [Fact]
+    public async Task An_editable_card_starts_with_the_caret_in_the_prompt()
+    {
+        var card = Card(BoardColumn.Ready);
+
+        await BoardWith(card);
+
+        Show(card.Id);
+
+        JSInterop.VerifyFocusAsyncInvoke();
+    }
+
+    [Fact]
     public async Task An_edit_can_switch_to_the_card_other_faces()
     {
         var card = Card(BoardColumn.Ready);

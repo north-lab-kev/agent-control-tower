@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
 using Radzen;
+using Radzen.Blazor;
 
 namespace Act.App.Components.Pages;
 
@@ -48,6 +49,8 @@ public partial class TaskView(
 
     private bool saving;
 
+    private bool readying;
+
     private bool picking;
 
     private bool deleting;
@@ -61,6 +64,10 @@ public partial class TaskView(
     private bool dragging;
 
     private TaskAttachment? previewing;
+
+    private RadzenTextArea? promptBox;
+
+    private RadzenTemplateForm<NewTaskForm>? sheet;
 
     // The names the form loaded or last saved with. The dirty check cannot come off `NewTaskForm`'s
     // own equality here: the record holds a `List<T>`, which compares by reference, so `form with { }`
@@ -535,6 +542,9 @@ public partial class TaskView(
     {
         if (firstRender)
         {
+            if (!Locked && promptBox is { } prompt)
+                await prompt.FocusAsync();
+
             unsaved = await js.InvokeAsync<IJSObjectReference>("import", "/js/act-unsaved.js");
             owner = DotNetObjectReference.Create(this);
 
@@ -820,9 +830,37 @@ public partial class TaskView(
         }
     }
 
+    private bool CanReady
+        => !ReadOnly && (card is null || card.Column is BoardColumn.Preparing);
+
+    private bool SaveBusy => saving && !readying;
+
+    private string SaveText => card is null ? Strings.NewTask_Create : Strings.NewTask_Save;
+
+    private string ReadyText => card is null ? Strings.NewTask_CreateReady : Strings.NewTask_SaveReady;
+
     // The button is gone on an archived card, and the check is here as well because a form still
     // submits on Enter in any of its boxes.
-    private async Task OnSubmitAsync(NewTaskForm _)
+    private Task OnSubmitAsync(NewTaskForm _) => SaveAsync(ready: false);
+
+    private async Task SaveReadyAsync()
+    {
+        if (!CanReady || sheet?.EditContext is not { } context || !context.Validate())
+            return;
+
+        readying = true;
+
+        try
+        {
+            await SaveAsync(ready: true);
+        }
+        finally
+        {
+            readying = false;
+        }
+    }
+
+    private async Task SaveAsync(bool ready)
     {
         if (saving || ReadOnly)
             return;
@@ -836,15 +874,22 @@ public partial class TaskView(
             if (string.IsNullOrWhiteSpace(form.Title) && await TitleAsync() is { } suggestion)
                 form.Title = suggestion.Title;
 
-            if (card is { } existing)
+            var saved = card;
+
+            if (saved is not null)
             {
-                form.ApplyTo(existing);
-                await board.UpdateAsync(existing);
+                form.ApplyTo(saved);
+                await board.UpdateAsync(saved);
             }
             else
             {
-                await board.CreateAsync(form.ToCard(clock.Now));
+                saved = form.ToCard(clock.Now);
+
+                await board.CreateAsync(saved);
             }
+
+            if (ready && ManualMove.IsAllowed(saved.Column, BoardColumn.Ready))
+                await board.MoveAsync(saved, BoardColumn.Ready);
 
             // After the write, so the card and the directory agree from here on: an attachment the
             // user removed on this visit is what loses its bytes, and only once the removal is real.

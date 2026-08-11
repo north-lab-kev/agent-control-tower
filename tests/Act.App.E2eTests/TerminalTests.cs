@@ -18,6 +18,10 @@ namespace Act.App.E2eTests;
 // machine.
 public sealed class TerminalTests : BrowserTest
 {
+    // Deliberately not something a keystroke could produce: if the assertion passes, the whole string
+    // travelled together and it came off the clipboard.
+    private const string Pasted = "git status --short";
+
     private Guid CardId => App.Board.All.Single().Id;
 
     protected override void Arrange()
@@ -65,6 +69,70 @@ public sealed class TerminalTests : BrowserTest
 
         App.Board.Card(CardId)!.Column.Should().Be(BoardColumn.YourTurn);
     }
+
+    // Ctrl+V is the one Ctrl key xterm has to be talked out of. It maps every Ctrl+letter to its control
+    // character, so V reached the agent as SYN (0x16) with the keydown already cancelled, and the browser
+    // never got as far as pasting. The context menu was the only route that ever worked, which is not
+    // where anyone reaches for it.
+    //
+    // The barrier is the agent's own: the script parks on `AwaitsKeystroke` and ends its turn only once
+    // something really arrived, so there is nothing to poll and no timer to tune.
+    [Fact]
+    public async Task Control_v_pastes_the_clipboard_into_the_agent()
+    {
+        await LaunchInTerminalAsync();
+
+        await PutOnClipboardAsync(Pasted);
+
+        await PressAsync("Control+v");
+
+        await Assertions.Expect(Page.Locator("header.bar span.badge")).ToHaveTextAsync("to review");
+
+        string.Concat(Typed()).Should().Contain(Pasted);
+    }
+
+    // The binding every other terminal uses, cancelled by xterm for the same reason. `isPasteKey`
+    // deliberately does not test Shift, so both arrive here.
+    [Fact]
+    public async Task Control_shift_v_pastes_as_well()
+    {
+        await LaunchInTerminalAsync();
+
+        await PutOnClipboardAsync(Pasted);
+
+        await PressAsync("Control+Shift+v");
+
+        await Assertions.Expect(Page.Locator("header.bar span.badge")).ToHaveTextAsync("to review");
+
+        string.Concat(Typed()).Should().Contain(Pasted);
+    }
+
+    // The other half of the same decision, and the half that would go unnoticed: a key handed back to the
+    // browser is a key the agent never sees again. If pasting were bought by widening `isPasteKey` to the
+    // rest of the Ctrl range, no agent could be interrupted, suspended, or sent to the start of its line,
+    // and nothing on screen would say why.
+    [Theory]
+    [MemberData(nameof(ControlRange))]
+    public async Task The_agent_keeps_the_rest_of_the_control_range(string key, char expected)
+    {
+        await LaunchInTerminalAsync();
+
+        await PressAsync(key);
+
+        await Assertions.Expect(Page.Locator("header.bar span.badge")).ToHaveTextAsync("to review");
+
+        string.Concat(Typed()).Should().Contain(expected.ToString());
+    }
+
+    // Written as code points rather than escapes so the control characters stay legible: ETX is the
+    // interrupt, CAN begins Claude Code's `ctrl+x ctrl+e`, SOH is beginning-of-line, SUB suspends.
+    public static TheoryData<string, char> ControlRange() => new()
+    {
+        { "Control+c", (char)3 },
+        { "Control+x", (char)24 },
+        { "Control+a", (char)1 },
+        { "Control+z", (char)26 },
+    };
 
     // Replay before subscribing takes effect for new chunks, so the screen looks the way it did when the
     // view was last open rather than blank until the agent next paints.
@@ -179,6 +247,23 @@ public sealed class TerminalTests : BrowserTest
     {
         await Page.Locator("div.terminal .xterm-screen").ClickAsync();
         await Page.Keyboard.TypeAsync(keys);
+    }
+
+    // The click is what puts the focus on xterm's own textarea. Without it the key goes to the document
+    // and the terminal never sees it, which looks exactly like the bug these specs are about.
+    private async Task PressAsync(string key)
+    {
+        await Page.Locator("div.terminal .xterm-screen").ClickAsync();
+        await Page.Keyboard.PressAsync(key);
+    }
+
+    // A real paste needs a real clipboard: the point is that the *browser's* native paste runs, so the
+    // synthesised `paste` events `Clipboard` builds for `act-attach` would prove nothing here.
+    private async Task PutOnClipboardAsync(string text)
+    {
+        await Page.Context.GrantPermissionsAsync(["clipboard-read", "clipboard-write"]);
+
+        await Page.EvaluateAsync("text => navigator.clipboard.writeText(text)", text);
     }
 
     private async Task LaunchInTerminalAsync()

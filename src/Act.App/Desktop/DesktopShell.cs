@@ -67,7 +67,7 @@ public sealed class DesktopShell(
         if (OperatingSystem.IsWindows())
             Electron.App.SetAppUserModelId(AppUserModelId);
 
-        Electron.Menu.SetApplicationMenu([]);
+        Electron.Menu.SetApplicationMenu(EditMenu());
 
         settings.Changed += ApplyCloseBehaviour;
         board.Changed += RefreshTooltip;
@@ -120,12 +120,18 @@ public sealed class DesktopShell(
         // Left transparent, the page paints the whole strip and the seam disappears; only the
         // glyphs stay native, in a grey chosen to read on both themes.
         if (OperatingSystem.IsWindows() || OperatingSystem.IsLinux())
+        {
             options.TitleBarOverlay = new TitleBarOverlay
             {
                 Color = "rgba(0, 0, 0, 0)",
                 SymbolColor = "#7c8b99",
                 Height = TitleBarHeight,
             };
+
+            // The other half of `EditMenu`: the menu is there for its accelerators, and this is what
+            // keeps it from also being a menu. macOS has no in-window bar to hide.
+            options.AutoHideMenuBar = true;
+        }
 
         var opened = await Electron.WindowManager.CreateWindowAsync(options);
 
@@ -325,6 +331,25 @@ public sealed class DesktopShell(
 
         Electron.Tray.SetToolTip(text);
     }
+
+    // Electron takes the clipboard accelerators from the application menu, so the empty menu that
+    // used to stand here — set only to keep the menu bar off the window — unbound Ctrl+V across the
+    // whole app. Nothing generated a paste event at all, so xterm never saw one and no agent could
+    // be pasted into, which is most of what ACT is for. One item puts the accelerator back; the bar
+    // stays hidden through `AutoHideMenuBar`.
+    //
+    // **Paste alone, deliberately.** A menu accelerator wins over the page, so every other editing
+    // role would take its key away from the CLI for good: Ctrl+C is the interrupt, Ctrl+X opens
+    // Claude Code's `ctrl+x ctrl+e`, Ctrl+A is beginning-of-line, Ctrl+Z suspends. Ctrl+V is the one
+    // key in the set no terminal wants. Copy out of the terminal is xterm's own selection, not this.
+    internal static MenuItem[] EditMenu() =>
+    [
+        new MenuItem
+        {
+            Label = Strings.Menu_Edit,
+            Submenu = [new MenuItem { Role = MenuRole.paste }],
+        },
+    ];
 
     private MenuItem[] TrayMenu() =>
     [

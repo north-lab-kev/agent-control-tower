@@ -227,9 +227,14 @@ jobs:
           # Transit only, same as the Windows artifact: the permanent copies are the
           # release assets.
           retention-days: 1
+          # No `*.blockmap` here, unlike the Windows job, and that is not an omission: `AppImageTarget`
+          # never calls `createBlockmap`, it takes its update info straight from `app-builder appimage`,
+          # which embeds the block map in the AppImage and reports its `blockMapSize` in
+          # `latest-linux.yml`. Differential updates are alive on Linux; the separate file simply does
+          # not exist, and globbing for it matched nothing while `if-no-files-found` stayed quiet —
+          # that flag fires only when the whole path list is empty.
           path: |
             artifacts/desktop/linux-x64/*.AppImage
-            artifacts/desktop/linux-x64/*.blockmap
             artifacts/desktop/linux-x64/latest-linux.yml
           if-no-files-found: error
 
