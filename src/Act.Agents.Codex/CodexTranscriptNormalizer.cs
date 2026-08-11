@@ -6,7 +6,7 @@ using Act.Core.Model;
 namespace Act.Agents.Codex;
 
 // Codex's rollout file, read for enrichment — exactly the role `ClaudeCodeTranscriptNormalizer` has.
-// Measured against real rollout files on 2026-07-31 (`codex-cli 0.146.0-alpha.3.1`), where the line
+// Measured against real rollout files (`codex-cli 0.146.0-alpha.3.1`), where the line
 // kinds that matter are:
 //
 //   * `event_msg/task_started`   — `model_context_window`

@@ -21,7 +21,7 @@ public sealed record Drop(DropAction Action, Card Card, BoardColumn Column, Card
 // The board's drag gesture as a state machine: what is lifted, what the cursor is over, which lanes
 // would take it, and which edge the insertion marker sits on. Split out of `BoardView` because none
 // of it needs a rendered component — every answer here is a function of two cards and the rules —
-// and because the drop-target logic is the half of the board that used to be untestable.
+// which keeps the drop-target logic testable without a browser.
 public sealed class BoardDrag
 {
     public Card? Lifted { get; private set; }

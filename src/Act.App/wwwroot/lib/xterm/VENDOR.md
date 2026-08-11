@@ -19,7 +19,7 @@ version; `xterm.js` does.
 
 ## Verifying these are pristine
 
-Hashes were checked against the published packages on 2026-07-29 and matched exactly. To
+Hashes were checked against the published packages and matched exactly. To
 re-check, or after an upgrade:
 
 ```powershell

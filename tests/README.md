@@ -19,7 +19,7 @@ NSubstitute. *(Do not use FluentAssertions v8+ — commercial license.)*
   driven end-to-end.
 
 No automated integration tests against real CLIs (deliberate — slow, flaky,
-token-costly); real-CLI behavior is verified manually per roadmap step.
+token-costly); real-CLI behavior is verified manually against the pinned CLIs.
 
 ## Component tests
 
@@ -98,8 +98,8 @@ Three things, and nothing else — everything a render can answer belongs in bUn
    a card moving on screen because an agent event arrived, with nobody touching the browser.
 
 What it does **not** prove is the pty: the mock adapter hands back a mock session, so no process is
-spawned and `PtyHost` is never touched. Real-CLI behaviour stays manual, per each roadmap step's
-*verify* line.
+spawned and `PtyHost` is never touched. Real-CLI behaviour stays manual, verified by hand against
+the pinned CLIs.
 
 ### Two rules
 

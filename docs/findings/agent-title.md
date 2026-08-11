@@ -5,7 +5,7 @@ account, and why the flag sets in `ClaudeCodeAdapter.QueryAsync` /
 `CodexAdapter.QueryAsync` look the way they do. Read this before changing either
 command line, and re-run the checks at the bottom on a CLI upgrade.
 
-Measured 2026-08-03 against **claude-code 2.1.220** and
+Measured against **claude-code 2.1.220** and
 **codex-cli 0.146.0-alpha.3.1** — the same builds `ClaudeCodeCapabilities` and
 `CodexCapabilities` are pinned to.
 
@@ -20,7 +20,7 @@ of a TUI's paint is not reading an answer, and the `prototype` branch's
 
 So `ICommandHost` sits beside `IPtyHost`: same port-shaped seam, opposite
 properties. This is *not* the rejected stream-json control protocol
-(`../overview.md` → *Rejected alternatives*). That proposal replaced the user's
+(`../design-notes.md` → *Rejected liveness routes*). That proposal replaced the user's
 interactive session with a headless one. This adds a side channel for questions
 ACT asks itself, and touches no session at all.
 
@@ -69,7 +69,7 @@ message.** The banner, the workdir/model/provider block, the echoed prompt, the
 parse and no `--output-last-message` temp file to manage — though that flag does
 exist on this build if stdout's split ever changes.
 
-## What a title costs (measured 2026-08-03)
+## What a title costs (measured)
 
 The prompt is not the cost; **the CLI's own preamble is**. Both numbers below come
 from the CLIs reporting their own usage — `claude -p --output-format json` gives a
@@ -167,7 +167,7 @@ preamble is exactly the thing a new version changes.
 
 ## Verified by hand
 
-Against a real board, with both CLIs installed (2026-08-03):
+Against a real board, with both CLIs installed:
 
 | Path | Result |
 |---|---|

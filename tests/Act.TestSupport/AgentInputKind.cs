@@ -1,9 +1,8 @@
 namespace Act.TestSupport;
 
-// What can reach a session, now that everything an agent is told after launch is typed by the
-// user: their raw keystrokes on their way through, and the resize. Nothing here is composed by
-// ACT — `Submit` was the last of those and went with send-back on 2026-08-01, and `Kill` went
-// with the kill hatch itself.
+// What can reach a session: everything an agent is told after launch is typed by the user, so
+// this is their raw keystrokes on their way through, and the resize. Nothing here is composed
+// by ACT.
 public enum AgentInputKind
 {
     Write,

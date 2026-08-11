@@ -97,7 +97,7 @@ public sealed class ClaudeCodeHookNormalizer : IHookNormalizer
     }
 
     // `Notification` reports a waiting permission prompt, and it is not the only thing it reports —
-    // but it does say which kind it is. Measured on 2026-07-30 against `claude-code v2.1.220`:
+    // but it does say which kind it is. Measured against `claude-code v2.1.220`:
     //
     //   * a waiting permission prompt → `notification_type: "permission_prompt"`,
     //     message *"Claude needs your permission"*

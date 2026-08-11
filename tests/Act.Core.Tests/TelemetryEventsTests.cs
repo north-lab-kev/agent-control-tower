@@ -46,7 +46,7 @@ public class TelemetryEventsTests
         started.Properties.Should().ContainKey(TelemetryProperties.Theme);
     }
 
-    // Four events were built and taken back out on 2026-08-05 — three dropped for scope or volume,
+    // Four events were built and taken back out — three dropped for scope or volume,
     // and `settings_snapshot` folded into `app_started` because the meter counts events, not bytes.
     // This is what stops any of them coming back by habit; see *What telemetry may carry* in
     // `docs/design-notes.md` for which went why.

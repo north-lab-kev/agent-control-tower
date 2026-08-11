@@ -113,8 +113,8 @@ public sealed class SessionLauncher(
             : ResumeAsync(card, size, TransitionReason.SessionRestored, cancellationToken);
 
     // The terminal, not the work. A TUI can become unusable while the session behind it is perfectly
-    // healthy — a wedged or garbled screen, a CLI that stopped painting — and the only remedy used to
-    // be ending a session that was never the problem. So this tears the pty down and brings the *same*
+    // healthy — a wedged or garbled screen, a CLI that stopped painting — and ending the session would
+    // punish work that was never the problem. So this tears the pty down and brings the *same*
     // session id straight back into a fresh one.
     //
     // Unlike `RestoreAsync` it does not bail on a live session — a live-but-useless one is the entire

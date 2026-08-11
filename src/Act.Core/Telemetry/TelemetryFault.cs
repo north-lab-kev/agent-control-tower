@@ -32,7 +32,7 @@ public static class TelemetryFault
         => [.. Nested(error).Select(nested => nested.GetType().FullName ?? nested.GetType().Name)];
 
     // Taken from the innermost exception that has any, falling outward. A wrapper usually carries no
-    // stack of its own — which is why a crash report used to arrive with no frames at all.
+    // stack of its own — reading only the outermost would leave a crash report with no frames at all.
     public static string[] Frames(Exception error)
     {
         foreach (var nested in Nested(error).Reverse())

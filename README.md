@@ -96,7 +96,8 @@ agent CLI installed and signed in — ACT finds it on its own.
 
 ## Documentation
 
-- [docs/overview.md](docs/overview.md) — the full specification.
+- [docs/user-guide.md](docs/user-guide.md) — how to use ACT: the board, tasks,
+  scheduling, and settings.
 
 ## Contributing
 
@@ -109,3 +110,7 @@ ACT is **not accepting external contributions right now** — see
 modify, and redistribute the code; only competing commercial use is prohibited.
 Each release auto-converts to **Apache 2.0 after two years**. See
 [LICENSE.md](LICENSE.md). *Not legal advice.*
+
+Third-party components — the packages ACT references, the xterm.js files vendored
+into the repository, and the Electron runtime the installer carries — are attributed
+in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

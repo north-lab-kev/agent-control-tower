@@ -6,10 +6,10 @@ desktop shell.
 
 ## Contents
 
-- `Components/` — board, flight strips, contextual drawer, new-task modal (currently the blank shell: `App`, `Routes`, `Layout/`, `Pages/Home`).
-- `wwwroot/` — CSS (the flight-strip / control-room look), assets.
+- `Components/` — `Pages/` holds every routable view (board, task, session, timeline, templates, archive, settings), `Board/` the flight strip, `Shared/` the reusable pieces (card tabs, path picker, attachment preview).
+- `wwwroot/` — CSS (the flight-strip / control-room look), the vendored xterm bundle, assets.
 - `Program.cs` — startup / DI registration (Razor Components + `InteractiveServer`); wires Electron only when enabled.
-- `Properties/electron-builder.json` — desktop packaging config (win portable + linux tar.xz). Committed; auto-seeded by ElectronNET.Core.
+- `Properties/electron-builder.json` — desktop packaging config (Windows NSIS installer + Linux AppImage). Committed; auto-seeded by ElectronNET.Core.
 
 ## Run — web (fast dev loop)
 
@@ -22,7 +22,7 @@ Serves at `http://localhost:5210`. No Electron, no Node — plain Blazor Server.
 `Development` runs are isolated from the installed app: port 5210 against
 `%LOCALAPPDATA%\ACT.Development`, while `Production` keeps port 5200 and
 `%LOCALAPPDATA%\ACT`. Both can run at the same time; see *Where the data lives* in
-`docs/overview.md`.
+`docs/spec/persistence.md`.
 
 ## Run — Electron desktop window
 
@@ -53,9 +53,10 @@ logged by `Hosting/StartupLog`) and what names the installer
 
 ## UI direction
 
-Air-traffic-control aesthetic; cards are flight-progress strips. Six flat columns,
+Air-traffic-control aesthetic; cards are flight-progress strips. Five flat columns,
 launch-boundary shown dynamically at drag time (gray out invalid columns).
-Compact/detailed density toggle. Reference mockup: [../../docs/ui-preview.html](../../docs/ui-preview.html).
+Compact/detailed density toggle. See
+[../../docs/spec/ui-direction.md](../../docs/spec/ui-direction.md).
 
 Signature flight-strip look = custom Blazor markup + CSS; heavier widgets
-(modal, drawer, tables, inputs) = Radzen themed to the same palette.
+(dialogs, tables, inputs) = Radzen themed to the same palette.

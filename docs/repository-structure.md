@@ -18,8 +18,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  └─ dependabot.yml
 │
 ├─ docs/                            # design docs
-│  ├─ overview.md                   # the spec
-│  ├─ roadmap.md                    # the build plan
+│  ├─ overview.md                   # the spec's index: reading order + status
+│  ├─ spec/                         # the spec itself, one file per area
+│  ├─ user-guide.md                 # how to use ACT, for end users
+│  ├─ development.md                # build, run, test, CI, engineering standards
 │  ├─ repository-structure.md       # this file
 │  ├─ design-notes.md               # how the non-obvious decisions were reached: measurements,
 │  │                                #   rejected shapes, deleted code. The code cites it rather
@@ -117,7 +119,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │  │                          #       ArchiveView, TemplatesView, TemplateView,
 │  │  │  │                          #       SettingsView, Error, NotFound
 │  │  │  ├─ Board/                  #     non-routable board parts (FlightStrip)
-│  │  │  ├─ Shared/                 #     CardTabs (Task|Terminal|Timeline), FolderPicker,
+│  │  │  ├─ Shared/                 #     CardTabs (Task|Terminal|Timeline), PathPicker,
 │  │  │  │                         #       AttachmentPreview (the hover thumbnail both the task
 │  │  │  │                         #         form's chips and the terminal rail render; its parent
 │  │  │  │                         #         element is the anchor act-attach.place measures),
@@ -246,12 +248,10 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   addressed in the language the user runs ACT in. `AppCulture` sets
   `DefaultThreadCurrentUICulture` process-wide, so a core-side lookup resolves correctly
   from any thread, and `Act.Core.resources.dll` ships beside `Act.App.resources.dll`.
-- **The agent↔ACT contract is Core's, not an adapter's** — and as of 2026-07-30 it is
-  a single MCP tool (`create_followup`), not a file convention. `ActContract` and
-  `AgentPreamble` are gone with the status file and the injected preamble; the tool's
-  schema and handler belong to Core, and an adapter only decides how the MCP server is
-  *declared* to its CLI (`--mcp-config` vs. a `--profile` table). Same principle, one
-  fewer moving part: see the spec's *Agent ↔ ACT contract*.
+- **The agent↔ACT contract is Core's, not an adapter's** — a single MCP tool
+  (`create_followup`), not a file convention. The tool's schema and handler belong to
+  Core, and an adapter only decides how the MCP server is *declared* to its CLI
+  (`--mcp-config` vs. a `--profile` table). See the spec's *Agent ↔ ACT contract*.
 - **`Components/Pages/` holds every routable component, and nothing else.** The rule is
   simply *a component with `@page` lives in `Pages/`* — so the folder listing is the
   route list, and there is one place to look. Non-routable components stay with their
@@ -282,8 +282,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   settings dialog all became routes, because each was somewhere you *go*. What stayed modal
   is the opposite kind of thing: a prompt that interrupts an action already under way and
   would be meaningless as a URL — archiving a card with follow-ups, and emptying the
-  archive. Those two are the whole list: step 11's completion/git prompt was cut with the
-  spawned git task (2026-08-01), so sign-off and reopen are plain drags. `RadzenComponents`
+  archive. Those two are the whole list — there is no completion/git prompt, so
+  sign-off and reopen are plain drags. `RadzenComponents`
   and the `-webkit-app-region: no-drag` rule are kept for the two that remain.
 - **The hook endpoint is two listeners on one web host, not a second server.** The UI keeps
   the app's address; `/hooks/claude` and `/hooks/codex` answer on a loopback port ACT
@@ -371,8 +371,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   dependency between two projects that are both supposed to point *inward*, and it
   would drag `Porta.Pty` into every adapter. It also keeps the contract suite
   process-free: a fake `IPtyHost` is all a test needs.
-- **`ICommandHost` is the pty port's mirror image, and lands the same way — added
-  2026-08-03.** Starting a process and capturing what it said is agent-agnostic
+- **`ICommandHost` is the pty port's mirror image, and lands the same
+  way.** Starting a process and capturing what it said is agent-agnostic
   plumbing, exactly like spawning one under a pty, so the port lives in
   `Act.Core/Abstractions` and its implementation beside `PtyHost` in
   `Act.Infrastructure/Terminal/` — they share the `PATH` walk and nothing else.
@@ -385,8 +385,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   starts real processes, because a closed stdin, an undeadlocked stderr and a
   deadline that actually kills are properties of the OS and a fake would only prove
   the fake works. The shell it drives is the platform's own, never an agent CLI.
-- **`IAttachmentStore` is declared beside its implementation, not in `Act.Core` — added
-  2026-08-04.** A task's attached files live under `<dataDir>/attachments/<cardId>/`, and the
+- **`IAttachmentStore` is declared beside its implementation, not in
+  `Act.Core`.** A task's attached files live under `<dataDir>/attachments/<cardId>/`, and the
   port for reaching them sits in `Act.Infrastructure/FileSystem/AttachmentStore.cs` with the
   class that implements it. That is the `INotifier` line applied a second time: an interface
   earns a place in `Act.Core/Abstractions` only when Core-side code triggers it, and nothing in
@@ -399,9 +399,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 - **The contract suite covers only the process-free surface.** `AgentAdapterContract`
   in `Act.Agents.Tests` asserts identity, capabilities and launch-config resolution —
   never a live session — because ACT deliberately runs no real CLI in automated
-  tests. Live behavior is verified by hand per roadmap step.
-- **`INotifier` is an `Act.App/Desktop` port, not a Core one** (decided 2026-08-01,
-  when step 13 built it). Nothing in Core calls it: the decision half is a pure rule
+  tests. Live behavior is verified by hand against the pinned CLIs.
+- **`INotifier` is an `Act.App/Desktop` port, not a Core one.** Nothing in Core
+  calls it: the decision half is a pure rule
   (`Act.Core/Rules/NotificationTrigger`, "is this card wanting something") and the
   App half owns the wording, the settings gate and the transport. So it sits beside
   `IDesktopBridge` under the same test — an interface earns a place in
@@ -414,7 +414,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   the server knows whether anyone is looking — `MainLayout` reports focus and route
   per circuit — and `DeepLinkRouter` is the way back, turning a clicked toast into a
   navigation on the live circuit instead of a page reload.
-- **`Act.Desktop` is not a project, decided 2026-08-01.** The folder existed as a
+- **`Act.Desktop` is not a project.** The folder existed as a
   placeholder for a shell-specific concern that never emerged; notifications were
   the first real candidate and they did not change the answer. Splitting would only
   isolate anything if `Act.App` became a *library* and the desktop host became the
@@ -477,10 +477,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
   derived from that list and a store written by a newer build is rejected instead
   of silently mangled. **The list is empty, and schema 1 is the release baseline** —
   every store the first release will ever see is created by it, so there is nothing
-  older to migrate from. The two entries it used to hold (`TaskDefaults` → `Templates`,
-  and dropping the nulls LiteDB's `EmptyStringToNull` default wrote in place of empty
-  strings) were retired on 2026-08-06 with the pre-release stores they existed for; the
-  machinery around them stays, so the next breaking change is one entry and a version bump.
+  older to migrate from. The machinery stays, so the next breaking change is one
+  entry and a version bump.
   Collection names live in one place (`ActCollections`), and
   the friendly card `number` comes from a counter document that seeds itself
   above any card already stored.
@@ -510,7 +508,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
     change to one of them is a store change needing a migration like any other.
   **Removing a migration takes `CurrentVersion` backwards, and any store already
   stamped above it can no longer be opened** — the newer-build guard fires and the only
-  way out is deleting `act.db`. That is the price the 2026-08-06 reset to schema 1
+  way out is deleting `act.db`. That is the price the reset to schema 1
   charged every pre-release store, and it is why after the first release the list only
   ever grows.
 - **No sample data.** `Act.App/Seeding/` existed so the board had something to render
@@ -529,10 +527,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 
 ## Notes
 
-- **ACT writes nothing into a task's working directory.** The `.act/` directories
-  (`status/`, `followups/`) were dropped on 2026-07-30 — status with auto-completion,
-  follow-ups in favour of the MCP tool. Generated launch config (hook settings, Codex
-  profile, MCP config) lives in ACT's own data directory instead.
+- **ACT writes nothing into a task's working directory.** Everything agent-facing —
+  spawning included — goes through hooks and the MCP server, and generated launch
+  config (hook settings, Codex profile, MCP config) lives in ACT's own data directory.
 - The **`prototype` branch** (commit `bb7633d`) is reference material for the PTY
   work, not something to merge — it also carries a throwaway `Act.App/Prototype/`
   page and its `Program.cs` wiring. Read individual files with

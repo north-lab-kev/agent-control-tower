@@ -6,7 +6,7 @@ namespace Act.Agents.Tests;
 
 // One suite every adapter must pass. It deliberately exercises only the surface that needs
 // no process — identity, capabilities, config resolution — because ACT does not run real
-// CLIs in automated tests; live-session behavior is verified per roadmap step by hand.
+// CLIs in automated tests; live-session behavior is verified by hand against the pinned CLIs.
 public abstract class AgentAdapterContract
 {
     protected abstract IAgentAdapter CreateAdapter();

@@ -18,8 +18,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Everything that does not need Windows stays on Linux: Windows minutes bill at
-  # 2x while the repo is private, so only the Windows packaging job pays that.
+  # Validation only, and first: a bad version, an existing tag or a missing secret
+  # should fail in seconds, before anything is built or tested.
   gate:
     runs-on: ubuntu-latest
     env:
@@ -43,8 +43,8 @@ jobs:
           }
 
       # Checked here rather than only where it is used: the stamp happens in the
-      # Windows job, and a release that got that far to fail on a missing secret
-      # would have paid for Windows minutes to learn it. Failing rather than
+      # packaging jobs, and a release that ran the whole suite on two platforms
+      # only to fail on a missing secret wasted all of it. Failing rather than
       # shipping without it is deliberate — an installer with no token sends
       # nothing, and a silent skip is how you find that out a month later.
       - name: Validate release secrets
@@ -62,6 +62,20 @@ jobs:
               throw "POSTHOG_PROJECT_TOKEN does not look like a project API key (expected phc_...). A personal API key must never be shipped in the app."
           }
 
+  # The same two legs `ci` runs, for the same reason: the Windows-only tests are the spawn layer of
+  # the platform the installer targets, and a release gated on Linux alone would ship it unverified.
+  # Re-run here rather than trusted from `ci`, because a release is dispatched against whatever ref
+  # the operator chose.
+  test:
+    needs: gate
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
@@ -77,7 +91,7 @@ jobs:
   package-windows:
     # Windows targets must be built on Windows (electron-builder cross-platform rule).
     runs-on: windows-latest
-    needs: gate
+    needs: test
     env:
       VERSION: ${{ inputs.version }}
     outputs:
@@ -156,7 +170,7 @@ jobs:
     # electron-updater can auto-update — the choice is argued in
     # `electron-builder.json`, beside the `linux` block.
     runs-on: ubuntu-latest
-    needs: gate
+    needs: test
     env:
       VERSION: ${{ inputs.version }}
     outputs:

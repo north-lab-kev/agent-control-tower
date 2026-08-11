@@ -21,7 +21,7 @@ public static class ActTelemetry
     //
     // The gate below runs on the client's own send path, and the last send of a run happens while the
     // app is shutting down — by which point the provider it was resolved from may already be disposed.
-    // Resolving there threw `ObjectDisposedException` out of the flush (2026-08-05), taking the
+    // Resolving there threw `ObjectDisposedException` out of the flush, taking the
     // closing batch with it; `The_consent_gate_survives_the_container_it_was_built_from` pins the fix.
     public static IServiceCollection AddActTelemetryClient(
         this IServiceCollection services,

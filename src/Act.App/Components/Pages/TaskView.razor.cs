@@ -854,7 +854,7 @@ public partial class TaskView(
             // nothing here to reconcile and pruning is pure downside: it is a delete driven by the
             // *form's* copy of the list against a card that owns the real one. A save that only changed
             // the title would have taken the files with it if that copy were ever short. This is the
-            // one plausible route by which a launched task lost its attachment on 2026-08-05.
+            // one plausible route by which a launched task once lost its attachment.
             PruneAttachments(AttachmentNames);
 
             discarded = true;

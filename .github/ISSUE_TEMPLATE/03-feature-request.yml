@@ -9,7 +9,7 @@ body:
       options:
         - label: I searched the existing issues.
           required: true
-        - label: I checked [docs/roadmap.md](https://github.com/north-lab-kev/agent-control-tower/blob/main/docs/roadmap.md) — this is not simply a step that has not been built yet.
+        - label: I checked the [spec's Future enhancements](https://github.com/north-lab-kev/agent-control-tower/blob/main/docs/overview.md#future-enhancements-) — this is not something already planned.
           required: true
 
   - type: textarea

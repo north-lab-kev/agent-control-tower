@@ -9,8 +9,8 @@ body:
       options:
         - README.md
         - CONTRIBUTING.md
-        - docs/overview.md — the spec
-        - docs/roadmap.md
+        - docs/overview.md or docs/spec/* — the spec
+        - docs/user-guide.md
         - docs/repository-structure.md
         - docs/design-notes.md
         - docs/findings/* — measured CLI behaviour

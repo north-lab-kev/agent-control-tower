@@ -5,8 +5,8 @@ using Act.Core.Model;
 
 namespace Act.Agents.ClaudeCode;
 
-// Claude Code's JSONL transcript, folded into enrichment. Measured against a real transcript on
-// 2026-07-30 (`claude-code v2.1.220`): the file holds one json object per line, and only the
+// Claude Code's JSONL transcript, folded into enrichment. Measured against a real transcript
+// (`claude-code v2.1.220`): the file holds one json object per line, and only the
 // `assistant` lines carry anything ACT wants — `message.model` and a `message.usage` with
 // `input_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens` and `output_tokens`.
 // Everything else in there (`user`, `attachment`, `system`, the title and queue bookkeeping lines)
@@ -18,7 +18,7 @@ public sealed class ClaudeCodeTranscriptNormalizer : ITranscriptNormalizer
 
     // Enrichment only, and no events: everything about *liveness* — activity, turn ends, prompts — is
     // reported first-hand by hooks, which are neither a poll behind nor dependent on a file being
-    // flushed. Both adapters have this shape since 2026-07-31; Codex raises one event here, `TurnFailed`,
+    // flushed. Both adapters share this shape; Codex raises one event here, `TurnFailed`,
     // because a turn failing while the process stays alive is the one thing no hook has been seen to
     // report.
     public TranscriptFold Fold(EnrichmentSnapshot snapshot, IReadOnlyList<string> lines)

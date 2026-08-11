@@ -4,10 +4,9 @@ namespace Act.Core.Model;
 // come from this machine's `AgentDefaults` and are filled in by `LaunchComposition` on the way to
 // the adapter, so a card never stores them.
 //
-// There is no allowed/disallowed tool list. It existed, was mapped by Claude Code and **silently
-// dropped by Codex** — the one outcome `LaunchConfigResolution` exists to make impossible — and it
-// was removed on 2026-08-01 rather than half-honoured. The permission mode is the knob that works
-// on both.
+// There is deliberately no allowed/disallowed tool list: Codex has no equivalent and would drop it
+// silently — the one outcome `LaunchConfigResolution` exists to make impossible. The permission
+// mode is the knob that works on both agents.
 public sealed class LaunchConfig
 {
     public string? AgentBinary { get; set; }

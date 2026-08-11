@@ -6,7 +6,7 @@ FSL-1.1-ALv2
 
 ## Notice
 
-Copyright 2026 Keven Poulin
+Copyright 2026 north-lab-kev
 
 ## Terms and Conditions
 

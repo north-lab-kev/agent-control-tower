@@ -216,7 +216,7 @@ public class ClaudeCodeUsageDialectTests
             .Should().EndWith(Path.Combine(".claude", ".credentials.json"));
     }
 
-    // Shaped after the measured file (2026-08-04, claude-code 2.1.220), which carries both clocks.
+    // Shaped after the measured file (claude-code 2.1.220), which carries both clocks.
     // The refresh expiry defaults to alive, so a test that says nothing about it is asking about the
     // access token alone.
     private static string Credentials(long expiresAt, long? refreshTokenExpiresAt = null)

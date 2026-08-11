@@ -10,7 +10,7 @@ namespace Act.App.UiTests;
 // server's memory immediately instead of being held per circuit until the user commits. The whole cost of
 // that decision lands here: a discard has to undo the writes, a removal must not take the bytes until the
 // save is real, and a locked card must never be pruned at all — that last one is the one plausible route by
-// which a launched task lost its attachment on 2026-08-05.
+// which once cost a launched task its attachment.
 public class TaskViewAttachmentTests : ComponentTest
 {
     // Refused whole rather than truncated. Keeping the first few of a dropped selection is the kind of

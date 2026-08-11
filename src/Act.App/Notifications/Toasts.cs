@@ -2,9 +2,8 @@ using Radzen;
 
 namespace Act.App.Notifications;
 
-// The one spelling of a page toast. Every page used to write the four-property initializer out —
-// fifteen copies, each restating the duration — so the shape lives here and a change to it is one
-// edit. Radzen's own `Notify` stays available; this is only the house style over it.
+// The one spelling of a page toast: the shape lives here so a change to it is one edit rather than
+// one per page. Radzen's own `Notify` stays available; this is only the house style over it.
 public static class Toasts
 {
     public const int DefaultDuration = 5000;

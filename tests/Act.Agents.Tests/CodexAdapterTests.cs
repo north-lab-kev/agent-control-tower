@@ -99,10 +99,9 @@ public class CodexAdapterTests
         pty.Last.Arguments.Should().NotContain("--ask-for-approval");
     }
 
-    // Codex has no classifier tier. It used to be *substituted* with `on-request` and an adjustment,
-    // which only existed because the form offered every mode to every agent; now that
-    // `CodexCapabilities` does not offer it, the honest outcome is a rejection carrying a message —
-    // and never both, which is the never-silently-drop rule's whole shape.
+    // Codex has no classifier tier, so `CodexCapabilities` does not offer `Auto` and the honest
+    // outcome is a rejection carrying a message — substituted or rejected, never both, which is the
+    // never-silently-drop rule's whole shape.
     [Fact]
     public void Auto_is_rejected_because_Codex_does_not_offer_it()
     {

@@ -2,6 +2,11 @@
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/refs/heads/master/packages/app-builder-lib/scheme.json",
   "productName": "ACT — Agent Control Tower",
   "appId": "com.northlabkev.act",
+  // Set explicitly because the default is wrong: electron-builder falls back to
+  // `Copyright © <year> ${author}`, and the `author` in the package.json ElectronNET generates is
+  // the project name, so the installer and the executable's file properties would both claim
+  // "Act.App" owns the copyright.
+  "copyright": "Copyright © 2026 north-lab-kev",
   "compression": "maximum",
   "win": {
     "icon": "bin/icon.ico",

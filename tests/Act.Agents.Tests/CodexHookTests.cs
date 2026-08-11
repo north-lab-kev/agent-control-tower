@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Act.Agents.Tests;
 
 // These pin what ACT *writes*, which is where the bug that kept every Codex hook from ever running
-// lived — a quoted program token. Ingestion through them was verified live on 2026-07-31; see
+// lived — a quoted program token. Ingestion through them was verified live; see
 // `docs/findings/codex-hooks.md`.
 public class CodexHookInjectionTests
 {
@@ -100,7 +100,7 @@ public class CodexHookInjectionTests
     // The regression that made every Codex hook fail from the very first launch, and the whole reason
     // no payload had ever arrived: **Codex takes quotes literally when it resolves the program.** A
     // quoted first token is a program named `"C:\…"`, which does not exist — `hook exited with code
-    // 1`, script never reached. Measured 2026-07-31 across five candidate shapes; an unquoted program
+    // 1`, script never reached. Measured across five candidate shapes; an unquoted program
     // runs, and a quoted argument after it is fine because `cmd` parses that part.
     [Fact]
     public async Task The_commands_program_is_never_quoted_because_codex_reads_the_quotes_literally()
@@ -236,7 +236,7 @@ public class CodexHookInjectionTests
         files.External.Single().Value.Should().NotContain(endpoint.Register(TaskId));
     }
 
-    // Type-probed against the CLI on 2026-08-06: the profile layer really does parse `mcp_servers`,
+    // Type-probed against the CLI: the profile layer really does parse `mcp_servers`,
     // and it named both keys back — `url` wants a string, `env_http_headers` wants a map. The parser
     // ignores unknown keys, so a drift in either name would be silent and ACT's server would simply
     // never appear in the session.
@@ -367,7 +367,7 @@ public class CodexHookInjectionTests
             TerminalSize.Default));
 }
 
-// Written against the documented contract and since **confirmed against real payloads** (2026-07-31):
+// Written against the documented contract and since **confirmed against real payloads**:
 // `SessionStart`, `UserPromptSubmit`, the tool events, `PermissionRequest`, `Stop` and
 // `request_user_input` all normalized correctly from live runs.
 public class CodexHookNormalizerTests

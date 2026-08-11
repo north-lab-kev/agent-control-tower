@@ -8,7 +8,7 @@ namespace Act.Core.Abstractions;
 // cumulative: the caller owns the running snapshot, so a full re-read and an incremental one differ
 // only in which lines arrive.
 //
-// It returns **both** halves, though as of 2026-07-31 both agents use it almost the same way: hooks
+// It returns **both** halves, though both agents use it almost the same way: hooks
 // report liveness and count the turns and tool calls, and the transcript is enrichment. Codex briefly
 // had to return activity and turn ends too, while its hooks were believed dead; that moved to the
 // hooks once the real cause was found (ACT quoting the hook command), and the two agents now differ by
