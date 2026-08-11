@@ -23,6 +23,23 @@ public class NotificationDispatcherTests
             .Which.Body.Should().Be("#1042 · Rename the widget");
     }
 
+    // A toast that says "#1042 ·" and stops names nothing, and it is read away from the board where the
+    // number alone means least — so an untitled card is announced by its prompt.
+    [Fact]
+    public void An_untitled_card_is_announced_by_its_prompt()
+    {
+        var (dispatcher, notifier, _) = DispatcherOf();
+        var card = Blocked();
+
+        card.Title = string.Empty;
+        card.InitialPrompt = "Rename the widget everywhere";
+
+        dispatcher.Notify(card);
+
+        notifier.Shown.Should().ContainSingle()
+            .Which.Body.Should().Be("#1042 · Rename the widget everywhere");
+    }
+
     [Fact]
     public void The_title_says_which_kind_it_is()
     {

@@ -70,8 +70,11 @@ else
                             <div class="titlerow">
                                 <RadzenTextBox Name="Title" @bind-Value="form.Title"
                                                MaxLength="@TaskTitleQuery.MaxLength"
-                                               Placeholder="@Strings.NewTask_Title_Placeholder"
+                                               Placeholder="@TitlePlaceholder"
                                                ReadOnly="ReadOnly" class="wide" />
+                                @* Offered whether or not titles are generated automatically: the
+                                   switch governs what ACT does *for* the user, and a click here is
+                                   the user asking. *@
                                 @if (!ReadOnly)
                                 {
                                     <RadzenButton Icon="auto_awesome" ButtonStyle="ButtonStyle.Base"
@@ -84,7 +87,7 @@ else
                             </div>
                             <RadzenCustomValidator Component="Title" Validator="@(() => TitleSatisfied)"
                                                    Text="@Strings.NewTask_Title_Required" />
-                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Title_Hint" class="hint" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@TitleHint" class="hint" />
                         </RadzenStack>
 
                         <RadzenStack Gap="0.3rem">

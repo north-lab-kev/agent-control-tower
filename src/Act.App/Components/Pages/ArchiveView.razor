@@ -1,5 +1,6 @@
 @page "/archive"
 @using Act.Core.Model
+@using Act.Core.Rules
 
 <PageTitle>@Strings.Archive_Title</PageTitle>
 
@@ -49,7 +50,7 @@
                            throughout — see `TaskEditing`. *@
                         <a class="what" href="@CardTabs.Route(card.Id, CardSurface.Task)"
                            title="@Strings.Archive_Open">
-                            <span class="ttl">@card.Title</span>
+                            <span class="ttl">@CardTitle.Of(card)</span>
                             <span class="meta">@Meta(card)</span>
                         </a>
                         <RadzenButton Icon="restore_from_trash" Size="ButtonSize.ExtraSmall"

@@ -66,6 +66,8 @@ public partial class SettingsView(
 
     private bool CloseToTray => settings.CloseToTray;
 
+    private bool GenerateTitles => settings.GenerateTitles;
+
     private bool Telemetry => settings.Telemetry;
 
     private string InstallId => settings.InstallId;
@@ -269,6 +271,8 @@ public partial class SettingsView(
     private void OnNotificationsChanged(bool notifications) => settings.SetNotifications(notifications);
 
     private void OnCloseToTrayChanged(bool closeToTray) => settings.SetCloseToTray(closeToTray);
+
+    private void OnGenerateTitlesChanged(bool generate) => settings.SetGenerateTitles(generate);
 
     private void OnTelemetryChanged(bool telemetry) => settings.SetTelemetry(telemetry);
 

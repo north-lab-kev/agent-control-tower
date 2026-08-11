@@ -161,6 +161,27 @@ public class SessionLaunchTests
         card.Column.Should().Be(BoardColumn.Ready);
         card.Transitions.Should().BeEmpty();
         adapter.Launches.Should().BeEmpty();
+        result.Message.Should().Contain("7").And.Contain("Mid-flight");
+    }
+
+    // The refusal has to name the card in the way, and that card may have no title of its own — so the
+    // message falls back to its prompt rather than trailing off after the number.
+    [Fact]
+    public async Task A_folder_held_by_an_untitled_card_still_says_which_one()
+    {
+        var holder = Executing();
+
+        holder.Number = 7;
+        holder.Title = string.Empty;
+        holder.InitialPrompt = "Rework the auth module";
+
+        var card = Ready();
+        var (launcher, _, _, _) = LauncherOf(holder, card);
+
+        var result = await launcher.LaunchAsync(card, TerminalSize.Default);
+
+        result.Waiting.Should().BeTrue();
+        result.Message.Should().Contain("Rework the auth module");
     }
 
     // An archived card is openable and inert. Ready is the column a launch is offered from, so it is

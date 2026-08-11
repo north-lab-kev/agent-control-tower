@@ -221,6 +221,21 @@ public class StripFaceTests
         face.HoldTip.Should().Contain("Already here");
     }
 
+    // The blocker may have no title of its own once title writing is switched off, and "task #7 —" with
+    // nothing after it explains nothing. The tip names it the way the board does, from its prompt.
+    [Fact]
+    public void A_hold_names_an_untitled_card_by_its_prompt()
+    {
+        var blocker = Card(BoardColumn.Executing);
+        blocker.Number = 7;
+        blocker.Title = string.Empty;
+        blocker.InitialPrompt = "Already working here";
+
+        var face = Face(Card(BoardColumn.Ready), new ReadyHold(LaunchHold.WorkingDir, Blocker: blocker));
+
+        face.HoldTip.Should().Contain("Already working here");
+    }
+
     [Fact]
     public void A_slot_hold_shows_the_figures()
     {
@@ -319,6 +334,17 @@ public class StripFaceTests
 
         face.Spawned.Should().Be("↳ #1039");
         face.SpawnedTip.Should().Contain("1039").And.Contain("Rework the auth module");
+    }
+
+    [Fact]
+    public void A_spawned_card_names_an_untitled_parent_by_its_prompt()
+    {
+        var parent = Parent();
+
+        parent.Title = string.Empty;
+        parent.InitialPrompt = "Rework the auth module";
+
+        Face(Spawned(), parent).SpawnedTip.Should().Contain("Rework the auth module");
     }
 
     [Fact]

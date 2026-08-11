@@ -1,4 +1,5 @@
 using Act.Core.Model;
+using Act.Core.Rules;
 
 namespace Act.Core.Spawning;
 
@@ -32,7 +33,7 @@ public sealed record TaskDetail(
     public static TaskDetail From(Card card, Guid caller) => new(
         Id: card.Id.ToString(),
         Number: card.Number,
-        Title: card.Title,
+        Title: CardTitle.Of(card),
         Prompt: card.InitialPrompt,
         Column: TaskWords.Of(card.Column),
         Badge: TaskWords.Of(card.Badge),

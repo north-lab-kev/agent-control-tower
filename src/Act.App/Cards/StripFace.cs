@@ -154,7 +154,7 @@ public sealed record StripFace(
         => card.Origin is not TaskOrigin.Spawned
             ? null
             : parent is { } known
-                ? Text.Format(Strings.Card_SpawnedBy_Tip, known.Number, known.Title)
+                ? Text.Format(Strings.Card_SpawnedBy_Tip, known.Number, CardTitle.Of(known))
                 : Strings.Card_SpawnedByUnknown;
 
     // A hold is not a `Badge` — it is derived, it is never stored, and it must not blink or notify.
@@ -180,9 +180,9 @@ public sealed record StripFace(
                 agent,
                 waiting.Until?.ToLocalTime().ToString(Strings.Schedule_DateFormat, CultureInfo.CurrentCulture)),
             LaunchHold.WorkingDir => Text.Format(
-                Strings.Hold_Folder_Tip, waiting.Blocker?.Number, waiting.Blocker?.Title),
+                Strings.Hold_Folder_Tip, waiting.Blocker?.Number, Named(waiting.Blocker)),
             LaunchHold.Dependency => Text.Format(
-                Strings.Hold_Dependency_Tip, waiting.Blocker?.Number, waiting.Blocker?.Title),
+                Strings.Hold_Dependency_Tip, waiting.Blocker?.Number, Named(waiting.Blocker)),
             LaunchHold.Slot => Text.Format(Strings.Hold_Slot_Tip, waiting.Used, waiting.Cap),
             _ => null,
         };
@@ -193,6 +193,8 @@ public sealed record StripFace(
         => hold?.Reason is LaunchHold.Paused or LaunchHold.AgentDisabled
             ? "badge"
             : "badge b-hold";
+
+    private static string? Named(Card? card) => card is null ? null : CardTitle.Of(card);
 
     private static string Countdown(DateTimeOffset? until, DateTimeOffset now)
     {

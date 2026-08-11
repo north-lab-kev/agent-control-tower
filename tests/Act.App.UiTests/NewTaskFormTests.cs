@@ -14,7 +14,7 @@ public class NewTaskFormTests
     {
         var card = CardIn(BoardColumn.Ready);
 
-        Edited().ApplyTo(card);
+        Edited().ApplyTo(card, titleFromPrompt: true);
 
         card.Title.Should().Be("New title");
         card.InitialPrompt.Should().Be("something else entirely");
@@ -33,7 +33,7 @@ public class NewTaskFormTests
     {
         var card = CardIn(column);
 
-        Edited().ApplyTo(card);
+        Edited().ApplyTo(card, titleFromPrompt: true);
 
         card.InitialPrompt.Should().Be("do the thing");
         card.WorkingDir.Should().Be("C:/repo");
@@ -50,7 +50,7 @@ public class NewTaskFormTests
     {
         var card = CardIn(BoardColumn.YourTurn);
 
-        Edited().ApplyTo(card);
+        Edited().ApplyTo(card, titleFromPrompt: true);
 
         card.Title.Should().Be("New title");
         card.LaunchConfig.Model.Should().Be("opus");
@@ -70,7 +70,7 @@ public class NewTaskFormTests
         var card = CardIn(BoardColumn.Ready);
 
         (Edited() with { Title = title, Prompt = "Consolidate the badge colours across the css files" })
-            .ApplyTo(card);
+            .ApplyTo(card, titleFromPrompt: true);
 
         card.Title.Should().Be("Consolidate the badge colours across the css files");
     }
@@ -83,7 +83,7 @@ public class NewTaskFormTests
         var card = CardIn(BoardColumn.Executing);
 
         // The prompt the form carries for a launched card is the card's own, read-only copy.
-        (Edited() with { Title = "  ", Prompt = "do the thing" }).ApplyTo(card);
+        (Edited() with { Title = "  ", Prompt = "do the thing" }).ApplyTo(card, titleFromPrompt: true);
 
         card.Title.Should().Be("do the thing");
         card.InitialPrompt.Should().Be("do the thing");
@@ -94,7 +94,7 @@ public class NewTaskFormTests
     {
         var card = CardIn(BoardColumn.Ready);
 
-        (Edited() with { Title = "  My own words  " }).ApplyTo(card);
+        (Edited() with { Title = "  My own words  " }).ApplyTo(card, titleFromPrompt: true);
 
         card.Title.Should().Be("My own words");
     }
@@ -108,7 +108,7 @@ public class NewTaskFormTests
         var card = CardIn(BoardColumn.Ready);
 
         NewTaskForm.From(new TaskTemplate { Title = "Nightly dependency sweep", Prompt = "Update the packages" })
-            .ApplyTo(card);
+            .ApplyTo(card, titleFromPrompt: true);
 
         card.Title.Should().Be("Nightly dependency sweep");
     }
@@ -120,9 +120,71 @@ public class NewTaskFormTests
     {
         var card = CardIn(BoardColumn.Ready);
 
-        NewTaskForm.From(new TaskTemplate { Prompt = "Update the packages" }).ApplyTo(card);
+        NewTaskForm.From(new TaskTemplate { Prompt = "Update the packages" }).ApplyTo(card, titleFromPrompt: true);
 
         card.Title.Should().Be("Update the packages");
+    }
+
+    // The other half of the same guarantee, and the reason it is a parameter rather than a constant: with
+    // `UserSettings.GenerateTitles` off the user has said not to name their tasks for them, so the blank is
+    // stored as a blank. What keeps the strip readable then is `CardTitle`, which derives the same opening
+    // words at render time without freezing them into the card.
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\n\t ")]
+    public void A_blank_title_is_stored_blank_when_titles_are_not_generated(string title)
+    {
+        var card = CardIn(BoardColumn.Ready);
+
+        (Edited() with { Title = title, Prompt = "Consolidate the badge colours across the css files" })
+            .ApplyTo(card, titleFromPrompt: false);
+
+        card.Title.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void A_typed_title_is_kept_when_titles_are_not_generated()
+    {
+        var card = CardIn(BoardColumn.Ready);
+
+        (Edited() with { Title = "  My own words  " }).ApplyTo(card, titleFromPrompt: false);
+
+        card.Title.Should().Be("My own words");
+    }
+
+    // Past the launch boundary as well: the title is the one launch input that stays editable, so clearing
+    // it has to mean the same thing on a running card as on a draft.
+    [Fact]
+    public void A_launched_card_whose_title_is_cleared_is_left_blank_when_titles_are_not_generated()
+    {
+        var card = CardIn(BoardColumn.Executing);
+
+        (Edited() with { Title = "  ", Prompt = "do the thing" }).ApplyTo(card, titleFromPrompt: false);
+
+        card.Title.Should().BeEmpty();
+        card.InitialPrompt.Should().Be("do the thing");
+    }
+
+    [Fact]
+    public void A_created_card_is_untitled_when_titles_are_not_generated()
+    {
+        var form = Edited() with { Title = string.Empty };
+
+        form.ToCard(DateTimeOffset.UnixEpoch, titleFromPrompt: false).Title.Should().BeEmpty();
+    }
+
+    // A template that carries a title is a *typed* title as far as the save is concerned, so it lands
+    // whatever the setting says — the user wrote it, ACT did not.
+    [Fact]
+    public void A_template_title_reaches_the_card_when_titles_are_not_generated()
+    {
+        var card = CardIn(BoardColumn.Ready);
+
+        NewTaskForm.From(new TaskTemplate { Title = "Nightly dependency sweep", Prompt = "Update the packages" })
+            .ApplyTo(card, titleFromPrompt: false);
+
+        card.Title.Should().Be("Nightly dependency sweep");
     }
 
     // The write side of the same field. A template is the shape of the form in front of you, so the
@@ -158,7 +220,7 @@ public class NewTaskFormTests
     {
         var form = Edited();
 
-        form.ToCard(DateTimeOffset.UnixEpoch).Id.Should().Be(form.CardId);
+        form.ToCard(DateTimeOffset.UnixEpoch, titleFromPrompt: true).Id.Should().Be(form.CardId);
     }
 
     [Fact]
@@ -166,7 +228,7 @@ public class NewTaskFormTests
     {
         var card = CardIn(BoardColumn.Ready);
 
-        (Edited() with { Attachments = [Attached("spec.md")] }).ApplyTo(card);
+        (Edited() with { Attachments = [Attached("spec.md")] }).ApplyTo(card, titleFromPrompt: true);
 
         card.Attachments.Should().ContainSingle().Which.FileName.Should().Be("spec.md");
     }
@@ -178,7 +240,7 @@ public class NewTaskFormTests
         var card = CardIn(BoardColumn.Executing);
         card.Attachments = [Attached("trace.log")];
 
-        (Edited() with { Attachments = [Attached("spec.md")] }).ApplyTo(card);
+        (Edited() with { Attachments = [Attached("spec.md")] }).ApplyTo(card, titleFromPrompt: true);
 
         card.Attachments.Should().ContainSingle().Which.FileName.Should().Be("trace.log");
     }

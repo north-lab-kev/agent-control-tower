@@ -199,6 +199,25 @@ public class FlightStripTests : ComponentTest
         Strip(Card(BoardColumn.Preparing)).FindAll(".ttlspin").Should().BeEmpty();
     }
 
+    // What an untitled card looks like once title writing is switched off: the prompt's opening words in
+    // the title's place, with no spinner, because nothing is on its way. Both densities, because a card
+    // with no name of its own is exactly the one a compact board still has to be able to find.
+    [Theory]
+    [InlineData(BoardDensity.Detailed)]
+    [InlineData(BoardDensity.Compact)]
+    public void An_untitled_card_is_named_by_its_prompt(BoardDensity density)
+    {
+        var card = Card(BoardColumn.Preparing);
+        card.Title = string.Empty;
+        card.InitialPrompt = "Rename the widget everywhere";
+
+        var cut = Strip(card, density: density);
+
+        cut.Find(".ttl").TextContent.Should().Be("Rename the widget everywhere");
+        cut.Find("div.strip").GetAttribute("title").Should().Be("Rename the widget everywhere");
+        cut.FindAll(".ttlspin").Should().BeEmpty();
+    }
+
     private IRenderedComponent<FlightStrip> Strip(
         Card card,
         Action<ComponentParameterCollectionBuilder<FlightStrip>>? parameters = null,

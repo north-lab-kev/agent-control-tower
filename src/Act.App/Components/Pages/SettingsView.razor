@@ -17,15 +17,31 @@
     <div class="body">
         <RadzenStack Gap="1.5rem" class="sheet">
             <RadzenFieldset Text="@Strings.Settings_Group_General">
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
-                             JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
-                    <RadzenStack Gap="0.1rem">
-                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Language" />
-                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Language_Hint" class="hint" />
+                <RadzenStack Gap="1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Language" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Language_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenDropDown TValue="LanguagePreference" Value="Language" ValueChanged="OnLanguageChanged"
+                                        Data="LanguageChoices" TextProperty="Text" ValueProperty="Value"
+                                        AllowClear="false" class="control" />
                     </RadzenStack>
-                    <RadzenDropDown TValue="LanguagePreference" Value="Language" ValueChanged="OnLanguageChanged"
-                                    Data="LanguageChoices" TextProperty="Text" ValueProperty="Value"
-                                    AllowClear="false" class="control" />
+
+                    @* The only place ACT runs a CLI on its own account, so it is the one piece of
+                       automatic behaviour that spends the user's quota without being asked — which is
+                       the whole reason it has a switch. The button on the task form is unaffected. *@
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_GenerateTitles" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_GenerateTitles_Hint"
+                                        class="hint" />
+                        </RadzenStack>
+                        <RadzenSwitch Value="GenerateTitles"
+                                      ValueChanged="@((bool value) => OnGenerateTitlesChanged(value))" />
+                    </RadzenStack>
                 </RadzenStack>
             </RadzenFieldset>
 

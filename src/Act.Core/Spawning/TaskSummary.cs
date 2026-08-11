@@ -1,4 +1,5 @@
 using Act.Core.Model;
+using Act.Core.Rules;
 
 namespace Act.Core.Spawning;
 
@@ -17,7 +18,7 @@ public sealed record TaskSummary(
     public static TaskSummary From(Card card, Guid caller) => new(
         Id: card.Id.ToString(),
         Number: card.Number,
-        Title: card.Title,
+        Title: CardTitle.Of(card),
         Column: TaskWords.Of(card.Column),
         Badge: TaskWords.Of(card.Badge),
         Agent: TaskWords.Of(card.AgentType),

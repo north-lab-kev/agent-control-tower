@@ -25,6 +25,19 @@ public class ArchiveFollowUpsDialogTests : ComponentTest
         rows[1].TextContent.Should().Contain("8").And.Contain("Update the notes");
     }
 
+    // Seeing *which* tasks go is what makes this a decision rather than an "are you sure", so a
+    // follow-up stored without a title has to be named here too.
+    [Fact]
+    public void An_untitled_follow_up_is_named_by_its_prompt()
+    {
+        var child = FollowUp(7, string.Empty);
+
+        child.InitialPrompt = "Fix the sweep everywhere";
+
+        Dialog(child).Host.WaitForElement("ul.kids li").TextContent
+            .Should().Contain("Fix the sweep everywhere");
+    }
+
     [Fact]
     public void The_question_says_how_many_there_are()
     {

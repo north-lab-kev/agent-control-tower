@@ -30,6 +30,8 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
 
     public bool CloseToTray => current.CloseToTray;
 
+    public bool GenerateTitles => current.GenerateTitles;
+
     public UpdatePolicy Updates => current.Updates;
 
     public bool Telemetry => current.Telemetry;
@@ -325,6 +327,14 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
             return;
 
         Update(settings => settings.CloseToTray = closeToTray);
+    }
+
+    public void SetGenerateTitles(bool generate)
+    {
+        if (generate == current.GenerateTitles)
+            return;
+
+        Update(settings => settings.GenerateTitles = generate);
     }
 
     public void SetTelemetry(bool telemetry)

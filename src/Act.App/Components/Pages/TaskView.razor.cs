@@ -150,7 +150,20 @@ public partial class TaskView(
     // whatever the markup does. A card that does not exist yet is never locked.
     private bool Locked => card is { } existing && !TaskEditing.CanEditLaunchInputs(existing);
 
-    private string PageHeading => card is { } existing ? existing.Title : Strings.TaskView_NewTitle;
+    private string PageHeading => card is { } existing ? CardTitle.Of(existing) : Strings.TaskView_NewTitle;
+
+    private bool GeneratesTitles => settings.GenerateTitles;
+
+    // Two settings, two promises: with generation on, a blank box is filled in on save, and with it off
+    // the box stays blank and the board shows the prompt instead. The field says which one it is, because
+    // "leave it blank" means something different under each.
+    private string TitlePlaceholder => GeneratesTitles
+        ? Strings.NewTask_Title_Placeholder
+        : Strings.NewTask_Title_Placeholder_Manual;
+
+    private string TitleHint => GeneratesTitles
+        ? Strings.NewTask_Title_Hint
+        : Strings.NewTask_Title_Hint_Manual;
 
     private bool FolderGuardOn => settings.PreventConcurrentWorkingDir;
 
@@ -880,12 +893,12 @@ public partial class TaskView(
 
             if (saved is not null)
             {
-                form.ApplyTo(saved);
+                form.ApplyTo(saved, GeneratesTitles);
                 await board.UpdateAsync(saved);
             }
             else
             {
-                saved = form.ToCard(clock.Now);
+                saved = form.ToCard(clock.Now, GeneratesTitles);
 
                 await board.CreateAsync(saved);
 
@@ -899,7 +912,10 @@ public partial class TaskView(
             // deliberately not awaited: the card is already on the board under the prompt's opening
             // words, and the agent's answer replaces them when it arrives. A typed title instead
             // withdraws any answer still owed to an earlier save.
-            if (untitled)
+            //
+            // Nothing is asked of an agent when generation is off. That is the whole of the switch on the
+            // save path: the blank title `ApplyTo` stored stays blank, and `CardTitle` names the card.
+            if (untitled && GeneratesTitles)
                 backfill.Start(saved);
             else
                 backfill.Cancel(saved.Id);

@@ -27,6 +27,9 @@ public class UserSettingsServiceTests
         settings.AutoArchiveCompleted.Should().BeTrue();
         settings.Telemetry.Should().BeTrue();
 
+        // On by default: nobody should have to name a task twice.
+        settings.GenerateTitles.Should().BeTrue();
+
         // Quiet download by default: the alternative is a user who is out of date and does not know it.
         settings.Updates.Should().Be(UpdatePolicy.NotifyAndDownload);
 
@@ -68,6 +71,7 @@ public class UserSettingsServiceTests
         settings.SetUpdates(settings.Updates);
         settings.SetTelemetry(settings.Telemetry);
         settings.SetBlinkYourTurn(settings.BlinkYourTurn);
+        settings.SetGenerateTitles(settings.GenerateTitles);
         settings.SetAutoExecutionPaused(settings.AutoExecutionPaused);
         settings.SetPreventConcurrentWorkingDir(settings.PreventConcurrentWorkingDir);
         settings.SetMaxConcurrent(settings.MaxConcurrent);
@@ -75,6 +79,17 @@ public class UserSettingsServiceTests
         settings.SetAutoArchiveCompletedAfterDays(settings.AutoArchiveCompletedAfterDays);
 
         announcements.Should().Be(0);
+    }
+
+    [Fact]
+    public void Title_writing_can_be_switched_off_and_stays_off()
+    {
+        var (settings, store) = ServiceOf();
+
+        settings.SetGenerateTitles(false);
+
+        settings.GenerateTitles.Should().BeFalse();
+        store.Load().GenerateTitles.Should().BeFalse();
     }
 
     // A real resource ceiling rather than a politeness setting, so it is clamped on the way in

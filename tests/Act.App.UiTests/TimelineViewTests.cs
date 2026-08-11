@@ -20,6 +20,21 @@ public class TimelineViewTests : ComponentTest
         cut.FindAll("div.tl").Should().BeEmpty();
     }
 
+    // The header is the only thing here that says which task the history belongs to, so a card stored
+    // without a title falls back to its prompt like every other surface.
+    [Fact]
+    public async Task An_untitled_card_is_named_by_its_prompt()
+    {
+        var card = Card(BoardColumn.Preparing);
+
+        card.Title = string.Empty;
+        card.InitialPrompt = "Rename the widget everywhere";
+
+        var cut = await Open(card);
+
+        cut.Find("header.bar span.title").TextContent.Should().Be("Rename the widget everywhere");
+    }
+
     [Fact]
     public async Task A_card_that_has_not_moved_yet_says_so_rather_than_drawing_an_empty_rail()
     {

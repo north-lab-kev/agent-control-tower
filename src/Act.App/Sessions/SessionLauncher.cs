@@ -179,7 +179,7 @@ public sealed class SessionLauncher(
                 card.WorkingDir);
 
             return LaunchResult.Wait(
-                Text.Format(Strings.Launch_WorkingDirBusy, holder.Number, holder.Title));
+                Text.Format(Strings.Launch_WorkingDirBusy, holder.Number, CardTitle.Of(holder)));
         }
 
         return await BeginAsync(

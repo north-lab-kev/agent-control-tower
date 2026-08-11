@@ -286,7 +286,22 @@ public class BoardStateTests
         copy.SessionId.Should().BeNull();
         copy.Badge.Should().BeNull();
         copy.Metrics.Should().BeNull();
+        copy.Title.Should().Be("Copy of Card 1000");
         board.All.Should().HaveCount(2);
+    }
+
+    // An untitled card copies as untitled. "Copy of …" over a name derived from the prompt would be the one
+    // place a derived title gets frozen into a stored card — on behalf of a user who switched that off.
+    [Fact]
+    public async Task A_duplicate_of_an_untitled_card_is_untitled_too()
+    {
+        var card = Card(BoardColumn.Preparing, order: 1);
+        card.Title = string.Empty;
+        card.InitialPrompt = "Rename the widget everywhere";
+
+        var board = await BoardOf(card);
+
+        (await board.DuplicateAsync(card)).Title.Should().BeEmpty();
     }
 
     [Fact]

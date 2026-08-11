@@ -34,6 +34,20 @@ public class ArchiveViewTests : ComponentTest
         cut.Find("div.row .ttl").TextContent.Should().Be("Rename the widget");
     }
 
+    // An archive row is how a finished task is found again, so a card stored without a title must not
+    // become a blank line — the prompt's opening words name it here as they do on the board.
+    [Fact]
+    public async Task An_untitled_row_is_named_by_its_prompt()
+    {
+        var card = Archived(1042, string.Empty);
+
+        card.InitialPrompt = "Rename the widget everywhere";
+
+        await BoardWith(card);
+
+        Show().Find("div.row .ttl").TextContent.Should().Be("Rename the widget everywhere");
+    }
+
     [Fact]
     public async Task The_board_own_cards_are_not_in_the_archive()
     {

@@ -204,7 +204,8 @@
   reason as the task form — see *Interaction* — and a page also survives the reload a
   language change forces, where a dialog would be dismissed as a side effect and dump
   you on the board.
-  Shipped: **language**, **archive completed tasks automatically** with its window in days,
+  Shipped: **language**, **write titles from the prompt** (*General*),
+  **archive completed tasks automatically** with its window in days,
   **theme** (follow-OS / light / dark override),
   **display mode** (Compact / Detailed — also a chip on the board's control row),
   **blink in Your turn**, **keep-awake**, **close-to-tray**,
@@ -228,6 +229,11 @@
     1–365 days on the way in, because the store is written on every keystroke's `Change` and a
     typed `0` must not mean "archive everything the moment it is signed off". See *Data
     retention* for what the sweep does and what it refuses to touch.
+  - **Write titles from the prompt** (*General*, on by default) is the switch over the one thing ACT
+    does that spends the user's quota without being asked — see *Auto-generated titles* in the
+    *Task / card data model* for what it governs and what an untitled card then looks like. The
+    **wand on the task form is unaffected**: the switch is about what ACT does on its own account,
+    and a click there is the user asking.
   - **Blink cards in Your turn** (*Appearance*, on by default) governs the attention pulse only.
     Off keeps the rail colour, the glow and the border — the card still reads as needing you, it
     simply holds still, which is exactly what a reduced-motion user already gets. The state is

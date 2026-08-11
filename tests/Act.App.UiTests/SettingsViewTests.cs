@@ -30,6 +30,7 @@ public class SettingsViewTests : ComponentTest
     [Theory]
     [InlineData("Keep the computer awake")]
     [InlineData("Blink cards in Your turn")]
+    [InlineData("Write titles from the prompt")]
     [InlineData("Pause automatic execution")]
     [InlineData("One task at a time per folder")]
     [InlineData("Archive completed tasks automatically")]
@@ -45,6 +46,16 @@ public class SettingsViewTests : ComponentTest
         RadzenDom.IsOn(cut, label, Row).Should().Be(!before);
         SettingsStore.Load().Should().NotBeNull();
         Show().Pipe(fresh => RadzenDom.IsOn(fresh, label, Row).Should().Be(!before));
+    }
+
+    // The one switch that governs whether ACT runs a CLI on its own account, so it is worth naming what it
+    // wrote rather than only that something was written.
+    [Fact]
+    public void Title_writing_can_be_switched_off_from_the_page()
+    {
+        RadzenDom.Toggle(Show(), "Write titles from the prompt", Row);
+
+        Settings.GenerateTitles.Should().BeFalse();
     }
 
     [Fact]

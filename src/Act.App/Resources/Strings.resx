@@ -57,8 +57,14 @@
   <data name="NewTask_Title_Placeholder" xml:space="preserve">
     <value>Written from the prompt if you leave it blank</value>
   </data>
+  <data name="NewTask_Title_Placeholder_Manual" xml:space="preserve">
+    <value>Optional — the prompt stands in when it is blank</value>
+  </data>
   <data name="NewTask_Title_Hint" xml:space="preserve">
     <value>Yours to write. Leave it blank and saving fills it in from the prompt.</value>
+  </data>
+  <data name="NewTask_Title_Hint_Manual" xml:space="preserve">
+    <value>Yours to write. Leave it blank and the card shows the start of the prompt instead — or click the wand to have the agent write one.</value>
   </data>
   <data name="NewTask_Title_Required" xml:space="preserve">
     <value>Write a title, or a prompt to take one from</value>
@@ -692,6 +698,12 @@
   </data>
   <data name="Settings_Language_System" xml:space="preserve">
     <value>System default</value>
+  </data>
+  <data name="Settings_GenerateTitles" xml:space="preserve">
+    <value>Write titles from the prompt</value>
+  </data>
+  <data name="Settings_GenerateTitles_Hint" xml:space="preserve">
+    <value>When a task is saved with no title, ask its own agent to write one. Turn it off and an untitled card shows the start of its prompt instead; the wand on the task form still works.</value>
   </data>
   <data name="Settings_Theme" xml:space="preserve">
     <value>Theme</value>

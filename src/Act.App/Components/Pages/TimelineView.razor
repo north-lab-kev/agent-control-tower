@@ -1,8 +1,9 @@
 @page "/card/{CardId:guid}/timeline"
 @using Act.App.Cards
 @using Act.Core.Model
+@using Act.Core.Rules
 
-<PageTitle>@(card is null ? "ACT" : $"#{card.Number} — {card.Title}")</PageTitle>
+<PageTitle>@(card is null ? "ACT" : $"#{card.Number} — {CardTitle.Of(card)}")</PageTitle>
 
 <EscapeKey OnEscape="Back" />
 
@@ -21,7 +22,7 @@ else
             <RadzenButton Icon="arrow_back" Text="@CardExit.Label(card)" Size="ButtonSize.Small"
                           ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="Back" />
             <span class="id">#@card.Number</span>
-            <span class="title">@card.Title</span>
+            <span class="title">@CardTitle.Of(card)</span>
         </header>
 
         <CardTabs CardId="card.Id" />

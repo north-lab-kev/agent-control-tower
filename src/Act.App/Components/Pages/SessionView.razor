@@ -1,7 +1,8 @@
 @page "/card/{CardId:guid}/terminal"
 @using Act.Core.Model
+@using Act.Core.Rules
 
-<PageTitle>@(card is null ? "ACT" : $"#{card.Number} — {card.Title}")</PageTitle>
+<PageTitle>@(card is null ? "ACT" : $"#{card.Number} — {CardTitle.Of(card)}")</PageTitle>
 
 @* Not while the terminal has the focus: Escape typed at an agent is meant for the agent. *@
 <EscapeKey OnEscape="Back" Ignore=".xterm" />
@@ -21,7 +22,7 @@ else
             <RadzenButton Icon="arrow_back" Text="@CardExit.Label(card)" Size="ButtonSize.Small"
                           ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="Back" />
             <span class="id">#@card.Number</span>
-            <span class="title">@card.Title</span>
+            <span class="title">@CardTitle.Of(card)</span>
             @if (card.Badge is { } badge)
             {
                 <span class="badge @CardVisuals.BadgeClass(badge)">@CardVisuals.BadgeText(badge)</span>
@@ -97,7 +98,7 @@ else
                     @if (Parent is { } parent)
                     {
                         <dt>@Strings.Session_SpawnedBy</dt>
-                        <dd><RadzenLink Path="@Route(parent)" Text="@($"#{parent.Number} — {parent.Title}")" /></dd>
+                        <dd><RadzenLink Path="@Route(parent)" Text="@($"#{parent.Number} — {CardTitle.Of(parent)}")" /></dd>
                     }
 
                     @if (Children is { Count: > 0 } children)
@@ -106,7 +107,7 @@ else
                         <dd>
                             @foreach (var child in children)
                             {
-                                <div><RadzenLink Path="@Route(child)" Text="@($"#{child.Number} — {child.Title}")" /></div>
+                                <div><RadzenLink Path="@Route(child)" Text="@($"#{child.Number} — {CardTitle.Of(child)}")" /></div>
                             }
                         </dd>
                     }

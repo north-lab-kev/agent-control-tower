@@ -26,6 +26,22 @@ public class SessionViewTests : ComponentTest
         cut.FindAll("div.terminal").Should().BeEmpty();
     }
 
+    // The header is the only thing on this page that says which task the terminal belongs to, so a card
+    // stored without a title falls back to its prompt here like everywhere else.
+    [Fact]
+    public async Task An_untitled_card_is_named_by_its_prompt()
+    {
+        var card = Lineage(1042, string.Empty, BoardColumn.Ready);
+
+        card.InitialPrompt = "Rename the widget everywhere";
+
+        await BoardWith(card);
+
+        var cut = Render<SessionView>(p => p.Add(c => c.CardId, card.Id));
+
+        cut.Find("header.bar span.title").TextContent.Should().Be("Rename the widget everywhere");
+    }
+
     // No xterm at all on an archived card, rather than an empty one: a black pane that never paints reads as
     // a terminal that failed to start, which is the one thing this page must not say about work that is over.
     [Fact]

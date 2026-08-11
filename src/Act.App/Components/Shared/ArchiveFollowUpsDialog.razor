@@ -1,4 +1,5 @@
 @using Act.Core.Model
+@using Act.Core.Rules
 
 <div class="askfollowups">
     <RadzenText TextStyle="TextStyle.Body2" Text="@Question" />
@@ -10,7 +11,7 @@
         {
             <li>
                 <span class="id">#@child.Number</span>
-                <span class="ttl">@child.Title</span>
+                <span class="ttl">@CardTitle.Of(child)</span>
             </li>
         }
     </ul>

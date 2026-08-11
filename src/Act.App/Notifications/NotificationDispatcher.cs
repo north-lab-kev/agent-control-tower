@@ -35,7 +35,7 @@ public sealed class NotificationDispatcher(
         _ = ShowAsync(new DesktopNotification(
             card.Id,
             Title(badge),
-            Text.Format(Strings.Notify_Body, card.Number, card.Title)));
+            Text.Format(Strings.Notify_Body, card.Number, CardTitle.Of(card))));
     }
 
     private async Task ShowAsync(DesktopNotification notification)

@@ -64,7 +64,10 @@ blocked prompt, red for an error, blue for work ready to review.
 Click **+** in the *Preparing* column. The task form asks for:
 
 - **Title** — optional to type. Leave it blank and ACT names the task from
-  your prompt automatically.
+  your prompt automatically, by asking the task's own agent for a short name.
+  Turn *Write titles from the prompt* off in Settings and nothing is asked: an
+  untitled card simply shows the start of its prompt wherever a title would go,
+  and the wand beside the box still writes one whenever you click it.
 - **Prompt** — the instruction the agent will receive. This is the heart of
   the task and can't be changed after launch.
 - **Working directory** — the folder the agent works in. Type a path or
@@ -175,7 +178,8 @@ card shows where it came from, so you can trace a task back to its parent.
 Open Settings from the gear in the top bar. Every change applies immediately
 — there's no OK button. The highlights:
 
-- **General** — language (English / French, follows your OS by default).
+- **General** — language (English / French, follows your OS by default), and
+  whether ACT writes a title for a task you saved without one.
 - **Appearance** — theme (dark / light / follow OS), board density
   (Compact / Detailed), and the attention blink.
 - **Execution** — pause automatic execution, how many tasks run at once,

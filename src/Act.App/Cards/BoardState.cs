@@ -207,7 +207,7 @@ public sealed class BoardState(ICardStore store, IAttachmentStore attachments, I
     // an attachment from one card cannot empty the other's prompt.
     public async Task<Card> DuplicateAsync(Card card, CancellationToken cancellationToken = default)
     {
-        var copy = CardDuplicate.Of(card, Text.Format(Strings.Task_DuplicateTitle, card.Title), clock.Now);
+        var copy = CardDuplicate.Of(card, DuplicateTitle(card), clock.Now);
 
         attachments.Copy(card.Id, copy.Id);
 
@@ -215,6 +215,15 @@ public sealed class BoardState(ICardStore store, IAttachmentStore attachments, I
 
         return copy;
     }
+
+    // An untitled card copies as untitled. The original's name is derived from its prompt and the copy
+    // carries that same prompt, so "Copy of …" here would be the one place a *derived* title gets frozen
+    // into a stored card — and it would do it on behalf of a user who switched title writing off. The
+    // number is what tells the two strips apart until one of them is named.
+    private static string DuplicateTitle(Card card)
+        => string.IsNullOrWhiteSpace(card.Title)
+            ? string.Empty
+            : Text.Format(Strings.Task_DuplicateTitle, card.Title);
 
     // Soft: the row stays, marked with a timestamp, and the archive can put it back. Lineage is
     // left intact on purpose — a restored parent should find its children still attached, which

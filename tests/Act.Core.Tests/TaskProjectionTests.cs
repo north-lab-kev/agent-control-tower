@@ -57,6 +57,18 @@ public class TaskProjectionTests
         detail.DependsOn.Should().ContainSingle().Which.Should().Be(prerequisite.ToString());
     }
 
+    // A title is what an agent recognises a task by, and with title writing switched off a card can be
+    // stored without one — so both projections name it the way every screen does, from the prompt.
+    [Fact]
+    public void An_untitled_card_is_still_named_for_the_agent()
+    {
+        var card = Card();
+        card.Title = string.Empty;
+
+        TaskSummary.From(card, Caller).Title.Should().Be("Do the thing");
+        TaskDetail.From(card, Caller).Title.Should().Be("Do the thing");
+    }
+
     // Not an omission to tidy up later: the session id is the key ACT's own ingestion joins on, and
     // an attachment path is a directory outside the working tree that the launch had to grant
     // explicitly. Neither is an agent's to read.

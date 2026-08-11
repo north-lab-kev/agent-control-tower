@@ -18,6 +18,12 @@ public sealed class UserSettings
 
     public bool CloseToTray { get; set; } = true;
 
+    // Whether a blank title is filled in for the user by asking the task's own agent — the one place
+    // ACT runs a CLI on its own account, which is why it is a switch at all. On by default: nobody
+    // should have to name a task twice. Off, a blank title stays blank on the stored card and every
+    // screen shows the prompt's opening words in its place — see `CardTitle`.
+    public bool GenerateTitles { get; set; } = true;
+
     // How far ACT may go on its own towards a newer version — see `UpdatePolicy`. Desktop-only in
     // effect: a browser tab cannot replace its own installer, so the updater there is a no-op and
     // the setting is hidden.

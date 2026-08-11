@@ -104,7 +104,7 @@ public sealed record NewTaskForm
         AllowConcurrentWorkingDir = card.AllowConcurrentWorkingDir,
     };
 
-    public Card ToCard(DateTimeOffset createdAt)
+    public Card ToCard(DateTimeOffset createdAt, bool titleFromPrompt)
     {
         var card = new Card
         {
@@ -114,7 +114,7 @@ public sealed record NewTaskForm
             CreatedAt = createdAt,
         };
 
-        ApplyTo(card);
+        ApplyTo(card, titleFromPrompt);
 
         return card;
     }
@@ -126,9 +126,12 @@ public sealed record NewTaskForm
     // Past the launch boundary it writes less still: the gate lives here rather than only in the
     // markup, so a card's prompt is immutable because the model says so and not because an input
     // was rendered disabled.
-    public void ApplyTo(Card card)
+    //
+    // `titleFromPrompt` is `UserSettings.GenerateTitles`, handed in rather than read here because
+    // this type is the form's own fields and nothing else — see `Titled`.
+    public void ApplyTo(Card card, bool titleFromPrompt)
     {
-        card.Title = Titled();
+        card.Title = Titled(titleFromPrompt);
 
         if (TaskEditing.CanEditLaunchInputs(card))
         {
@@ -160,15 +163,21 @@ public sealed record NewTaskForm
         };
     }
 
-    // A card is never written untitled, and the guarantee lives here rather than only in the page for
-    // the same reason the launch-boundary gate does: the *code that writes the card* is the only place
-    // that can promise it. The title is optional to type because the page offers to write one from the
-    // prompt — but that goes out to a CLI, and a CLI can be missing, unauthenticated, out of quota or
-    // simply slow. When it is, this is what the board gets: the prompt's own opening words, which is
-    // what the page would have shown anyway. An empty string is the one value a title must never be,
-    // because a nameless strip is unrecognisable and unsearchable and there is no screen that repairs it.
-    private string Titled()
-        => Title.Trim() is { Length: > 0 } typed ? typed : TaskTitleQuery.FromPrompt(Prompt);
+    // While titles are generated, a card is never written untitled, and the guarantee lives here rather
+    // than only in the page for the same reason the launch-boundary gate does: the *code that writes the
+    // card* is the only place that can promise it. The title is optional to type because the page offers
+    // to write one from the prompt — but that goes out to a CLI, and a CLI can be missing,
+    // unauthenticated, out of quota or simply slow. When it is, this is what the board gets: the
+    // prompt's own opening words, which is what the page would have shown anyway.
+    //
+    // With generation switched off the blank is stored as a blank, because that is what the user asked
+    // for: filling it in anyway would leave the setting governing nothing. What stops a nameless strip
+    // then is `CardTitle`, which shows the same opening words at render time without freezing them into
+    // the card — so a prompt the user goes on to edit renames the card with it.
+    private string Titled(bool fromPrompt)
+        => Title.Trim() is { Length: > 0 } typed
+            ? typed
+            : fromPrompt ? TaskTitleQuery.FromPrompt(Prompt) : string.Empty;
 
     private DateTimeOffset? ScheduledAt()
         => WantsDateTime && ScheduledFor is { } when

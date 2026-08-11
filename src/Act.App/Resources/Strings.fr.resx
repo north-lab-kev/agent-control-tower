@@ -57,8 +57,14 @@
   <data name="NewTask_Title_Placeholder" xml:space="preserve">
     <value>Rédigé à partir de l'instruction si vous le laissez vide</value>
   </data>
+  <data name="NewTask_Title_Placeholder_Manual" xml:space="preserve">
+    <value>Facultatif — l'instruction le remplace s'il est vide</value>
+  </data>
   <data name="NewTask_Title_Hint" xml:space="preserve">
     <value>À vous de l'écrire. Laissez-le vide et l'enregistrement le rédige à partir de l'instruction.</value>
+  </data>
+  <data name="NewTask_Title_Hint_Manual" xml:space="preserve">
+    <value>À vous de l'écrire. Laissez-le vide et la carte affiche le début de l'instruction — ou cliquez la baguette pour que l'agent en rédige un.</value>
   </data>
   <data name="NewTask_Title_Required" xml:space="preserve">
     <value>Saisissez un titre, ou une instruction dont le tirer</value>
@@ -692,6 +698,12 @@
   </data>
   <data name="Settings_Language_System" xml:space="preserve">
     <value>Langue du système</value>
+  </data>
+  <data name="Settings_GenerateTitles" xml:space="preserve">
+    <value>Rédiger les titres à partir de l'instruction</value>
+  </data>
+  <data name="Settings_GenerateTitles_Hint" xml:space="preserve">
+    <value>Quand une tâche est enregistrée sans titre, demander à son agent d'en rédiger un. Désactivez et la carte sans titre affiche le début de son instruction ; la baguette du formulaire reste utilisable.</value>
   </data>
   <data name="Settings_Theme" xml:space="preserve">
     <value>Thème</value>

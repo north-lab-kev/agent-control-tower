@@ -76,6 +76,10 @@ public partial class FlightStrip(IClock clock, IAgentCapabilityCatalog agents, T
     // the number move.
     private StripFace Face => StripFace.Of(Card, Hold, clock.Now, Parent, agents.For(Card.AgentType));
 
+    // What the strip is *called*, which is not always what the card stores: with title generation off a
+    // blank title stays blank, and `CardTitle` names the card from its prompt at render time.
+    private string Title => CardTitle.Of(Card);
+
     private bool TitlePending => backfill.IsPending(Card.Id);
 
     private bool Draggable => ManualMove.CanDrag(Card.Column);

@@ -24,9 +24,9 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
     it later is non-breaking. Whether it's ever needed comes down to Codex
     fork/restart behavior — the managed model resumes on the same
     `sessionId`.
-- `title` — the task's name. **Optional to type, never optional to have** — see
-  *Auto-generated titles* below. Editable for the life of the card, unlike the
-  prompt, because a name is not part of the run.
+- `title` — the task's name. **Optional to type**, and optional to *hold* only while title
+  generation is switched off — see *Auto-generated titles* below. Editable for the life of the
+  card, unlike the prompt, because a name is not part of the run.
 - `initialPrompt` — the **immutable** opening instruction, set in Preparing.
   Preserved verbatim across all later turns (enables re-run-from-scratch and
   auditing what was originally asked). Subsequent inputs — answers, permission
@@ -314,8 +314,8 @@ for — named, so a board that hosts several kinds of work can keep one per kind
   **optional**, not to refuse it: a recurring task genuinely wants a fixed name ("Nightly dependency sweep"), and
   the field is where a user would look for it. So a template's `title` is copied into the
   form's title box, which makes it a *typed* title as far as the save is concerned and wins
-  over the prompt — and a template that leaves it blank falls straight through to the existing
-  answer, the title written from the prompt on save (see *Auto-generated titles*). One
+  over the prompt — and a template that leaves it blank falls straight through to whatever an
+  untitled save does, generated or derived (see *Auto-generated titles*). One
   consequence worth having: a template with a title costs **no CLI call** to create a task
   from, because there is nothing left to derive.
   - **The template's `name` and the task's `title` are different fields, and both stay.** The
@@ -526,6 +526,26 @@ first, editable, and never overwritten except by an explicit click. A **template
 that carries a title fills the box the same way typing would, so creating from one
 of those costs nothing at all (see *Task templates*).
 
+**The automatic half is a setting** — `generateTitles`, *General*, on by default. It is the one
+piece of ACT's behaviour that spends the user's quota without being asked, so it is the one that
+gets a switch; the **button is outside it**, because a click there is the user asking rather than
+ACT deciding. With it off, a save that leaves the box blank stores a **blank title** and asks
+nobody: filling it in anyway would leave the switch governing nothing. What keeps the board
+readable then is `CardTitle` — the one function every surface asks for a card's name, which
+answers with the stored title and falls back to the prompt's opening words when there is none.
+Two properties follow from doing it at render time rather than on save:
+
+- **Nothing derived is ever stored.** Editing the prompt renames the card with it, and a title
+  the user types replaces the stand-in immediately. `Duplicate` copies an untitled card as
+  untitled for the same reason — `Copy of …` over a derived name would be the one place a
+  stand-in got frozen into a stored card.
+- **The stand-in is the same string the save used to write**, so switching the setting changes what
+  is *stored* without changing what any screen says. Search is unaffected either way: `CardSearch`
+  already matches the prompt.
+
+The rest of this section describes the generated title, which is what the button does and what a
+save does while the setting is on.
+
 The title is the *only* reason ACT ever runs a CLI on its own account, and the
 whole design is about making that cost nothing:
 
@@ -568,17 +588,16 @@ whole design is about making that cost nothing:
   be worse than the form that made the user type a title. The button says so with
   a toast; a save does it silently, because the user was saving rather than asking
   a question.
-- **`title` is still required — it is only optional to *type*.** The field carries
-  a validator that accepts blank *while there is a prompt to derive one from*, and
-  refuses the save when both are empty; a plain required validator would have
-  refused before the code that writes the title ever ran. The guarantee itself sits
-  one level deeper, in `NewTaskForm.ApplyTo` alongside the launch-boundary gate,
-  because the code that writes the card is the only place that can promise it. So
-  the empty string is a value a stored `title` can never hold, whatever the CLI
-  did — an untitled strip is unrecognisable and unsearchable, and no screen repairs
-  it. `TaskTitleQuery.FromPrompt` therefore answers for **any** prompt with a
-  character in it, including one made entirely of the punctuation it would
-  otherwise strip.
+- **A card is never nameless — the guarantee simply moved.** The field carries a validator
+  that accepts blank *while there is a prompt to derive one from*, and refuses the save when
+  both are empty; a plain required validator would have refused before the code that writes
+  the title ever ran. That rule holds whichever way the setting is set, because the prompt is
+  what the name comes from either way. What the setting changes is *where* the promise is kept:
+  with generation on it is `NewTaskForm.ApplyTo`, alongside the launch-boundary gate, so the
+  empty string is a value a stored `title` can never hold whatever the CLI did; with it off the
+  store may hold one and `CardTitle` answers for it at every render instead.
+  `TaskTitleQuery.FromPrompt` therefore answers for **any** prompt with a character in it,
+  including one made entirely of the punctuation it would otherwise strip.
 - **What comes back is not trusted.** `TaskTitleQuery` strips the quotes, markdown,
   bullets, preamble and trailing period a chatty model wraps a one-line answer in,
   then caps it at thirty words and the form's own 200 characters.

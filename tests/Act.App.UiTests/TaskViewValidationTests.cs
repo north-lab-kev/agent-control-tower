@@ -277,6 +277,89 @@ public class TaskViewValidationTests : ComponentTest
         TaskViewTests.Title(cut).Should().Be("A better title");
     }
 
+    // The switch, on the one path it governs: a save with the box empty. Nothing is asked of an agent and
+    // nothing is written in the user's place — `CardTitle` is what keeps the strip readable.
+    [Fact]
+    public async Task A_save_with_no_title_asks_nobody_when_titles_are_not_generated()
+    {
+        Settings.SetGenerateTitles(false);
+
+        var cut = Show();
+
+        Fill(cut, prompt: "Rename the widget everywhere", workingDir: "/dev/act");
+
+        await Submit(cut);
+
+        var saved = Board.All.Should().ContainSingle().Subject;
+
+        saved.Title.Should().BeEmpty();
+        Backfill.IsPending(saved.Id).Should().BeFalse();
+        Claude.Queries.Should().BeEmpty();
+    }
+
+    // Still required to *have* one, because the stand-in comes from the prompt: a card with neither is
+    // nameless whatever the setting says.
+    [Fact]
+    public async Task A_task_with_neither_title_nor_prompt_is_refused_when_titles_are_not_generated()
+    {
+        Settings.SetGenerateTitles(false);
+
+        var cut = Show();
+
+        Fill(cut, workingDir: "/dev/act");
+
+        await Submit(cut);
+
+        Board.All.Should().BeEmpty();
+        cut.Markup.Should().Contain("Write a title");
+    }
+
+    // The button is the user asking, which the switch has nothing to say about — it governs what ACT does
+    // on its own account.
+    [Fact]
+    public void The_button_still_writes_a_title_when_titles_are_not_generated()
+    {
+        Settings.SetGenerateTitles(false);
+        Claude.Answer = "Rename the widget";
+
+        var cut = Show();
+
+        Fill(cut, prompt: "Rename the widget everywhere");
+
+        cut.Find("div.titlerow button").Click();
+
+        TaskViewTests.Title(cut).Should().Be("Rename the widget");
+    }
+
+    // The field has to say which promise is in force: "saving fills it in" is wrong once nothing does.
+    [Fact]
+    public void The_title_field_says_what_a_blank_box_will_do()
+    {
+        Show().Markup.Should().Contain("saving fills it in from the prompt");
+
+        Settings.SetGenerateTitles(false);
+
+        Show().Markup.Should().Contain("the card shows the start of the prompt");
+    }
+
+    // An untitled card opens with an empty box rather than a title nobody typed, and the heading falls back
+    // to the prompt so the page still says which task it is.
+    [Fact]
+    public async Task An_untitled_card_opens_with_an_empty_box_under_its_prompt()
+    {
+        Settings.SetGenerateTitles(false);
+
+        var card = TaskViewTests.Card(BoardColumn.Ready);
+        card.Title = string.Empty;
+
+        await BoardWith(card);
+
+        var cut = Render<TaskView>(p => p.Add(c => c.CardId, card.Id));
+
+        TaskViewTests.Title(cut).Should().BeEmpty();
+        cut.Find("header.bar .title").TextContent.Should().Be("Rename the widget everywhere");
+    }
+
     private static void Fill(
         IRenderedComponent<TaskView> cut,
         string? title = null,
