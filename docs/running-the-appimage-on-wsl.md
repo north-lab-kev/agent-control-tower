@@ -16,17 +16,11 @@ The app opens as a normal Windows window — taskbar button, alt-tab, Win+Shift+
    Ubuntu shell is a login shell, which is what sets `DISPLAY=:0` — without it there is no
    window.
 
-3. Install the runtime dependencies. `libicu` is not optional: .NET aborts without it, and it
-   aborts *before* ACT can configure logging, so the symptom is a splash screen that never
-   goes away and not a single log file. If apt cannot find a name, drop the `t64` suffix, and
-   for `libicu` take whatever version the distro has:
+3. Install the runtime dependencies. If apt says *Unable to locate package*, drop the `t64`
+   suffix from that name and retry.
 
    ```bash
-   sudo apt update && sudo apt install -y libicu78 libfuse2t64 libgtk-3-0t64 libnss3 libasound2t64
-   ```
-
-   ```bash
-   sudo apt install -y $(apt-cache search --names-only '^libicu[0-9]+$' | cut -d' ' -f1 | head -1)
+   sudo apt update && sudo apt install -y libfuse2t64 libgtk-3-0t64 libnss3 libasound2t64
    ```
 
 4. Copy the AppImage onto the Linux filesystem and make it executable. Do not run it straight
@@ -57,7 +51,8 @@ The app opens as a normal Windows window — taskbar button, alt-tab, Win+Shift+
 8. If it sits on the splash screen forever, the backend died before it could log anything. Run
    the bundled binary directly to see the error Electron swallowed — the mount path is printed
    by `ls -d /tmp/.mount_ACT*` while the app is running, and the throwaway data directory and
-   spare port keep the run from touching anything real:
+   spare port keep the run from touching anything real. On a build from before ACT bundled its
+   own ICU, the error names libicu and `sudo apt install -y libicu78` is the way past it:
 
    ```bash
    /tmp/.mount_ACT*/resources/bin/Act.App --ACT_DATA_DIR=/tmp/act-sandbox --Urls=http://localhost:5291

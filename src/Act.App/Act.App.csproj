@@ -35,6 +35,29 @@
     <PackageReference Include="Radzen.Blazor" />
   </ItemGroup>
 
+  <!--
+    Linux only, and that is the whole point. Windows 10+ and macOS ship ICU in the OS, so those builds
+    find it and this would only add ~30 MB to an installer that already works. Linux ships nothing:
+    .NET dlopens `libicuuc.so.<n>` and, finding no system libicu, calls `Environment.FailFast` from
+    the `GlobalizationMode` static constructor — inside `WebApplication.CreateBuilder`, six lines
+    before `AddActFileLog` runs. The packaged app therefore died with no log file at all and Electron
+    sat on its splash screen forever, which is how this was found. `InvariantGlobalization` is not the
+    alternative: it would flatten every localised date, number and sort ACT ships translations for.
+
+    The publish is RID-specific and self-contained (`package-desktop.ps1`), which is what makes this
+    work with no `AppRun` patching: `runtimes/linux-x64/native/*.so` is flattened into the publish
+    root, and the publish root is `resources/bin` inside the AppImage — where the app-local probe
+    looks.
+
+    Nothing verifies any of this automatically. The two halves are declared in different files and the
+    runtime needs the exact version the switch names, so a bump that moves one and not the other
+    brings the silent hang back — check both by hand.
+  -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' != '' AND $(RuntimeIdentifier.StartsWith('linux'))">
+    <PackageReference Include="Microsoft.ICU.ICU4C.Runtime" />
+    <RuntimeHostConfigurationOption Include="System.Globalization.AppLocalIcu" Value="$(ActIcuVersion)" />
+  </ItemGroup>
+
   <ItemGroup>
     <Content Include="icon.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="icon.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

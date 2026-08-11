@@ -453,6 +453,52 @@ baked in; that loses nothing today because `Shell_FullName` is identical in both
 `SplashScreenTests` pins the csproj property, the file's existence, and that the PNG stays within
 the smallest work area the app itself accepts (1000×320), since nothing compiles against any of it.
 
+### The Linux build carries its own ICU
+
+The first AppImage anyone ran on a real distro never left the splash screen, and left nothing behind
+to say why: no log file, no dialog, no `~/.local/share/ACT` at all. Electron was entirely healthy —
+main, zygote, GPU and renderer processes all up — and there was simply no .NET process beside them.
+Run by hand, `resources/bin/Act.App` said it: *Couldn't find a valid ICU package installed on the
+system*.
+
+Two facts about that failure decide everything else. It is `Environment.FailFast` from
+`GlobalizationMode`'s static constructor, so **no managed code can catch it**; and it happens inside
+`WebApplication.CreateBuilder(args)`, which is six lines *above* `AddActFileLog` — so the file log
+that would have named the cause did not exist yet. Windows never showed this because Windows 10+
+ships ICU in the OS; Linux ships nothing, and neither `SelfContained` nor `PublishSingleFile` bundles
+it.
+
+`InvariantGlobalization` was the cheap fix and was rejected: it makes every culture behave as the
+invariant one, which would flatten the localised dates, numbers and sort orders ACT ships two resx
+files for. So the app carries ICU instead, via `Microsoft.ICU.ICU4C.Runtime` and the
+`System.Globalization.AppLocalIcu` switch — about 36 MB uncompressed, nearly all of it
+`libicudata.so`.
+
+Three details are load-bearing:
+
+- **Linux RIDs only.** The package reference and the switch sit in an `ItemGroup` conditioned on
+  `$(RuntimeIdentifier)` starting with `linux`, so the Windows installer neither grows nor changes
+  the ICU it already finds in the OS.
+- **One version string.** `ActIcuVersion` in `Directory.Build.props` feeds both the `PackageVersion`
+  and the switch's value, because the runtime looks for exactly the version the switch names. A bump
+  that moved only one of them would reproduce the original silent hang.
+- **Nothing patches `AppRun`.** `package-desktop.ps1` publishes RID-specific, which flattens
+  `runtimes/linux-x64/native/*.so` into the publish root — and that root *is* `resources/bin` inside
+  the AppImage, which is where the app-local probe looks. No `LD_LIBRARY_PATH`, no custom launcher.
+
+Verified once, by loading rather than by starting: with `libicuuc.so.78` present system-wide,
+`/proc/<pid>/maps` showed the process had mapped only the three `.so` files from the app directory.
+
+Nothing guards it since. A CI check was written and deliberately dropped as not worth its complexity,
+so the trap is live and worth stating plainly: the version bump that moves the `PackageVersion` and
+not the switch — or the reverse — reproduces the original failure exactly, silent and logless. Note
+also that a check on the runner would have to run in a container to mean anything, because
+`ubuntu-latest` has libicu of its own and would pass whether or not ACT bundles a thing.
+
+Bundling ICU fixes this cause, not the class: any backend crash before `AddActFileLog` still shows an
+eternal splash with no diagnostics, and since the ICU abort proved managed code cannot intervene, a
+real fix belongs in the Electron host — notice the child process died, surface its stderr.
+
 ### Five pumps, one lifetime
 
 `QueueRunner`, `SessionEventPump`, `TranscriptPump`, `UsagePump` and `RetentionPump` each wrote out
