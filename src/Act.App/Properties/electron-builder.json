@@ -20,7 +20,13 @@
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
-    "artifactName": "ACT-Setup-${version}-${arch}.${ext}"
+    // The OS is in the name, not left to the extension: the release page lists every platform's
+    // assets in one flat list, and `${arch}` alone renders `x64` here and `x86_64` for the AppImage,
+    // which reads as two different things rather than as two platforms. Renaming is safe for
+    // auto-update because electron-builder writes whatever name it produced into `latest.yml`'s
+    // `path`, and electron-updater fetches that name from the generic base — nothing pins the old
+    // spelling. `.blockmap` follows the installer's name on its own.
+    "artifactName": "ACT-Setup-${version}-win-${arch}.${ext}"
   },
   // What makes auto-update possible at all: with a publish provider electron-builder writes
   // `latest.yml` beside the installer and embeds `app-update.yml` in the package. The embedded file
@@ -74,6 +80,6 @@
       }
     ],
     "executableArgs": [ "--no-sandbox" ],
-    "artifactName": "ACT-${version}-${arch}.${ext}"
+    "artifactName": "ACT-${version}-linux-${arch}.${ext}"
   }
 }

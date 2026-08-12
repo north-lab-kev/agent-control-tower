@@ -127,7 +127,7 @@ jobs:
         id: installer
         shell: pwsh
         run: |
-          $expected = "ACT-Setup-$env:VERSION-x64.exe"
+          $expected = "ACT-Setup-$env:VERSION-win-x64.exe"
 
           if (-not (Test-Path (Join-Path "artifacts/desktop/win-x64" $expected))) {
               $found = (Get-ChildItem "artifacts/desktop/win-x64" -Filter *.exe | ForEach-Object Name) -join ", "
@@ -204,11 +204,11 @@ jobs:
         shell: pwsh
         run: |
           $dir = "artifacts/desktop/linux-x64"
-          $appImages = @(Get-ChildItem $dir -Filter "ACT-$env:VERSION-*.AppImage")
+          $appImages = @(Get-ChildItem $dir -Filter "ACT-$env:VERSION-linux-*.AppImage")
 
           if ($appImages.Count -ne 1) {
               $found = (Get-ChildItem $dir | ForEach-Object Name) -join ", "
-              throw "Expected exactly one ACT-$env:VERSION-*.AppImage in $dir; found: $found"
+              throw "Expected exactly one ACT-$env:VERSION-linux-*.AppImage in $dir; found: $found"
           }
 
           # Same reasoning as `latest.yml` in the Windows job: without this file the
@@ -313,10 +313,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          [string[]]$assets = @(
-              (Join-Path 'artifacts' $env:INSTALLER),
-              (Join-Path 'artifacts' $env:APPIMAGE)
-          )
+          # Path -> display label. GitHub's release page shows an asset's *label* when it has one and
+          # its filename otherwise, while `/releases/latest/download/<name>` resolves the **filename**
+          # — so a label is free of any auto-update risk, and it is the only way to say which OS the
+          # update feeds belong to: `latest.yml` and `latest-linux.yml` are named by electron-updater,
+          # not by us, and cannot be renamed. The installers carry the OS in the filename as well
+          # (see `artifactName` in `electron-builder.json`), because that is what survives a download.
+          # Labels stay ASCII on purpose: they are values, not comments, and a label is only ever seen
+          # after a release is public — an em dash that survives this file but not the runner's
+          # encoding would ship as mojibake with nothing before then to catch it.
+          $assets = [ordered]@{
+              (Join-Path 'artifacts' $env:INSTALLER) = 'Windows installer (x64)'
+              (Join-Path 'artifacts' $env:APPIMAGE)  = 'Linux AppImage (x86_64)'
+          }
 
           [string[]]$prerelease = @()
           if ($env:VERSION -match '-') {
@@ -334,22 +343,28 @@ jobs:
               Write-Host "Pre-release: publishing the installers only, no update metadata."
           }
           else {
-              $assets += (Get-ChildItem 'artifacts' -Filter *.blockmap | ForEach-Object FullName)
-              $assets += (Join-Path 'artifacts' 'latest.yml')
-              $assets += (Join-Path 'artifacts' 'latest-linux.yml')
+              foreach ($blockmap in Get-ChildItem 'artifacts' -Filter *.blockmap) {
+                  $assets[$blockmap.FullName] = 'Windows installer block map (differential update)'
+              }
+
+              $assets[(Join-Path 'artifacts' 'latest.yml')] = 'Windows update metadata'
+              $assets[(Join-Path 'artifacts' 'latest-linux.yml')] = 'Linux update metadata'
           }
 
-          foreach ($asset in $assets) {
+          foreach ($asset in $assets.Keys) {
               if (-not (Test-Path $asset)) {
                   throw "Release asset $asset is missing from the downloaded artifact."
               }
           }
 
-          Write-Host ("Publishing: " + (($assets | Split-Path -Leaf) -join ', '))
+          Write-Host ("Publishing: " + (($assets.Keys | Split-Path -Leaf) -join ', '))
+
+          # `<file>#<label>` is gh's syntax for attaching an asset under a display label.
+          [string[]]$labelled = $assets.Keys | ForEach-Object { "$_#$($assets[$_])" }
 
           gh release create $env:TAG `
               --title "ACT $env:TAG" `
               --notes-file '${{ steps.notes.outputs.path }}' `
               --verify-tag `
               @prerelease `
-              @assets
+              @labelled

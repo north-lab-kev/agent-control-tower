@@ -49,7 +49,7 @@ cross-platform.
 Releases add `-Version 1.2.3` (see `.github/workflows/release.yml`): that single
 property is both what the running app reports (`AssemblyInformationalVersion`,
 logged by `Hosting/StartupLog`) and what names the installer
-(`ACT-Setup-<version>-x64.exe`).
+(`ACT-Setup-<version>-win-x64.exe`, `ACT-<version>-linux-x86_64.AppImage`).
 
 ## UI direction
 
