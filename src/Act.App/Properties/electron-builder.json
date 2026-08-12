@@ -1,0 +1,79 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/refs/heads/master/packages/app-builder-lib/scheme.json",
+  "productName": "ACT — Agent Control Tower",
+  "appId": "com.northlabkev.act",
+  // Set explicitly because the default is wrong: electron-builder falls back to
+  // `Copyright © <year> ${author}`, and the `author` in the package.json ElectronNET generates is
+  // the project name, so the installer and the executable's file properties would both claim
+  // "Act.App" owns the copyright.
+  "copyright": "Copyright © 2026 north-lab-kev",
+  "compression": "maximum",
+  "win": {
+    "icon": "bin/icon.ico",
+    "target": [
+      {
+        "target": "nsis",
+        "arch": "x64"
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "artifactName": "ACT-Setup-${version}-${arch}.${ext}"
+  },
+  // What makes auto-update possible at all: with a publish provider electron-builder writes
+  // `latest.yml` beside the installer and embeds `app-update.yml` in the package. The embedded file
+  // is the *only* way the feed reaches electron-updater — Electron.NET's bridge exposes
+  // `getFeedURL` and no setter, so it cannot be pointed anywhere at runtime.
+  //
+  // **`generic` rather than `github`, and that is not a detail.** electron-builder never receives a
+  // `-p` flag from Electron.NET's targets, so `PublishManager` resolves the policy itself and lands
+  // on `onTagOrDraft` — its `isCi` is `require("ci-info")`, the module object, so that branch is
+  // taken on every machine, not only on CI. A `github` provider is then *constructed*, and
+  // `GitHubPublisher`'s constructor throws when `GH_TOKEN` is unset. `generic` is short-circuited to
+  // `null` before any of that, so packaging needs no token and contacts nothing. **Do not switch
+  // this back to `github` to "match the repository": it buys nothing here and costs a token.**
+  //
+  // The URL is GitHub's own by-name asset route on the newest non-pre-release release, which is what
+  // the `github` provider resolves to anyway. `resolveFiles` reads the installer from the same base,
+  // so the `.exe` and the `.blockmap` are found beside the `.yml` the release job attaches.
+  //
+  // Nothing is uploaded from here: the update files are written whatever the publish policy is, and
+  // the release workflow attaches them with `gh`.
+  //
+  // **`detectUpdateChannel` off is what keeps the file called `latest.yml`.** Left on (its default),
+  // electron-builder reads a channel out of the version's pre-release tag — `0.0.1-alpha.1` becomes
+  // channel `alpha` — and names the file after it, so a pre-release emits `alpha.yml` and no
+  // `latest.yml` at all. The `github` provider never applied that (`checkAndResolveOptions` exists
+  // only on the S3 classes, so `getResolvedPublishConfig` falls straight through for it); `generic`
+  // does, at `PublishManager.getResolvedPublishConfig`. ACT wants one channel: pre-releases are
+  // excluded by the release job declining to attach the metadata, not by routing testers onto a
+  // channel of their own.
+  "detectUpdateChannel": false,
+  "publish": [
+    {
+      "provider": "generic",
+      "url": "https://github.com/north-lab-kev/agent-control-tower/releases/latest/download"
+    }
+  ],
+  // AppImage only, and that is a choice: it is the one Linux target electron-updater can actually
+  // update (AppImageUpdater reads the same generic feed via `latest-linux.yml`; a .deb or .rpm would
+  // ship dead auto-update), and it runs on any distro without root. Must be built on Linux.
+  //
+  // `--no-sandbox` because Electron's SUID sandbox needs `chrome-sandbox` to be setuid root, which a
+  // file inside a user-mounted AppImage can never be — without the flag the app dies on launch on
+  // distros that also block unprivileged user namespaces (Ubuntu 24.04+ AppArmor).
+  "linux": {
+    "icon": "bin/icon.png",
+    "category": "Development",
+    "target": [
+      {
+        "target": "AppImage",
+        "arch": "x64"
+      }
+    ],
+    "executableArgs": [ "--no-sandbox" ],
+    "artifactName": "ACT-${version}-${arch}.${ext}"
+  }
+}

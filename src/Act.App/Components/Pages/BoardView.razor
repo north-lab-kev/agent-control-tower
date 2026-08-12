@@ -1,0 +1,124 @@
+@page "/"
+@using Act.Core.Model
+
+<PageTitle>@($"ACT — {Strings.Shell_FullName}")</PageTitle>
+
+@* Once per render, not once per strip: the holds come from a single pass over the whole board, and
+   asking per card would both cost more and let two strips disagree. The archive count is hoisted for
+   the same reason — it sorts the whole archive, and the markup asks twice. *@
+@{
+    var holds = Holds();
+    var archivedMatches = ArchivedMatches;
+}
+
+<div class="board @DensityClass @(drag.IsActive ? "dragging" : null)">
+    <div class="filterbar">
+        <CardFilter @bind-Query="query" Placeholder="@Strings.Search_Placeholder" />
+
+        @* The board cannot show an archived card, so it says how many it is not showing rather
+           than letting the query look like the whole answer. *@
+        @if (archivedMatches > 0)
+        {
+            <RadzenLink Path="@ArchiveHref" Text="@Text.Format(Strings.Search_ArchiveMatches, archivedMatches)"
+                        class="archlink" />
+        }
+
+        @* Both switches belong to the board rather than to the shell: they change what the board
+           does and what it looks like, and this row is the board's own furniture. *@
+        <div class="viewctl">
+            <RadzenButton Icon="@AutoExecIcon" Text="@Strings.Shell_AutoExec" ButtonStyle="ButtonStyle.Base"
+                          Variant="Variant.Outlined" Size="ButtonSize.Small" Click="ToggleAutoExecution"
+                          title="@AutoExecTip" class="@AutoExecClass" />
+
+            <RadzenButton Icon="@DensityIcon" Text="@DensityText" ButtonStyle="ButtonStyle.Base"
+                          Variant="Variant.Outlined" Size="ButtonSize.Small" Click="ToggleDensity"
+                          title="@Strings.Board_Density_Tip" class="statchip" />
+        </div>
+    </div>
+
+    @* The lane gutter is the step the lanes are padded with, so the space between two strips in
+       neighbouring columns reads as one measure. It is also what keeps five detailed columns inside
+       the 960px floor without a horizontal scrollbar. *@
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Stretch" Gap="0.5rem" class="cols">
+        @foreach (var column in AllColumns)
+        {
+            var face = FaceOf(column);
+            var cards = face.Cards;
+            var hidden = face.Hidden;
+
+            <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" class="@drag.ColumnClass(column)"
+                         @ondragover:preventDefault="true" @ondragenter:preventDefault="true"
+                         @ondrop="() => DropIntoAsync(column)">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem"
+                             class="colhead">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" Text="@Label(column)" class="colname" />
+                    <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" IsPill="true"
+                                 Text="@face.Count" class="colcount" />
+
+                    @* A filter must never be able to hide the one thing the board is for, so a
+                       column whose needs-you cards fell out of the query says so. *@
+                    @if (hidden > 0)
+                    {
+                        <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" IsPill="true"
+                                     Text="@Text.Format(Text.Plural(hidden, Strings.Board_HiddenAttention_One, Strings.Board_HiddenAttention_Many), hidden)"
+                                     class="hiddenattn" title="@Strings.Board_HiddenAttention_Tip" />
+                    }
+
+                    @* New tasks land in Preparing, so the one place that always shows where a card
+                       appears is also where you ask for one. *@
+                    @if (column is BoardColumn.Preparing)
+                    {
+                        @* A split button only once there is something else to start from: the button
+                           itself is the default template, so with nothing but that the caret would
+                           drop a menu repeating the button it hangs off. *@
+                        @if (PickableTemplates is [_, ..] templates)
+                        {
+                            <RadzenSplitButton Icon="add" ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
+                                               Size="ButtonSize.Small" Click="OnNewTaskPicked" class="newtaskbtn"
+                                               title="@Strings.Board_NewTaskFrom"
+                                               aria-label="@Strings.Board_NewTaskFrom">
+                                <ChildContent>
+                                    @foreach (var template in templates)
+                                    {
+                                        <RadzenSplitButtonItem Text="@TaskLabels.Template(template)"
+                                                               Value="@template.Id.ToString()" />
+                                    }
+                                </ChildContent>
+                            </RadzenSplitButton>
+                        }
+                        else
+                        {
+                            <RadzenButton Icon="add" ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
+                                          Size="ButtonSize.Small" Click="OpenNewTask" class="newtaskbtn"
+                                          title="@Strings.Shell_NewTask" aria-label="@Strings.Shell_NewTask" />
+                        }
+                    }
+                </RadzenStack>
+
+                @* The lane between the strips clears the insertion marker: a strip stops it from
+                   bubbling, so this only fires once the cursor is off every card. *@
+                <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" @ondragenter="drag.OverLane">
+                    @if (cards.Count == 0)
+                    {
+                        <RadzenText TextStyle="TextStyle.Caption" class="empty"
+                                    Text="@(Filtering ? Strings.Board_ColumnNoMatch : Strings.Board_ColumnEmpty)" />
+                    }
+                    else
+                    {
+                        foreach (var card in cards)
+                        {
+                            <FlightStrip Card="card" Density="Density" Blink="BlinkYourTurn"
+                                         OnOpen="OpenAsync" OnLaunch="LaunchAsync"
+                                         OnRetry="RetryAsync" Retriable="CanRetry(card)"
+                                         OnDragStart="drag.Start" OnDragEnd="drag.End"
+                                         OnDragOver="drag.OverStrip" OnDrop="DropOnAsync"
+                                         DropEdge="@DropEdge(card)"
+                                         IsDragging="drag.IsLifted(card)" IsLaunching="IsLaunching(card)"
+                                         Hold="holds.GetValueOrDefault(card.Id)" Parent="ParentOf(card)" />
+                        }
+                    }
+                </RadzenStack>
+            </RadzenStack>
+        }
+    </RadzenStack>
+</div>

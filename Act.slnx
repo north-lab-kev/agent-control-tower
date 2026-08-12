@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Act.Agents.ClaudeCode/Act.Agents.ClaudeCode.csproj" />
+    <Project Path="src/Act.Agents.Codex/Act.Agents.Codex.csproj" />
+    <Project Path="src/Act.App/Act.App.csproj" />
+    <Project Path="src/Act.Core/Act.Core.csproj" />
+    <Project Path="src/Act.Infrastructure/Act.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Act.Agents.Tests/Act.Agents.Tests.csproj" />
+    <Project Path="tests/Act.App.E2eTests/Act.App.E2eTests.csproj" />
+    <Project Path="tests/Act.App.UiTests/Act.App.UiTests.csproj" />
+    <Project Path="tests/Act.Core.Tests/Act.Core.Tests.csproj" />
+    <Project Path="tests/Act.Infrastructure.Tests/Act.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Act.TestSupport/Act.TestSupport.csproj" />
+  </Folder>
+</Solution>

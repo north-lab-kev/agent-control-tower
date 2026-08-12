@@ -1,0 +1,126 @@
+using Act.Core.Abstractions;
+using Act.Infrastructure.Storage;
+using AwesomeAssertions;
+using LiteDB;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Act.Infrastructure.Tests;
+
+public class SchemaTests
+{
+    [Fact]
+    public void A_new_store_is_stamped_with_the_current_version()
+    {
+        using var temp = new TempDirectory();
+
+        using (var provider = Provider(temp.Path))
+            provider.GetRequiredService<ICardStore>();
+
+        StoredVersion(temp.Path).Should().Be(ActSchema.CurrentVersion);
+    }
+
+    [Fact]
+    public void A_store_already_at_the_current_version_is_opened_unchanged()
+    {
+        using var temp = new TempDirectory();
+        Stamp(temp.Path, ActSchema.CurrentVersion);
+
+        using (var provider = Provider(temp.Path))
+        {
+            var open = () => provider.GetRequiredService<ICardStore>();
+
+            open.Should().NotThrow();
+        }
+
+        StoredVersion(temp.Path).Should().Be(ActSchema.CurrentVersion);
+    }
+
+    // The adopt path: a store written before versioning holds data but no schema document, and it
+    // flows through the whole migration loop — from the baseline up — before the stamp. What it held
+    // has to survive the trip; the loop's bounds are exactly the code a regression here would ship
+    // green, since the other cases cover only a fresh store and a rejection.
+    [Fact]
+    public async Task A_store_written_before_versioning_is_adopted_stamped_and_keeps_its_data()
+    {
+        using var temp = new TempDirectory();
+
+        Directory.CreateDirectory(temp.Path);
+
+        using (var database = new LiteDatabase(DatabasePath(temp.Path)))
+        {
+            database.GetCollection("cards").Insert(new BsonDocument
+            {
+                ["_id"] = Guid.NewGuid(),
+                ["Number"] = 1039,
+                ["Title"] = "Written before versioning",
+            });
+        }
+
+        await using (var provider = Provider(temp.Path))
+        {
+            var store = provider.GetRequiredService<ICardStore>();
+            var cards = await store.GetAllAsync();
+
+            cards.Should().ContainSingle().Which.Title.Should().Be("Written before versioning");
+        }
+
+        StoredVersion(temp.Path).Should().Be(ActSchema.CurrentVersion);
+    }
+
+    [Fact]
+    public void A_store_from_a_newer_build_is_rejected()
+    {
+        using var temp = new TempDirectory();
+        Stamp(temp.Path, ActSchema.CurrentVersion + 1);
+
+        using var provider = Provider(temp.Path);
+
+        var open = () => provider.GetRequiredService<ICardStore>();
+
+        open.Should().Throw<InvalidOperationException>()
+            .WithMessage("*newer than this build*");
+    }
+
+    [Fact]
+    public void A_rejected_store_is_not_left_locked()
+    {
+        using var temp = new TempDirectory();
+        Stamp(temp.Path, ActSchema.CurrentVersion + 1);
+
+        using (var provider = Provider(temp.Path))
+        {
+            var open = () => provider.GetRequiredService<ICardStore>();
+
+            open.Should().Throw<InvalidOperationException>();
+        }
+
+        var reopen = () => new LiteDatabase(DatabasePath(temp.Path)).Dispose();
+
+        reopen.Should().NotThrow();
+    }
+
+    private static void Stamp(string dataDirectory, int version)
+    {
+        Directory.CreateDirectory(dataDirectory);
+
+        using var database = new LiteDatabase(DatabasePath(dataDirectory));
+
+        database.GetCollection("schema").Upsert(new BsonDocument
+        {
+            ["_id"] = 1,
+            ["Version"] = version,
+        });
+    }
+
+    private static int StoredVersion(string dataDirectory)
+    {
+        using var database = new LiteDatabase(DatabasePath(dataDirectory));
+
+        return database.GetCollection("schema").FindById(1)["Version"].AsInt32;
+    }
+
+    private static string DatabasePath(string dataDirectory) => Path.Combine(dataDirectory, "act.db");
+
+    private static ServiceProvider Provider(string dataDirectory)
+        => new ServiceCollection().AddActInfrastructure(dataDirectory).BuildServiceProvider();
+}

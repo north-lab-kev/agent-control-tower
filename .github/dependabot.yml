@@ -1,0 +1,8 @@
+# Placeholder — Dependabot config. Enable ecosystems once dependencies land
+# (nuget for .NET, npm for the Electron.NET shell, github-actions for workflows).
+#
+# version: 2
+# updates:
+#   - package-ecosystem: "nuget"
+#     directory: "/"
+#     schedule: { interval: "weekly" }

@@ -1,0 +1,1308 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Shell_FullName" xml:space="preserve">
+    <value>Agent Control Tower</value>
+  </data>
+  <data name="Shell_AutoExec" xml:space="preserve">
+    <value>exéc. auto</value>
+  </data>
+  <data name="Shell_AutoExecOn_Tip" xml:space="preserve">
+    <value>Les tâches planifiées démarrent automatiquement.</value>
+  </data>
+  <data name="Shell_AutoExecPaused_Tip" xml:space="preserve">
+    <value>Les tâches planifiées sont en pause.</value>
+  </data>
+  <data name="Shell_UnhandledError" xml:space="preserve">
+    <value>Une erreur non gérée s’est produite.</value>
+  </data>
+  <data name="Shell_Reload" xml:space="preserve">
+    <value>Recharger</value>
+  </data>
+  <data name="Board_ColumnEmpty" xml:space="preserve">
+    <value>aucune carte</value>
+  </data>
+  <data name="Shell_NewTask" xml:space="preserve">
+    <value>Nouvelle tâche</value>
+  </data>
+  <data name="NewTask_Group_Task" xml:space="preserve">
+    <value>Tâche</value>
+  </data>
+  <data name="NewTask_Group_Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="NewTask_Group_Automation" xml:space="preserve">
+    <value>Automatisation</value>
+  </data>
+  <data name="NewTask_Locked" xml:space="preserve">
+    <value>Cette tâche est lancée. Sa consigne, son répertoire, son agent et son automatisation sont figés.</value>
+  </data>
+  <data name="NewTask_Archived" xml:space="preserve">
+    <value>Cette tâche est archivée. C'est la trace d'un travail terminé : rien ici n'est modifiable et son terminal ne démarre pas. Restaurez-la depuis l'archive pour y retravailler, ou dupliquez-la pour refaire la même tâche.</value>
+  </data>
+  <data name="NewTask_Title" xml:space="preserve">
+    <value>Titre</value>
+  </data>
+  <data name="NewTask_Title_Placeholder" xml:space="preserve">
+    <value>Rédigé à partir de l'instruction si vous le laissez vide</value>
+  </data>
+  <data name="NewTask_Title_Placeholder_Manual" xml:space="preserve">
+    <value>Facultatif</value>
+  </data>
+  <data name="NewTask_Title_Required" xml:space="preserve">
+    <value>Saisissez un titre, ou une instruction dont le tirer</value>
+  </data>
+  <data name="NewTask_GenerateTitle" xml:space="preserve">
+    <value>Rédiger un titre à partir de l'instruction</value>
+  </data>
+  <data name="NewTask_GenerateTitleFailed" xml:space="preserve">
+    <value>Agent injoignable</value>
+  </data>
+  <data name="NewTask_GenerateTitleFallback" xml:space="preserve">
+    <value>Le titre a été repris du début de l'instruction. Modifiez-le à votre guise.</value>
+  </data>
+  <data name="NewTask_Prompt" xml:space="preserve">
+    <value>Instruction</value>
+  </data>
+  <data name="NewTask_Attachments" xml:space="preserve">
+    <value>Pièces jointes</value>
+  </data>
+  <data name="NewTask_Attachments_Drop" xml:space="preserve">
+    <value>Déposez des fichiers ici, collez depuis le presse-papiers, ou parcourez</value>
+  </data>
+  <data name="NewTask_Attachments_DropActive" xml:space="preserve">
+    <value>Relâchez pour joindre</value>
+  </data>
+  <data name="NewTask_Attachments_Browse" xml:space="preserve">
+    <value>Parcourir les fichiers</value>
+  </data>
+  <data name="NewTask_Attachments_Remove" xml:space="preserve">
+    <value>Retirer la pièce jointe</value>
+  </data>
+  <data name="NewTask_Attachments_None" xml:space="preserve">
+    <value>Aucune pièce jointe.</value>
+  </data>
+  <data name="NewTask_Attachments_TooMany" xml:space="preserve">
+    <value>Trop de fichiers</value>
+  </data>
+  <data name="NewTask_Attachments_TooManyDetail" xml:space="preserve">
+    <value>Une tâche accepte au plus {0} pièces jointes.</value>
+  </data>
+  <data name="NewTask_Attachments_TooLarge" xml:space="preserve">
+    <value>Fichier trop volumineux</value>
+  </data>
+  <data name="NewTask_Attachments_TooLargeDetail" xml:space="preserve">
+    <value>{0} n'a pas été joint : une pièce jointe fait au plus {1}.</value>
+  </data>
+  <data name="NewTask_Attachments_Failed" xml:space="preserve">
+    <value>Impossible de joindre le fichier</value>
+  </data>
+  <data name="NewTask_Attachments_Open" xml:space="preserve">
+    <value>Ouvrir {0}</value>
+  </data>
+  <data name="NewTask_Attachments_OpenFailed" xml:space="preserve">
+    <value>Impossible d'ouvrir le fichier</value>
+  </data>
+  <data name="NewTask_Attachments_OpenFailedDetail" xml:space="preserve">
+    <value>Windows n'a aucune application associée à {0}, ou a refusé de la démarrer.</value>
+  </data>
+  <data name="NewTask_Attachments_Gone" xml:space="preserve">
+    <value>Le fichier n'est plus là</value>
+  </data>
+  <data name="NewTask_Attachments_GoneDetail" xml:space="preserve">
+    <value>{0} ne se trouve plus dans le dossier de cette tâche.</value>
+  </data>
+  <data name="NewTask_WorkingDir" xml:space="preserve">
+    <value>Répertoire de travail</value>
+  </data>
+  <data name="NewTask_Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="NewTask_Model" xml:space="preserve">
+    <value>Modèle</value>
+  </data>
+  <data name="NewTask_Model_Hint" xml:space="preserve">
+    <value>Propre à l'agent. Laisser vide pour utiliser son défaut.</value>
+  </data>
+  <data name="NewTask_Effort" xml:space="preserve">
+    <value>Effort de raisonnement</value>
+  </data>
+  <data name="NewTask_Effort_Hint" xml:space="preserve">
+    <value>Laisser vide pour utiliser le défaut de l'agent.</value>
+  </data>
+  <data name="NewTask_AgentDefault" xml:space="preserve">
+    <value>défaut de l'agent</value>
+  </data>
+  <data name="NewTask_Permission" xml:space="preserve">
+    <value>Mode de permission</value>
+  </data>
+  <data name="NewTask_Schedule" xml:space="preserve">
+    <value>Planification</value>
+  </data>
+  <data name="NewTask_Schedule_Hint" xml:space="preserve">
+    <value>Quand la tâche démarre, une fois qu'elle est dans « Prêt ».</value>
+  </data>
+  <data name="NewTask_UnattendedPrompting" xml:space="preserve">
+    <value>Cette tâche peut démarrer seule, mais son mode d'autorisation demande encore avant d'agir. ACT ne répond jamais à une invite : elle attendra à la première — en occupant une place — jusqu'à ce que vous répondiez. Choisissez auto, ne pas demander ou contourner pour du travail sans surveillance.</value>
+  </data>
+  <data name="NewTask_ScheduledFor" xml:space="preserve">
+    <value>Date et heure</value>
+  </data>
+  <data name="NewTask_DateFormat" xml:space="preserve">
+    <value>yyyy-MM-dd HH:mm</value>
+  </data>
+  <data name="NewTask_AllowConcurrentWorkingDir" xml:space="preserve">
+    <value>Démarrer même si le dossier est occupé</value>
+  </data>
+  <data name="NewTask_AllowConcurrentWorkingDir_Hint" xml:space="preserve">
+    <value>Lance cette tâche en parallèle d'une autre qui travaille déjà dans le même dossier.</value>
+  </data>
+  <data name="NewTask_Required" xml:space="preserve">
+    <value>Obligatoire</value>
+  </data>
+  <data name="NewTask_Save" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="NewTask_SaveReady" xml:space="preserve">
+    <value>Enregistrer + Prêt</value>
+  </data>
+  <data name="NewTask_Create" xml:space="preserve">
+    <value>Créer</value>
+  </data>
+  <data name="NewTask_CreateReady" xml:space="preserve">
+    <value>Créer + Prêt</value>
+  </data>
+  <data name="NewTask_SaveReady_Hint" xml:space="preserve">
+    <value>Va directement dans « Prêt », où le planificateur peut la démarrer.</value>
+  </data>
+  <data name="NewTask_Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Permission_Default" xml:space="preserve">
+    <value>défaut</value>
+  </data>
+  <data name="Permission_Default_Hint" xml:space="preserve">
+    <value>Demande avant chaque action sensible.</value>
+  </data>
+  <data name="Permission_Plan" xml:space="preserve">
+    <value>plan</value>
+  </data>
+  <data name="Permission_Plan_Hint" xml:space="preserve">
+    <value>Lecture seule — aucune exécution d'outil.</value>
+  </data>
+  <data name="Permission_AcceptEdits" xml:space="preserve">
+    <value>accepter les modifications</value>
+  </data>
+  <data name="Permission_AcceptEdits_Hint" xml:space="preserve">
+    <value>Modifications acceptées d'office; les autres outils demandent.</value>
+  </data>
+  <data name="Permission_Auto" xml:space="preserve">
+    <value>auto</value>
+  </data>
+  <data name="Permission_Auto_Hint" xml:space="preserve">
+    <value>Un classificateur approuve ou refuse. Ne demande jamais.</value>
+  </data>
+  <data name="Permission_DontAsk" xml:space="preserve">
+    <value>ne pas demander</value>
+  </data>
+  <data name="Permission_DontAsk_Hint" xml:space="preserve">
+    <value>Refuse tout ce qui n'est pas pré-approuvé. Ne demande jamais.</value>
+  </data>
+  <data name="Permission_Bypass" xml:space="preserve">
+    <value>contourner</value>
+  </data>
+  <data name="Permission_Bypass_Hint" xml:space="preserve">
+    <value>Autorise tout. Ne demande jamais.</value>
+  </data>
+  <data name="ScheduleOption_Manual" xml:space="preserve">
+    <value>manuel</value>
+  </data>
+  <data name="ScheduleOption_Now" xml:space="preserve">
+    <value>maintenant</value>
+  </data>
+  <data name="ScheduleOption_NextWindow" xml:space="preserve">
+    <value>prochaine fenêtre de 5 h</value>
+  </data>
+  <data name="ScheduleOption_DateTime" xml:space="preserve">
+    <value>date et heure précises</value>
+  </data>
+  <data name="Column_Preparing" xml:space="preserve">
+    <value>Préparation</value>
+  </data>
+  <data name="Column_Ready" xml:space="preserve">
+    <value>Prêt</value>
+  </data>
+  <data name="Column_Executing" xml:space="preserve">
+    <value>En exécution</value>
+  </data>
+  <data name="Column_YourTurn" xml:space="preserve">
+    <value>À vous</value>
+  </data>
+  <data name="Column_Completed" xml:space="preserve">
+    <value>Terminé</value>
+  </data>
+  <data name="Badge_Running" xml:space="preserve">
+    <value>en exécution</value>
+  </data>
+  <data name="Badge_Compacting" xml:space="preserve">
+    <value>compactage</value>
+  </data>
+  <data name="Badge_NeedsPermission" xml:space="preserve">
+    <value>permission requise</value>
+  </data>
+  <data name="Badge_NeedsAnswer" xml:space="preserve">
+    <value>réponse requise</value>
+  </data>
+  <data name="Badge_Error" xml:space="preserve">
+    <value>erreur</value>
+  </data>
+  <data name="Badge_Killed" xml:space="preserve">
+    <value>interrompu</value>
+  </data>
+  <data name="Badge_ToReview" xml:space="preserve">
+    <value>à réviser</value>
+  </data>
+  <data name="Badge_Done" xml:space="preserve">
+    <value>terminé</value>
+  </data>
+  <data name="Schedule_Manual" xml:space="preserve">
+    <value>manuel</value>
+  </data>
+  <data name="Schedule_Now" xml:space="preserve">
+    <value>maintenant</value>
+  </data>
+  <data name="Schedule_NextWindow" xml:space="preserve">
+    <value>proch. fenêtre</value>
+  </data>
+  <data name="Schedule_At" xml:space="preserve">
+    <value>⏱ {0}</value>
+  </data>
+  <data name="Schedule_DateFormat" xml:space="preserve">
+    <value>d MMM HH:mm</value>
+  </data>
+  <data name="Hold_Paused" xml:space="preserve">
+    <value>en pause</value>
+  </data>
+  <data name="Hold_Paused_Tip" xml:space="preserve">
+    <value>L'exécution automatique est suspendue. Lancez cette tâche à la main, ou cliquez sur « exéc. auto suspendue » dans la barre du haut pour reprendre.</value>
+  </data>
+  <data name="Hold_AgentOff" xml:space="preserve">
+    <value>agent inactif</value>
+  </data>
+  <data name="Hold_AgentOff_Tip" xml:space="preserve">
+    <value>{0} est désactivé dans les réglages : rien ne peut démarrer avec lui.</value>
+  </data>
+  <data name="Hold_Usage" xml:space="preserve">
+    <value>quota {0}</value>
+  </data>
+  <data name="Hold_Usage_Tip" xml:space="preserve">
+    <value>La limite d'utilisation de {0} est atteinte. Cette tâche démarrera d'elle-même à la réinitialisation, à {1}.</value>
+  </data>
+  <data name="Hold_Folder" xml:space="preserve">
+    <value>dossier #{0}</value>
+  </data>
+  <data name="Hold_Folder_Tip" xml:space="preserve">
+    <value>#{0} · {1} travaille dans ce dossier. Cette tâche démarrera d'elle-même une fois celle-là terminée.</value>
+  </data>
+  <data name="Hold_Dependency" xml:space="preserve">
+    <value>après #{0}</value>
+  </data>
+  <data name="Hold_Dependency_Tip" xml:space="preserve">
+    <value>En attente de #{0} · {1}, qui doit être terminée.</value>
+  </data>
+  <data name="Hold_Slot" xml:space="preserve">
+    <value>en file {0}/{1}</value>
+  </data>
+  <data name="Hold_Slot_Tip" xml:space="preserve">
+    <value>{0} tâches sur {1} sont déjà en cours. Celle-ci démarrera d'elle-même dès qu'une place se libère.</value>
+  </data>
+  <data name="Hold_Hours" xml:space="preserve">
+    <value>{0} h {1:00}</value>
+  </data>
+  <data name="Hold_Minutes" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="Hold_Days" xml:space="preserve">
+    <value>{0} j {1} h</value>
+  </data>
+  <data name="Metrics_Context" xml:space="preserve">
+    <value>{0}/{1} ctx</value>
+  </data>
+  <data name="Metrics_Turns" xml:space="preserve">
+    <value>{0} tours</value>
+  </data>
+  <data name="Metrics_Compactions" xml:space="preserve">
+    <value>{0} compactages</value>
+  </data>
+  <data name="Metrics_Tokens" xml:space="preserve">
+    <value>{0} jetons</value>
+  </data>
+  <data name="Metrics_QuietMinutes" xml:space="preserve">
+    <value>silence {0} min</value>
+  </data>
+  <data name="Metrics_QuietHours" xml:space="preserve">
+    <value>silence {0} h</value>
+  </data>
+  <data name="Card_Children" xml:space="preserve">
+    <value>{0} enfants ⤵</value>
+  </data>
+  <data name="Session_SpawnedBy" xml:space="preserve">
+    <value>Créée par</value>
+  </data>
+  <data name="Session_FollowUps" xml:space="preserve">
+    <value>Tâches de suivi</value>
+  </data>
+  <data name="Settings_MaxFollowUps" xml:space="preserve">
+    <value>Tâches de suivi qu'un agent peut créer par tâche</value>
+  </data>
+  <data name="Settings_MaxFollowUps_Hint" xml:space="preserve">
+    <value>Une limite de sécurité sur les tâches créées par un agent. Mettez 0 pour empêcher les agents d'en créer.</value>
+  </data>
+  <data name="Card_SpawnedBy" xml:space="preserve">
+    <value>↳ n° {0}</value>
+  </data>
+  <data name="Card_SpawnedBy_Tip" xml:space="preserve">
+    <value>Créée par la tâche n° {0} — {1}</value>
+  </data>
+  <data name="Card_SpawnedByUnknown" xml:space="preserve">
+    <value>↳ tâche de suivi</value>
+  </data>
+  <data name="Agent_ClaudeCode" xml:space="preserve">
+    <value>claude</value>
+  </data>
+  <data name="Agent_Codex" xml:space="preserve">
+    <value>codex</value>
+  </data>
+  <data name="Settings_Title" xml:space="preserve">
+    <value>Paramètres</value>
+  </data>
+  <data name="Settings_Group_General" xml:space="preserve">
+    <value>Général</value>
+  </data>
+  <data name="Settings_Group_Appearance" xml:space="preserve">
+    <value>Apparence</value>
+  </data>
+  <data name="Usage_Unavailable" xml:space="preserve">
+    <value>indisponible</value>
+  </data>
+  <data name="Usage_Unavailable_NotSignedIn" xml:space="preserve">
+    <value>non connecté</value>
+  </data>
+  <data name="Usage_Unavailable_Expired" xml:space="preserve">
+    <value>renouvellement du jeton</value>
+  </data>
+  <data name="Usage_Unavailable_SignInRequired" xml:space="preserve">
+    <value>reconnexion requise</value>
+  </data>
+  <data name="Usage_Unavailable_Unauthorized" xml:space="preserve">
+    <value>jeton refusé</value>
+  </data>
+  <data name="Usage_Unavailable_Unreachable" xml:space="preserve">
+    <value>aucune connexion</value>
+  </data>
+  <data name="Usage_Unavailable_Failed" xml:space="preserve">
+    <value>réponse illisible</value>
+  </data>
+  <data name="Usage_Unavailable_Tooltip" xml:space="preserve">
+    <value>La consommation {0} est indisponible pour le moment — {1}. Dernière vérification à {2} ; ACT continue d'essayer, et les chiffres reviendront d'eux-mêmes.</value>
+  </data>
+  <data name="Usage_Cause_NotSignedIn" xml:space="preserve">
+    <value>ACT n'a trouvé aucun identifiant pour ce CLI ; lancez-le une fois pour vous connecter</value>
+  </data>
+  <data name="Usage_Cause_Expired" xml:space="preserve">
+    <value>le jeton d'accès du CLI a expiré ; ACT a demandé au CLI de le renouveler</value>
+  </data>
+  <data name="Usage_Cause_SignInRequired" xml:space="preserve">
+    <value>la connexion de ce CLI a expiré après une trop longue inutilisation ; lancez `claude auth login` une fois pour vous reconnecter</value>
+  </data>
+  <data name="Usage_Cause_Unauthorized" xml:space="preserve">
+    <value>le point d'accès a refusé le jeton, ce qui signifie généralement qu'il faut renouveler la connexion</value>
+  </data>
+  <data name="Usage_Cause_Unreachable" xml:space="preserve">
+    <value>le point d'accès est injoignable</value>
+  </data>
+  <data name="Usage_Cause_Failed" xml:space="preserve">
+    <value>le point d'accès a répondu quelque chose qu'ACT n'a pas su lire</value>
+  </data>
+  <data name="Settings_Group_Execution" xml:space="preserve">
+    <value>Exécution</value>
+  </data>
+  <data name="Settings_OneTaskPerFolder" xml:space="preserve">
+    <value>Une seule tâche à la fois par dossier</value>
+  </data>
+  <data name="Settings_OneTaskPerFolder_Hint" xml:space="preserve">
+    <value>Empêche l'exécution automatique de démarrer une tâche pendant qu'une autre travaille encore dans le même dossier. Une tâche occupe son dossier jusqu'à ce qu'elle soit terminée.</value>
+  </data>
+  <data name="Settings_PauseAutoExecution" xml:space="preserve">
+    <value>Suspendre l'exécution automatique</value>
+  </data>
+  <data name="Settings_PauseAutoExecution_Hint" xml:space="preserve">
+    <value>Rien ne démarre tout seul tant que ceci est activé, quelle que soit la planification d'une tâche.</value>
+  </data>
+  <data name="Settings_MaxConcurrent" xml:space="preserve">
+    <value>Tâches en cours simultanées</value>
+  </data>
+  <data name="Settings_MaxConcurrent_Hint" xml:space="preserve">
+    <value>Combien de tâches s'exécutent en même temps.</value>
+  </data>
+  <data name="Settings_UsageCeiling" xml:space="preserve">
+    <value>Retenir la file à</value>
+  </data>
+  <data name="Settings_UsageCeiling_Hint" xml:space="preserve">
+    <value>Dès qu'un quota de 5 h ou hebdomadaire atteint ce pourcentage, l'exécution automatique attend la réinitialisation de la fenêtre. En dessous, les tâches démarrent normalement.</value>
+  </data>
+  <data name="Settings_Group_Retention" xml:space="preserve">
+    <value>Conservation</value>
+  </data>
+  <data name="Settings_AutoArchive" xml:space="preserve">
+    <value>Archiver automatiquement les tâches terminées</value>
+  </data>
+  <data name="Settings_AutoArchive_Hint" xml:space="preserve">
+    <value>Une tâche terminée quitte le tableau lorsqu'elle est assez ancienne. Elle passe ensuite aux archives.</value>
+  </data>
+  <data name="Settings_AutoArchiveDays" xml:space="preserve">
+    <value>Archiver après</value>
+  </data>
+  <data name="Settings_AutoArchiveDays_Hint" xml:space="preserve">
+    <value>Jours depuis la fin de la tâche.</value>
+  </data>
+  <data name="Settings_Group_System" xml:space="preserve">
+    <value>Système</value>
+  </data>
+  <data name="Settings_Group_Updates" xml:space="preserve">
+    <value>Mises à jour</value>
+  </data>
+  <data name="Settings_Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Settings_Updates" xml:space="preserve">
+    <value>Mises à jour automatiques</value>
+  </data>
+  <data name="Settings_Updates_Hint" xml:space="preserve">
+    <value>ACT cherche une version plus récente.</value>
+  </data>
+  <data name="Settings_Updates_Download" xml:space="preserve">
+    <value>Télécharger discrètement, installer à la sortie</value>
+  </data>
+  <data name="Settings_Updates_NotifyOnly" xml:space="preserve">
+    <value>M'avertir, télécharger sur demande</value>
+  </data>
+  <data name="Settings_Updates_Off" xml:space="preserve">
+    <value>Ne jamais vérifier</value>
+  </data>
+  <data name="Settings_Updates_Check" xml:space="preserve">
+    <value>Vérifier</value>
+  </data>
+  <data name="Settings_Updates_Fetch" xml:space="preserve">
+    <value>Télécharger</value>
+  </data>
+  <data name="Settings_Updates_Idle" xml:space="preserve">
+    <value>Aucune vérification des mises à jour.</value>
+  </data>
+  <data name="Settings_Updates_Checking" xml:space="preserve">
+    <value>Vérification…</value>
+  </data>
+  <data name="Settings_Updates_UpToDate" xml:space="preserve">
+    <value>Il s'agit de la version la plus récente.</value>
+  </data>
+  <data name="Settings_Updates_Available" xml:space="preserve">
+    <value>La version {0} est disponible.</value>
+  </data>
+  <data name="Settings_Updates_Downloading" xml:space="preserve">
+    <value>Téléchargement de la version {0} — {1} %.</value>
+  </data>
+  <data name="Settings_Updates_Ready" xml:space="preserve">
+    <value>La version {0} est téléchargée et s'installera à votre prochaine sortie d'ACT.</value>
+  </data>
+  <data name="Settings_Updates_Unavailable" xml:space="preserve">
+    <value>Impossible de joindre le flux de mises à jour. ACT réessaiera plus tard.</value>
+  </data>
+  <data name="Settings_Group_Agents" xml:space="preserve">
+    <value>Agents</value>
+  </data>
+  <data name="Settings_AgentEnabled_Hint" xml:space="preserve">
+    <value>Proposer cet agent à la création d'une tâche.</value>
+  </data>
+  <data name="Settings_AgentBinary_NotFound" xml:space="preserve">
+    <value>Rien à cet endroit. Le lancement échouera tant que ce chemin ne pointe pas sur l'exécutable.</value>
+  </data>
+  <data name="Settings_AgentBinary_NotInstalled" xml:space="preserve">
+    <value>Introuvable dans le PATH et aux endroits connus d'ACT — cet agent n'est peut-être pas installé.</value>
+  </data>
+  <data name="Settings_AgentBinary_NotOnPath" xml:space="preserve">
+    <value>Absent du PATH. Installé à {0}.</value>
+  </data>
+  <data name="Settings_AgentBinary_UseFound" xml:space="preserve">
+    <value>Utiliser</value>
+  </data>
+  <data name="Settings_AgentBinary_OnPath" xml:space="preserve">
+    <value>Trouvé dans le PATH.</value>
+  </data>
+  <data name="Settings_AgentBinary_Found" xml:space="preserve">
+    <value>Trouvé.</value>
+  </data>
+  <data name="Settings_Agents_Hint" xml:space="preserve">
+    <value>Comment chaque CLI est installé sur cette machine. Ces réglages s'appliquent à toutes les tâches de cet agent, au prochain lancement.</value>
+  </data>
+  <data name="Settings_AgentBinary" xml:space="preserve">
+    <value>Exécutable</value>
+  </data>
+  <data name="Settings_AgentBinary_Hint" xml:space="preserve">
+    <value>Laisser vide pour le chercher dans le PATH. Indiquer un chemin complet si l'installation n'y est pas.</value>
+  </data>
+  <data name="Settings_ExtraFlags" xml:space="preserve">
+    <value>Options CLI supplémentaires</value>
+  </data>
+  <data name="Settings_ExtraFlags_Hint" xml:space="preserve">
+    <value>Une par ligne.</value>
+  </data>
+  <data name="Settings_Env" xml:space="preserve">
+    <value>Variables d'environnement</value>
+  </data>
+  <data name="Settings_Env_Hint" xml:space="preserve">
+    <value>Une paire CLÉ=valeur par ligne.</value>
+  </data>
+  <data name="Settings_Notifications" xml:space="preserve">
+    <value>Notifications du bureau</value>
+  </data>
+  <data name="Settings_Notifications_Hint" xml:space="preserve">
+    <value>Vous avertit quand une tâche vous attend ou se termine, sauf si vous regardez déjà le tableau.</value>
+  </data>
+  <data name="Notify_NeedsPermission" xml:space="preserve">
+    <value>Permission requise</value>
+  </data>
+  <data name="Notify_NeedsAnswer" xml:space="preserve">
+    <value>Réponse requise</value>
+  </data>
+  <data name="Notify_Error" xml:space="preserve">
+    <value>Échec</value>
+  </data>
+  <data name="Notify_Killed" xml:space="preserve">
+    <value>Session terminée</value>
+  </data>
+  <data name="Notify_ReadyForReview" xml:space="preserve">
+    <value>Prêt pour révision</value>
+  </data>
+  <data name="Notify_UpdateAvailable" xml:space="preserve">
+    <value>Une mise à jour d'ACT est disponible</value>
+  </data>
+  <data name="Notify_UpdateAvailable_Body" xml:space="preserve">
+    <value>Version {0}. Téléchargez-la depuis les paramètres quand vous voulez.</value>
+  </data>
+  <data name="Notify_UpdateReady" xml:space="preserve">
+    <value>Une mise à jour d'ACT est prête</value>
+  </data>
+  <data name="Notify_UpdateReady_Body" xml:space="preserve">
+    <value>La version {0} s'installera à votre prochaine sortie d'ACT.</value>
+  </data>
+  <data name="Notify_Body" xml:space="preserve">
+    <value>#{0} · {1}</value>
+  </data>
+  <data name="Settings_KeepAwake" xml:space="preserve">
+    <value>Garder l'ordinateur éveillé</value>
+  </data>
+  <data name="Settings_KeepAwake_Hint" xml:space="preserve">
+    <value>Empêche la mise en veille tant qu'une tâche est en cours ou attend de démarrer.</value>
+  </data>
+  <data name="Settings_CloseToTray" xml:space="preserve">
+    <value>Fermer vers la zone de notification</value>
+  </data>
+  <data name="Settings_CloseToTray_Hint" xml:space="preserve">
+    <value>Fermer la fenêtre laisse ACT actif derrière son icône.</value>
+  </data>
+  <data name="Tray_Tooltip_One" xml:space="preserve">
+    <value>{0} — {1} tâche en attente de votre intervention</value>
+  </data>
+  <data name="Tray_Tooltip_Many" xml:space="preserve">
+    <value>{0} — {1} tâches en attente de votre intervention</value>
+  </data>
+  <data name="Menu_Edit" xml:space="preserve">
+    <value>Édition</value>
+  </data>
+  <data name="Tray_Open" xml:space="preserve">
+    <value>Ouvrir ACT</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+    <value>Quitter ACT</value>
+  </data>
+  <data name="Tray_ExitConfirm" xml:space="preserve">
+    <value>Quitter ACT?</value>
+  </data>
+  <data name="Tray_ExitDetailScheduled" xml:space="preserve">
+    <value>Les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
+  </data>
+  <data name="Tray_ExitDetailRunning_One" xml:space="preserve">
+    <value>{0} tâche en cours sera arrêtée.</value>
+  </data>
+  <data name="Tray_ExitDetailRunning_Many" xml:space="preserve">
+    <value>{0} tâches en cours seront arrêtées.</value>
+  </data>
+  <data name="Tray_ExitDetailBoth_One" xml:space="preserve">
+    <value>{0} tâche en cours sera arrêtée, et les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
+  </data>
+  <data name="Tray_ExitDetailBoth_Many" xml:space="preserve">
+    <value>{0} tâches en cours seront arrêtées, et les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
+  </data>
+  <data name="Tray_ExitDetailUpdate" xml:space="preserve">
+    <value>Une mise à jour d'ACT déjà téléchargée s'installera à votre sortie.</value>
+  </data>
+  <data name="Tray_ExitYes" xml:space="preserve">
+    <value>Quitter</value>
+  </data>
+  <data name="Settings_Language" xml:space="preserve">
+    <value>Langue</value>
+  </data>
+  <data name="Settings_Language_Hint" xml:space="preserve">
+    <value>Suivre le système d’exploitation ou choisir une langue.</value>
+  </data>
+  <data name="Settings_Language_System" xml:space="preserve">
+    <value>Langue du système</value>
+  </data>
+  <data name="Settings_GenerateTitles" xml:space="preserve">
+    <value>Rédiger les titres à partir de l'instruction</value>
+  </data>
+  <data name="Settings_GenerateTitles_Hint" xml:space="preserve">
+    <value>Quand une tâche est enregistrée sans titre, le modèle à faible coût de l'agent est utilisé pour en rédiger un.</value>
+  </data>
+  <data name="Settings_Theme" xml:space="preserve">
+    <value>Thème</value>
+  </data>
+  <data name="Settings_Theme_Hint" xml:space="preserve">
+    <value>Suivre le système ou forcer le mode sombre ou clair.</value>
+  </data>
+  <data name="Settings_Theme_System" xml:space="preserve">
+    <value>Selon le système</value>
+  </data>
+  <data name="Settings_Theme_Dark" xml:space="preserve">
+    <value>Sombre</value>
+  </data>
+  <data name="Settings_Theme_Light" xml:space="preserve">
+    <value>Clair</value>
+  </data>
+  <data name="Settings_Density" xml:space="preserve">
+    <value>Mode d’affichage</value>
+  </data>
+  <data name="Settings_Density_Hint" xml:space="preserve">
+    <value>Niveau de détail affiché sur chaque bande de vol.</value>
+  </data>
+  <data name="Settings_BlinkYourTurn" xml:space="preserve">
+    <value>Faire clignoter les cartes de « À vous »</value>
+  </data>
+  <data name="Settings_BlinkYourTurn_Hint" xml:space="preserve">
+    <value>Fait pulser une carte qui vous attend.</value>
+  </data>
+  <data name="Settings_Density_Detailed" xml:space="preserve">
+    <value>Détaillé</value>
+  </data>
+  <data name="Settings_Density_Compact" xml:space="preserve">
+    <value>Compact</value>
+  </data>
+  <data name="Error_PageTitle" xml:space="preserve">
+    <value>Erreur — ACT</value>
+  </data>
+  <data name="Error_Heading" xml:space="preserve">
+    <value>Erreur</value>
+  </data>
+  <data name="Error_Subheading" xml:space="preserve">
+    <value>Une erreur s’est produite pendant le traitement de votre demande.</value>
+  </data>
+  <data name="Error_RequestId" xml:space="preserve">
+    <value>ID de requête :</value>
+  </data>
+  <data name="NotFound_Heading" xml:space="preserve">
+    <value>Page introuvable</value>
+  </data>
+  <data name="NotFound_Text" xml:space="preserve">
+    <value>Désolé, le contenu que vous cherchez n’existe pas.</value>
+  </data>
+  <data name="Launch_WorkingDirBusy" xml:space="preserve">
+    <value>#{0} {1} travaille encore dans ce dossier. Terminez-la d'abord, ou autorisez cette tâche à démarrer même si le dossier est occupé.</value>
+  </data>
+  <data name="Session_NoLiveSession" xml:space="preserve">
+    <value>Aucune session n'est en cours pour cette carte.</value>
+  </data>
+  <data name="Session_Launch" xml:space="preserve">
+    <value>Démarrer maintenant</value>
+  </data>
+  <data name="Session_Agent" xml:space="preserve">
+    <value>Agent</value>
+  </data>
+  <data name="Session_Directory" xml:space="preserve">
+    <value>Répertoire</value>
+  </data>
+  <data name="Session_SessionId" xml:space="preserve">
+    <value>Session</value>
+  </data>
+  <data name="Session_SessionPending" xml:space="preserve">
+    <value>communiqué au démarrage</value>
+  </data>
+  <data name="Session_Context" xml:space="preserve">
+    <value>Contexte</value>
+  </data>
+  <data name="Session_Turns" xml:space="preserve">
+    <value>Tours</value>
+  </data>
+  <data name="Session_Tokens" xml:space="preserve">
+    <value>Jetons</value>
+  </data>
+  <data name="Session_Compactions" xml:space="preserve">
+    <value>Compactages</value>
+  </data>
+  <data name="Session_OpenInDesktop" xml:space="preserve">
+    <value>Ouvrir dans l'application</value>
+  </data>
+  <data name="Session_RestartTerminal" xml:space="preserve">
+    <value>Redémarrer le terminal</value>
+  </data>
+  <data name="Session_RestartFailed" xml:space="preserve">
+    <value>Impossible de redémarrer le terminal</value>
+  </data>
+  <data name="Session_AttachDrop" xml:space="preserve">
+    <value>Relâchez pour insérer le chemin du fichier</value>
+  </data>
+  <data name="Session_AttachNoSession" xml:space="preserve">
+    <value>Rien à quoi joindre</value>
+  </data>
+  <data name="Session_AttachNoSessionDetail" xml:space="preserve">
+    <value>Cette carte n'a pas de terminal actif : il n'y a nulle part où mettre le chemin.</value>
+  </data>
+  <data name="Session_AttachFailed" xml:space="preserve">
+    <value>Impossible de joindre le fichier</value>
+  </data>
+  <data name="Session_Open" xml:space="preserve">
+    <value>Ouvrir le terminal</value>
+  </data>
+  <data name="Board_Launch" xml:space="preserve">
+    <value>Démarrer maintenant</value>
+  </data>
+  <data name="Board_Retry" xml:space="preserve">
+    <value>Relancer</value>
+  </data>
+  <data name="Board_TitlePending" xml:space="preserve">
+    <value>Génération d’un titre…</value>
+  </data>
+  <data name="Session_Complete" xml:space="preserve">
+    <value>Marquer terminé</value>
+  </data>
+  <data name="Session_Reopen" xml:space="preserve">
+    <value>Rouvrir</value>
+  </data>
+  <data name="Nav_BackToBoard" xml:space="preserve">
+    <value>Tableau</value>
+  </data>
+  <data name="Card_NotFound" xml:space="preserve">
+    <value>Cette carte n'existe plus.</value>
+  </data>
+  <data name="TaskView_NewTitle" xml:space="preserve">
+    <value>Nouvelle tâche</value>
+  </data>
+  <data name="Card_Surface_Task" xml:space="preserve">
+    <value>Tâche</value>
+  </data>
+  <data name="Card_Surface_Terminal" xml:space="preserve">
+    <value>Terminal</value>
+  </data>
+  <data name="Session_NotLaunchable" xml:space="preserve">
+    <value>Déplacez la carte vers Prêt pour la démarrer.</value>
+  </data>
+  <data name="Session_Archived" xml:space="preserve">
+    <value>Cette tâche est archivée. Son terminal ne démarre pas — restaurez-la au tableau pour la relancer.</value>
+  </data>
+  <data name="Session_LaunchFailed" xml:space="preserve">
+    <value>Échec du démarrage</value>
+  </data>
+  <data name="Session_NotLaunched" xml:space="preserve">
+    <value>Pas encore démarrée</value>
+  </data>
+  <data name="Session_RetryFailed" xml:space="preserve">
+    <value>Échec de la relance</value>
+  </data>
+  <data name="Session_RestoreFailed" xml:space="preserve">
+    <value>Terminal non rétabli</value>
+  </data>
+  <data name="NewTask_CreateDir" xml:space="preserve">
+    <value>Créer</value>
+  </data>
+  <data name="NewTask_DirMissing" xml:space="preserve">
+    <value>Ce répertoire n'existe pas encore.</value>
+  </data>
+  <data name="NewTask_CreateDirFailed" xml:space="preserve">
+    <value>Impossible de créer le répertoire</value>
+  </data>
+  <data name="NewTask_DirMissingResolved" xml:space="preserve">
+    <value>Ce répertoire n'existe pas encore ({0}).</value>
+  </data>
+  <data name="Picker_Browse" xml:space="preserve">
+    <value>Parcourir</value>
+  </data>
+  <data name="NewTask_DirNotAbsolute" xml:space="preserve">
+    <value>Entrez un chemin absolu, ou commencez par ~ pour votre dossier personnel.</value>
+  </data>
+  <data name="NewTask_DirMalformed" xml:space="preserve">
+    <value>Ce chemin de dossier n'est pas valide.</value>
+  </data>
+  <data name="Picker_Home" xml:space="preserve">
+    <value>Personnel</value>
+  </data>
+  <data name="Picker_Roots" xml:space="preserve">
+    <value>Disques</value>
+  </data>
+  <data name="Picker_Up" xml:space="preserve">
+    <value>Remonter d'un niveau</value>
+  </data>
+  <data name="Picker_Use" xml:space="preserve">
+    <value>Utiliser ce dossier</value>
+  </data>
+  <data name="Picker_Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="Picker_Empty" xml:space="preserve">
+    <value>Aucun sous-dossier ici.</value>
+  </data>
+  <data name="Picker_Missing" xml:space="preserve">
+    <value>Ce dossier n'existe plus.</value>
+  </data>
+  <data name="Picker_Unreadable" xml:space="preserve">
+    <value>Ce dossier ne peut pas être lu.</value>
+  </data>
+  <data name="Picker_Malformed" xml:space="preserve">
+    <value>Ce chemin de dossier n'est pas valide.</value>
+  </data>
+  <data name="Task_Delete" xml:space="preserve">
+    <value>Supprimer la tâche</value>
+  </data>
+  <data name="Task_DeleteFailed" xml:space="preserve">
+    <value>Impossible de supprimer la tâche</value>
+  </data>
+  <data name="Task_Duplicate" xml:space="preserve">
+    <value>Dupliquer la tâche</value>
+  </data>
+  <data name="Task_Unsaved" xml:space="preserve">
+    <value>Modifications non enregistrées</value>
+  </data>
+  <data name="Task_UnsavedConfirm" xml:space="preserve">
+    <value>Cette tâche contient des modifications jamais enregistrées. Quitter maintenant les perd.</value>
+  </data>
+  <data name="Task_UnsavedDiscard" xml:space="preserve">
+    <value>Abandonner les modifications</value>
+  </data>
+  <data name="Task_UnsavedStay" xml:space="preserve">
+    <value>Continuer l'édition</value>
+  </data>
+  <data name="Archive_Duplicate" xml:space="preserve">
+    <value>Dupliquer en nouvelle tâche</value>
+  </data>
+  <data name="Task_DuplicateTitle" xml:space="preserve">
+    <value>Copie de {0}</value>
+  </data>
+  <data name="Archive_Title" xml:space="preserve">
+    <value>Archives</value>
+  </data>
+  <data name="Archive_Empty" xml:space="preserve">
+    <value>Aucune archive.</value>
+  </data>
+  <data name="Archive_Restore" xml:space="preserve">
+    <value>Restaurer au tableau</value>
+  </data>
+  <data name="Archive_Open" xml:space="preserve">
+    <value>Ouvrir la tâche, en lecture seule</value>
+  </data>
+  <data name="Archive_AutoArchived" xml:space="preserve">
+    <value>archivée automatiquement</value>
+  </data>
+  <data name="Archive_Clear" xml:space="preserve">
+    <value>Vider les archives</value>
+  </data>
+  <data name="Archive_ClearConfirm_One" xml:space="preserve">
+    <value>Supprimer définitivement la tâche archivée ? Cette action est irréversible.</value>
+  </data>
+  <data name="Archive_ClearConfirm_Many" xml:space="preserve">
+    <value>Supprimer définitivement les {0} tâches archivées ? Cette action est irréversible.</value>
+  </data>
+  <data name="Archive_ClearYes" xml:space="preserve">
+    <value>Supprimer définitivement</value>
+  </data>
+  <data name="Task_DeleteFollowUps_One" xml:space="preserve">
+    <value>Cette tâche a {0} tâche de suivi. L'archiver aussi ?</value>
+  </data>
+  <data name="Task_DeleteFollowUps_Many" xml:space="preserve">
+    <value>Cette tâche a {0} tâches de suivi. Les archiver aussi ?</value>
+  </data>
+  <data name="Task_DeleteWithFollowUps" xml:space="preserve">
+    <value>Archiver avec les suivis</value>
+  </data>
+  <data name="Task_DeleteKeepFollowUps" xml:space="preserve">
+    <value>Conserver les suivis</value>
+  </data>
+  <data name="Task_DeleteRestoreHint" xml:space="preserve">
+    <value>Les tâches archivées peuvent être restaurées depuis les archives.</value>
+  </data>
+  <data name="NewTask_WorkingDir_Placeholder" xml:space="preserve">
+    <value>Saisissez un chemin, ou parcourez</value>
+  </data>
+  <data name="Transition_Launched" xml:space="preserve">
+    <value>Démarré</value>
+  </data>
+  <data name="Transition_LaunchedWithAdjustments" xml:space="preserve">
+    <value>Démarré avec des ajustements : {0}</value>
+  </data>
+  <data name="Transition_Retried" xml:space="preserve">
+    <value>Relancé — la session a été reprise et invitée à poursuivre</value>
+  </data>
+  <data name="Transition_RetriedWithAdjustments" xml:space="preserve">
+    <value>Relancé avec des ajustements : {0}</value>
+  </data>
+  <data name="Transition_LaunchFailed" xml:space="preserve">
+    <value>Échec du démarrage : {0}</value>
+  </data>
+  <data name="Transition_MovedByHand" xml:space="preserve">
+    <value>Déplacé manuellement</value>
+  </data>
+  <data name="Transition_CompletedByHand" xml:space="preserve">
+    <value>Marqué terminé</value>
+  </data>
+  <data name="Transition_Reopened" xml:space="preserve">
+    <value>Rouvert</value>
+  </data>
+  <data name="Transition_SessionRestored" xml:space="preserve">
+    <value>Terminal rétabli</value>
+  </data>
+  <data name="Transition_RestoreFailed" xml:space="preserve">
+    <value>Le terminal n'a pas pu être rétabli : {0}</value>
+  </data>
+  <data name="Transition_PermissionRequested" xml:space="preserve">
+    <value>Permission demandée dans le terminal</value>
+  </data>
+  <data name="Transition_QuestionAsked" xml:space="preserve">
+    <value>Question posée dans le terminal</value>
+  </data>
+  <data name="Transition_TurnEnded" xml:space="preserve">
+    <value>Tour terminé, prêt pour révision</value>
+  </data>
+  <data name="Transition_TurnFailed" xml:space="preserve">
+    <value>L'agent signale un tour en échec : {0}</value>
+  </data>
+  <data name="Transition_AgentExited" xml:space="preserve">
+    <value>L'agent s'est arrêté avec le code {0}</value>
+  </data>
+  <data name="Transition_TerminalRestarted" xml:space="preserve">
+    <value>Terminal redémarré — la session a repris dans un nouveau</value>
+  </data>
+  <data name="Transition_ActivityObserved" xml:space="preserve">
+    <value>Activité observée dans le terminal</value>
+  </data>
+  <data name="Transition_CompactingStarted" xml:space="preserve">
+    <value>Compactage du contexte</value>
+  </data>
+  <data name="Transition_CompactingFinished" xml:space="preserve">
+    <value>Compactage terminé</value>
+  </data>
+  <data name="Transition_StartupPrompt" xml:space="preserve">
+    <value>En attente de l'invite de démarrage de la CLI</value>
+  </data>
+  <data name="Transition_SpawnedFollowUp" xml:space="preserve">
+    <value>Tâche de suivi créée : {0}</value>
+  </data>
+  <data name="Card_Surface_Timeline" xml:space="preserve">
+    <value>Historique</value>
+  </data>
+  <data name="Timeline_Empty" xml:space="preserve">
+    <value>Rien ne s'est encore produit pour cette tâche.</value>
+  </data>
+  <data name="Timeline_EnteredColumn" xml:space="preserve">
+    <value>Entrée dans {0}</value>
+  </data>
+  <data name="Usage_Agent_ClaudeCode" xml:space="preserve">
+    <value>Claude</value>
+  </data>
+  <data name="Usage_Agent_Codex" xml:space="preserve">
+    <value>Codex</value>
+  </data>
+  <data name="Usage_Window_Session" xml:space="preserve">
+    <value>5 h</value>
+  </data>
+  <data name="Usage_Window_Weekly" xml:space="preserve">
+    <value>semaine</value>
+  </data>
+  <data name="Usage_Window_Monthly" xml:space="preserve">
+    <value>mois</value>
+  </data>
+  <data name="Usage_Percent" xml:space="preserve">
+    <value>{0} %</value>
+  </data>
+  <data name="Usage_ResetsIn" xml:space="preserve">
+    <value>· dans {0}</value>
+  </data>
+  <data name="Usage_AfterReset" xml:space="preserve">
+    <value>· réinitialisé · aucune activité</value>
+  </data>
+  <data name="Usage_NotStarted" xml:space="preserve">
+    <value>· pas démarrée</value>
+  </data>
+  <data name="Usage_DaysHours" xml:space="preserve">
+    <value>{0} j {1} h</value>
+  </data>
+  <data name="Usage_HoursMinutes" xml:space="preserve">
+    <value>{0} h {1} min</value>
+  </data>
+  <data name="Usage_Minutes" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="Usage_Tooltip" xml:space="preserve">
+    <value>{0} — fenêtre {1} · réinitialisation {2}</value>
+  </data>
+  <data name="Usage_Tooltip_NotStarted" xml:space="preserve">
+    <value>{0} — fenêtre {1} · rien n'y a encore été exécuté, donc aucune réinitialisation n'est prévue</value>
+  </data>
+  <data name="Search_Placeholder" xml:space="preserve">
+    <value>Filtrer par numéro, titre, dossier ou consigne</value>
+  </data>
+  <data name="Search_Clear" xml:space="preserve">
+    <value>Effacer le filtre</value>
+  </data>
+  <data name="Search_ArchiveMatches" xml:space="preserve">
+    <value>{0} dans les archives ›</value>
+  </data>
+  <data name="Board_ColumnNoMatch" xml:space="preserve">
+    <value>aucun résultat</value>
+  </data>
+  <data name="Board_HiddenAttention_One" xml:space="preserve">
+    <value>{0} masquée</value>
+  </data>
+  <data name="Board_HiddenAttention_Many" xml:space="preserve">
+    <value>{0} masquées</value>
+  </data>
+  <data name="Board_HiddenAttention_Tip" xml:space="preserve">
+    <value>Des tâches de cette colonne demandent votre attention mais ne correspondent pas au filtre.</value>
+  </data>
+  <data name="Archive_NoMatch" xml:space="preserve">
+    <value>Aucune archive ne correspond au filtre.</value>
+  </data>
+  <data name="Board_Density_Tip" xml:space="preserve">
+    <value>Basculer entre la vue compacte et détaillée.</value>
+  </data>
+  <data name="Templates_Title" xml:space="preserve">
+    <value>Modèles de tâche</value>
+  </data>
+  <data name="Templates_DefaultMeta" xml:space="preserve">
+    <value>utilisé par le bouton Nouvelle tâche</value>
+  </data>
+  <data name="Templates_Default" xml:space="preserve">
+    <value>Par défaut</value>
+  </data>
+  <data name="Templates_DefaultLocked" xml:space="preserve">
+    <value>Utilisé comme modèle par défaut par le bouton Nouvelle tâche.</value>
+  </data>
+  <data name="Templates_New" xml:space="preserve">
+    <value>Nouveau modèle</value>
+  </data>
+  <data name="Templates_Edit" xml:space="preserve">
+    <value>Modifier le modèle</value>
+  </data>
+  <data name="Templates_Delete" xml:space="preserve">
+    <value>Supprimer le modèle</value>
+  </data>
+  <data name="Templates_DeleteConfirm" xml:space="preserve">
+    <value>Supprimer le modèle « {0} » ? Les tâches déjà créées à partir de celui-ci ne sont pas touchées.</value>
+  </data>
+  <data name="Templates_DeleteYes" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+  <data name="Templates_NoPrompt" xml:space="preserve">
+    <value>aucune consigne</value>
+  </data>
+  <data name="Templates_Name" xml:space="preserve">
+    <value>Nom</value>
+  </data>
+  <data name="Templates_Name_Hint" xml:space="preserve">
+    <value>Tel qu'il apparaît dans le sélecteur Nouvelle tâche.</value>
+  </data>
+  <data name="Templates_Prompt_Hint" xml:space="preserve">
+    <value>Le point de départ de la consigne de la tâche. Laissez vide pour en écrire une chaque fois.</value>
+  </data>
+  <data name="Templates_TaskTitle_Hint" xml:space="preserve">
+    <value>Le nom que porte chaque tâche issue de ce modèle. Laissez vide et chaque tâche est nommée d'après sa consigne.</value>
+  </data>
+  <data name="Templates_TaskTitle_Placeholder" xml:space="preserve">
+    <value>Nommée d'après la consigne</value>
+  </data>
+  <data name="Templates_TitleMeta" xml:space="preserve">
+    <value>intitulée « {0} »</value>
+  </data>
+  <data name="Templates_Group_Template" xml:space="preserve">
+    <value>Modèle</value>
+  </data>
+  <data name="TemplateView_NewTitle" xml:space="preserve">
+    <value>Nouveau modèle</value>
+  </data>
+  <data name="Template_NotFound" xml:space="preserve">
+    <value>Ce modèle n'existe plus.</value>
+  </data>
+  <data name="Templates_Back" xml:space="preserve">
+    <value>Retour aux modèles</value>
+  </data>
+  <data name="Board_NewTaskFrom" xml:space="preserve">
+    <value>Nouvelle tâche à partir d'un modèle</value>
+  </data>
+  <data name="Task_SaveAsTemplate" xml:space="preserve">
+    <value>Enregistrer comme modèle</value>
+  </data>
+  <data name="Task_SaveAsTemplate_Prompt" xml:space="preserve">
+    <value>Nommez le modèle. Il créera une nouvelle tâche avec tout ce qui figure sur ce formulaire, sauf le titre.</value>
+  </data>
+  <data name="Task_SaveAsTemplate_Saved" xml:space="preserve">
+    <value>Modèle enregistré</value>
+  </data>
+  <data name="Task_SaveAsTemplate_SavedDetail" xml:space="preserve">
+    <value>« {0} » figure maintenant dans le sélecteur Nouvelle tâche.</value>
+  </data>
+  <data name="Settings_Group_Templates" xml:space="preserve">
+    <value>Modèles de tâche</value>
+  </data>
+  <data name="Settings_Templates_Hint" xml:space="preserve">
+    <value>Définissez des modèles pour créer rapidement de nouvelles tâches.</value>
+  </data>
+  <data name="Settings_Templates_Manage" xml:space="preserve">
+    <value>Gérer les modèles</value>
+  </data>
+  <data name="Settings_Group_Diagnostics" xml:space="preserve">
+    <value>Diagnostic</value>
+  </data>
+  <data name="Settings_Telemetry" xml:space="preserve">
+    <value>Aider à améliorer ACT</value>
+  </data>
+  <data name="Settings_Telemetry_Hint" xml:space="preserve">
+    <value>Envoyer des données d'utilisation anonymes et des rapports de plantage. Jamais vos consignes, le texte des tâches, les chemins de fichiers ni la sortie des agents.</value>
+  </data>
+  <data name="Settings_InstallId" xml:space="preserve">
+    <value>Identifiant d'installation</value>
+  </data>
+  <data name="Settings_InstallId_Hint" xml:space="preserve">
+    <value>L'identifiant anonyme sous lequel les données d'utilisation sont regroupées.</value>
+  </data>
+  <data name="Settings_Logs" xml:space="preserve">
+    <value>Fichiers journaux</value>
+  </data>
+  <data name="Settings_Logs_Open" xml:space="preserve">
+    <value>Ouvrir le dossier des journaux</value>
+  </data>
+  <data name="Settings_Logs_OpenFailed" xml:space="preserve">
+    <value>ACT n’a pas pu ouvrir {0}.</value>
+  </data>
+</root>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Retry_Continue" xml:space="preserve">
+    <value>Cette session a été interrompue. Revois ce que tu avais déjà fait et poursuis à partir de là.</value>
+  </data>
+  <data name="Attachments_Header" xml:space="preserve">
+    <value>Fichiers joints à cette tâche, par chemin absolu :</value>
+  </data>
+  <data name="Title_Instruction" xml:space="preserve">
+    <value>Rédige un titre court pour la demande ci-dessous, afin qu'on la reconnaisse d'un coup d'œil sur un tableau. Vise huit à douze mots et ne dépasse jamais seize. Nomme l'action et son objet, et garde le détail qui distingue cette tâche d'une tâche voisine ; ne reformule pas toute la demande. Réponds uniquement par le titre — sans guillemets, sans markdown, sans préambule, sans point final. N'utilise aucun outil, ne lis aucun fichier et n'exécute pas la demande elle-même. La demande :</value>
+  </data>
+</root>

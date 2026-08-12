@@ -1,0 +1,13 @@
+@page "/Error"
+
+<PageTitle>@Strings.Error_PageTitle</PageTitle>
+
+<div class="errpage">
+    <h1>@Strings.Error_Heading</h1>
+    <h2>@Strings.Error_Subheading</h2>
+
+    @if (ShowRequestId)
+    {
+        <p><strong>@Strings.Error_RequestId</strong> <code>@RequestId</code></p>
+    }
+</div>

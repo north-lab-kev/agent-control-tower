@@ -1,0 +1,51 @@
+@page "/templates"
+@using Act.Core.Model
+
+<PageTitle>@Strings.Templates_Title</PageTitle>
+
+<EscapeKey OnEscape="BackToBoard" />
+
+<div class="templates">
+    <header class="bar">
+        <RadzenButton Icon="arrow_back" Text="@Strings.Nav_BackToBoard" Size="ButtonSize.Small"
+                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="BackToBoard" />
+        <span class="title">@Strings.Templates_Title</span>
+
+        <div class="add">
+            <RadzenButton Icon="add" Text="@Strings.Templates_New" Size="ButtonSize.ExtraSmall"
+                          ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" Click="OpenNew" />
+        </div>
+    </header>
+
+    <div class="body">
+        <RadzenStack Gap="1rem" class="sheet">
+            <div class="list">
+                @foreach (var template in Rows)
+                {
+                    <div class="row">
+                        @* No badge marking the default: it is the one named *Default*, and the row
+                           already says so twice over by carrying no delete button. *@
+                        <div class="what">
+                            <span class="ttl">@TaskLabels.Template(template)</span>
+                            <span class="meta">@Meta(template)</span>
+                        </div>
+
+                        <RadzenButton Icon="edit" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
+                                      Variant="Variant.Outlined" Click="@(() => Open(template))"
+                                      title="@Strings.Templates_Edit" aria-label="@Strings.Templates_Edit" />
+
+                        @* The default has no delete at all rather than a disabled one: a board whose
+                           New task button has nothing to start from is not a state to offer. *@
+                        @if (!template.IsDefault)
+                        {
+                            <RadzenButton Icon="delete_outline" Size="ButtonSize.ExtraSmall"
+                                          ButtonStyle="ButtonStyle.Danger" Variant="Variant.Text"
+                                          Disabled="deleting" Click="@(() => DeleteAsync(template))"
+                                          title="@Strings.Templates_Delete" aria-label="@Strings.Templates_Delete" />
+                        }
+                    </div>
+                }
+            </div>
+        </RadzenStack>
+    </div>
+</div>

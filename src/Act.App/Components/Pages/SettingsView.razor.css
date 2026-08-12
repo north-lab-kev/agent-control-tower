@@ -1,0 +1,101 @@
+.settingsview {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.bar .title {
+    font-size: var(--act-t6);
+    font-weight: var(--act-w-em);
+    color: var(--act-ink);
+}
+
+.body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--act-page-pad);
+}
+
+::deep .sheet {
+    width: 100%;
+    max-width: var(--act-sheet-max);
+    margin: 0 auto;
+}
+
+::deep .hint {
+    color: var(--act-dim);
+}
+
+::deep .path {
+    font-family: var(--act-mono);
+    word-break: break-all;
+}
+
+::deep .logrow .rz-button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+/* The summary is the only part of the row that can run long, so it is the part that gives — the
+   buttons beside it must not be squeezed onto two lines to make room for a sentence. */
+::deep .updaterow .hint {
+    flex: 1 1 auto;
+}
+
+::deep .control {
+    width: var(--act-control-w);
+    flex: 0 0 auto;
+}
+
+/* A quantity reads against the spinner it is changed with, not against the label it is far from. */
+::deep .control.rz-numeric input {
+    text-align: right;
+}
+
+/* Type-or-pick, the same pairing the task form uses for a working directory. */
+::deep .dirrow {
+    display: flex;
+    align-items: center;
+    gap: var(--act-s2);
+}
+
+::deep .dirrow .wide {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+::deep .dirrow .rz-button {
+    flex: 0 0 auto;
+}
+
+/* A warning, not an error: settings apply as you type and a path you are about to install to is a
+   reasonable thing to enter. Amber is the board's "needs you", which is exactly the weight. */
+::deep .binwarn {
+    color: var(--act-wait);
+    padding: var(--act-s2);
+    border: 1px solid color-mix(in srgb, var(--act-wait) var(--act-tint-edge), transparent);
+    background: color-mix(in srgb, var(--act-wait) var(--act-tint-fill), transparent);
+    border-radius: var(--act-radius);
+}
+
+/* The message wraps; the button does not. Left to flexbox both shrink, and the button — two short
+   words — is what loses, ending up narrower than its own label. */
+::deep .binwarn .rz-button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+/* Deliberately quiet: confirming a path is worth a line, not a colour that competes with a card. */
+::deep .binok {
+    color: var(--act-dim);
+    padding: var(--act-s2);
+}
+
+::deep .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--act-s4);
+}

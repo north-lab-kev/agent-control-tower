@@ -1,0 +1,33 @@
+using Act.Core.Model;
+
+namespace Act.Core.Scheduling;
+
+// When a Ready card is allowed to start, as one instant.
+//
+// `Manual` never resolves and `Now` resolves to the moment it is asked, so neither is stored.
+// `NextWindow` is the reason this exists: it means the boundary that was next **when the card was
+// armed**, and a value recomputed from live usage would keep sliding forward — the moment that
+// boundary passes, the reading names the one after it, and the card would be perpetually one window
+// away from starting. So it is resolved once against the reading of the day and written to
+// `card.EligibleAt`, which also makes the queue survive a restart.
+public static class ScheduleArming
+{
+    public static bool NeedsArming(Card card)
+        => card.Column is BoardColumn.Ready
+            && card.EligibleAt is null
+            && card.Schedule is TaskSchedule.NextWindow;
+
+    // Null when there is no reading to arm against. The card then waits — unlike backpressure, where
+    // an unreadable quota launches anyway, a window boundary ACT cannot see is not something to
+    // guess at, and the intent chip already says the card is waiting for one.
+    public static DateTimeOffset? Arm(Card card, UsageWindow? session)
+        => NeedsArming(card) ? session?.ResetsAt : null;
+
+    public static bool IsDue(Card card, DateTimeOffset now) => card.Schedule switch
+    {
+        TaskSchedule.Now => true,
+        TaskSchedule.SpecificDateTime => card.ScheduledFor is { } at && now >= at,
+        TaskSchedule.NextWindow => card.EligibleAt is { } at && now >= at,
+        _ => false,
+    };
+}

@@ -1,0 +1,51 @@
+@inherits LayoutComponentBase
+
+<div class="act-root">
+    <RadzenComponents />
+
+    <div class="shell">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.SpaceBetween" Gap="0.75rem" class="bar titlebar">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                         Gap="0.5rem" class="brand">
+                <RadzenImage Path="@MarkPath" AlternateText="" class="mark" />
+                <RadzenText TextStyle="TextStyle.H6" Text="ACT" class="wordmark" />
+                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Shell_FullName" class="fullname" />
+            </RadzenStack>
+
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                         JustifyContent="JustifyContent.Center" Gap="0.5rem" class="usagegroup">
+                <UsageIndicator />
+            </RadzenStack>
+
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                         JustifyContent="JustifyContent.End" Gap="0.5rem" class="actions">
+                <RadzenButton Icon="bookmarks" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                              Size="ButtonSize.Small" Click="OpenTemplates" class="gear"
+                              title="@Strings.Templates_Title" aria-label="@Strings.Templates_Title" />
+
+                <RadzenButton Icon="inventory_2" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                              Size="ButtonSize.Small" Click="OpenArchive" class="gear"
+                              title="@Strings.Archive_Title" aria-label="@Strings.Archive_Title" />
+
+                <RadzenButton Icon="settings" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                              Size="ButtonSize.Small" Click="OpenSettings" class="gear"
+                              title="@Strings.Settings_Title" aria-label="@Strings.Settings_Title" />
+            </RadzenStack>
+        </RadzenStack>
+
+        <main>
+            <CascadingValue Value="Density" Name="Density">
+                <CascadingValue Value="BlinkYourTurn" Name="BlinkYourTurn">
+                    @Body
+                </CascadingValue>
+            </CascadingValue>
+        </main>
+    </div>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    @Strings.Shell_UnhandledError
+    <a href="." class="reload">@Strings.Shell_Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

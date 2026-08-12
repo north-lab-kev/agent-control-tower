@@ -1,0 +1,235 @@
+.taskview {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.taskview.empty {
+    align-items: flex-start;
+    gap: var(--act-s3);
+    padding: var(--act-s5);
+}
+
+.bar .id {
+    font-family: var(--act-mono);
+    font-size: var(--act-t3);
+    color: var(--act-review);
+}
+
+.bar .title {
+    font-size: var(--act-t6);
+    font-weight: var(--act-w-em);
+    color: var(--act-ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+::deep form.newtask {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--act-page-pad);
+}
+
+/* A page is as wide as the window, but a form is not more readable for being 2000px across, so
+   the fields stay in a column of their own and the page just centres it. */
+::deep .sheet {
+    width: 100%;
+    max-width: var(--act-sheet-max);
+    margin: 0 auto;
+}
+
+.footer {
+    flex: 0 0 auto;
+    padding: var(--act-s3);
+    border-top: 1px solid var(--act-line);
+    background: var(--act-surface);
+}
+
+/* Destructive left, constructive right — the gap between them is the point: nobody reaches for
+   delete on the way to Save. */
+.foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--act-s4);
+}
+
+.destructive {
+    display: flex;
+    align-items: center;
+    gap: var(--act-s2);
+    min-width: 0;
+}
+
+::deep .delconfirm {
+    color: var(--act-err);
+}
+
+::deep .hint {
+    color: var(--act-dim);
+}
+
+.dirrow,
+.titlerow {
+    display: flex;
+    align-items: center;
+    gap: var(--act-s2);
+}
+
+.dirrow ::deep .wide,
+.titlerow ::deep .wide {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.dirrow ::deep .rz-button {
+    flex: 0 0 auto;
+}
+
+/* A warning, not an error: the path may simply not have been created yet, and the form still
+   saves. It earns the amber the board uses for "needs you", nothing louder. */
+::deep .dirwarn {
+    color: var(--act-wait);
+    padding: var(--act-s2);
+    border: 1px solid color-mix(in srgb, var(--act-wait) var(--act-tint-edge), transparent);
+    background: color-mix(in srgb, var(--act-wait) var(--act-tint-fill), transparent);
+    border-radius: var(--act-radius);
+}
+
+::deep .wide {
+    width: 100%;
+}
+
+/* The file input is stretched transparently over the whole panel, which is what makes a click
+   anywhere open the picker — a bare `<input type="file">` only reacts on its own button. */
+.dropzone {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--act-s2);
+    padding: var(--act-s4);
+    border: 1px dashed var(--act-line2);
+    border-radius: var(--act-radius);
+    color: var(--act-dim);
+    background: var(--act-surface);
+}
+
+/* Radzen's typography carries a bottom margin, and `align-items: center` centres the *margin box* —
+   so `rz-text-caption`'s 8px lifts the label 4px above the icon it is meant to sit beside. Measured,
+   not eyeballed: the two boxes are only concentric once the margin is gone. */
+.dropzone ::deep .rz-text-caption {
+    margin: 0;
+}
+
+.dropzone ::deep input[type="file"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.dropzone.over {
+    border-style: solid;
+    border-color: var(--act-run);
+    color: var(--act-ink);
+    background: color-mix(in srgb, var(--act-run) var(--act-tint-fill), transparent);
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--act-s2);
+}
+
+.chip {
+    display: flex;
+    align-items: center;
+    gap: var(--act-s2);
+    max-width: 100%;
+    padding: var(--act-s1) var(--act-s2);
+    border: 1px solid var(--act-line);
+    border-radius: var(--act-radius);
+    background: var(--act-surface);
+    font-size: var(--act-t3);
+}
+
+/* A button carrying the row's own layout: everything a `<button>` brings of its own — padding, border,
+   background, its centred font — is stripped so it reads as the text it wraps, and only the pointer and
+   the focus ring say it is actionable. */
+.chip .open {
+    display: flex;
+    align-items: center;
+    gap: var(--act-s2);
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.chip .open:hover .name {
+    color: var(--act-run);
+}
+
+/* A file the card names but the disk no longer holds. Struck through rather than hidden: the card is
+   still carrying it, and that is the fact worth showing — the prompt named this path to the agent. */
+.chip .open.gone .name {
+    text-decoration: line-through;
+    color: var(--act-dim);
+}
+
+.chip .open.gone ::deep .rzi {
+    color: var(--act-wait);
+}
+
+/* `focus-visible`, not `focus`: a mouse click must not leave a ring behind on a row you have moved on
+   from, and a keyboard user must always see where they are. */
+.chip .open:focus-visible {
+    outline: 1px solid var(--act-run);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+.chip .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 18rem;
+    color: var(--act-ink);
+}
+
+.chip .size {
+    font-family: var(--act-mono);
+    color: var(--act-dim);
+}
+
+/* The hover thumbnail's own look lives in `AttachmentPreview.razor.css`, since the terminal rail shows
+   the same box — nothing about it is the chip's business beyond rendering it as a child. */
+
+.row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--act-s4);
+}
+
+::deep .control {
+    width: var(--act-control-w);
+    flex: 0 0 auto;
+}

@@ -1,0 +1,262 @@
+.strip {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--act-radius);
+    cursor: pointer;
+}
+
+.strip:focus-visible {
+    outline: 2px solid var(--act-review);
+    outline-offset: 1px;
+}
+
+/* Every card opens on click, so `pointer` is the resting affordance. Dragging is the
+   secondary gesture: the cursor only turns into a grab once the press begins. */
+.strip.liftable:active {
+    cursor: grabbing;
+}
+
+.strip.lifted {
+    opacity: .45;
+    cursor: grabbing;
+}
+
+/* Where the lifted strip will land, drawn on the edge it goes to: a line under the card you are
+   dragging past, above the one you are dragging up to. It reads as an insertion point rather than a
+   selection, which is the difference between "this slot" and "this card". */
+.strip.drop-before::after,
+.strip.drop-after::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 3px;
+    z-index: 2;
+    background: var(--act-ready);
+}
+
+.strip.drop-before::after { top: 0; }
+
+.strip.drop-after::after { bottom: 0; }
+
+.strip::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    z-index: 1;
+    background: var(--rail, var(--act-faint));
+}
+
+.r-plan { --rail: var(--act-plan); }
+.r-ready { --rail: var(--act-ready); }
+.r-run { --rail: var(--act-run); }
+.r-wait { --rail: var(--act-wait); }
+.r-err { --rail: var(--act-err); }
+.r-review { --rail: var(--act-review); }
+.r-done { --rail: var(--act-done); }
+
+::deep .stripcard {
+    background: var(--act-surface);
+    border-color: var(--act-line);
+    border-radius: var(--act-radius);
+}
+
+::deep .cid,
+::deep .path,
+::deep .metrics,
+::deep .quiet,
+::deep .lin {
+    font-family: var(--act-mono);
+}
+
+/* Stated, not alarmed: the colour says "worth a look", the badge beside it still says `running`. */
+::deep .quiet {
+    font-size: var(--act-t2);
+    color: var(--act-quiet);
+}
+
+::deep .cid,
+::deep .metrics,
+::deep .lin {
+    font-size: var(--act-t2);
+    color: var(--act-faint);
+}
+
+/* A card's title is one size wherever a card is listed — here, in an archive row, in the follow-ups
+   dialog. The strip earns its density from its padding, not from half a pixel off the string you
+   came for. (A *page*'s title is a step up, since it has to out-rank what it heads.) */
+::deep .ttl {
+    font-size: var(--act-t5);
+    color: var(--act-ink);
+    line-height: var(--act-lh-dense);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* A detailed strip is tall enough to say the whole title: it wraps and the card grows, up to three
+   lines, and only then does the ellipsis take over. The compact strip keeps its single line, which
+   is the density it exists for. */
+::deep .ttl3 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+/* The spinner joins the title without ever being what the ellipsis squeezes: the title gives up
+   width, the ring keeps its box, on both densities. `line-height: 0` stops the inline-flex span
+   from adding a text baseline taller than the ring itself. */
+::deep .ttlrow {
+    min-width: 0;
+}
+
+::deep .ttlrow .ttl {
+    min-width: 0;
+}
+
+::deep .ttlspin {
+    flex: 0 0 auto;
+    display: inline-flex;
+    line-height: 0;
+}
+
+::deep .path {
+    font-size: var(--act-t2);
+    color: var(--act-dim);
+    opacity: .7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* `.rz-badge` for the same reason as the board's `.colcount`: Radzen's outlined-base badge rule is
+   one class heavier, so this colour was never reaching the screen. */
+::deep .rz-badge.schip {
+    font-family: var(--act-mono);
+    font-size: var(--act-t1);
+    color: var(--act-faint);
+    border-style: dashed;
+    border-color: var(--act-line2);
+    white-space: nowrap;
+}
+
+::deep .badge {
+    font-family: var(--act-mono);
+    font-size: var(--act-t1);
+    font-weight: var(--act-w-em);
+    letter-spacing: var(--act-track-caps);
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--tint, var(--act-faint));
+    background: color-mix(in srgb, var(--tint, var(--act-faint)) var(--act-tint-fill), transparent);
+    border: 1px solid color-mix(in srgb, var(--tint, var(--act-faint)) var(--act-tint-edge), transparent);
+}
+
+/* The hold chip borrows the badge box and the quiet chip's colour: it sits where the eye already
+   looks for a state, without claiming to be one. */
+::deep .b-hold { --tint: var(--act-quiet); }
+
+::deep .b-run { --tint: var(--act-run); }
+::deep .b-wait { --tint: var(--act-wait); }
+::deep .b-err { --tint: var(--act-err); }
+::deep .b-review { --tint: var(--act-review); }
+::deep .b-done { --tint: var(--act-done); }
+
+/* A compact strip's second line is the path plus one button: the path takes whatever is left and
+   ellipsizes, which is why it needs `min-width: 0` — a flex item's default `auto` floor is the
+   string's own width, and a long folder would push the button off the card instead of truncating. */
+::deep .cpath {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* The lineage marker joins that line and must never be what gets squeezed: it is four characters,
+   the path beside it is already the thing giving up width, and a `↳ #1039` broken across a wrap
+   would be unreadable. `flex: 0 0 auto` keeps it whole and leaves the ellipsis where it belongs. */
+::deep .clin {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+/* Radzen gives it a 16px glyph beside a 12px label, so the icon was the loudest thing on a strip
+   whose whole job is to be read. */
+::deep .launch .rz-button-icon-left {
+    font-size: var(--act-icon);
+}
+
+/* Icon-only, so the label's padding comes off and the glyph's own reserved box goes with it —
+   otherwise a 14px icon sits centred in Radzen's 20px hole and the button is wider than the path
+   it shares the line with. */
+::deep .launch.mini.rz-button.rz-variant-outlined.rz-base {
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 0 0.3rem;
+}
+
+::deep .launch.mini .rz-button-icon-left {
+    width: auto;
+    margin: 0;
+}
+
+::deep .ctxbar {
+    height: 3px;
+    background: var(--act-track);
+}
+
+::deep .ctxbar .rz-progressbar-value {
+    background: var(--rail, var(--act-run));
+}
+
+/* One pulse, three colours: the glow is driven by `--attn`, so an error card blinks in its own red
+   and a reviewable one in the calm review blue, rather than either being the attention state that
+   sits still. The resting box-shadow is the animation's low point, which is what a reduced-motion
+   user is left with. */
+.strip.attn {
+    --attn: var(--act-wait);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--attn) 14%, transparent),
+                0 0 18px -4px color-mix(in srgb, var(--attn) 35%, transparent);
+    animation: act-attn 2s infinite;
+}
+
+.strip.attn ::deep .stripcard {
+    border-color: color-mix(in srgb, var(--attn) 45%, transparent);
+}
+
+.strip.attn.err {
+    --attn: var(--act-err);
+}
+
+.strip.attn.err ::deep .stripcard {
+    border-color: color-mix(in srgb, var(--attn) 55%, transparent);
+}
+
+.strip.attn.rev {
+    --attn: var(--act-review);
+}
+
+@keyframes act-attn {
+    0%, 100% {
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--attn) 14%, transparent),
+                    0 0 18px -4px color-mix(in srgb, var(--attn) 35%, transparent);
+    }
+
+    50% {
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--attn) 30%, transparent),
+                    0 0 22px -2px color-mix(in srgb, var(--attn) 58%, transparent);
+    }
+}
+
+/* The setting turns the pulse off, not the state off: the colour, the glow and the border stay, so
+   a Your turn card still reads as one — it just holds still, exactly as it does under reduced
+   motion. */
+.strip.attn.still { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .strip.attn { animation: none; }
+}

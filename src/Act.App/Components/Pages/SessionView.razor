@@ -1,0 +1,243 @@
+@page "/card/{CardId:guid}/terminal"
+@using Act.Core.Model
+@using Act.Core.Rules
+
+<PageTitle>@(card is null ? "ACT" : $"#{card.Number} — {CardTitle.Of(card)}")</PageTitle>
+
+@* Not while the terminal has the focus: Escape typed at an agent is meant for the agent. *@
+<EscapeKey OnEscape="Back" Ignore=".xterm" />
+
+@if (card is null)
+{
+    <div class="session missing">
+        <RadzenText TextStyle="TextStyle.Body1" Text="@Strings.Card_NotFound" />
+        <RadzenButton Text="@Strings.Nav_BackToBoard" Icon="arrow_back" Size="ButtonSize.Small"
+                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" Click="Back" />
+    </div>
+}
+else
+{
+    <div class="session">
+        <header class="bar">
+            <RadzenButton Icon="arrow_back" Text="@CardExit.Label(card)" Size="ButtonSize.Small"
+                          ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="Back" />
+            <span class="id">#@card.Number</span>
+            <span class="title">@CardTitle.Of(card)</span>
+            @if (card.Badge is { } badge)
+            {
+                <span class="badge @CardVisuals.BadgeClass(badge)">@CardVisuals.BadgeText(badge)</span>
+            }
+        </header>
+
+        <CardTabs CardId="card.Id" />
+
+        <div class="body">
+            @* No xterm at all on an archived card, rather than an empty one: a black pane that
+               never paints reads as a terminal that failed to start, which is the one thing this
+               page must not say about work that is simply over. *@
+            @if (Archived)
+            {
+                <div class="terminal closed">
+                    <RadzenIcon Icon="inventory_2" />
+                    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Session_Archived" />
+                </div>
+            }
+            else
+            {
+                @* A drop lands anywhere over the terminal, and all it does is type the file's path
+                   where the cursor already is — never a submit key. See `IAgentTerminal`. *@
+                <div class="terminal @(dragging ? "over" : null)" id="@dropRootId">
+                    <div class="screen" id="@terminalId"></div>
+                    <InputFile id="@dropInputId" multiple OnChange="OnAttachmentsDroppedAsync" class="hiddenpick" />
+                    @if (dragging)
+                    {
+                        <div class="dropnote">
+                            <RadzenIcon Icon="attach_file" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Session_AttachDrop" />
+                        </div>
+                    }
+                </div>
+            }
+
+            <aside class="rail">
+                @* A status, not an action — so it sits with the facts, and the button it used to
+                   carry moved down to join the other three. One place to act, one place to read.
+                   Silent on an archived card: the pane beside it already says why there is none. *@
+                @if (!live && !Archived)
+                {
+                    <div class="idle">
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Session_NoLiveSession" />
+                        @if (!CanLaunch)
+                        {
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Session_NotLaunchable"
+                                        class="hint" />
+                        }
+                    </div>
+                }
+
+                <dl class="facts">
+                    <dt>@Strings.Session_Agent</dt>
+                    <dd>@card.AgentType.ToString().ToLowerInvariant()</dd>
+
+                    @if (card.LaunchConfig.Model is { } model)
+                    {
+                        <dt>@Strings.NewTask_Model</dt>
+                        <dd>@model @card.LaunchConfig.Effort</dd>
+                    }
+
+                    <dt>@Strings.Session_Directory</dt>
+                    <dd class="path">@card.WorkingDir</dd>
+
+                    <dt>@Strings.Session_SessionId</dt>
+                    <dd class="path">@(card.SessionId ?? Strings.Session_SessionPending)</dd>
+
+                    @* Lineage reads both directions, which is the whole reason it is stored on both
+                       sides — a follow-up says where it came from, and the task that produced one says
+                       what it left behind. Each is a link, because the next question is always "what
+                       was that one?". *@
+                    @if (Parent is { } parent)
+                    {
+                        <dt>@Strings.Session_SpawnedBy</dt>
+                        <dd><RadzenLink Path="@Route(parent)" Text="@($"#{parent.Number} — {CardTitle.Of(parent)}")" /></dd>
+                    }
+
+                    @if (Children is { Count: > 0 } children)
+                    {
+                        <dt>@Strings.Session_FollowUps</dt>
+                        <dd>
+                            @foreach (var child in children)
+                            {
+                                <div><RadzenLink Path="@Route(child)" Text="@($"#{child.Number} — {CardTitle.Of(child)}")" /></div>
+                            }
+                        </dd>
+                    }
+
+                    @* What the launch handed over, so this face answers "what did it get?" without a
+                       trip back to the task tab — the paths are in the prompt, but the prompt is
+                       scrolled off the top by the time anyone asks.
+
+                       The **card's** list, not the folder's contents: a file dropped into the terminal
+                       mid-session belongs to the conversation rather than to the task record, and it is
+                       already on screen a few lines up. Hidden entirely when there are none, like the
+                       metrics below — an empty row is a fact nobody needs. *@
+                    @if (card.Attachments.Count > 0)
+                    {
+                        <dt>@Strings.NewTask_Attachments</dt>
+                        <dd>
+                            <ul class="files">
+                                @foreach (var attachment in card.Attachments)
+                                {
+                                    @* Same hover thumbnail the task form's chips show, and this is the
+                                       face that wants it most: reading a screenshot while watching the
+                                       terminal beats navigating away to look at it. *@
+                                    <li @onmouseenter="() => previewing = attachment"
+                                        @onmouseleave="() => previewing = null">
+                                        @* Clicking opens the file in whatever the OS associates with it,
+                                           which is the only way to read the ones with no thumbnail — a
+                                           log, a PDF. A real button so it answers the keyboard too. *@
+                                        @{ var gone = Missing(attachment); }
+                                        <button type="button" class="open @(gone ? "gone" : null)"
+                                                @onclick="() => OpenAttachmentAsync(attachment)"
+                                                title="@AttachmentRows.Label(attachment, gone)"
+                                                aria-label="@AttachmentRows.Label(attachment, gone)">
+                                            <RadzenIcon Icon="@AttachmentRows.Icon(attachment, gone)" />
+                                            <span class="name">@attachment.FileName</span>
+                                            <span class="size">@TaskLabels.FileSize(attachment.Length)</span>
+                                        </button>
+                                        @if (Previews(attachment))
+                                        {
+                                            <AttachmentPreview Id="@previewId" Url="@PreviewUrl(attachment)"
+                                                               Alt="@attachment.FileName" />
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        </dd>
+                    }
+
+                    @* The rail used to know less about a session than the board strip did, which is
+                       backwards: this is the surface you sit on while the work runs. *@
+                    @if (card.Metrics is { } metrics)
+                    {
+                        @if (metrics.ContextLimit > 0)
+                        {
+                            <dt>@Strings.Session_Context</dt>
+                            <dd>
+                                @(metrics.ContextUsed / 1000)k / @(metrics.ContextLimit / 1000)k
+                                @* Null for a model whose window ACT does not know — no percentage
+                                   rather than a wrong one. *@
+                                @if (metrics.ContextPercent is { } percent)
+                                {
+                                    <span class="pct">@percent%</span>
+                                    <RadzenProgressBar Value="percent" Mode="ProgressBarMode.Determinate"
+                                                       ShowValue="false" class="ctxbar" />
+                                }
+                            </dd>
+                        }
+
+                        <dt>@Strings.Session_Turns</dt>
+                        <dd>@metrics.TurnCount</dd>
+
+                        @if (metrics.TokensTotal > 0)
+                        {
+                            <dt>@Strings.Session_Tokens</dt>
+                            <dd>@Text.Thousands(metrics.TokensTotal)</dd>
+                        }
+
+                        @* Only when it has happened: a zero here would be noise on every card, and
+                           a non-zero one is a thrash signal worth seeing while you watch. *@
+                        @if (metrics.Compactions > 0)
+                        {
+                            <dt>@Strings.Session_Compactions</dt>
+                            <dd>@metrics.Compactions</dd>
+                        }
+                    }
+                </dl>
+
+                @* Every action here is refused by its own rule on an archived card, so the block
+                   empties out on its own — what is left is the facts, which is the whole reason to
+                   open one. *@
+                <div class="actions">
+                    @* First, and the only one that is Primary when it shows: with no live session
+                       there is nothing else worth doing here. *@
+                    @if (!live && CanLaunch)
+                    {
+                        <RadzenButton Text="@Strings.Session_Launch" Icon="play_arrow" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat"
+                                      Disabled="launching" Click="LaunchAsync" />
+                    }
+                    @if (CanComplete)
+                    {
+                        <RadzenButton Text="@Strings.Session_Complete" Icon="check" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat"
+                                      Disabled="completing" Click="CompleteAsync" />
+                    }
+                    @* The sign-off taken back, offered only where it applies — a Completed card. *@
+                    @if (CanReopen)
+                    {
+                        <RadzenButton Text="@Strings.Session_Reopen" Icon="undo" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
+                                      Disabled="completing" Click="ReopenAsync" />
+                    }
+                    @* Not on an archived card: handing the session to the agent's desktop app is
+                       still resuming it, in a window ACT does not own. *@
+                    @if (!Archived && HandoffUrl is { } url)
+                    {
+                        <RadzenButton Text="@Strings.Session_OpenInDesktop" Icon="open_in_new" Size="ButtonSize.Small"
+                                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined"
+                                      Click="@(() => OpenDesktopAsync(url))" />
+                    }
+                    @* Recovery, not destruction — so it is a plain action, not a danger one. The
+                       session is resumed, never ended: only the terminal in front of it is new. *@
+                    @if (CanRestart)
+                    {
+                        <RadzenButton Text="@Strings.Session_RestartTerminal" Icon="restart_alt"
+                                      Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                      Variant="Variant.Outlined" Disabled="restarting"
+                                      Click="RestartTerminalAsync" />
+                    }
+                </div>
+            </aside>
+        </div>
+    </div>
+}

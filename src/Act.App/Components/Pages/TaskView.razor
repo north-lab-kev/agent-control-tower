@@ -1,0 +1,392 @@
+@page "/card/new"
+@page "/card/{CardId:guid}/edit"
+@using Act.App.Cards
+@using Act.Core.Agents
+@using Act.Core.Model
+
+<PageTitle>@PageHeading</PageTitle>
+
+<EscapeKey OnEscape="OnEscape" />
+
+@if (missing)
+{
+    <div class="taskview empty">
+        <RadzenText TextStyle="TextStyle.Body1" Text="@Strings.Card_NotFound" />
+        <RadzenButton Text="@Strings.Nav_BackToBoard" Icon="arrow_back" Size="ButtonSize.Small"
+                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Outlined" Click="Back" />
+    </div>
+}
+else
+{
+    <div class="taskview" id="@dropRootId">
+        <header class="bar">
+            @* Named for where it lands, which for an archived card is the archive it was opened
+               from — see `CardExit`. *@
+            <RadzenButton Icon="arrow_back" Text="@CardExit.Label(card)" Size="ButtonSize.Small"
+                          ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="Back" />
+            @if (card is { } existing)
+            {
+                <span class="id">#@existing.Number</span>
+            }
+            <span class="title">@PageHeading</span>
+        </header>
+
+        @* A card that does not exist yet has no other face to switch to. *@
+        @if (card is { } saved)
+        {
+            <CardTabs CardId="saved.Id" />
+        }
+
+        <RadzenTemplateForm @ref="sheet" TItem="NewTaskForm" Data="form" Submit="OnSubmitAsync" class="newtask">
+            <div class="body">
+            <RadzenStack Gap="1.5rem" class="sheet">
+
+                @* Said once, at the top, rather than repeated beside every frozen control: the
+                   reason is one fact about the card, not a property of each field. Archived wins
+                   over launched — it freezes strictly more, and both sentences would be one too
+                   many for a page nothing on which can be changed. *@
+                @if (ReadOnly)
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter"
+                                 AllowClose="false" Icon="inventory_2" Text="@Strings.NewTask_Archived" />
+                }
+                else if (Locked)
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter"
+                                 AllowClose="false" Icon="lock" Text="@Strings.NewTask_Locked" />
+                }
+
+                <RadzenFieldset Text="@Strings.NewTask_Group_Task">
+                    <RadzenStack Gap="1rem">
+                        <RadzenStack Gap="0.3rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Title" />
+
+                            @* Required, but the prompt is allowed to answer for it: a plain
+                               `RadzenRequiredValidator` would refuse the save before `OnSubmitAsync`
+                               ever ran, which is where the title gets written. So the rule is stated
+                               as what it actually is — a title must exist by the time the card is
+                               saved, and blank is only acceptable while there is a prompt to derive
+                               one from. *@
+                            <div class="titlerow">
+                                <RadzenTextBox Name="Title" @bind-Value="form.Title"
+                                               MaxLength="@TaskTitleQuery.MaxLength"
+                                               Placeholder="@TitlePlaceholder"
+                                               ReadOnly="ReadOnly" class="wide" />
+                                @* Offered whether or not titles are generated automatically: the
+                                   switch governs what ACT does *for* the user, and a click here is
+                                   the user asking. *@
+                                @if (!ReadOnly)
+                                {
+                                    <RadzenButton Icon="auto_awesome" ButtonStyle="ButtonStyle.Base"
+                                                  Variant="Variant.Outlined" Size="ButtonSize.Small"
+                                                  ButtonType="ButtonType.Button" Click="GenerateTitleAsync"
+                                                  Disabled="@(!CanGenerateTitle)" IsBusy="titling"
+                                                  title="@Strings.NewTask_GenerateTitle"
+                                                  aria-label="@Strings.NewTask_GenerateTitle" />
+                                }
+                            </div>
+                            <RadzenCustomValidator Component="Title" Validator="@(() => TitleSatisfied)"
+                                                   Text="@Strings.NewTask_Title_Required" />
+                        </RadzenStack>
+
+                        <RadzenStack Gap="0.3rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Prompt" />
+                            @* Read-only rather than disabled: a launched card's prompt is the thing
+                               you most often come back to read, and a disabled textarea is neither
+                               selectable nor legible. *@
+                            <RadzenTextArea Name="Prompt" @ref="promptBox" @bind-Value="form.Prompt"
+                                            Rows="14" class="wide" ReadOnly="Locked" />
+                            <RadzenRequiredValidator Component="Prompt" Text="@Strings.NewTask_Required" />
+                        </RadzenStack>
+
+                        <RadzenStack Gap="0.3rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Attachments" />
+
+                            @* One input, three routes. The file input is stretched transparently over
+                               the whole panel so a click anywhere opens the picker, and `act-attach`
+                               feeds the same element for a drop and a paste — so all three arrive
+                               through Blazor's own chunked upload rather than a second transport. *@
+                            @if (!Locked)
+                            {
+                                <div class="dropzone @(dragging ? "over" : null)">
+                                    <InputFile id="@dropInputId" multiple OnChange="OnAttachmentsPickedAsync"
+                                               aria-label="@Strings.NewTask_Attachments_Browse" />
+                                    <RadzenIcon Icon="attach_file" />
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="@DropZoneText" />
+                                </div>
+                            }
+
+                            @if (form.Attachments.Count == 0)
+                            {
+                                @if (Locked)
+                                {
+                                    <RadzenText TextStyle="TextStyle.Caption"
+                                                Text="@Strings.NewTask_Attachments_None" class="hint" />
+                                }
+                            }
+                            else
+                            {
+                                <div class="chips">
+                                    @foreach (var attachment in form.Attachments)
+                                    {
+                                        @* Rendered only for the chip under the cursor, rather than
+                                           hidden behind CSS on all of them: ten attachments would
+                                           otherwise be ten image fetches on first paint, and one of
+                                           them may be 25 MB. *@
+                                        <div class="chip" @onmouseenter="() => previewing = attachment"
+                                             @onmouseleave="() => previewing = null">
+                                            @* A real button, not a clickable div: opening the file is the
+                                               row's primary action, so it has to be reachable by
+                                               keyboard. The remove button stays a sibling — nesting one
+                                               button inside another is invalid, and a click on the X
+                                               must not also open the file. *@
+                                            @{ var gone = Missing(attachment); }
+                                            <button type="button" class="open @(gone ? "gone" : null)"
+                                                    @onclick="() => OpenAttachmentAsync(attachment)"
+                                                    title="@AttachmentRows.Label(attachment, gone)"
+                                                    aria-label="@AttachmentRows.Label(attachment, gone)">
+                                                <RadzenIcon Icon="@AttachmentRows.Icon(attachment, gone)" />
+                                                <span class="name">@attachment.FileName</span>
+                                                <span class="size">@TaskLabels.FileSize(attachment.Length)</span>
+                                            </button>
+
+                                            @* A sibling of the button, so the box is measured against
+                                               the whole row — see `AttachmentPreview`. *@
+                                            @if (Previews(attachment))
+                                            {
+                                                <AttachmentPreview Id="@previewId" Url="@PreviewUrl(attachment)"
+                                                                   Alt="@attachment.FileName" />
+                                            }
+                                            @if (!Locked)
+                                            {
+                                                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Base"
+                                                              Variant="Variant.Text" Size="ButtonSize.ExtraSmall"
+                                                              ButtonType="ButtonType.Button"
+                                                              Click="@(() => RemoveAttachment(attachment))"
+                                                              title="@Strings.NewTask_Attachments_Remove"
+                                                              aria-label="@Strings.NewTask_Attachments_Remove" />
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </RadzenStack>
+
+                        <RadzenStack Gap="0.3rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_WorkingDir" />
+
+                            @* Type or pick — neither alone is enough: pasting a known path is
+                               faster than browsing to it, and browsing is the only way to be sure
+                               of one you half-remember. *@
+                            <div class="dirrow">
+                                <RadzenTextBox Name="WorkingDir" @bind-Value="form.WorkingDir"
+                                               Placeholder="@Strings.NewTask_WorkingDir_Placeholder"
+                                               ReadOnly="Locked" class="wide" />
+                                @if (!Locked)
+                                {
+                                    <RadzenButton Icon="folder_open" Text="@Strings.Picker_Browse"
+                                                  Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                                  Variant="Variant.Outlined" ButtonType="ButtonType.Button"
+                                                  Click="@(() => picking = !picking)" />
+                                }
+                            </div>
+                            @* One disk check per render for the three reads below; the validator
+                               keeps its own, because it runs at validation time, not render time. *@
+                            @{
+                                var dir = Dir;
+                            }
+
+                            <RadzenRequiredValidator Component="WorkingDir" Text="@Strings.NewTask_Required" />
+                            <RadzenCustomValidator Component="WorkingDir" Validator="@(() => WorkingDirValid)"
+                                                   Text="@WorkingDirError(dir)" />
+
+                            @if (picking)
+                            {
+                                <PathPicker StartAt="@form.WorkingDir" OnPick="OnFolderPicked"
+                                            OnCancel="@(() => picking = false)" />
+                            }
+
+                            @* Found here rather than at launch: a directory that does not exist is
+                               the single most common reason a launch fails, and the form is where
+                               the user can still do something about it. *@
+                            @if (WorkingDirMissing(dir))
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                             Gap="0.5rem" class="dirwarn">
+                                    <RadzenIcon Icon="folder_off" />
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="@WorkingDirMissingText(dir)" />
+                                    <RadzenButton Text="@Strings.NewTask_CreateDir" Icon="create_new_folder"
+                                                  Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
+                                                  Variant="Variant.Outlined" ButtonType="ButtonType.Button"
+                                                  Click="CreateWorkingDir" />
+                                </RadzenStack>
+                            }
+                        </RadzenStack>
+                    </RadzenStack>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="@Strings.NewTask_Group_Agent">
+                    <RadzenStack Gap="1rem">
+                        <div class="row">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Agent" />
+                            <RadzenDropDown TValue="AgentType" Value="form.Agent" ValueChanged="OnAgentChanged"
+                                            Data="AgentChoices" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="false" Disabled="Locked" class="control" />
+                        </div>
+
+                        <div class="row">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Model" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Model_Hint" class="hint" />
+                            </RadzenStack>
+                            <RadzenDropDown TValue="string" Value="form.Model" ValueChanged="OnModelChanged"
+                                            Data="Models" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="true" Disabled="ReadOnly"
+                                            Placeholder="@Strings.NewTask_AgentDefault" class="control" />
+                        </div>
+
+                        <div class="row">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Effort" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Effort_Hint" class="hint" />
+                            </RadzenStack>
+                            <RadzenDropDown TValue="string" @bind-Value="form.Effort" Data="Efforts"
+                                            AllowClear="true" Disabled="ReadOnly"
+                                            Placeholder="@Strings.NewTask_AgentDefault"
+                                            class="control" />
+                        </div>
+
+                        <div class="row">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Permission" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@PermissionHint" class="hint" />
+                            </RadzenStack>
+                            <RadzenDropDown TValue="PermissionMode" @bind-Value="form.Permission"
+                                            Data="PermissionChoices" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="false" Disabled="ReadOnly" class="control" />
+                        </div>
+                    </RadzenStack>
+                </RadzenFieldset>
+
+                <RadzenFieldset Text="@Strings.NewTask_Group_Automation">
+                    <RadzenStack Gap="1rem">
+                        <div class="row">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Schedule" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Schedule_Hint" class="hint" />
+                            </RadzenStack>
+                            <RadzenDropDown TValue="TaskSchedule" Value="form.Schedule" ValueChanged="OnScheduleChanged"
+                                            Data="ScheduleChoices" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="false" Disabled="Locked" class="control" />
+                        </div>
+
+                        @if (form.WantsDateTime)
+                        {
+                            <div class="row">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_ScheduledFor" />
+                                <RadzenDatePicker Name="ScheduledFor" @bind-Value="form.ScheduledFor"
+                                                  ShowTime="true" DateFormat="@Strings.NewTask_DateFormat"
+                                                  Disabled="Locked" class="control" />
+                            </div>
+                            <RadzenRequiredValidator Component="ScheduledFor" Text="@Strings.NewTask_Required" />
+                        }
+
+                        @* A warning, never a block: the combination is legal and the user may have a
+                           reason. What it must not be is a surprise at 3am. *@
+                        @if (WarnsUnattended)
+                        {
+                            <RadzenAlert AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Shade="Shade.Lighter"
+                                         AllowClose="false" Text="@Strings.NewTask_UnattendedPrompting" class="warn" />
+                        }
+
+                        @* Only while the guard is on: an exemption from a rule nobody is enforcing
+                           is a switch that reads as if it did something. *@
+                        @if (FolderGuardOn)
+                        {
+                            <div class="row">
+                                <RadzenStack Gap="0.1rem">
+                                    <RadzenText TextStyle="TextStyle.Body2"
+                                                Text="@Strings.NewTask_AllowConcurrentWorkingDir" />
+                                    <RadzenText TextStyle="TextStyle.Caption"
+                                                Text="@Strings.NewTask_AllowConcurrentWorkingDir_Hint" class="hint" />
+                                </RadzenStack>
+                                <RadzenSwitch @bind-Value="form.AllowConcurrentWorkingDir" Disabled="Locked" />
+                            </div>
+                        }
+                    </RadzenStack>
+                </RadzenFieldset>
+
+            </RadzenStack>
+            </div>
+
+            <div class="footer">
+                <div class="sheet foot">
+                    <div class="destructive">
+                        @* Archiving is reversible, so a childless card needs no confirmation — the
+                           archive page is the undo. A card with follow-ups opens a dialog, because
+                           their fate is a real choice about tasks other than this one. Gone on a
+                           card that is already archived: there is nothing left to archive it into. *@
+                        @if (card is not null && !ReadOnly)
+                        {
+                            <RadzenButton Icon="delete_outline" ButtonStyle="ButtonStyle.Danger"
+                                          Variant="Variant.Text" Size="ButtonSize.Small"
+                                          ButtonType="ButtonType.Button" Disabled="deleting"
+                                          Click="StartDeleteAsync"
+                                          title="@Strings.Task_Delete" aria-label="@Strings.Task_Delete" />
+                        }
+
+                        @* Both survive the archive, because neither touches this card: a duplicate
+                           is a new task, and a template is made of what is on the form. They are
+                           also the two reasons to open an archived card at all. *@
+                        @if (card is not null)
+                        {
+                            <RadzenButton Icon="content_copy" ButtonStyle="ButtonStyle.Base"
+                                          Variant="Variant.Text" Size="ButtonSize.Small"
+                                          ButtonType="ButtonType.Button" Disabled="duplicating"
+                                          Click="DuplicateAsync"
+                                          title="@Strings.Task_Duplicate" aria-label="@Strings.Task_Duplicate" />
+                        }
+
+                        @* Offered on an unsaved task too: a template is made of the fields on the
+                           form rather than of a card, so there is nothing to save first. *@
+                        <RadzenButton Icon="bookmark_add" ButtonStyle="ButtonStyle.Base"
+                                      Variant="Variant.Text" Size="ButtonSize.Small"
+                                      ButtonType="ButtonType.Button" Disabled="templating"
+                                      Click="SaveAsTemplateAsync"
+                                      title="@Strings.Task_SaveAsTemplate"
+                                      aria-label="@Strings.Task_SaveAsTemplate" />
+                    </div>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End"
+                                 Gap="0.5rem">
+                        @* Icon-only, like delete — and it keeps a title and an aria-label, because an
+                           unlabelled button is only unambiguous to the person who wrote it. *@
+                        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                                      Size="ButtonSize.Small" ButtonType="ButtonType.Button" Click="Back"
+                                      title="@Strings.NewTask_Cancel" aria-label="@Strings.NewTask_Cancel" />
+                        @* Absent rather than disabled on an archived card — a greyed Save invites
+                           the user to look for what would re-enable it, and nothing would. The save
+                           itself is quick: a missing title is written from the prompt and the
+                           agent's better one is backfilled on the board, so nothing here waits on
+                           a CLI. *@
+                        @if (!ReadOnly)
+                        {
+                            <RadzenButton Text="@SaveText" Icon="save" ButtonStyle="ButtonStyle.Primary"
+                                          Variant="Variant.Outlined" Size="ButtonSize.Small"
+                                          ButtonType="ButtonType.Submit" Disabled="saving" IsBusy="SaveBusy"
+                                          class="save" />
+                        }
+                        @if (CanReady)
+                        {
+                            <RadzenButton Text="@ReadyText" Icon="play_arrow" ButtonStyle="ButtonStyle.Primary"
+                                          Variant="Variant.Flat" Size="ButtonSize.Small"
+                                          ButtonType="ButtonType.Button" Disabled="saving" IsBusy="readying"
+                                          Click="SaveReadyAsync" title="@Strings.NewTask_SaveReady_Hint"
+                                          aria-label="@ReadyText" class="ready" />
+                        }
+                    </RadzenStack>
+                </div>
+            </div>
+        </RadzenTemplateForm>
+    </div>
+}

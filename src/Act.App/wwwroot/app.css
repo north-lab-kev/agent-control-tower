@@ -1,0 +1,423 @@
+/* On the document element rather than the layout root, because Radzen appends its popups to <body>
+   and the `--rz-*` mapping below is written in these tokens. `data-act-theme` is stamped on <html>
+   by App.razor and kept current by `actTheme.apply`. */
+:root {
+    --act-bg: #0d1217;
+    --act-surface: #18222b;
+    --act-surface2: #1e2a34;
+    --act-line: #26333f;
+    --act-line2: #31424f;
+    --act-ink: #dbe4ec;
+    --act-dim: #8091a0;
+    --act-faint: #55636e;
+
+    --act-run: #35c7b4;
+    --act-wait: #f0a93b;
+    --act-err: #e5565b;
+    --act-review: #5aa0e6;
+    --act-done: #5cae86;
+    --act-quiet: #b9a24d;
+    --act-amber: #f2a93b;
+    --act-plan: #4a5966;
+    --act-ready: #7d8a55;
+
+    --act-bar-top: #151e26;
+    --act-bar-bottom: #111922;
+    --act-term-bg: #0b1219;
+    --act-lane: #ffffff05;
+    --act-lane-line: #ffffff0a;
+    --act-track: #ffffff10;
+    --act-attn-fill: #f0a93b;
+    --act-on-attn: #1a130a;
+    /* Text on a filled accent. Dark's accents are *light* — they are built to glow on a near-black
+       board — so white on them reads at 2.0–4.2:1 and fails AA; this is the near-black that clears
+       4.5:1 against all four. Light's accents are dark, and there white is the one that passes. */
+    --act-on-accent: #0a1016;
+    --act-tint-fill: 9%;
+    --act-tint-edge: 20%;
+
+    --act-radius: 7px;
+    --act-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+
+    /* One step scale, so an edge is picked from a set rather than invented per component. It
+       governs box padding and the gaps between components; the sub-pixel-tuned stacking inside a
+       single label group stays where it was tuned. */
+    --act-s1: 0.25rem;
+    --act-s2: 0.5rem;
+    --act-s3: 0.75rem;
+    --act-s4: 1rem;
+    --act-s5: 1.5rem;
+    --act-s6: 2rem;
+
+    /* The four measurements every page repeats. The bar and the body share a horizontal edge, so
+       a page header's first control lines up with the content under it. */
+    --act-bar-pad: var(--act-s2) var(--act-s3);
+    --act-page-pad: var(--act-s4) var(--act-s3);
+    --act-sheet-max: 46rem;
+    --act-control-w: 14rem;
+
+    /* Seven type sizes, one per role, in px rather than the rem the spacing scale uses: this is a
+       fixed-density readout — a 960px floor and a terminal on a character grid — and its sizes were
+       being hand-tuned to the half pixel, which is a pixel grid asking to be named. Two steps are
+       deliberately Radzen's — `t4` is its Caption and `t6` its Body2, controls and buttons — so
+       ACT's own chrome steps down from the widgets instead of landing a pixel off them. */
+    --act-t1: 9px;    /* uppercase token: badge, card tab, schedule chip */
+    --act-t2: 10px;   /* mono metadata: counts, clock, strip readouts, section labels */
+    --act-t3: 11px;   /* mono detail: paths, card numbers, timestamps */
+    --act-t4: 12px;   /* UI text — the default, and Radzen's Caption */
+    --act-t5: 13px;   /* a card's title, wherever the card appears in a list */
+    --act-t6: 14px;   /* Radzen's Body2 and controls; a page's own title, at `--act-w-em` */
+    --act-t7: 20px;   /* the one display size, on the error page */
+
+    /* 600 is the app's only emphasis weight; 700 is the wordmark's alone, as a logotype. */
+    --act-w-em: 600;
+    --act-track-caps: 0.06em;
+    --act-lh-dense: 1.3;
+
+    /* Icon glyphs are sized as icons, not as type. An icon *beside a label* takes this, so it never
+       out-sizes the word next to it; an icon-*only* button keeps Radzen's, which already tracks the
+       button size it was given (20px Small, 16px ExtraSmall) — there the glyph is the whole control.
+       The meter's inline warning glyph stays smaller still: it sits on a line of `--act-t2` mono. */
+    --act-icon: 14px;
+
+    color-scheme: dark;
+}
+
+.act-root {
+    background-color: var(--act-bg);
+    color: var(--act-ink);
+}
+
+:root[data-act-theme="light"] {
+    --act-bg: #e9edf1;
+    --act-surface: #ffffff;
+    --act-surface2: #f4f7fa;
+    --act-line: #ccd6de;
+    --act-line2: #b1bfca;
+    --act-ink: #0f172a;
+    --act-dim: #475569;
+    --act-faint: #64748b;
+
+    --act-run: #0f8b7a;
+    --act-wait: #a26207;
+    --act-err: #c0272e;
+    --act-review: #1e6fbf;
+    --act-done: #2f7d57;
+    --act-quiet: #856d0f;
+    --act-amber: #a26207;
+    --act-plan: #7a8794;
+    --act-ready: #6f7d43;
+
+    --act-bar-top: #ffffff;
+    --act-bar-bottom: #eef2f6;
+    --act-term-bg: #f7fafc;
+    --act-lane: #0f172a06;
+    --act-lane-line: #0f172a12;
+    --act-track: #0f172a14;
+    --act-attn-fill: #f6b93f;
+    --act-on-attn: #2b1d05;
+    --act-on-accent: #ffffff;
+    --act-tint-fill: 12%;
+    --act-tint-edge: 30%;
+
+    color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+    :root[data-act-theme="system"] {
+        --act-bg: #e9edf1;
+        --act-surface: #ffffff;
+        --act-surface2: #f4f7fa;
+        --act-line: #ccd6de;
+        --act-line2: #b1bfca;
+        --act-ink: #0f172a;
+        --act-dim: #475569;
+        --act-faint: #64748b;
+
+        --act-run: #0f8b7a;
+        --act-wait: #a26207;
+        --act-err: #c0272e;
+        --act-review: #1e6fbf;
+        --act-done: #2f7d57;
+        --act-quiet: #856d0f;
+        --act-amber: #a26207;
+        --act-plan: #7a8794;
+        --act-ready: #6f7d43;
+
+        --act-bar-top: #ffffff;
+        --act-bar-bottom: #eef2f6;
+        --act-term-bg: #f7fafc;
+        --act-lane: #0f172a06;
+        --act-lane-line: #0f172a12;
+        --act-track: #0f172a14;
+        --act-attn-fill: #f6b93f;
+        --act-on-attn: #2b1d05;
+        --act-tint-fill: 12%;
+        --act-tint-edge: 30%;
+
+        color-scheme: light;
+    }
+}
+
+/* Radzen's widgets shipped in their own palette — neutral grey cards on ACT's blue-grey control
+   room, 4px corners next to ACT's 7px, and a generic #3871ff primary that appears nowhere else in
+   the app. This is the seam between the two systems.
+
+   It is *one* block for both themes, and that is the whole trick: Radzen's variables are `var()`
+   chains, not baked literals — `--rz-card-background-color` is `var(--rz-base-background-color)`,
+   `--rz-card-border-radius` is `var(--rz-border-radius)` — so re-pointing the semantic layer
+   cascades through every widget, and re-pointing it at `--act-*` tokens means the theme switch is
+   already handled by the tokens themselves. Overriding Radzen's `--rz-base-50…900` ramp instead
+   was the alternative, and it was rejected: the ramp runs lightest-to-darkest in *both* sheets and
+   only the semantic pointers flip, so the same ramp slot means "page background" in one theme and
+   "body text" in the other — three copies to maintain, to say what these fifteen lines say once.
+
+   Loaded after both Radzen sheets (App.razor's link order), so equal `:root` specificity resolves
+   this way. */
+:root {
+    --rz-base-background-color: var(--act-surface);
+    --rz-body-background-color: var(--act-bg);
+
+    --rz-text-title-color: var(--act-ink);
+    --rz-text-color: var(--act-ink);
+    --rz-text-secondary-color: var(--act-dim);
+    --rz-text-tertiary-color: var(--act-faint);
+    --rz-text-disabled-color: var(--act-faint);
+
+    --rz-border-normal: var(--rz-border-width) solid var(--act-line);
+    --rz-border-hover: var(--rz-border-width) solid var(--act-line2);
+    --rz-border-focus: var(--rz-border-width) solid var(--act-line2);
+    --rz-border-disabled: var(--rz-border-width) solid var(--act-line);
+    --rz-border-radius: var(--act-radius);
+
+    /* The status palette is the app's vocabulary, so a Radzen widget must not invent a second one:
+       a Danger button is the red a killed card blinks in, and Primary is the blue of `to review`. */
+    /* `Base` is the style ACT reaches for most — every quiet outlined button and badge — and it is
+       an accent of its own (`--rz-base`), not a step on the ramp. `--act-dim` rather than
+       `--act-faint`: it has to carry button labels, and faint is 2.6:1 on a card. */
+    --rz-base: var(--act-dim);
+    --rz-on-base: var(--act-on-accent);
+
+    --rz-primary: var(--act-review);
+    --rz-info: var(--act-review);
+    --rz-success: var(--act-done);
+    --rz-warning: var(--act-wait);
+    --rz-danger: var(--act-err);
+
+    /* Radzen writes these as a literal `#ffffff`, which is the one assumption in its palette that
+       does not survive the swap: it holds only while every accent is dark. Measured on the Save
+       button — white on ACT's dark-theme review blue is 2.8:1, under AA. */
+    --rz-on-primary: var(--act-on-accent);
+    --rz-on-secondary: var(--act-on-accent);
+    --rz-on-info: var(--act-on-accent);
+    --rz-on-success: var(--act-on-accent);
+    --rz-on-warning: var(--act-on-accent);
+    --rz-on-danger: var(--act-on-accent);
+
+    /* The three that reach past the semantic layer into the raw ramp, so the cascade above cannot
+       catch them. Found by walking the rendered DOM for neutral greys the palette does not contain
+       — the fieldset border is the most visible of them, drawn seven times on the settings page. */
+    --rz-fieldset-border: var(--rz-border-width) solid var(--act-line);
+    --rz-fieldset-toggle-background-color: var(--act-line);
+    --rz-switch-background-color: var(--act-faint);
+}
+
+body {
+    background-image: none;
+}
+
+/* Global rather than scoped, because two pages share this shell — Error and NotFound — and scoped
+   CSS stops at the component that owns it, so the second one was rendering unstyled: a 32px browser
+   default heading and no page padding at all. */
+.errpage {
+    padding: var(--act-s5);
+    max-width: 640px;
+    color: var(--act-ink);
+}
+
+.errpage h1 {
+    font-size: var(--act-t7);
+    font-weight: var(--act-w-em);
+    color: var(--act-err);
+}
+
+.errpage h2 {
+    font-size: var(--act-t6);
+    font-weight: var(--act-w-em);
+    color: var(--act-err);
+    margin-top: var(--act-s1);
+}
+
+/* The one place in the app with real paragraphs, so the only one that reads at prose leading. */
+.errpage p {
+    font-size: var(--act-t4);
+    line-height: 1.6;
+    color: var(--act-dim);
+    margin-top: var(--act-s3);
+}
+
+.errpage code {
+    font-family: var(--act-mono);
+    font-size: var(--act-t3);
+    color: var(--act-ink);
+}
+
+/* Radzen appends its popups — dropdown panels, dialogs, tooltips — to <body>, which is outside
+   `.act-root` and therefore outside every `--act-*` token and the `color` ACT sets there. Those
+   popups inherit from the document instead, and the document was still the browser default: black
+   text, which on a dark dropdown panel is invisible rather than merely dim. Anchoring the document
+   to Radzen's own text token fixes each of them at once and follows the theme automatically,
+   including an explicit light/dark override, because `ThemeMedia` switches which Radzen sheet
+   defines it.
+   The font is here for a related reason and a wider one: Radzen sets its typeface on its own
+   components, never on the document, so anything ACT styles with a plain class of its own inherited
+   the browser default — **Times New Roman** — and had been doing so unnoticed since the shell was
+   built. Every page's title in its top bar, and every title in a row-list (archive, templates), was
+   serif. Radzen's own widgets hid it: the label beside a control is a `RadzenText`, so the two sat
+   side by side in different families and read as a weight difference rather than a bug. */
+html,
+body {
+    color: var(--rz-text-color);
+    font-family: var(--rz-text-font-family);
+}
+
+/* An outlined button's edge is not a border — it is an **inset box-shadow**, and its colour comes
+   straight off Radzen's raw ramp as `--rz-base-300`, `#c9cacd`. So every secondary button in the app
+   was ringed in near-white on a near-black board: the board's chips, Browse, the archive's row
+   actions, the New task button. It hid in plain sight because the buttons' `border-width` is `0`, so
+   a `border-color` in ACT's own CSS looked like it was doing the job and silently did nothing.
+   Fixed here rather than by pointing `--rz-base-300` at a token, because that is a step on the ramp
+   the block above deliberately does not touch — the same slot also draws the gauge scale, the
+   timeline point and the upload widget, none of which want a hairline. Hover brightens to `--act-dim`
+   so the affordance survives, which is what the near-white was overshooting.
+   `.rz-shade-default` is in the selector only to carry weight: the theme's own rule names the shade,
+   so a three-class version of this loses to it and changes nothing. */
+.rz-button.rz-variant-outlined.rz-base.rz-shade-default {
+    box-shadow: inset 0 0 0 1px var(--act-line2);
+}
+
+.rz-button.rz-variant-outlined.rz-base.rz-shade-default:hover {
+    box-shadow: inset 0 0 0 1px var(--act-dim);
+}
+
+/* The New task picker's menu, global for the same reason the rule above is: Radzen mounts a split
+   button's popup at <body>, so the board's scoped CSS cannot reach it and it arrived at the
+   framework's defaults — a flat panel with no elevation, prose-sized rows, and a saturated blue
+   highlight bar that is the one colour on this board reserved for *review*. Anchoring it to the
+   surface tokens makes it read as part of the column header it drops out of. */
+.rz-splitbutton-menu {
+    background: var(--act-surface2);
+    border: 1px solid var(--act-line2);
+    border-radius: var(--act-radius);
+    box-shadow: 0 6px 18px #0006;
+    padding: var(--act-s1) 0;
+    overflow: hidden;
+}
+
+.rz-splitbutton-menu .rz-menuitem-text,
+.rz-splitbutton-menu .rz-menuitem-link {
+    font-size: var(--act-t5);
+    color: var(--act-ink);
+}
+
+.rz-splitbutton-menu .rz-menuitem-link {
+    padding: var(--act-s1) var(--act-s3);
+    line-height: var(--act-lh-dense);
+}
+
+/* Radzen marks the first item `rz-state-highlight` on open, so hover and that state have to agree —
+   otherwise the menu opens with a row already lit and the cursor lighting a second one. A tint of
+   the surface, because a template is not an alert. */
+.rz-splitbutton-menu .rz-menuitem-link:hover,
+.rz-splitbutton-menu .rz-menuitem.rz-state-highlight > .rz-menuitem-link {
+    background: var(--act-line);
+    color: var(--act-ink);
+}
+
+/* Opening the menu focuses the list, and while it holds focus the highlighted `li` is filled with a
+   saturated blue — `rgba(56, 113, 255, 0.2)`, off-palette entirely, on a board where blue means
+   *review* and nothing else. It only appears under genuine keyboard focus, which is why it survived
+   the styling above and shows up in a real browser but not when a script opens the menu. The `li` is
+   the frame around the row rather than the row itself, so it has nothing to say: the fill on the link
+   inside it is already the cursor, and it moves with the keyboard. */
+.rz-splitbutton-menu .rz-menuitem,
+.rz-splitbutton-menu .rz-menu-list:focus .rz-menuitem,
+.rz-splitbutton-menu .rz-menu-list:focus-visible .rz-menuitem {
+    background: transparent;
+    outline: none;
+
+    /* Radzen insets each item by 2px/4px, which leaves the cursor's fill floating inside the panel
+       with a margin on every side rather than reading as the row it marks. The panel's own padding is
+       what holds the list off its rounded corners. */
+    padding: 0;
+}
+
+/* Keep a tall dialog clear of the window edges; Radzen's own max-height is 100%. */
+.rz-dialog.act-dialog {
+    max-height: 90%;
+}
+
+/* The minimize/maximize/close buttons are drawn by the OS *above* all web content, so a mask
+   covering the whole window dims everything except them and leaves them sitting in a bright
+   block against a dimmed bar. Nothing in CSS can dim them, so instead the mask stops below the
+   title strip and the strip stays undimmed as a unit — the seam disappears because there is no
+   longer a boundary running through it. `env()` is 0 outside the Electron shell, where there is
+   no native title bar and the mask should cover everything. */
+.rz-dialog-mask {
+    top: env(titlebar-area-height, 0px);
+
+    /* Radzen sizes the mask `height: 100%`, so moving its top down pushes the same height past
+       the bottom of the window. Pin the bottom instead and let the height follow. */
+    bottom: 0;
+    height: auto;
+}
+
+/* The strip is no longer behind the mask, so it would still take clicks. Navigating away from an
+   open dialog would strand it, so its controls go inert while one is up — the native buttons
+   deliberately do not, since closing the window must always work. */
+body:has(.rz-dialog-wrapper) .bar .rz-button {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+/* Dialogs are rare — pages carry every surface you navigate to — but a fork in an action already
+   under way is not a place you go, so those stay modal. The custom title bar marks
+   the top strip `-webkit-app-region: drag`. Chromium builds drag regions from the union of
+   dragging elements minus no-drag ones, ignoring stacking, so anything overlapping that strip —
+   a dialog titlebar and its close button — would have its clicks swallowed by the OS window
+   drag. Punch the hole for the whole overlay. */
+.rz-dialog-wrapper,
+.rz-dialog-mask {
+    -webkit-app-region: no-drag;
+}
+
+#blazor-error-ui {
+    color-scheme: light only;
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }
+
+.blazor-error-boundary {
+    background: #b32121;
+    padding: 1rem;
+    color: white;
+}
+
+    .blazor-error-boundary::after {
+        content: "An error has occurred."
+    }

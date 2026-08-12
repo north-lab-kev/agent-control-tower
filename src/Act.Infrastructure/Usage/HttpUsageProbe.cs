@@ -1,0 +1,149 @@
+using System.Net;
+using System.Net.Http.Headers;
+using Act.Core.Abstractions;
+using Act.Core.Model;
+using Microsoft.Extensions.Logging;
+
+namespace Act.Infrastructure.Usage;
+
+public sealed class HttpUsageProbe(
+    IUsageDialect dialect,
+    Func<HttpClient> clients,
+    ITextFileReader files,
+    IClock clock,
+    UsageOptions options,
+    ILogger<HttpUsageProbe> log) : IUsageProbe
+{
+    public const string ClientName = "act-usage";
+
+    // Once per probe lifetime: the pump polls every pass, and a config mistake said 3,600 times an
+    // hour would roll the log off its own retention.
+    private bool badEndpointReported;
+
+    public AgentType Agent => dialect.Agent;
+
+    public string CredentialsPath
+        => Fallback(options.For(Agent).CredentialsPath, dialect.DefaultCredentialsPath());
+
+    public async Task<UsageProbeResult> ReadAsync(CancellationToken cancellationToken = default)
+    {
+        if (!options.Enabled)
+            return Unavailable(UsageAvailability.Off);
+
+        var path = CredentialsPath;
+
+        if (files.Read(path) is not { } credentials)
+        {
+            log.LogDebug("No {Agent} credentials at {Path}; usage unavailable.", Agent, path);
+
+            return Unavailable(UsageAvailability.NotSignedIn);
+        }
+
+        var token = dialect.Token(credentials, clock.Now);
+
+        if (token.State is UsageTokenState.Lapsed)
+        {
+            log.LogDebug(
+                "The {Agent} refresh token has lapsed as well; only an interactive sign-in renews it.",
+                Agent);
+
+            return Unavailable(UsageAvailability.SignInRequired);
+        }
+
+        if (token.State is UsageTokenState.Expired)
+        {
+            log.LogDebug("The {Agent} access token has expired; usage unavailable.", Agent);
+
+            return Unavailable(UsageAvailability.Expired);
+        }
+
+        if (token is not { State: UsageTokenState.Present, Value: { Length: > 0 } bearer })
+        {
+            log.LogDebug("No usable {Agent} access token; usage unavailable.", Agent);
+
+            return Unavailable(UsageAvailability.NotSignedIn);
+        }
+
+        return await RequestAsync(
+            Fallback(options.For(Agent).Endpoint, dialect.DefaultEndpoint),
+            bearer,
+            cancellationToken);
+    }
+
+    // The endpoint may be the user's own appsettings override, and it is validated here rather than
+    // trusted: a scheme-less or malformed string throws out of `SendAsync` in types the catches
+    // below do not name, and an exception that escapes this method ends the usage pump's loop for
+    // the life of the process — the exact failure `BackgroundWork`'s notes warn about.
+    private async Task<UsageProbeResult> RequestAsync(
+        string endpoint,
+        string token,
+        CancellationToken cancellationToken)
+    {
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var url)
+            || (url.Scheme != Uri.UriSchemeHttp && url.Scheme != Uri.UriSchemeHttps))
+        {
+            if (!badEndpointReported)
+            {
+                badEndpointReported = true;
+
+                log.LogWarning(
+                    "The configured {Agent} usage endpoint '{Endpoint}' is not an absolute http(s) "
+                        + "url; usage stays unavailable until the override is fixed or removed.",
+                    Agent,
+                    endpoint);
+            }
+
+            return Unavailable(UsageAvailability.Failed);
+        }
+
+        try
+        {
+            using var client = clients();
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+            using var response = await client.SendAsync(request, cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                log.LogDebug("{Agent} usage endpoint answered {Status}.", Agent, (int)response.StatusCode);
+
+                return Unavailable(Refused(response.StatusCode)
+                    ? UsageAvailability.Unauthorized
+                    : UsageAvailability.Failed);
+            }
+
+            if (dialect.Parse(await response.Content.ReadAsStringAsync(cancellationToken), clock.Now) is not { } usage)
+            {
+                log.LogDebug("The {Agent} usage response carried no window ACT could read.", Agent);
+
+                return Unavailable(UsageAvailability.Failed);
+            }
+
+            return UsageProbeResult.Of(usage);
+        }
+        catch (HttpRequestException error)
+        {
+            log.LogDebug(error, "{Agent} usage request failed.", Agent);
+
+            return Unavailable(UsageAvailability.Unreachable);
+        }
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            log.LogDebug("{Agent} usage request timed out.", Agent);
+
+            return Unavailable(UsageAvailability.Unreachable);
+        }
+    }
+
+    private static bool Refused(HttpStatusCode status)
+        => status is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
+
+    private UsageProbeResult Unavailable(UsageAvailability availability)
+        => UsageProbeResult.Unavailable(Agent, availability, clock.Now);
+
+    private static string Fallback(string? configured, string standard)
+        => string.IsNullOrWhiteSpace(configured) ? standard : configured;
+}

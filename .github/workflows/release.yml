@@ -1,0 +1,355 @@
+name: release
+
+# Manual only: a release is a deliberate act, and the version is the operator's
+# call — nothing here reacts to a push or a tag.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release Version (ex: 1.2.3)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # Validation only, and first: a bad version, an existing tag or a missing secret
+  # should fail in seconds, before anything is built or tested.
+  gate:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      TAG: v${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Tags, so an already-released version fails before anything is built.
+          fetch-depth: 0
+
+      - name: Validate version and tag
+        shell: pwsh
+        run: |
+          if ($env:VERSION -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+              throw "Release Version '$env:VERSION' is not <major>.<minor>.<patch>[-prerelease] (ex: 1.2.3)."
+          }
+
+          if (git tag --list $env:TAG) {
+              throw "Tag $env:TAG already exists; releases are never re-cut under the same version."
+          }
+
+      # Checked here rather than only where it is used: the stamp happens in the
+      # packaging jobs, and a release that ran the whole suite on two platforms
+      # only to fail on a missing secret wasted all of it. Failing rather than
+      # shipping without it is deliberate — an installer with no token sends
+      # nothing, and a silent skip is how you find that out a month later.
+      - name: Validate release secrets
+        shell: pwsh
+        env:
+          POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:POSTHOG_PROJECT_TOKEN)) {
+              throw "The POSTHOG_PROJECT_TOKEN secret is empty or not set. Add the project API key (phc_...) under Settings -> Secrets and variables -> Actions."
+          }
+
+          # The project API key is POST-only and safe to ship. A personal API key
+          # (phx_) is not: it can read and delete, and it must never reach a client.
+          if ($env:POSTHOG_PROJECT_TOKEN -notlike 'phc_*') {
+              throw "POSTHOG_PROJECT_TOKEN does not look like a project API key (expected phc_...). A personal API key must never be shipped in the app."
+          }
+
+  # The same two legs `ci` runs, for the same reason: the Windows-only tests are the spawn layer of
+  # the platform the installer targets, and a release gated on Linux alone would ship it unverified.
+  # Re-run here rather than trusted from `ci`, because a release is dispatched against whatever ref
+  # the operator chose.
+  test:
+    needs: gate
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Build and test
+        shell: pwsh
+        run: ./scripts/build.ps1
+
+  package-windows:
+    # Windows targets must be built on Windows (electron-builder cross-platform rule).
+    runs-on: windows-latest
+    needs: test
+    env:
+      VERSION: ${{ inputs.version }}
+    outputs:
+      installer: ${{ steps.installer.outputs.name }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      # Why the token is stamped at all, why base64, and what may never ride on it
+      # are documented in the script — it runs once per packaging job, so the
+      # reasoning lives in one place.
+      - name: Stamp the telemetry token
+        shell: pwsh
+        env:
+          POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
+        run: ./scripts/stamp-telemetry.ps1
+
+      # -Version becomes $(Version): the SDK stamps it into
+      # AssemblyInformationalVersion (what the running app reports) and
+      # electron-builder names and versions the installer from it.
+      - name: Package desktop (win-x64)
+        shell: pwsh
+        run: ./scripts/package-desktop.ps1 -Rid win-x64 -Version $env:VERSION
+
+      - name: Locate installer
+        id: installer
+        shell: pwsh
+        run: |
+          $expected = "ACT-Setup-$env:VERSION-x64.exe"
+
+          if (-not (Test-Path (Join-Path "artifacts/desktop/win-x64" $expected))) {
+              $found = (Get-ChildItem "artifacts/desktop/win-x64" -Filter *.exe | ForEach-Object Name) -join ", "
+              throw "Expected $expected in artifacts/desktop/win-x64; found: $found"
+          }
+
+          # Asserted for the same reason as the installer, and it matters more: an installer with no
+          # `latest.yml` looks like a perfectly good release and silently strands every copy already
+          # installed, because that file is the only thing they poll. It appears only while the
+          # `publish` block is in `electron-builder.json` and only under this name while
+          # `detectUpdateChannel` is off there, so this is what catches either one being disturbed —
+          # as it did when a pre-release quietly emitted `alpha.yml` instead.
+          if (-not (Test-Path "artifacts/desktop/win-x64/latest.yml")) {
+              $found = (Get-ChildItem "artifacts/desktop/win-x64" | ForEach-Object Name) -join ", "
+              throw "No latest.yml in artifacts/desktop/win-x64; auto-update would be dead on arrival. Found: $found"
+          }
+
+          "name=$expected" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: act-desktop-win-x64-${{ inputs.version }}
+          # Transit only: this copy exists to carry the installer from the Windows runner to the
+          # release job minutes later, and the permanent copies are the release assets, which are
+          # free. Actions storage is neither — it shares one 500 MB quota with Packages, billed on
+          # the month's average daily usage, so the default 90 days would keep paying for a file
+          # nothing reads after the run that made it.
+          retention-days: 1
+          # The blockmap and latest.yml travel with the installer: the release job decides whether
+          # to publish them, and it cannot attach what was never carried across.
+          path: |
+            artifacts/desktop/win-x64/*.exe
+            artifacts/desktop/win-x64/*.blockmap
+            artifacts/desktop/win-x64/latest.yml
+          if-no-files-found: error
+
+  package-linux:
+    # Linux targets must be built on Linux (same electron-builder rule that pins
+    # the Windows job to Windows). AppImage is the one Linux format
+    # electron-updater can auto-update — the choice is argued in
+    # `electron-builder.json`, beside the `linux` block.
+    runs-on: ubuntu-latest
+    needs: test
+    env:
+      VERSION: ${{ inputs.version }}
+    outputs:
+      installer: ${{ steps.installer.outputs.name }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Stamp the telemetry token
+        shell: pwsh
+        env:
+          POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
+        run: ./scripts/stamp-telemetry.ps1
+
+      - name: Package desktop (linux-x64)
+        shell: pwsh
+        run: ./scripts/package-desktop.ps1 -Rid linux-x64 -Version $env:VERSION
+
+      # The version is asserted but the arch suffix is globbed: electron-builder
+      # renders `${arch}` for an AppImage in uname style (`x86_64`), and pinning
+      # that spelling here would fail the release over a cosmetic rename.
+      - name: Locate installer
+        id: installer
+        shell: pwsh
+        run: |
+          $dir = "artifacts/desktop/linux-x64"
+          $appImages = @(Get-ChildItem $dir -Filter "ACT-$env:VERSION-*.AppImage")
+
+          if ($appImages.Count -ne 1) {
+              $found = (Get-ChildItem $dir | ForEach-Object Name) -join ", "
+              throw "Expected exactly one ACT-$env:VERSION-*.AppImage in $dir; found: $found"
+          }
+
+          # Same reasoning as `latest.yml` in the Windows job: without this file the
+          # release looks healthy and silently strands every installed AppImage,
+          # because it is the only thing they poll.
+          if (-not (Test-Path "$dir/latest-linux.yml")) {
+              $found = (Get-ChildItem $dir | ForEach-Object Name) -join ", "
+              throw "No latest-linux.yml in $dir; auto-update would be dead on arrival. Found: $found"
+          }
+
+          "name=$($appImages[0].Name)" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: act-desktop-linux-x64-${{ inputs.version }}
+          # Transit only, same as the Windows artifact: the permanent copies are the
+          # release assets.
+          retention-days: 1
+          # No `*.blockmap` here, unlike the Windows job, and that is not an omission: `AppImageTarget`
+          # never calls `createBlockmap`, it takes its update info straight from `app-builder appimage`,
+          # which embeds the block map in the AppImage and reports its `blockMapSize` in
+          # `latest-linux.yml`. Differential updates are alive on Linux; the separate file simply does
+          # not exist, and globbing for it matched nothing while `if-no-files-found` stayed quiet —
+          # that flag fires only when the whole path list is empty.
+          path: |
+            artifacts/desktop/linux-x64/*.AppImage
+            artifacts/desktop/linux-x64/latest-linux.yml
+          if-no-files-found: error
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [package-windows, package-linux]
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ inputs.version }}
+      TAG: v${{ inputs.version }}
+      INSTALLER: ${{ needs.package-windows.outputs.installer }}
+      APPIMAGE: ${{ needs.package-linux.outputs.installer }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Full history + tags: the release notes are a commit range.
+          fetch-depth: 0
+
+      # Both land in the same directory: the filenames cannot collide (.exe vs
+      # .AppImage, latest.yml vs latest-linux.yml), and one flat folder is what the
+      # asset list below walks.
+      - uses: actions/download-artifact@v7
+        with:
+          name: act-desktop-win-x64-${{ inputs.version }}
+          path: artifacts
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: act-desktop-linux-x64-${{ inputs.version }}
+          path: artifacts
+
+      - name: Build release notes
+        id: notes
+        shell: pwsh
+        run: |
+          $previous = git tag --list 'v*' --sort=-v:refname | Select-Object -First 1
+          $range = if ($previous) { "$previous..HEAD" } else { "HEAD" }
+          $commits = @(git log $range --no-merges --pretty=format:'- %s (%h)')
+
+          if (-not $commits) {
+              $commits = @('- No commits since ' + $previous + '.')
+          }
+
+          $notes = @('## ACT ' + $env:TAG, '')
+          $notes += 'Windows installer (win-x64, NSIS): `' + $env:INSTALLER + '`'
+          $notes += ''
+          $notes += 'Linux (x64, AppImage): `' + $env:APPIMAGE + '` — `chmod +x`, then run.'
+          $notes += ''
+          $notes += '### Changes'
+          $notes += ''
+          $notes += $commits
+
+          if ($previous) {
+              $notes += ''
+              $notes += '**Full changelog**: ${{ github.server_url }}/${{ github.repository }}/compare/' + $previous + '...' + $env:TAG
+          }
+
+          $file = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          $notes -join "`n" | Set-Content $file -Encoding utf8
+
+          "path=$file" >> $env:GITHUB_OUTPUT
+
+          Write-Host ($notes -join "`n")
+
+      - name: Create tag
+        shell: pwsh
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git tag -a $env:TAG -m "ACT $env:TAG"
+          git push origin $env:TAG
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          [string[]]$assets = @(
+              (Join-Path 'artifacts' $env:INSTALLER),
+              (Join-Path 'artifacts' $env:APPIMAGE)
+          )
+
+          [string[]]$prerelease = @()
+          if ($env:VERSION -match '-') {
+              $prerelease = @('--prerelease')
+          }
+
+          # **The update metadata ships on stable releases only.** electron-builder writes
+          # `latest.yml` (and `latest-linux.yml`) for every version — `detectUpdateChannel: false`
+          # in `electron-builder.json` is what stops a `-beta.1` from renaming them per-channel —
+          # so excluding pre-releases is done here, by not attaching them.
+          # A pre-release then carries the installers alone and no client can resolve an update from
+          # it, which is belt-and-braces with the `AllowPrerelease = false` the app sets: GitHub's
+          # `/releases/latest` already skips pre-releases, and this makes it moot if it ever did not.
+          if ($prerelease) {
+              Write-Host "Pre-release: publishing the installers only, no update metadata."
+          }
+          else {
+              $assets += (Get-ChildItem 'artifacts' -Filter *.blockmap | ForEach-Object FullName)
+              $assets += (Join-Path 'artifacts' 'latest.yml')
+              $assets += (Join-Path 'artifacts' 'latest-linux.yml')
+          }
+
+          foreach ($asset in $assets) {
+              if (-not (Test-Path $asset)) {
+                  throw "Release asset $asset is missing from the downloaded artifact."
+              }
+          }
+
+          Write-Host ("Publishing: " + (($assets | Split-Path -Leaf) -join ', '))
+
+          gh release create $env:TAG `
+              --title "ACT $env:TAG" `
+              --notes-file '${{ steps.notes.outputs.path }}' `
+              --verify-tag `
+              @prerelease `
+              @assets

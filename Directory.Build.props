@@ -1,0 +1,25 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <!--
+    One version string for two consumers that must agree exactly: the ICU4C package reference and the
+    `System.Globalization.AppLocalIcu` switch that names the version the runtime looks for. They are
+    declared in different files, and a bump that moved only one of them would fail the way ICU always
+    fails — a `FailFast` inside `WebApplication.CreateBuilder`, before ACT can log a word. See
+    `docs/design-notes.md`.
+  -->
+  <PropertyGroup Label="Globalization">
+    <ActIcuVersion>72.1.0.3</ActIcuVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Attribution">
+    <Product>ACT — Agent Control Tower</Product>
+    <Company>north-lab-kev</Company>
+    <Authors>north-lab-kev</Authors>
+    <Copyright>Copyright © 2026 north-lab-kev</Copyright>
+  </PropertyGroup>
+
+</Project>

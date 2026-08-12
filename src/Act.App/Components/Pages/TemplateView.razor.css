@@ -1,0 +1,96 @@
+.templateview {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.templateview.empty {
+    align-items: flex-start;
+    gap: var(--act-s3);
+    padding: var(--act-s5);
+}
+
+.bar .title {
+    font-size: var(--act-t6);
+    font-weight: var(--act-w-em);
+    color: var(--act-ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+::deep form.newtemplate {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--act-page-pad);
+}
+
+/* The same centred column the task form uses: this is that form with the per-task fields taken out,
+   so it has to measure the same. */
+::deep .sheet {
+    width: 100%;
+    max-width: var(--act-sheet-max);
+    margin: 0 auto;
+}
+
+.footer {
+    flex: 0 0 auto;
+    padding: var(--act-s3);
+    border-top: 1px solid var(--act-line);
+    background: var(--act-surface);
+}
+
+.foot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--act-s4);
+}
+
+::deep .hint {
+    color: var(--act-dim);
+}
+
+::deep .rz-alert {
+    margin: 0;
+}
+
+.dirrow {
+    display: flex;
+    align-items: center;
+    gap: var(--act-s2);
+}
+
+.dirrow ::deep .wide {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.dirrow ::deep .rz-button {
+    flex: 0 0 auto;
+}
+
+::deep .wide {
+    width: 100%;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--act-s4);
+}
+
+::deep .control {
+    width: var(--act-control-w);
+    flex: 0 0 auto;
+}

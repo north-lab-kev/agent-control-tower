@@ -1,0 +1,84 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <PackageId>Act.App</PackageId>
+    <ElectronSingleInstance>true</ElectronSingleInstance>
+
+    <!--
+      The installer's identity, and a one-way door. ElectronNET passes this to electron-builder as
+      `-c.appId` on the command line, which *overrides* the appId in `electron-builder.json` — left
+      unset it defaults to the project name, so v0.0.1 shipped as `act-app` while the app told
+      Windows it was `com.northlabkev.act`. NSIS derives its uninstall key from the appId, so once
+      auto-update is live a change here installs a second copy instead of upgrading the first.
+      Set now, before that matters, at the cost of one manual uninstall of v0.0.1.
+    -->
+    <ElectronPackageId>com.northlabkev.act</ElectronPackageId>
+  </PropertyGroup>
+
+  <PropertyGroup Label="ElectronNetCommon">
+    <ElectronSplashScreen>splash.png</ElectronSplashScreen>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(ElectronPackaging)' != 'true'">
+    <RuntimeIdentifier></RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ElectronNET.Core" />
+    <PackageReference Include="ElectronNET.Core.AspNet" />
+    <PackageReference Include="Microsoft.CodeAnalysis.ResxSourceGenerator" PrivateAssets="all" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+    <PackageReference Include="Radzen.Blazor" />
+  </ItemGroup>
+
+  <!--
+    Linux only, and that is the whole point. Windows 10+ and macOS ship ICU in the OS, so those builds
+    find it and this would only add ~30 MB to an installer that already works. Linux ships nothing:
+    .NET dlopens `libicuuc.so.<n>` and, finding no system libicu, calls `Environment.FailFast` from
+    the `GlobalizationMode` static constructor — inside `WebApplication.CreateBuilder`, six lines
+    before `AddActFileLog` runs. The packaged app therefore died with no log file at all and Electron
+    sat on its splash screen forever, which is how this was found. `InvariantGlobalization` is not the
+    alternative: it would flatten every localised date, number and sort ACT ships translations for.
+
+    The publish is RID-specific and self-contained (`package-desktop.ps1`), which is what makes this
+    work with no `AppRun` patching: `runtimes/linux-x64/native/*.so` is flattened into the publish
+    root, and the publish root is `resources/bin` inside the AppImage — where the app-local probe
+    looks.
+
+    Nothing verifies any of this automatically. The two halves are declared in different files and the
+    runtime needs the exact version the switch names, so a bump that moves one and not the other
+    brings the silent hang back — check both by hand.
+  -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' != '' AND $(RuntimeIdentifier.StartsWith('linux'))">
+    <PackageReference Include="Microsoft.ICU.ICU4C.Runtime" />
+    <RuntimeHostConfigurationOption Include="System.Globalization.AppLocalIcu" Value="$(ActIcuVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="icon.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="icon.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="Resources\Strings.resx" GenerateSource="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Act.App.UiTests" />
+
+    <!-- Top-level statements compile to an internal Program, and WebApplicationFactory<Program> needs it. -->
+    <InternalsVisibleTo Include="Act.App.E2eTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Act.Agents.ClaudeCode\Act.Agents.ClaudeCode.csproj" />
+    <ProjectReference Include="..\Act.Agents.Codex\Act.Agents.Codex.csproj" />
+    <ProjectReference Include="..\Act.Core\Act.Core.csproj" />
+    <ProjectReference Include="..\Act.Infrastructure\Act.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

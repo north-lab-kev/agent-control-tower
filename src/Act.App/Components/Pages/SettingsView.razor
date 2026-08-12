@@ -1,0 +1,417 @@
+@page "/settings"
+@using Act.Core.Model
+@using Act.Core.Scheduling
+@using Act.Core.Spawning
+
+<PageTitle>@Strings.Settings_Title</PageTitle>
+
+<EscapeKey OnEscape="BackToBoard" />
+
+<div class="settingsview">
+    <header class="bar">
+        <RadzenButton Icon="arrow_back" Text="@Strings.Nav_BackToBoard" Size="ButtonSize.Small"
+                      ButtonStyle="ButtonStyle.Base" Variant="Variant.Text" Click="BackToBoard" />
+        <span class="title">@Strings.Settings_Title</span>
+    </header>
+
+    <div class="body">
+        <RadzenStack Gap="1.5rem" class="sheet">
+            <RadzenFieldset Text="@Strings.Settings_Group_General">
+                <RadzenStack Gap="1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Language" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Language_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenDropDown TValue="LanguagePreference" Value="Language" ValueChanged="OnLanguageChanged"
+                                        Data="LanguageChoices" TextProperty="Text" ValueProperty="Value"
+                                        AllowClear="false" class="control" />
+                    </RadzenStack>
+
+                    @* The only place ACT runs a CLI on its own account, so it is the one piece of
+                       automatic behaviour that spends the user's quota without being asked — which is
+                       the whole reason it has a switch. The button on the task form is unaffected. *@
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_GenerateTitles" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_GenerateTitles_Hint"
+                                        class="hint" />
+                        </RadzenStack>
+                        <RadzenSwitch Value="GenerateTitles"
+                                      ValueChanged="@((bool value) => OnGenerateTitlesChanged(value))" />
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenFieldset>
+
+            <RadzenFieldset Text="@Strings.Settings_Group_System">
+                <RadzenStack Gap="1rem">
+                    @* Desktop-only, like close-to-tray: a browser tab has no OS notification worth
+                       the permission prompt, so the switch would govern nothing. *@
+                    @if (IsDesktop)
+                    {
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                     JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Notifications" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Notifications_Hint"
+                                            class="hint" />
+                            </RadzenStack>
+                            <RadzenSwitch Value="Notifications"
+                                          ValueChanged="@((bool value) => OnNotificationsChanged(value))" />
+                        </RadzenStack>
+                    }
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_KeepAwake" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_KeepAwake_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenSwitch Value="KeepAwake" ValueChanged="@((bool value) => OnKeepAwakeChanged(value))" />
+                    </RadzenStack>
+
+                    @* Desktop-only: in browser mode there is no window to close and no tray to
+                       close it into, and a switch that does nothing is worse than no switch. *@
+                    @if (IsDesktop)
+                    {
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                     JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_CloseToTray" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_CloseToTray_Hint" class="hint" />
+                            </RadzenStack>
+                            <RadzenSwitch Value="CloseToTray" ValueChanged="@((bool value) => OnCloseToTrayChanged(value))" />
+                        </RadzenStack>
+                    }
+                </RadzenStack>
+            </RadzenFieldset>
+
+            <RadzenFieldset Text="@Strings.Settings_Group_Updates">
+                <RadzenStack Gap="1rem">
+                    @* Shown in both modes, and the only place ACT states its own version — a bug
+                       report that has to guess it is a bug report you cannot act on. *@
+                    <RadzenStack Gap="0.1rem">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Version" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@Version" class="hint path" />
+                    </RadzenStack>
+
+                    @* Desktop-only, like close-to-tray: a browser tab cannot replace its own
+                       installer, so there is nothing here for the switch to govern. *@
+                    @if (IsDesktop)
+                    {
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                     JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Updates" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Updates_Hint" class="hint" />
+                            </RadzenStack>
+                            <RadzenDropDown TValue="UpdatePolicy" Value="Updates" ValueChanged="OnUpdatesChanged"
+                                            Data="UpdateChoices" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="false" class="control" />
+                        </RadzenStack>
+
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                     JustifyContent="JustifyContent.SpaceBetween" Gap="1rem" class="logrow updaterow">
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@UpdateSummary" class="hint" />
+
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                @if (CanDownloadUpdate)
+                                {
+                                    <RadzenButton Icon="download" Text="@Strings.Settings_Updates_Fetch"
+                                                  Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                                  Variant="Variant.Outlined" Click="DownloadUpdate" />
+                                }
+
+                                <RadzenButton Icon="refresh" Text="@Strings.Settings_Updates_Check"
+                                              Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                              Variant="Variant.Outlined" Disabled="@UpdateStatus.IsBusy"
+                                              Click="CheckForUpdate" />
+                            </RadzenStack>
+                        </RadzenStack>
+                    }
+                </RadzenStack>
+            </RadzenFieldset>
+
+            <RadzenFieldset Text="@Strings.Settings_Group_Appearance">
+                <RadzenStack Gap="1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Theme" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Theme_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenDropDown TValue="ThemePreference" Value="Theme" ValueChanged="OnThemeChanged"
+                                        Data="ThemeChoices" TextProperty="Text" ValueProperty="Value"
+                                        AllowClear="false" class="control" />
+                    </RadzenStack>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Density" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Density_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenDropDown TValue="BoardDensity" Value="Density" ValueChanged="OnDensityChanged"
+                                        Data="DensityChoices" TextProperty="Text" ValueProperty="Value"
+                                        AllowClear="false" class="control" />
+                    </RadzenStack>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_BlinkYourTurn" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_BlinkYourTurn_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenSwitch Value="BlinkYourTurn" ValueChanged="@((bool value) => OnBlinkYourTurnChanged(value))" />
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenFieldset>
+
+            <RadzenFieldset Text="@Strings.Settings_Group_Execution">
+                <RadzenStack Gap="1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_PauseAutoExecution" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_PauseAutoExecution_Hint"
+                                        class="hint" />
+                        </RadzenStack>
+                        <RadzenSwitch Value="AutoExecutionPaused"
+                                      ValueChanged="@((bool value) => OnAutoExecutionPausedChanged(value))" />
+                    </RadzenStack>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_MaxConcurrent" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_MaxConcurrent_Hint"
+                                        class="hint" />
+                        </RadzenStack>
+                        <RadzenNumeric TValue="int" Value="MaxConcurrent"
+                                       Min="ConcurrencySlots.Minimum" Max="ConcurrencySlots.Maximum" Step="1"
+                                       Change="@((int value) => OnMaxConcurrentChanged(value))"
+                                       class="control" />
+                    </RadzenStack>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_UsageCeiling" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_UsageCeiling_Hint"
+                                        class="hint" />
+                        </RadzenStack>
+                        <RadzenNumeric TValue="int" Value="UsageCeilingPercent"
+                                       Min="UsageCeiling.Minimum" Max="UsageCeiling.Maximum" Step="1"
+                                       Change="@((int value) => OnUsageCeilingChanged(value))"
+                                       class="control" />
+                    </RadzenStack>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_OneTaskPerFolder" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_OneTaskPerFolder_Hint"
+                                        class="hint" />
+                        </RadzenStack>
+                        <RadzenSwitch Value="PreventConcurrentWorkingDir"
+                                      ValueChanged="@((bool value) => OnPreventConcurrentWorkingDirChanged(value))" />
+                    </RadzenStack>
+
+                    @* A runaway-loop backstop rather than a considered limit, which is why it sits
+                       here at a number nobody should ever reach. Zero turns agent-spawned work off. *@
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_MaxFollowUps" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_MaxFollowUps_Hint"
+                                        class="hint" />
+                        </RadzenStack>
+                        <RadzenNumeric TValue="int" Value="MaxFollowUpsPerCard"
+                                       Min="SpawnQuota.Minimum" Max="SpawnQuota.Maximum" Step="10"
+                                       Change="@((int value) => OnMaxFollowUpsChanged(value))"
+                                       class="control" />
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenFieldset>
+
+            @* What a new task starts from used to be one unnamed block of defaults here. It is a
+               managed list now, so this is a pointer to the page that owns it rather than a second
+               place to edit the same thing. *@
+            <RadzenFieldset Text="@Strings.Settings_Group_Templates">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                             JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Templates_Hint" class="hint" />
+                    <RadzenButton Icon="bookmarks" Text="@Strings.Settings_Templates_Manage"
+                                  Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                  Variant="Variant.Outlined" Click="OpenTemplates" />
+                </RadzenStack>
+            </RadzenFieldset>
+
+            <RadzenFieldset Text="@Strings.Settings_Group_Retention">
+                <RadzenStack Gap="1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_AutoArchive" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_AutoArchive_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenSwitch Value="AutoArchiveCompleted"
+                                      ValueChanged="@((bool value) => OnAutoArchiveCompletedChanged(value))" />
+                    </RadzenStack>
+
+                    @if (AutoArchiveCompleted)
+                    {
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                     JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_AutoArchiveDays" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_AutoArchiveDays_Hint"
+                                            class="hint" />
+                            </RadzenStack>
+                            <RadzenNumeric TValue="int" Value="AutoArchiveCompletedAfterDays"
+                                           Min="MinimumRetentionDays" Max="MaximumRetentionDays" Step="1"
+                                           Change="@((int value) => OnAutoArchiveDaysChanged(value))"
+                                           class="control" />
+                        </RadzenStack>
+                    }
+                </RadzenStack>
+            </RadzenFieldset>
+
+            @* One section per agent, because the two CLIs are installed separately and only one of
+               them is ever the odd one out. Expanded, like every other group: an executable path
+               that is set but out of sight is the one setting you most need to see when a launch
+               fails with "not found". *@
+            <RadzenFieldset Text="@Strings.Settings_Group_Agents" AllowCollapse="true" Collapsed="false">
+                <RadzenStack Gap="1.5rem">
+                    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Agents_Hint" class="hint" />
+
+                    @foreach (var agent in AgentForms)
+                    {
+                        <RadzenStack Gap="1rem">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                         JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                                <RadzenStack Gap="0.1rem">
+                                    <RadzenText TextStyle="TextStyle.Subtitle2" Text="@AgentName(agent.Agent)" />
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_AgentEnabled_Hint"
+                                                class="hint" />
+                                </RadzenStack>
+                                <RadzenSwitch Value="agent.Enabled"
+                                              ValueChanged="@((bool value) => OnEnabledChanged(agent, value))" />
+                            </RadzenStack>
+
+                            <RadzenStack Gap="0.3rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_AgentBinary" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_AgentBinary_Hint" class="hint" />
+                                @* Type or pick, the same pairing the task form's working directory
+                                   uses: pasting a known path beats browsing to it, and browsing is
+                                   the only way to find a Store install nobody can recite. *@
+                                <div class="dirrow">
+                                    <RadzenTextBox Value="@agent.Binary" class="wide"
+                                                   Change="@(value => OnBinaryChanged(agent, value))" />
+                                    <RadzenButton Icon="folder_open" Text="@Strings.Picker_Browse"
+                                                  Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                                  Variant="Variant.Outlined" ButtonType="ButtonType.Button"
+                                                  Click="@(() => Browse(agent))" />
+                                </div>
+
+                                @if (browsing == agent.Agent)
+                                {
+                                    <PathPicker Mode="PathPickerMode.File" StartAt="@PickerStart(agent)"
+                                                OnPick="@(path => OnBinaryPicked(agent, path))"
+                                                OnCancel="@(() => browsing = null)" />
+                                }
+
+                                @* A warning, not a block: settings apply as you type them and a
+                                   path you are about to create is a reasonable thing to enter —
+                                   the same rule the task form's working directory follows. *@
+                                @if (BinaryWarning(agent) is { } warning)
+                                {
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                                 Gap="0.5rem" class="binwarn">
+                                        <RadzenIcon Icon="error_outline" />
+                                        <RadzenText TextStyle="TextStyle.Caption" Text="@warning" />
+
+                                        @* Only when ACT has a path to offer: the fix is one click,
+                                           and asking the user to retype what was just found for
+                                           them would be perverse. *@
+                                        @if (agent.State.DiscoveredPath is not null)
+                                        {
+                                            <RadzenButton Text="@Strings.Settings_AgentBinary_UseFound" Icon="check"
+                                                          Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                                          Variant="Variant.Outlined" ButtonType="ButtonType.Button"
+                                                          Click="@(() => UseDiscovered(agent))" />
+                                        }
+                                    </RadzenStack>
+                                }
+                                else if (BinaryNote(agent) is { } note)
+                                {
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                                 Gap="0.5rem" class="binok">
+                                        <RadzenIcon Icon="check" />
+                                        <RadzenText TextStyle="TextStyle.Caption" Text="@note" />
+                                    </RadzenStack>
+                                }
+                            </RadzenStack>
+
+                            <RadzenStack Gap="0.3rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_ExtraFlags" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_ExtraFlags_Hint" class="hint" />
+                                <RadzenTextArea Value="@agent.ExtraFlags" Rows="2" class="wide"
+                                                Change="@(value => OnExtraFlagsChanged(agent, value))" />
+                            </RadzenStack>
+
+                            <RadzenStack Gap="0.3rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Env" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Env_Hint" class="hint" />
+                                <RadzenTextArea Value="@agent.Env" Rows="3" class="wide"
+                                                Change="@(value => OnEnvChanged(agent, value))" />
+                            </RadzenStack>
+                        </RadzenStack>
+                    }
+                </RadzenStack>
+            </RadzenFieldset>
+
+            <RadzenFieldset Text="@Strings.Settings_Group_Diagnostics">
+                <RadzenStack Gap="1rem">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Telemetry" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Telemetry_Hint" class="hint" />
+                        </RadzenStack>
+                        <RadzenSwitch Value="Telemetry" ValueChanged="@((bool value) => OnTelemetryChanged(value))" />
+                    </RadzenStack>
+
+                    <RadzenStack Gap="0.1rem">
+                        <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_InstallId" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_InstallId_Hint" class="hint" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@InstallId" class="hint path" />
+                    </RadzenStack>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                 JustifyContent="JustifyContent.SpaceBetween" Gap="1rem" class="logrow">
+                        <RadzenStack Gap="0.1rem">
+                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Logs" />
+                            <RadzenText TextStyle="TextStyle.Caption" Text="@LogDirectory" class="hint path" />
+                        </RadzenStack>
+                        <RadzenButton Icon="folder_open" Text="@Strings.Settings_Logs_Open"
+                                      Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Base"
+                                      Variant="Variant.Outlined" Click="OpenLogFolder" />
+                    </RadzenStack>
+
+                    @if (logsFailed)
+                    {
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                     Gap="0.5rem" class="binwarn">
+                            <RadzenIcon Icon="error_outline" />
+                            <RadzenText TextStyle="TextStyle.Caption"
+                                        Text="@Text.Format(Strings.Settings_Logs_OpenFailed, LogDirectory)" />
+                        </RadzenStack>
+                    }
+                </RadzenStack>
+            </RadzenFieldset>
+        </RadzenStack>
+    </div>
+</div>

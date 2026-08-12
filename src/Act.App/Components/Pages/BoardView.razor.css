@@ -1,0 +1,201 @@
+/* The horizontal edge is the one every other page's body uses, so the filter box starts where an
+   archive row or a form field would. The deeper bottom is room to drop a card below the last
+   strip in a full column. */
+.board {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    padding: var(--act-s4) var(--act-s3) var(--act-s6);
+    overflow-x: auto;
+    min-height: 100%;
+    background: var(--act-bg);
+}
+
+.filterbar {
+    display: flex;
+    align-items: center;
+    gap: var(--act-s2);
+    padding: 0 0 var(--act-s3);
+}
+
+::deep .archlink {
+    font-size: var(--act-t3);
+    color: var(--act-dim);
+}
+
+::deep .archlink:hover {
+    color: var(--act-ink);
+}
+
+.viewctl {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--act-s2);
+}
+
+::deep .statchip {
+    font-family: var(--act-mono);
+    font-size: var(--act-t2);
+    white-space: nowrap;
+    color: var(--act-dim);
+    border-color: var(--act-line2);
+    background: transparent;
+    padding: 0.15rem 0.5rem;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+::deep .statchip:hover {
+    color: var(--act-ink);
+}
+
+::deep .statchip.paused {
+    color: var(--act-wait);
+    border-color: color-mix(in srgb, var(--act-wait) 45%, transparent);
+}
+
+::deep .statchip .rz-button-icon-left {
+    font-size: var(--act-icon);
+    width: 14px;
+    height: 14px;
+    margin-right: 5px;
+}
+
+::deep .statchip.live .rz-button-icon-left {
+    color: var(--act-run);
+}
+
+::deep .statchip.paused .rz-button-icon-left {
+    color: var(--act-wait);
+}
+
+::deep .cols {
+    width: 100%;
+    flex: 1 1 auto;
+}
+
+::deep .col {
+    padding: var(--act-s2);
+    flex: 1 1 0;
+    min-width: 0;
+    background: var(--act-lane);
+    border: 1px solid var(--act-lane-line);
+    border-radius: var(--act-radius);
+}
+
+::deep .col.drop-ok {
+    border-color: color-mix(in srgb, var(--act-run) 55%, transparent);
+    background: color-mix(in srgb, var(--act-run) 7%, transparent);
+}
+
+::deep .col.drop-no {
+    opacity: .4;
+}
+
+.board.compact ::deep .col {
+    min-width: 158px;
+}
+
+.board.detailed ::deep .col {
+    min-width: 177px;
+}
+
+/* Every column's header is as tall as the tallest thing any of them carries — the new-task button,
+   which only Preparing has. Without this the first strip of that column sits a button's worth lower
+   than the first strip of every other one. */
+::deep .colhead {
+    min-height: 28px;
+}
+
+::deep .colname {
+    color: var(--act-ink);
+    font-size: var(--act-t4);
+}
+
+/* `.rz-badge` is in the selector to outweigh Radzen's own three-class badge rule — without it the
+   colour below loses and the count renders in the framework's grey, which is what it had been
+   doing: close enough to `--act-faint` that nobody caught it by eye. */
+::deep .rz-badge.colcount {
+    font-family: var(--act-mono);
+    font-size: var(--act-t2);
+    color: var(--act-faint);
+    border-color: var(--act-line);
+}
+
+/* Muted like the hold chips, not like a badge: it reports what the filter is doing, and must not
+   compete with the attention treatment it is pointing at. */
+::deep .rz-badge.hiddenattn {
+    font-family: var(--act-mono);
+    font-size: var(--act-t2);
+    color: var(--act-wait);
+    border-color: color-mix(in srgb, var(--act-wait) 45%, transparent);
+}
+
+/* Two shapes wear this class: a plain button while the default template is the only one, and a split
+   button once there is a choice. So everything below targets the `.rz-button`s rather than the
+   element carrying the class — a split button's class lands on a wrapper `div`, where padding and a
+   border colour style nothing and leave both halves at Radzen's defaults.
+   `.rz-variant-outlined.rz-base` is in the selector to outweigh the theme's own four-class button
+   rule, the same reason `.rz-badge` is in the count's selector above. Without it the dim rest colour
+   silently lost and the glyph rendered at full `--act-ink` — which it had been doing all along, back
+   when this class sat on a plain button and nothing was here to notice. */
+::deep .newtaskbtn {
+    margin-left: auto;
+    min-width: 0;
+}
+
+::deep .newtaskbtn.rz-button.rz-variant-outlined.rz-base,
+::deep .newtaskbtn .rz-button.rz-variant-outlined.rz-base {
+    padding: 0 0.3rem;
+    min-width: 0;
+    color: var(--act-dim);
+}
+
+::deep .newtaskbtn.rz-button.rz-variant-outlined.rz-base:hover,
+::deep .newtaskbtn .rz-button.rz-variant-outlined.rz-base:hover {
+    color: var(--act-ink);
+}
+
+/* One control, not two buttons that happen to touch. An outlined button's edge is an inset shadow
+   (see `app.css`), so two of them meeting draw two lines at the seam and hovering one lights half a
+   box. The ring therefore moves to the wrapper and the halves give theirs up: one edge around the
+   pair, one hairline down the middle. */
+::deep .newtaskbtn.rz-splitbutton {
+    box-shadow: inset 0 0 0 1px var(--act-line2);
+    border-radius: var(--act-radius);
+}
+
+::deep .newtaskbtn.rz-splitbutton:hover {
+    box-shadow: inset 0 0 0 1px var(--act-dim);
+}
+
+::deep .newtaskbtn.rz-splitbutton .rz-button.rz-variant-outlined.rz-base,
+::deep .newtaskbtn.rz-splitbutton .rz-button.rz-variant-outlined.rz-base:hover {
+    box-shadow: none;
+}
+
+/* The caret is a hint; the `+` is the action — so it takes about half the width. Qualified like the
+   rule above and for the same reason: the toggle is a `.rz-button.rz-variant-outlined.rz-base` too,
+   so an unqualified padding here loses to the theme and the caret ends up *wider* than the `+`. */
+::deep .newtaskbtn .rz-splitbutton-menubutton.rz-variant-outlined.rz-base {
+    border-left: 1px solid var(--act-line2);
+    padding: 0 0.1rem;
+}
+
+/* Two measurements, because an icon-only button sizes its glyph twice: `font-size` draws it (20px at
+   Small) and a fixed `width` reserves the box around it. Shrinking only the first leaves a 14px
+   caret centred in a 20px hole. */
+::deep .newtaskbtn .rz-splitbutton-menubutton .rzi {
+    font-size: var(--act-t6);
+    width: auto;
+}
+
+::deep .empty {
+    font-family: var(--act-mono);
+    font-size: var(--act-t2);
+    color: var(--act-faint);
+    text-align: center;
+    padding: var(--act-s3) 0 var(--act-s1);
+    opacity: .75;
+}

@@ -1,0 +1,91 @@
+.archive {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+/* A page's own name has to out-rank the labels on it, and Radzen's are 14px — so it takes the same
+   size and wins on weight, which is the only step a strip this dense can afford. */
+.bar .title {
+    font-size: var(--act-t6);
+    font-weight: var(--act-w-em);
+    color: var(--act-ink);
+}
+
+.purge {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--act-s2);
+}
+
+::deep .purgeconfirm {
+    color: var(--act-err);
+}
+
+.body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--act-page-pad);
+}
+
+::deep .sheet {
+    width: 100%;
+    max-width: var(--act-sheet-max);
+    margin: 0 auto;
+}
+
+/* Bordered rows rather than cards: this is a dense list to scan, not a board to work on. */
+.row {
+    display: flex;
+    align-items: center;
+    gap: var(--act-s3);
+    padding: var(--act-s2);
+    border-bottom: 1px solid var(--act-line);
+}
+
+.row .id {
+    font-family: var(--act-mono);
+    font-size: var(--act-t3);
+    color: var(--act-faint);
+    flex: none;
+}
+
+/* A link that reads as a row, not as a link: underlining two stacked lines in a dense list would
+   make the list itself the loudest thing on the page. The hover is what says it opens. */
+.row .what {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+    flex: 1 1 auto;
+    text-decoration: none;
+    color: inherit;
+}
+
+.row .what:hover .ttl {
+    color: var(--act-ink);
+}
+
+.row .ttl {
+    font-size: var(--act-t5);
+    color: var(--act-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.row .meta {
+    font-family: var(--act-mono);
+    font-size: var(--act-t2);
+    color: var(--act-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+::deep .empty {
+    color: var(--act-faint);
+}

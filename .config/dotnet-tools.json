@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "//": "Playwright's browsers are installed from the e2e project's own build output, not from here — see tests/README.md. dotnet-format and coverlet are still to add.",
+  "tools": {}
+}

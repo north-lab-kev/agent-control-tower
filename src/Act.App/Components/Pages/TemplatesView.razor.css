@@ -1,0 +1,72 @@
+.templates {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.bar .title {
+    font-size: var(--act-t6);
+    font-weight: var(--act-w-em);
+    color: var(--act-ink);
+}
+
+.add {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--act-s2);
+}
+
+.body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--act-page-pad);
+}
+
+::deep .sheet {
+    width: 100%;
+    max-width: var(--act-sheet-max);
+    margin: 0 auto;
+}
+
+::deep .hint {
+    color: var(--act-dim);
+}
+
+/* Bordered rows rather than cards, the same as the archive: a dense list to scan. */
+.row {
+    display: flex;
+    align-items: center;
+    gap: var(--act-s3);
+    padding: var(--act-s2);
+    border-bottom: 1px solid var(--act-line);
+}
+
+.row .what {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+/* One size wherever a card is listed, and a template reads as one of those. */
+.row .ttl {
+    font-size: var(--act-t5);
+    color: var(--act-dim);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.row .meta {
+    font-family: var(--act-mono);
+    font-size: var(--act-t2);
+    color: var(--act-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

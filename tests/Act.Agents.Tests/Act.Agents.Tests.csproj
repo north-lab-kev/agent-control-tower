@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="AwesomeAssertions" />
+    <PackageReference Include="NSubstitute" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Act.Agents.ClaudeCode\Act.Agents.ClaudeCode.csproj" />
+    <ProjectReference Include="..\..\src\Act.Agents.Codex\Act.Agents.Codex.csproj" />
+    <ProjectReference Include="..\..\src\Act.Core\Act.Core.csproj" />
+    <ProjectReference Include="..\Act.TestSupport\Act.TestSupport.csproj" />
+  </ItemGroup>
+
+</Project>

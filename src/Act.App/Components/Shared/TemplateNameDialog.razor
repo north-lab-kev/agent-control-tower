@@ -1,0 +1,14 @@
+<div class="asktemplate">
+    <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Task_SaveAsTemplate_Prompt" />
+
+    <RadzenTextBox @bind-Value="name" @onkeydown="OnKeyDown" class="wide"
+                   Placeholder="@Strings.Templates_Name" aria-label="@Strings.Templates_Name" />
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem"
+                 class="actions">
+        <RadzenButton Text="@Strings.NewTask_Cancel" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
+                      Size="ButtonSize.Small" Click="Cancel" />
+        <RadzenButton Text="@Strings.NewTask_Save" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat"
+                      Size="ButtonSize.Small" Disabled="@(!Named)" Click="Accept" />
+    </RadzenStack>
+</div>

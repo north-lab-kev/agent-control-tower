@@ -1,0 +1,89 @@
+.meter {
+    --meter-fill: var(--act-run);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    min-width: 0;
+}
+
+.meter ::deep .mtop {
+    min-width: 0;
+}
+
+.meter.mid {
+    --meter-fill: var(--act-wait);
+}
+
+.meter.high {
+    --meter-fill: var(--act-err);
+}
+
+.meter.rolled {
+    opacity: .55;
+}
+
+.meter.warn ::deep .nvalue {
+    font-family: var(--act-mono);
+    font-size: var(--act-t2);
+    line-height: var(--act-lh-dense);
+    white-space: nowrap;
+    color: var(--act-err);
+    font-weight: var(--act-w-em);
+}
+
+.meter.warn ::deep .nicon {
+    font-size: 12px;
+    color: var(--act-err);
+}
+
+.meter ::deep .mlabel,
+.meter ::deep .mvalue,
+.meter ::deep .mreset {
+    font-family: var(--act-mono);
+    font-size: var(--act-t2);
+    line-height: var(--act-lh-dense);
+    white-space: nowrap;
+}
+
+.meter ::deep .mlabel {
+    color: var(--act-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--act-track-caps);
+}
+
+.meter ::deep .mvalue {
+    color: var(--act-ink);
+    font-weight: var(--act-w-em);
+}
+
+.nrule {
+    height: 4px;
+    min-height: 4px;
+    border-radius: 2px;
+    background: repeating-linear-gradient(
+        90deg,
+        var(--act-track) 0 3px,
+        transparent 3px 6px);
+}
+
+/* The first thing to give when the strip runs out of room, and the only one that may: it ellipsizes
+   rather than pushing the meters over the wordmark. */
+.meter ::deep .mreset {
+    color: var(--act-faint);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.meter ::deep .mbar {
+    height: 4px;
+    min-height: 4px;
+    background: var(--act-track);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.meter ::deep .mbar .rz-progressbar-value {
+    background: var(--meter-fill);
+}
