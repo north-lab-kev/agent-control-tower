@@ -47,7 +47,6 @@ public class TaskViewLockTests : ComponentTest
         cut.Find("div.dirrow input").HasAttribute("readonly").Should().BeTrue();
         RadzenDom.IsDisabled(cut, "Agent").Should().BeTrue();
         RadzenDom.IsDisabled(cut, "Schedule").Should().BeTrue();
-        RadzenDom.IsDisabled(cut, "Git when done").Should().BeTrue();
     }
 
     // Still open: a model or a permission mode does not apply to the turn already running, but it is

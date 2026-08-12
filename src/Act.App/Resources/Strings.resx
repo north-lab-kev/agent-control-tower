@@ -1,5 +1,110 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
   </resheader>
@@ -19,10 +124,10 @@
     <value>auto-exec</value>
   </data>
   <data name="Shell_AutoExecOn_Tip" xml:space="preserve">
-    <value>Scheduled tasks launch on their own. Click to pause all automatic execution.</value>
+    <value>Scheduled tasks launch automatically.</value>
   </data>
   <data name="Shell_AutoExecPaused_Tip" xml:space="preserve">
-    <value>Nothing starts on its own. Launching a task by hand still works. Click to resume.</value>
+    <value>Scheduled tasks are paused.</value>
   </data>
   <data name="Shell_UnhandledError" xml:space="preserve">
     <value>An unhandled error has occurred.</value>
@@ -46,7 +151,7 @@
     <value>Automation</value>
   </data>
   <data name="NewTask_Locked" xml:space="preserve">
-    <value>This task has launched. Its prompt, directory, agent and automation are fixed — they describe the run that already started. The title and the agent settings can still change, and apply the next time it launches.</value>
+    <value>This task has launched. Its prompt, directory, agent and automation are fixed.</value>
   </data>
   <data name="NewTask_Archived" xml:space="preserve">
     <value>This task is archived. It is a record of work that is over: nothing here can be changed and its terminal does not start. Restore it from the archive to work on it again, or duplicate it to start the same task over.</value>
@@ -58,13 +163,7 @@
     <value>Written from the prompt if you leave it blank</value>
   </data>
   <data name="NewTask_Title_Placeholder_Manual" xml:space="preserve">
-    <value>Optional — the prompt stands in when it is blank</value>
-  </data>
-  <data name="NewTask_Title_Hint" xml:space="preserve">
-    <value>Yours to write. Leave it blank and saving fills it in from the prompt.</value>
-  </data>
-  <data name="NewTask_Title_Hint_Manual" xml:space="preserve">
-    <value>Yours to write. Leave it blank and the card shows the start of the prompt instead — or click the wand to have the agent write one.</value>
+    <value>Optional</value>
   </data>
   <data name="NewTask_Title_Required" xml:space="preserve">
     <value>Write a title, or a prompt to take one from</value>
@@ -81,14 +180,8 @@
   <data name="NewTask_Prompt" xml:space="preserve">
     <value>Prompt</value>
   </data>
-  <data name="NewTask_Prompt_Hint" xml:space="preserve">
-    <value>The opening instruction. Kept verbatim for the life of the task.</value>
-  </data>
   <data name="NewTask_Attachments" xml:space="preserve">
     <value>Attachments</value>
-  </data>
-  <data name="NewTask_Attachments_Hint" xml:space="preserve">
-    <value>Copied into ACT's own folder and handed to the agent by path when the task runs.</value>
   </data>
   <data name="NewTask_Attachments_Drop" xml:space="preserve">
     <value>Drop files here, paste from the clipboard, or browse</value>
@@ -150,6 +243,9 @@
   <data name="NewTask_Effort" xml:space="preserve">
     <value>Reasoning effort</value>
   </data>
+  <data name="NewTask_Effort_Hint" xml:space="preserve">
+    <value>Leave empty to use the agent's own default.</value>
+  </data>
   <data name="NewTask_AgentDefault" xml:space="preserve">
     <value>agent default</value>
   </data>
@@ -160,7 +256,7 @@
     <value>Schedule</value>
   </data>
   <data name="NewTask_Schedule_Hint" xml:space="preserve">
-    <value>When the task may launch, once you move it to Ready.</value>
+    <value>When the task launches, once it is Ready.</value>
   </data>
   <data name="NewTask_UnattendedPrompting" xml:space="preserve">
     <value>This task can start on its own, but its permission mode still asks before acting. ACT never answers a prompt, so it will wait at the first one — holding a slot — until you do. Choose auto, don't ask or bypass for unattended work.</value>
@@ -175,19 +271,7 @@
     <value>Run even if the folder is busy</value>
   </data>
   <data name="NewTask_AllowConcurrentWorkingDir_Hint" xml:space="preserve">
-    <value>Launch this task alongside another one already working in the same folder. Both agents then edit the same files.</value>
-  </data>
-  <data name="NewTask_AutoGit" xml:space="preserve">
-    <value>Git when done</value>
-  </data>
-  <data name="NewTask_AutoGit_Hint" xml:space="preserve">
-    <value>Added to the prompt, so the agent does it in-session.</value>
-  </data>
-  <data name="NewTask_NoGitAction" xml:space="preserve">
-    <value>none</value>
-  </data>
-  <data name="NewTask_Draft" xml:space="preserve">
-    <value>Draft pull request</value>
+    <value>Launch this task alongside another one already working in the same folder.</value>
   </data>
   <data name="NewTask_Required" xml:space="preserve">
     <value>Required</value>
@@ -205,7 +289,7 @@
     <value>Create + Ready</value>
   </data>
   <data name="NewTask_SaveReady_Hint" xml:space="preserve">
-    <value>Goes straight into Ready, where the queue can launch it.</value>
+    <value>Goes straight into Ready, where the scheduler can launch it.</value>
   </data>
   <data name="NewTask_Cancel" xml:space="preserve">
     <value>Cancel</value>
@@ -257,15 +341,6 @@
   </data>
   <data name="ScheduleOption_DateTime" xml:space="preserve">
     <value>specific date &amp; time</value>
-  </data>
-  <data name="GitAction_Commit" xml:space="preserve">
-    <value>commit</value>
-  </data>
-  <data name="GitAction_Push" xml:space="preserve">
-    <value>commit + push</value>
-  </data>
-  <data name="GitAction_PullRequest" xml:space="preserve">
-    <value>commit + push + PR</value>
   </data>
   <data name="Column_Preparing" xml:space="preserve">
     <value>Preparing</value>
@@ -397,7 +472,7 @@
     <value>Follow-ups an agent may create per task</value>
   </data>
   <data name="Settings_MaxFollowUps_Hint" xml:space="preserve">
-    <value>A safety limit on agent-created tasks, counted over a task's whole life. Set it to 0 to stop agents creating tasks at all.</value>
+    <value>A safety limit on agent-created tasks. Set it to 0 to stop agents creating tasks at all.</value>
   </data>
   <data name="Card_SpawnedBy" xml:space="preserve">
     <value>↳ #{0}</value>
@@ -472,25 +547,25 @@
     <value>One task at a time per folder</value>
   </data>
   <data name="Settings_OneTaskPerFolder_Hint" xml:space="preserve">
-    <value>Stop a task launching while another is still working in the same folder. A task holds its folder until it is completed. A single task can be allowed to run alongside the others from its own page.</value>
+    <value>Stop auto-execution from launching a task while another is still working in the same folder. A task holds its folder until it is completed.</value>
   </data>
   <data name="Settings_PauseAutoExecution" xml:space="preserve">
     <value>Pause automatic execution</value>
   </data>
   <data name="Settings_PauseAutoExecution_Hint" xml:space="preserve">
-    <value>Nothing starts on its own while this is on, whatever a task is scheduled for. Launching a task by hand still works.</value>
+    <value>Nothing starts on its own while this is on, whatever a task is scheduled for.</value>
   </data>
   <data name="Settings_MaxConcurrent" xml:space="preserve">
     <value>Tasks running at once</value>
   </data>
   <data name="Settings_MaxConcurrent_Hint" xml:space="preserve">
-    <value>How many tasks the queue keeps working at the same time. Each one holds a live agent and its terminal, so this is a real ceiling on the machine. A task waiting to be signed off does not count.</value>
+    <value>How many tasks execute at the same time.</value>
   </data>
   <data name="Settings_UsageCeiling" xml:space="preserve">
     <value>Hold the queue at</value>
   </data>
   <data name="Settings_UsageCeiling_Hint" xml:space="preserve">
-    <value>Once a 5-hour or weekly quota reaches this much, auto-execution waits for the window to reset. Below that, tasks launch as usual. Under 100% on purpose: the reading is up to three minutes old and rounded to a whole percent, and a task launched into the last of a quota stops mid-run rather than failing cleanly. Set it lower to keep more of the quota for your own sessions. Manual launches are never held.</value>
+    <value>Once a 5-hour or weekly quota reaches this much, auto-execution waits for the window to reset. Below that, tasks launch as usual.</value>
   </data>
   <data name="Settings_Group_Retention" xml:space="preserve">
     <value>Retention</value>
@@ -499,13 +574,13 @@
     <value>Archive completed tasks automatically</value>
   </data>
   <data name="Settings_AutoArchive_Hint" xml:space="preserve">
-    <value>A signed-off task leaves the board once it is old enough. Nothing is destroyed — it moves to the archive, where you can restore it.</value>
+    <value>A completed task is removed from the board once it's old enough. It then moves to the archive.</value>
   </data>
   <data name="Settings_AutoArchiveDays" xml:space="preserve">
     <value>Archive after</value>
   </data>
   <data name="Settings_AutoArchiveDays_Hint" xml:space="preserve">
-    <value>Days since the task was completed. A task you restore by hand stays on the board.</value>
+    <value>Days since the task was completed.</value>
   </data>
   <data name="Settings_Group_System" xml:space="preserve">
     <value>System</value>
@@ -520,7 +595,7 @@
     <value>Automatic updates</value>
   </data>
   <data name="Settings_Updates_Hint" xml:space="preserve">
-    <value>ACT looks for a newer release on GitHub every few hours. Pre-releases are never offered.</value>
+    <value>ACT looks for a newer release.</value>
   </data>
   <data name="Settings_Updates_Download" xml:space="preserve">
     <value>Download quietly, install on exit</value>
@@ -595,7 +670,7 @@
     <value>Extra CLI flags</value>
   </data>
   <data name="Settings_ExtraFlags_Hint" xml:space="preserve">
-    <value>One per line. Added to every launch — a flag ACT already sets, such as the session id or the settings file, will break its own binding.</value>
+    <value>One per line.</value>
   </data>
   <data name="Settings_Env" xml:space="preserve">
     <value>Environment variables</value>
@@ -643,13 +718,13 @@
     <value>Keep the computer awake</value>
   </data>
   <data name="Settings_KeepAwake_Hint" xml:space="preserve">
-    <value>Stop the machine sleeping while there is work running or waiting to start. An idle board is left to sleep.</value>
+    <value>Stop the machine sleeping while there is work running or waiting to start.</value>
   </data>
   <data name="Settings_CloseToTray" xml:space="preserve">
     <value>Close to the notification area</value>
   </data>
   <data name="Settings_CloseToTray_Hint" xml:space="preserve">
-    <value>Closing the window leaves ACT running behind its tray icon; agents carry on. Exit from that icon.</value>
+    <value>Closing the window leaves ACT running behind its tray icon.</value>
   </data>
   <data name="Tray_Tooltip_One" xml:space="preserve">
     <value>{0} — {1} task waiting for you</value>
@@ -703,7 +778,7 @@
     <value>Write titles from the prompt</value>
   </data>
   <data name="Settings_GenerateTitles_Hint" xml:space="preserve">
-    <value>When a task is saved with no title, ask its own agent to write one. Turn it off and an untitled card shows the start of its prompt instead; the wand on the task form still works.</value>
+    <value>When a task is saved with no title, the agent's low-cost model is used to write one.</value>
   </data>
   <data name="Settings_Theme" xml:space="preserve">
     <value>Theme</value>
@@ -730,7 +805,7 @@
     <value>Blink cards in Your turn</value>
   </data>
   <data name="Settings_BlinkYourTurn_Hint" xml:space="preserve">
-    <value>Pulse a card that is waiting on you. Turn it off to keep the colour without the movement.</value>
+    <value>Pulse a card that is waiting on you.</value>
   </data>
   <data name="Settings_Density_Detailed" xml:space="preserve">
     <value>Detailed</value>
@@ -749,9 +824,6 @@
   </data>
   <data name="Error_RequestId" xml:space="preserve">
     <value>Request ID:</value>
-  </data>
-  <data name="Error_DevelopmentHint" xml:space="preserve">
-    <value>Set ASPNETCORE_ENVIRONMENT to Development and restart the app to see detailed error information. The Development environment should not be enabled for deployed applications, as it can expose sensitive details from exceptions.</value>
   </data>
   <data name="NotFound_Heading" xml:space="preserve">
     <value>Not found</value>
@@ -1123,19 +1195,19 @@
     <value>Nothing archived matches the filter.</value>
   </data>
   <data name="Board_Density_Tip" xml:space="preserve">
-    <value>How much detail each flight strip shows. Click to switch.</value>
+    <value>Toggle between compact and detailed view.</value>
   </data>
   <data name="Templates_Title" xml:space="preserve">
     <value>Task templates</value>
   </data>
-  <data name="Templates_Hint" xml:space="preserve">
-    <value>What a new task can start from. The default one is used by the New task button and cannot be deleted.</value>
+  <data name="Templates_DefaultMeta" xml:space="preserve">
+    <value>used by the New task button</value>
   </data>
   <data name="Templates_Default" xml:space="preserve">
     <value>Default</value>
   </data>
   <data name="Templates_DefaultLocked" xml:space="preserve">
-    <value>This is what the New task button starts from. It cannot be renamed or deleted, and it carries no title or prompt — those are the task itself, and every new task writes its own.</value>
+    <value>Used as the default template by the New task button.</value>
   </data>
   <data name="Templates_New" xml:space="preserve">
     <value>New template</value>
@@ -1204,7 +1276,7 @@
     <value>Task templates</value>
   </data>
   <data name="Settings_Templates_Hint" xml:space="preserve">
-    <value>What a new task starts from now lives on its own page, so you can keep more than one.</value>
+    <value>Define templates for quick new task creation.</value>
   </data>
   <data name="Settings_Templates_Manage" xml:space="preserve">
     <value>Manage templates</value>
@@ -1222,13 +1294,10 @@
     <value>Install ID</value>
   </data>
   <data name="Settings_InstallId_Hint" xml:space="preserve">
-    <value>The anonymous identifier the usage data is grouped under. Generated on first launch, tied to nothing else, and safe to quote in a bug report.</value>
+    <value>The anonymous identifier the usage data is grouped under.</value>
   </data>
   <data name="Settings_Logs" xml:space="preserve">
     <value>Log files</value>
-  </data>
-  <data name="Settings_Logs_Hint" xml:space="preserve">
-    <value>One file per day, kept for two weeks. Attach the newest one when you report a problem.</value>
   </data>
   <data name="Settings_Logs_Open" xml:space="preserve">
     <value>Open log folder</value>

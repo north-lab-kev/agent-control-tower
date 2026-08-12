@@ -95,8 +95,6 @@ public class SettingsStoreTests
                         Effort = "high",
                         PermissionMode = PermissionMode.AcceptEdits,
                         Schedule = TaskSchedule.NextWindow,
-                        GitAction = GitAction.PullRequest,
-                        Draft = true,
                         AllowConcurrentWorkingDir = true,
                     },
                 ],
@@ -118,8 +116,6 @@ public class SettingsStoreTests
         template.Effort.Should().Be("high");
         template.PermissionMode.Should().Be(PermissionMode.AcceptEdits);
         template.Schedule.Should().Be(TaskSchedule.NextWindow);
-        template.GitAction.Should().Be(GitAction.PullRequest);
-        template.Draft.Should().BeTrue();
         template.AllowConcurrentWorkingDir.Should().BeTrue();
     }
 

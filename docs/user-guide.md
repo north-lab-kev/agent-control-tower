@@ -79,8 +79,9 @@ Click **+** in the *Preparing* column. The task form asks for:
   that never prompts, or the task will sit waiting for an answer nobody is
   awake to give (the form warns you about this).
 - **Schedule** — when the task may start (see *Scheduling* below).
-- **Git when done** — optionally ask the agent to commit, push, or open a
-  pull request as part of its work.
+
+ACT has no git setting: if the task should end in a commit, a push or a pull
+request, write that in the prompt.
 
 ### Attachments
 

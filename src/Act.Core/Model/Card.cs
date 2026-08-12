@@ -42,8 +42,6 @@ public sealed class Card
     // card was armed: recomputed after that boundary passes, it would keep pointing at the one after.
     public DateTimeOffset? EligibleAt { get; set; }
 
-    public AutoGitOptions? AutoGit { get; set; }
-
     // The card's own exemption from the one-task-per-folder guard — see `WorkingDirConflict`. It is
     // read off the card being *started*, so it says "run this one alongside whatever is already
     // there" and never speaks for the card holding the folder.

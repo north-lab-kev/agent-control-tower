@@ -48,14 +48,6 @@ public static class TaskWords
         new(TaskSchedule.SpecificDateTime, "scheduled", [], Accepted: false),
     ];
 
-    private static readonly Word<GitAction?>[] GitActions =
-    [
-        new(null, "none", []),
-        new(GitAction.Commit, "commit", []),
-        new(GitAction.Push, "push", []),
-        new(GitAction.PullRequest, "pr", ["pullrequest", "pull_request"]),
-    ];
-
     public static string ColumnWords { get; } = Offered(Columns);
 
     public static string AgentWords { get; } = Offered(Agents);
@@ -64,8 +56,6 @@ public static class TaskWords
 
     public static string ScheduleWords { get; } = Offered(Schedules);
 
-    public static string GitWords { get; } = Offered(GitActions);
-
     public static string Of(BoardColumn column) => Emitted(Columns, column, "unknown");
 
     public static string Of(AgentType agent) => Emitted(Agents, agent, "unknown");
@@ -73,9 +63,6 @@ public static class TaskWords
     public static string Of(PermissionMode mode) => Emitted(Permissions, mode, "default");
 
     public static string Of(TaskSchedule schedule) => Emitted(Schedules, schedule, "manual");
-
-    public static string? Of(AutoGitOptions? autoGit)
-        => autoGit is null ? null : GitActions.FirstOrDefault(word => word.Value == autoGit.Action)?.Text;
 
     public static string? Of(Badge? badge) => badge switch
     {
@@ -96,8 +83,6 @@ public static class TaskWords
     public static bool TryParse(string? text, out PermissionMode mode) => TryMatch(Permissions, text, out mode);
 
     public static bool TryParse(string? text, out TaskSchedule schedule) => TryMatch(Schedules, text, out schedule);
-
-    public static bool TryParse(string? text, out GitAction? action) => TryMatch(GitActions, text, out action);
 
     private static string Emitted<T>(Word<T>[] table, T value, string fallback)
         => table.FirstOrDefault(word => EqualityComparer<T>.Default.Equals(word.Value, value))?.Text ?? fallback;

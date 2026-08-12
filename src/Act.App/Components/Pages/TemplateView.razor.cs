@@ -61,21 +61,10 @@ public partial class TemplateView(
 
     private static SettingChoice<TaskSchedule>[] ScheduleChoices => TaskLabels.Schedules(withDateTime: false);
 
-    private static SettingChoice<GitAction?>[] GitChoices => TaskLabels.GitActions();
-
     private string PermissionHint => TaskLabels.PermissionHint(template.PermissionMode);
 
-    private IReadOnlyList<string> Models
-    {
-        get
-        {
-            var models = agents.For(template.Agent).Models.Select(model => model.Slug).ToList();
-
-            return template.Model is { } current && !models.Contains(current)
-                ? [.. models, current]
-                : models;
-        }
-    }
+    private IReadOnlyList<SettingChoice<string>> Models
+        => TaskLabels.Models(agents.For(template.Agent), template.Model);
 
     private IReadOnlyList<string> Efforts
     {
@@ -153,14 +142,6 @@ public partial class TemplateView(
     {
         if (template.Effort is { } effort && !OfferedEfforts.Contains(effort))
             template.Effort = null;
-    }
-
-    private void OnGitActionChanged(GitAction? action)
-    {
-        template.GitAction = action;
-
-        if (action is not GitAction.PullRequest)
-            template.Draft = false;
     }
 
     private void OnSubmit(TaskTemplate _)

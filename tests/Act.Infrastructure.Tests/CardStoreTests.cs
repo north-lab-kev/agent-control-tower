@@ -48,7 +48,6 @@ public class CardStoreTests
             },
             Schedule = TaskSchedule.SpecificDateTime,
             ScheduledFor = created.AddDays(1),
-            AutoGit = new AutoGitOptions { Action = GitAction.PullRequest, Draft = true },
             Origin = TaskOrigin.Spawned,
             ParentId = parentId,
             Children = [Guid.NewGuid(), Guid.NewGuid()],

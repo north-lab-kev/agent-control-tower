@@ -42,7 +42,6 @@ public class TaskProjectionTests
 
         card.Children.Add(child);
         card.DependsOn.Add(prerequisite);
-        card.AutoGit = new AutoGitOptions { Action = GitAction.PullRequest };
 
         var detail = TaskDetail.From(card, Caller);
 
@@ -51,7 +50,6 @@ public class TaskProjectionTests
         detail.Model.Should().Be("sonnet");
         detail.Permission.Should().Be("acceptEdits");
         detail.Schedule.Should().Be("manual");
-        detail.AutoGit.Should().Be("pr");
         detail.Origin.Should().Be("manual");
         detail.Children.Should().ContainSingle().Which.Should().Be(child.ToString());
         detail.DependsOn.Should().ContainSingle().Which.Should().Be(prerequisite.ToString());

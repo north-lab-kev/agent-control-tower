@@ -21,7 +21,7 @@ public class NewTaskFormTests
         card.WorkingDir.Should().Be("C:/other");
         card.AgentType.Should().Be(AgentType.Codex);
         card.Schedule.Should().Be(TaskSchedule.NextWindow);
-        card.AutoGit!.Action.Should().Be(GitAction.PullRequest);
+        card.AllowConcurrentWorkingDir.Should().BeTrue();
         card.LaunchConfig.Model.Should().Be("opus");
     }
 
@@ -39,7 +39,7 @@ public class NewTaskFormTests
         card.WorkingDir.Should().Be("C:/repo");
         card.AgentType.Should().Be(AgentType.ClaudeCode);
         card.Schedule.Should().Be(TaskSchedule.Manual);
-        card.AutoGit.Should().BeNull();
+        card.AllowConcurrentWorkingDir.Should().BeFalse();
     }
 
     // The other half, and the reason the gate is a split rather than a freeze: switching model on a
@@ -279,7 +279,7 @@ public class NewTaskFormTests
         Model = "opus",
         Permission = PermissionMode.AcceptEdits,
         Schedule = TaskSchedule.NextWindow,
-        SelectedGitAction = GitAction.PullRequest,
+        AllowConcurrentWorkingDir = true,
     };
 
     private static Card CardIn(BoardColumn column) => new()

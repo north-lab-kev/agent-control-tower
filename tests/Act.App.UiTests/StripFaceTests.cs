@@ -128,7 +128,7 @@ public class StripFaceTests
         var card = Card(BoardColumn.Executing);
         card.ObservedModel = "claude-opus-5";
 
-        Face(card).Identity.Should().Be("#1042 · claude · opus");
+        Face(card).Identity.Should().Be("#1042 · claude · Opus 5");
     }
 
     // A real id the user can look up beats nothing at all — and beats a guess.
@@ -141,9 +141,10 @@ public class StripFaceTests
         Face(card).Identity.Should().Be("#1042 · claude · claude-instant-1.2");
     }
 
-    // Codex reports what it was asked for, so there is nothing to shorten and nothing to lose.
+    // Codex reports the id it was asked for rather than a longer one, so the lookup has nothing to
+    // shorten — but the strip still shows the display name, because that is the rule for every agent.
     [Fact]
-    public void An_id_that_is_already_the_slug_is_left_alone()
+    public void An_id_that_is_already_the_slug_is_still_named_the_way_the_form_names_it()
     {
         var card = Card(BoardColumn.Executing);
 
@@ -151,7 +152,7 @@ public class StripFaceTests
         card.ObservedModel = "gpt-5.5";
 
         StripFace.Of(card, null, Now, null, CodexCapabilities.Current).Identity
-            .Should().Be("#1042 · codex · gpt-5.5");
+            .Should().Be("#1042 · codex · GPT-5.5");
     }
 
     [Fact]

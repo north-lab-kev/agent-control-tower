@@ -135,27 +135,6 @@ public class FollowUpResolverTests
             .Should().ContainSingle().Which.Should().Contain("manual, now, next_window");
 
     [Fact]
-    public void The_git_action_is_inherited_with_its_draft_flag()
-    {
-        var parent = Parent();
-        parent.AutoGit = new AutoGitOptions { Action = GitAction.PullRequest, Draft = true };
-
-        var child = Resolved(parent, Ask());
-
-        child.AutoGit!.Action.Should().Be(GitAction.PullRequest);
-        child.AutoGit.Draft.Should().BeTrue();
-    }
-
-    [Fact]
-    public void The_git_action_can_be_turned_off()
-    {
-        var parent = Parent();
-        parent.AutoGit = new AutoGitOptions { Action = GitAction.Commit };
-
-        Resolved(parent, Ask() with { AutoGit = "none" }).AutoGit.Should().BeNull();
-    }
-
-    [Fact]
     public void A_working_directory_may_be_given_and_otherwise_comes_from_the_parent()
     {
         Resolved(Parent(), Ask() with { WorkingDir = "C:/other" }).WorkingDir.Should().Be("C:/other");
@@ -205,7 +184,7 @@ public class FollowUpResolverTests
     public void Every_bad_argument_is_reported_at_once()
         => Refusals(
                 Parent(),
-                Ask() with { Agent = "gemini", Permission = "yolo", Schedule = "tuesday", AutoGit = "rebase" })
+                Ask() with { Agent = "gemini", Permission = "yolo", Schedule = "tuesday", WorkingDir = "src" })
             .Should().HaveCount(4);
 
     [Fact]
@@ -258,25 +237,6 @@ public class FollowUpResolverTests
     public void Every_permission_the_description_offers_is_accepted(string asked, PermissionMode expected)
         => Resolved(Parent(), Ask() with { Permission = asked })
             .LaunchConfig.PermissionMode.Should().Be(expected);
-
-    [Theory]
-    [InlineData("commit", GitAction.Commit)]
-    [InlineData("push", GitAction.Push)]
-    [InlineData("pr", GitAction.PullRequest)]
-    [InlineData("pull_request", GitAction.PullRequest)]
-    public void Every_git_action_the_description_offers_is_accepted(string asked, GitAction expected)
-        => Resolved(Parent(), Ask() with { AutoGit = asked }).AutoGit!.Action.Should().Be(expected);
-
-    // Draft is not an argument, so an explicitly chosen action starts undrafted rather than quietly
-    // carrying a preference the agent never restated.
-    [Fact]
-    public void An_explicitly_chosen_pull_request_is_not_a_draft()
-    {
-        var parent = Parent();
-        parent.AutoGit = new AutoGitOptions { Action = GitAction.PullRequest, Draft = true };
-
-        Resolved(parent, Ask() with { AutoGit = "pr" }).AutoGit!.Draft.Should().BeFalse();
-    }
 
     // Effort is a per-model ladder, so it cannot cross agents any more than a model slug can.
     [Fact]

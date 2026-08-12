@@ -14,7 +14,6 @@ cross-references inside the files ("see *Rules engine*") name these sections.
 | [Liveness & the embedded terminal](spec/terminal.md) | The pty, the input channel, restart, desktop handoff. |
 | [Scheduling & queue policy](spec/scheduling.md) | Per-task schedule, the runner, usage backpressure, the usage indicator, keep-awake. |
 | [Persistence & archival](spec/persistence.md) | Retention, the archive, session restore, the single-instance rule. |
-| [Git integration](spec/git-integration.md) | `autoGit` as a prompt suffix, and everything git deliberately is not. |
 | [Native OS notifications](spec/notifications.md) | Triggers, focus rules, one-state-one-ping, toast identity. |
 | [UI direction](spec/ui-direction.md) | The control-room aesthetic, flight strips, densities, interaction rules, settings, localisation. |
 | [Local-endpoint security](spec/local-endpoint-security.md) | The kept hook port, per-session tokens, `/hooks/*`, `/mcp`, the attachments route. |
@@ -69,10 +68,12 @@ channel, and `claude://resume?session=` is a confirmed per-card action.
   `permissionMode` means it should never prompt anyway). Would run as a second
   session kind behind the same `IAgentAdapter` seam, with no `IAgentTerminal`.
   Only worth building if PTY-hosted overnight runs prove wasteful in practice.
-- **Embedded git** — instead of the agent doing it in-session off the `autoGit`
-  suffix, ACT runs the git / host-CLI operations **itself** to save tokens (a
-  commit is deterministic work not worth spending LLM tokens on). An optimization
-  over the in-session git integration, which is the default.
+- **Embedded git** — instead of the user asking for it in the prompt and the agent
+  doing it in-session, ACT runs the git / host-CLI operations **itself** to save
+  tokens (a commit is deterministic work not worth spending LLM tokens on). ACT
+  deliberately has no git feature today: a commit, a push or a PR is one sentence
+  in the prompt, which the user writes better than a dropdown does — see *Agent ↔
+  ACT contract* for why ACT appends nothing of its own.
 - **Remote access** — check in on the board from a phone while away (the overnight
   use case begs for it): at minimum a read-only view of which cards need you.
   Answering remotely means shipping the *terminal* to the phone (xterm.js already

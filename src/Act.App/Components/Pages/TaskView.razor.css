@@ -92,6 +92,10 @@
     min-width: 0;
 }
 
+.dirrow ::deep .rz-button {
+    flex: 0 0 auto;
+}
+
 /* A warning, not an error: the path may simply not have been created yet, and the form still
    saves. It earns the amber the board uses for "needs you", nothing louder. */
 ::deep .dirwarn {

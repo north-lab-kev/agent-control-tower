@@ -241,6 +241,13 @@ public class CodexAdapterTests
         pty.Last.Arguments.Should().NotContain(argument => argument.Contains(@"C:\act\a\shot.png", StringComparison.Ordinal));
     }
 
+    // The task form lists the models in the order the catalog declares them, so the catalog's
+    // order is the dropdown's order — strongest first, weakest last.
+    [Fact]
+    public void The_models_are_listed_strongest_to_weakest()
+        => CodexCapabilities.Current.Models.Select(model => model.Slug)
+            .Should().Equal("gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.4-mini");
+
     private static AgentAttachments Attached(params AgentAttachment[] files)
         => new(@"C:\act\a", files);
 

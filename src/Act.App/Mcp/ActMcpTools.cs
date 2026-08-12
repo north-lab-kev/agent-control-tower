@@ -80,9 +80,6 @@ public sealed class ActMcpTools(
             + "fired.")]
         string? schedule = null,
 
-        [Description("Git action to perform in-session: \"same\" (default), \"none\", \"commit\", \"push\" or \"pr\".")]
-        string? autoGit = null,
-
         [Description("Working directory. Defaults to this task's.")]
         string? cwd = null,
 
@@ -110,7 +107,6 @@ public sealed class ActMcpTools(
                 Effort: effort,
                 Permission: permission,
                 Schedule: schedule,
-                AutoGit: autoGit,
                 WorkingDir: cwd,
                 DependsOn: dependsOn,
                 ClientKey: clientKey),

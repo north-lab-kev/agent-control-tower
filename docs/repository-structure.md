@@ -65,7 +65,7 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  │                            #     exception that actually failed; frames as Type.Method
 │  │  │                            #     (File.cs:42) — ACT's own source, never the message)
 │  │  ├─ Resources/                 #   CoreStrings (+ .fr) — localised text the CORE writes,
-│  │  │                            #     e.g. the autoGit sentence appended to a prompt
+│  │  │                            #     e.g. the attachment header appended to a prompt
 │  │  └─ Abstractions/              #   INTERFACES: IAgentAdapter, IAgentSession,
 │  │                               #     IAgentTerminal, IPtyHost, ICommandHost, IAgentEventSink,
 │  │                               #     ITranscriptReader, ITranscriptNormalizer,

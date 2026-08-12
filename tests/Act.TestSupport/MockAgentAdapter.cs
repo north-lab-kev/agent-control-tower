@@ -17,6 +17,12 @@ public sealed class MockAgentAdapter(
 
     public const string DeepModel = "mock-deep";
 
+    // The names the forms and the strip show, as distinct from the slugs the command line carries —
+    // a test that asserts on one must not accidentally be asserting on the other.
+    public const string FastModelName = "Mock Fast";
+
+    public const string DeepModelName = "Mock Deep";
+
     private readonly IClock clock = clock ?? new TestClock();
 
     public AgentType Agent { get; } = agent;
@@ -31,11 +37,11 @@ public sealed class MockAgentAdapter(
 
     public static AgentCapabilities DefaultCapabilities() => new(
         [
-            new AgentModel(FastModel, "Mock Fast", ["low", "high"], "low"),
+            new AgentModel(FastModel, FastModelName, ["low", "high"], "low"),
 
             // A second ladder on purpose: it is what keeps the per-model effort rule honest,
             // since a flat list would pass every test a single-ladder agent could write.
-            new AgentModel(DeepModel, "Mock Deep", ["low", "high", "max"], "high"),
+            new AgentModel(DeepModel, DeepModelName, ["low", "high", "max"], "high"),
         ],
         FastModel,
         Enum.GetValues<PermissionMode>(),

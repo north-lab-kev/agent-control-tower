@@ -87,12 +87,10 @@ else
                             </div>
                             <RadzenCustomValidator Component="Title" Validator="@(() => TitleSatisfied)"
                                                    Text="@Strings.NewTask_Title_Required" />
-                            <RadzenText TextStyle="TextStyle.Caption" Text="@TitleHint" class="hint" />
                         </RadzenStack>
 
                         <RadzenStack Gap="0.3rem">
                             <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Prompt" />
-                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Prompt_Hint" class="hint" />
                             @* Read-only rather than disabled: a launched card's prompt is the thing
                                you most often come back to read, and a disabled textarea is neither
                                selectable nor legible. *@
@@ -103,8 +101,6 @@ else
 
                         <RadzenStack Gap="0.3rem">
                             <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Attachments" />
-                            <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Attachments_Hint"
-                                        class="hint" />
 
                             @* One input, three routes. The file input is stretched transparently over
                                the whole panel so a click anywhere opens the picker, and `act-attach`
@@ -244,12 +240,16 @@ else
                                 <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Model_Hint" class="hint" />
                             </RadzenStack>
                             <RadzenDropDown TValue="string" Value="form.Model" ValueChanged="OnModelChanged"
-                                            Data="Models" AllowClear="true" Disabled="ReadOnly"
+                                            Data="Models" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="true" Disabled="ReadOnly"
                                             Placeholder="@Strings.NewTask_AgentDefault" class="control" />
                         </div>
 
                         <div class="row">
-                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Effort" />
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Effort" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Effort_Hint" class="hint" />
+                            </RadzenStack>
                             <RadzenDropDown TValue="string" @bind-Value="form.Effort" Data="Efforts"
                                             AllowClear="true" Disabled="ReadOnly"
                                             Placeholder="@Strings.NewTask_AgentDefault"
@@ -311,25 +311,6 @@ else
                                                 Text="@Strings.NewTask_AllowConcurrentWorkingDir_Hint" class="hint" />
                                 </RadzenStack>
                                 <RadzenSwitch @bind-Value="form.AllowConcurrentWorkingDir" Disabled="Locked" />
-                            </div>
-                        }
-
-                        <div class="row">
-                            <RadzenStack Gap="0.1rem">
-                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AutoGit" />
-                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_AutoGit_Hint" class="hint" />
-                            </RadzenStack>
-                            <RadzenDropDown TValue="GitAction?" Value="form.SelectedGitAction" ValueChanged="OnGitActionChanged"
-                                            Data="GitChoices" TextProperty="Text" ValueProperty="Value"
-                                            AllowClear="true" Placeholder="@Strings.NewTask_NoGitAction"
-                                            Disabled="Locked" class="control" />
-                        </div>
-
-                        @if (form.SelectedGitAction is GitAction.PullRequest)
-                        {
-                            <div class="row">
-                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Draft" />
-                                <RadzenSwitch @bind-Value="form.Draft" Disabled="Locked" />
                             </div>
                         }
                     </RadzenStack>

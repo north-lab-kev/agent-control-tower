@@ -334,13 +334,12 @@ public sealed class SessionLauncher(
         TerminalSize size,
         CancellationToken cancellationToken)
     {
-        var prompt = AutoGitInstruction.Append(card.InitialPrompt, card.AutoGit);
         var files = Attachments(card);
 
         if (card.SessionId is { } sessionId)
             return adapter.ResumeAsync(
                 new AgentResumeRequest(
-                    card.Id, sessionId, card.WorkingDir, prompt, message, config, size, files),
+                    card.Id, sessionId, card.WorkingDir, card.InitialPrompt, message, config, size, files),
                 cancellationToken);
 
         // Pre-minted so Claude Code can be handed it; Codex ignores it and reports its own in
@@ -350,7 +349,7 @@ public sealed class SessionLauncher(
                 card.Id,
                 Guid.NewGuid().ToString(),
                 card.WorkingDir,
-                prompt,
+                card.InitialPrompt,
                 config,
                 size,
                 files),

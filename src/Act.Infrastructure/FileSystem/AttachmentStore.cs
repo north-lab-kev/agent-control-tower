@@ -6,7 +6,7 @@ namespace Act.Infrastructure.FileSystem;
 
 // Where a task's attached files live: `<dataDir>/attachments/<cardId>/`. ACT's own directory and
 // never the task's working directory — ACT writes nothing into a user's repository, and an
-// attachment dropped into one is one `autoGit` commit away from being pushed.
+// attachment dropped into one is one agent commit away from being pushed.
 //
 // A copy, not a reference. A paste has no source path at all, so referencing in place could not
 // cover all three input routes; and a referenced file the user later moves or deletes would leave

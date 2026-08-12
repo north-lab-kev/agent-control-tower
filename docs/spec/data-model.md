@@ -67,12 +67,15 @@ The card is the central entity (stored in LiteDB). Fields, grouped by concern:
   guard (see *One task per working directory*). Default false; only meaningful
   while the global `preventConcurrentWorkingDir` setting is on, which is why the
   form hides it otherwise.
-- `autoGit` — optional, set at creation: the git actions
-  (`commit` / `push` / `pr` + `draft`) the agent should do **in-session**, appended to the
-  prompt as one sentence at launch. Independent of completion — the card still stops in
-  Your turn for sign-off.
-
 *(There is deliberately no `autoComplete` — see No auto-completion below.)*
+
+*(There is deliberately no `autoGit` either. A git action was once a field on the card
+and a dropdown on the form, whose whole effect was to append one sentence to the prompt
+at launch. It bought nothing the user cannot write themselves — "commit and push when
+you're done" is a line of the prompt — while costing a stored field, a template field, an
+MCP argument and a localised sentence per action. Removed in favour of the prompt; see
+*Embedded git* under the overview's future enhancements for the version that would earn
+its keep, by ACT running git itself rather than paying an LLM to.)*
 
 ## Lineage
 
@@ -409,13 +412,13 @@ message cap for.
   `AttachmentInstruction` appends a localised header and one **absolute path per line**, and
   the agent reads the file with its own tools. This is the thing a CLI host can do that a
   chat client cannot: the file is already on the machine the agent runs on.
-  - Appended **at launch and never stored**, exactly like the `autoGit` sentence —
-    `initialPrompt` stays verbatim for the life of the task, which is what the form promises.
+  - Appended **at launch and never stored** — `initialPrompt` stays verbatim for the life
+    of the task, which is what the form promises.
   - Appended **by the adapter**, not the launcher, because which files a CLI can take
     natively is a fact about that CLI.
 - **ACT's own directory, never the task's working directory** —
   `<dataDir>/attachments/<cardId>/`. ACT writes nothing into a user's repository, and an
-  attachment written into one is one `autoGit` commit away from being pushed.
+  attachment written into one is one agent commit away from being pushed.
 - **A copy, not a reference.** A paste has no source path at all, so referencing in place
   could not cover all three routes; and a referenced file the user later moves or deletes
   leaves a card that cannot be re-run.

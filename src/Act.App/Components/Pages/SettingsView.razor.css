@@ -66,6 +66,10 @@
     min-width: 0;
 }
 
+::deep .dirrow .rz-button {
+    flex: 0 0 auto;
+}
+
 /* A warning, not an error: settings apply as you type and a path you are about to install to is a
    reasonable thing to enter. Amber is the board's "needs you", which is exactly the weight. */
 ::deep .binwarn {

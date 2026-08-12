@@ -39,10 +39,6 @@ public sealed record NewTaskForm
 
     public DateTime? ScheduledFor { get; set; }
 
-    public GitAction? SelectedGitAction { get; set; }
-
-    public bool Draft { get; set; }
-
     public bool AllowConcurrentWorkingDir { get; set; }
 
     public bool WantsDateTime => Schedule is TaskSchedule.SpecificDateTime;
@@ -60,8 +56,6 @@ public sealed record NewTaskForm
         Effort = template.Effort,
         Permission = template.PermissionMode,
         Schedule = template.Schedule,
-        SelectedGitAction = template.GitAction,
-        Draft = template.Draft,
         AllowConcurrentWorkingDir = template.AllowConcurrentWorkingDir,
     };
 
@@ -81,8 +75,6 @@ public sealed record NewTaskForm
         Effort = Cleaned(Effort),
         PermissionMode = Permission,
         Schedule = WantsDateTime ? TaskSchedule.Manual : Schedule,
-        GitAction = SelectedGitAction,
-        Draft = Draft && SelectedGitAction is GitAction.PullRequest,
         AllowConcurrentWorkingDir = AllowConcurrentWorkingDir,
     };
 
@@ -99,8 +91,6 @@ public sealed record NewTaskForm
         Permission = card.LaunchConfig.PermissionMode,
         Schedule = card.Schedule ?? TaskSchedule.Manual,
         ScheduledFor = card.ScheduledFor?.LocalDateTime,
-        SelectedGitAction = card.AutoGit?.Action,
-        Draft = card.AutoGit?.Draft ?? false,
         AllowConcurrentWorkingDir = card.AllowConcurrentWorkingDir,
     };
 
@@ -148,7 +138,6 @@ public sealed record NewTaskForm
 
             card.Schedule = Schedule;
             card.ScheduledFor = ScheduledAt();
-            card.AutoGit = GitOptions();
             card.AllowConcurrentWorkingDir = AllowConcurrentWorkingDir;
         }
 
@@ -182,13 +171,6 @@ public sealed record NewTaskForm
     private DateTimeOffset? ScheduledAt()
         => WantsDateTime && ScheduledFor is { } when
             ? new DateTimeOffset(when, TimeZoneInfo.Local.GetUtcOffset(when))
-            : null;
-
-    // `Draft` only means anything for a pull request, so it is dropped rather than stored
-    // against an action that cannot express it.
-    private AutoGitOptions? GitOptions()
-        => SelectedGitAction is { } action
-            ? new AutoGitOptions { Action = action, Draft = Draft && action is GitAction.PullRequest }
             : null;
 
     private static string? Cleaned(string? value)

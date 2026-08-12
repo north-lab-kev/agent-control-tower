@@ -52,8 +52,6 @@ public static class TelemetryProperties
 
     public const string Origin = "origin";
 
-    public const string AutoGit = "auto_git";
-
     public const string Scheduled = "scheduled";
 
     public const string AttachmentCount = "attachment_count";
@@ -87,7 +85,6 @@ public static class TelemetryProperties
         EnabledAgents,
         Agent,
         Origin,
-        AutoGit,
         Scheduled,
         AttachmentCount,
         DependencyCount,

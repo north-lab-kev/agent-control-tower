@@ -700,7 +700,7 @@ would act on, while making the payload something a user has to read carefully �
 cost the opt-out is supposed to avoid paying.
 
 The scope that survived is **the app and its settings, never a card's own progress**. `task_launched`
-stayed, because which agent, and whether autoGit, a schedule or attachments were involved, are facts
+stayed, because which agent, and whether a schedule or attachments were involved, are facts
 about which of ACT's *features* get used, not about how the work went.
 
 **And it fires on a launch only, which is a volume decision as much as a scope one.** The first cut
@@ -978,6 +978,22 @@ exactly this reason, so it is one more line in a place that is already tested ra
 bump that would rewrite every install's settings document to add a GUID. It is random and never
 derived from the machine: the switch promises anonymous data, and a hardware-derived id would tie
 every install to a device.
+
+### The git fields were dropped with the store, not with a migration
+
+The git-when-done feature was deleted outright: `Card.AutoGit`, `TaskTemplate.GitAction` /
+`Draft`, the `GitAction` enum, `AutoGitInstruction`, the four localised sentences, the form
+dropdown, the `autoGit` MCP argument and the `auto_git` telemetry property. Its whole effect was to
+append one sentence to the prompt at launch, which the user writes better in the prompt itself.
+
+**Deleting the properties leaves the fields on disk**, because LiteDB's mapper skips a document
+field with no matching property — every card and template written by an earlier build keeps its
+`AutoGit` / `GitAction` / `Draft` keys, unread, with nothing to say when the last one is gone. The
+answer was the pre-release one and it was taken deliberately: **the store was deleted**, not
+migrated. Nobody outside this machine runs ACT yet, so there is exactly one store holding the old
+shape and its owner chose to drop it. `ActSchema.Migrations` stays empty and schema 1 stays the
+release baseline. After the release, this same change would have to be an entry in that list —
+that is the whole point of the rule, and this is the last shape that gets to be fixed by deletion.
 
 ### Renaming a persisted enum value is never only a rename — measured
 

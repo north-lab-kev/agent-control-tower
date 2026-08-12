@@ -93,15 +93,15 @@
     a dismissal belongs on the card, not in a toast.
 - **New task / edit task:** a **page**, not a modal — `/card/new` and
   `/card/{id}/edit`, matching the session view. The control set is what the *task* owns —
-  title, prompt, dir, agent, model, effort, permission mode, schedule, git-when-done — and
+  title, prompt, dir, agent, model, effort, permission mode, schedule — and
   a **single Save** → lands in Preparing; the user drags it onward. The fields sit in a
   centred column so a wide window does not stretch them.
   - **There is no *Advanced* section any more.** It held five fields: the tool allow/deny
     pair, deleted for being silently dropped by one of the two agents, and the executable /
     flags / environment, which moved to *Settings → Agents* because they describe the
     install rather than the work. Nothing was left to collapse.
-  - **Past the launch boundary the form gates itself** (`TaskEditing`): prompt, dir, agent,
-    schedule and git-when-done freeze — they describe the run that already started — while
+  - **Past the launch boundary the form gates itself** (`TaskEditing`): prompt, dir, agent
+    and schedule freeze — they describe the run that already started — while
     the title and the launch config stay editable, since those are what the *next* launch
     uses. Enforced in the code that writes the card, not only in the markup, so the
     immutable-`initialPrompt` rule holds however the form is rendered. One notice at the
@@ -124,8 +124,8 @@
     emptying the archive — plus **naming a template** on the way out of *Save as a template*,
     which is the same shape without being destructive: it interrupts a save already under way,
     and there is no url that means "name the template I am about to make". The completion/git
-    prompt that was to be the third was cut with
-    the spawned git task (see *Git integration*), so sign-off is a plain drag. Anything that is a
+    prompt that was to be the third was cut along with every other git mechanism — a git action
+    is a sentence in the prompt — so sign-off is a plain drag. Anything that is a
     *destination* is a route. Corollary learned the hard way: a decision that changes tasks
     other than the one on screen does not belong in a footer strip, however tidy.
   - **The two faces toggle, always.** Both card pages carry a `Task | Terminal` switch,
@@ -335,7 +335,7 @@
       carrying turn counts, tool calls, token totals and compactions:
       that measures the agent's work rather than the app's use of it, and it is the kind of
       per-run detail this switch should not be buying. `task_launched` stays, because which
-      agent, and whether autoGit or a schedule or attachments were involved, are facts about
+      agent, and whether a schedule or attachments were involved, are facts about
       how ACT's own features get used.
       - **Launches only, never resumes.** A restore or a terminal restart sends nothing:
         `SessionRestorer` replays one per live card on every startup, so counting them would

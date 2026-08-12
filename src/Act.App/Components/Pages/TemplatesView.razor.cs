@@ -68,6 +68,7 @@ public partial class TemplatesView(
             TaskLabels.Schedule(template.Schedule),
             template.WorkingDir,
             string.IsNullOrWhiteSpace(template.Prompt) ? Strings.Templates_NoPrompt : null,
+            template.IsDefault ? Strings.Templates_DefaultMeta : null,
         };
 
         return string.Join(" · ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));

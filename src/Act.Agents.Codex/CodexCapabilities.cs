@@ -30,6 +30,7 @@ public static class CodexCapabilities
         PermissionMode.Bypass,
     ];
 
+    // Ordered strongest to weakest, because that order is what the task form's dropdown shows.
     public static AgentCapabilities Current { get; } = new(
         [
             new AgentModel("gpt-5.6-terra", "GPT-5.6 Terra", ThroughUltra, "medium"),

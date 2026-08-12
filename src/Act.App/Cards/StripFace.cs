@@ -73,12 +73,12 @@ public sealed record StripFace(
             dropEdge,
         }.Where(part => !string.IsNullOrEmpty(part)));
 
-    // The model is named the way the task form names it — `sonnet`, not the `claude-sonnet-5` the
-    // transcript reports — so the strip and the dropdown that chose it read as one vocabulary. An id
-    // no capability list claims is shown verbatim: a real id the user can look up beats nothing.
+    // The model is named the way the task form names it — `Sonnet 5`, not the `claude-sonnet-5` the
+    // transcript reports — so the strip and the dropdown that chose it read as one vocabulary. Both
+    // go through `TaskLabels.Model`, which is what keeps that true.
     private static string Identify(Card card, string agent, AgentCapabilities? capabilities)
-        => (capabilities?.ModelFor(card.ObservedModel)?.Slug ?? card.ObservedModel) is { } model
-            ? $"#{card.Number} · {agent} · {model}"
+        => card.ObservedModel is { } observed
+            ? $"#{card.Number} · {agent} · {TaskLabels.Model(capabilities, observed)}"
             : $"#{card.Number} · {agent}";
 
     // One blink, three colours. Ready for review pulses too — it is as much the user's turn as a

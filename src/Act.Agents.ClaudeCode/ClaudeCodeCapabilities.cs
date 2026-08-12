@@ -28,11 +28,12 @@ public static class ClaudeCodeCapabilities
         PermissionMode.Bypass,
     ];
 
+    // Ordered strongest to weakest, because that order is what the task form's dropdown shows.
     public static AgentCapabilities Current { get; } = new(
         [
+            new AgentModel("fable", "Fable 5", Efforts, "medium", Million),
             new AgentModel("opus", "Opus 5", Efforts, "high", Million),
             new AgentModel("sonnet", "Sonnet 5", Efforts, "medium", Million),
-            new AgentModel("fable", "Fable 5", Efforts, "medium", Million),
             new AgentModel("haiku", "Haiku 4.5", Efforts, "low", 200_000),
         ],
         "sonnet",

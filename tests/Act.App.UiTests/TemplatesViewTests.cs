@@ -72,6 +72,22 @@ public class TemplatesViewTests : ComponentTest
         meta.Should().Contain("no prompt");
     }
 
+    // The page carries no hint of its own, so the default row is the only place that says where that
+    // template is spent — and only the default row says it.
+    [Fact]
+    public void Only_the_default_row_says_the_New_task_button_uses_it()
+    {
+        Settings.SaveTemplate(Template("Nightly sweep"));
+
+        var rows = Show().FindAll("div.list div.row");
+
+        var forDefault = rows.Single(row => row.QuerySelector(".ttl")!.TextContent != "Nightly sweep");
+        var forNamed = rows.Single(row => row.QuerySelector(".ttl")!.TextContent == "Nightly sweep");
+
+        forDefault.QuerySelector(".meta")!.TextContent.Should().Contain("used by the New task button");
+        forNamed.QuerySelector(".meta")!.TextContent.Should().NotContain("used by the New task button");
+    }
+
     // The default has no delete at all rather than a disabled one.
     [Fact]
     public void The_default_cannot_be_deleted()

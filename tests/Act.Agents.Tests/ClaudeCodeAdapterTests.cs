@@ -197,6 +197,13 @@ public class ClaudeCodeAdapterTests
             argument.StartsWith("--add-dir", StringComparison.Ordinal));
     }
 
+    // The task form lists the models in the order the catalog declares them, so the catalog's
+    // order is the dropdown's order — strongest first, weakest last.
+    [Fact]
+    public void The_models_are_listed_strongest_to_weakest()
+        => ClaudeCodeCapabilities.Current.Models.Select(model => model.Slug)
+            .Should().Equal("fable", "opus", "sonnet", "haiku");
+
     private static AgentAttachments Attached(params AgentAttachment[] files)
         => new(@"C:\act\a", files);
 

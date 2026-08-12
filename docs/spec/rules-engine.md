@@ -122,7 +122,7 @@ constraints, all deliberate:
   instruction to a session forty turns deep tells it to start the work over; by then
   that instruction describes a beginning that no longer exists, and the transcript the
   resume just reopened is the real context. So the message says only that the session
-  was interrupted (`RetryInstruction`, localised like `AutoGitInstruction`), and it
+  was interrupted (`RetryInstruction`, localised like everything ACT writes), and it
   rides the resume command line — ACT still types nothing into a terminal.
 - **It is offered only when the process is gone.** A CLI that is still alive is one the
   user can type into, and its terminal is a click away; offering Retry there would mean
@@ -144,9 +144,9 @@ Error kinds and what retry means:
   backpressure, but default is manual).
 - **Execution** — crash / non-zero exit / tool failure. Retriable (resume), may
   warrant investigation first.
-- **In-session git failure** (`autoGit`) — not a distinct case: the agent's turn ends,
-  the card lands in Your turn like any other, and the user sees the failure on review.
-  ACT does not detect it, because nothing reports it.
+- **In-session git failure** — not a distinct case: the agent's turn ends, the card
+  lands in Your turn like any other, and the user sees the failure on review. ACT does
+  not detect it, because nothing reports it.
 
 So the drawer's action set is state-specific — and, since ACT no longer answers
 anything, mostly a way *into* the terminal: permission / question → **Open
@@ -173,14 +173,15 @@ Completed.** There is no `autoComplete`, and no card ever signs itself off.
 - **Control arc stays human → machine → human**, with no opt-in that drops the
   final step.
 
-**`autoGit` is a prompt suffix, independent of completion.** Pick a git action on the
-task form and ACT appends one sentence to the prompt at launch
-(`Once you are done: commit, push and create a draft pull request.`). The agent does the
-work in-session, the card still stops in Your turn for sign-off, and a failed git step is
-simply something the user sees on review. Git chosen at *review* time is **not a feature**
-(see *Git integration*): the terminal is already in front of the
-reviewer, so asking is what the modal would have done and typing is what the user does
-instead.
+**There is no git feature either, and no `autoGit`.** A task that should end in a commit,
+a push or a pull request says so in its prompt — one sentence the user writes, which ACT
+neither stores, phrases nor translates. It was once a dropdown on the task form whose
+entire effect was to append that sentence at launch; the field, the template field, the
+MCP argument and the four localised sentences all bought what a line of prompt already
+said. The agent does the work in-session, the card still stops in Your turn for sign-off,
+and a failed git step is simply something the user sees on review. Git decided at *review*
+time needs no mechanism for the same reason: the terminal is already in front of the
+reviewer.
 
 ## Agent ↔ ACT contract — one MCP server
 
@@ -209,7 +210,6 @@ board.
 | `effort` | `same` \| any the chosen agent supports | as above |
 | `permission` | `same` \| `default` \| `plan` \| `acceptEdits` \| `auto` \| `dontAsk` \| `bypass` | |
 | `schedule` | `manual` \| `now` \| `next_window` | default `manual`; no `same` — see below |
-| `autoGit` | `same` \| `none` \| `commit` \| `push` \| `pr` | |
 | `cwd` | | defaults to the parent's working directory |
 | `dependsOn` | any card ids | not restricted to this session's own children |
 | `clientKey` | | optional idempotency key |
@@ -346,14 +346,14 @@ has, and the reason a shared, byte-stable config file cannot carry the token.
 
 **There is no injected preamble.** ACT teaches the agent no conventions, so the
 opening prompt is the user's task text alone — nothing rides the launch argument
-but the task.
+but the task, and the one thing that ever did (a git sentence chosen on the form) was
+removed rather than kept as an exception: the user writes it in the prompt.
 
-**One exception, and it proves the rule: `autoGit`.** When the task carries a git
-action, `AutoGitInstruction` appends a single sentence to the prompt at launch. That is
-not ACT teaching the agent an ACT convention — it is ACT phrasing *the user's own*
-instruction, chosen on the task form, which they would otherwise have typed into the
-prompt themselves. It is composed at launch and never stored, so `Card.InitialPrompt`
-stays verbatim for the life of the task as the form promises.
+**One thing is still appended, and it is a path list.** When the task carries
+attachments, `AttachmentInstruction` adds a header and one absolute path per line —
+the file is already on the machine, and a path is the only way an agent can reach it.
+Composed at launch and never stored, so `Card.InitialPrompt` stays verbatim for the
+life of the task as the form promises.
 
 **Text ACT sends to an agent is localised, like everything else it writes.** The agent is
 addressed in the language the user runs ACT in, not in English by default — so

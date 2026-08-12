@@ -57,26 +57,6 @@ public class TaskWordsTests
     }
 
     [Theory]
-    [MemberData(nameof(GitActions))]
-    public void Every_git_action_word_round_trips(GitAction action)
-    {
-        var word = TaskWords.Of(new AutoGitOptions { Action = action });
-
-        word.Should().NotBeNull();
-        TaskWords.TryParse(word, out GitAction? parsed).Should().BeTrue();
-        parsed.Should().Be(action);
-    }
-
-    [Fact]
-    public void None_is_the_word_for_no_git_action()
-    {
-        TaskWords.TryParse("none", out GitAction? parsed).Should().BeTrue();
-
-        parsed.Should().BeNull();
-        TaskWords.Of((AutoGitOptions?)null).Should().BeNull();
-    }
-
-    [Theory]
     [InlineData("your turn")]
     [InlineData("YOUR_TURN")]
     [InlineData(" ready ")]
@@ -100,7 +80,6 @@ public class TaskWordsTests
         TaskWords.AgentWords.Should().Be("claude, codex");
         TaskWords.PermissionWords.Should().Be("default, plan, acceptEdits, auto, dontAsk, bypass");
         TaskWords.ScheduleWords.Should().Be("manual, now, next_window");
-        TaskWords.GitWords.Should().Be("none, commit, push, pr");
     }
 
     public static TheoryData<BoardColumn> Columns => [.. Enum.GetValues<BoardColumn>()];
@@ -110,6 +89,4 @@ public class TaskWordsTests
     public static TheoryData<PermissionMode> Permissions => [.. Enum.GetValues<PermissionMode>()];
 
     public static TheoryData<TaskSchedule> Schedules => [.. Enum.GetValues<TaskSchedule>()];
-
-    public static TheoryData<GitAction> GitActions => [.. Enum.GetValues<GitAction>()];
 }

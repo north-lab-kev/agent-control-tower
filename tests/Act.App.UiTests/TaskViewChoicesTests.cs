@@ -54,11 +54,33 @@ public class TaskViewChoicesTests : ComponentTest
     {
         var cut = Show();
 
-        RadzenDom.Options(cut, "Model").Should().Equal(MockAgentAdapter.FastModel, MockAgentAdapter.DeepModel);
+        RadzenDom.Options(cut, "Model")
+            .Should().Equal(MockAgentAdapter.FastModelName, MockAgentAdapter.DeepModelName);
 
         RadzenDom.Choose(cut, "Agent", "codex");
 
-        RadzenDom.Options(cut, "Model").Should().Equal(MockAgentAdapter.DeepModel);
+        RadzenDom.Options(cut, "Model").Should().Equal(MockAgentAdapter.DeepModelName);
+    }
+
+    // A model is offered by the name its own CLI shows, while the card stores the slug the command
+    // line carries — so the box has to read as the one and save as the other. Worth a round trip
+    // rather than a list assertion: binding the text and forgetting the value would still render.
+    [Fact]
+    public async Task A_model_is_shown_by_name_and_stored_by_slug()
+    {
+        var cut = Show();
+
+        cut.Find("textarea").Change("do the thing");
+        cut.Find("div.dirrow input").Change("/dev/act");
+        RadzenDom.Choose(cut, "Model", MockAgentAdapter.DeepModelName);
+
+        RadzenDom.Options(cut, "Model").Should().NotContain(MockAgentAdapter.DeepModel);
+
+        await cut.Find("form").SubmitAsync();
+        await Backfill.Idle;
+
+        Board.All.Should().ContainSingle()
+            .Which.LaunchConfig.Model.Should().Be(MockAgentAdapter.DeepModel);
     }
 
     [Fact]
@@ -66,8 +88,8 @@ public class TaskViewChoicesTests : ComponentTest
     {
         var cut = Show();
 
-        RadzenDom.Choose(cut, "Model", MockAgentAdapter.FastModel);
-        RadzenDom.Selected(cut, "Model").Should().Be(MockAgentAdapter.FastModel);
+        RadzenDom.Choose(cut, "Model", MockAgentAdapter.FastModelName);
+        RadzenDom.Selected(cut, "Model").Should().Be(MockAgentAdapter.FastModelName);
 
         RadzenDom.Choose(cut, "Agent", "codex");
 
@@ -79,10 +101,10 @@ public class TaskViewChoicesTests : ComponentTest
     {
         var cut = Show();
 
-        RadzenDom.Choose(cut, "Model", MockAgentAdapter.DeepModel);
+        RadzenDom.Choose(cut, "Model", MockAgentAdapter.DeepModelName);
         RadzenDom.Choose(cut, "Agent", "codex");
 
-        RadzenDom.Selected(cut, "Model").Should().Be(MockAgentAdapter.DeepModel);
+        RadzenDom.Selected(cut, "Model").Should().Be(MockAgentAdapter.DeepModelName);
     }
 
     // Unlike a model, a permission mode has no "agent default" to fall back to — the field is required
@@ -119,11 +141,11 @@ public class TaskViewChoicesTests : ComponentTest
     {
         var cut = Show();
 
-        RadzenDom.Choose(cut, "Model", MockAgentAdapter.DeepModel);
+        RadzenDom.Choose(cut, "Model", MockAgentAdapter.DeepModelName);
         RadzenDom.Choose(cut, "Reasoning effort", "max");
         RadzenDom.Selected(cut, "Reasoning effort").Should().Be("max");
 
-        RadzenDom.Choose(cut, "Model", MockAgentAdapter.FastModel);
+        RadzenDom.Choose(cut, "Model", MockAgentAdapter.FastModelName);
 
         RadzenDom.Selected(cut, "Reasoning effort").Should().Be("agent default");
     }
@@ -133,7 +155,7 @@ public class TaskViewChoicesTests : ComponentTest
     {
         var cut = Show();
 
-        RadzenDom.Choose(cut, "Model", MockAgentAdapter.DeepModel);
+        RadzenDom.Choose(cut, "Model", MockAgentAdapter.DeepModelName);
         RadzenDom.Choose(cut, "Reasoning effort", "max");
         RadzenDom.Choose(cut, "Agent", "codex");
 
@@ -225,24 +247,6 @@ public class TaskViewChoicesTests : ComponentTest
         cut.FindAll("div.rz-alert.warn").Should().HaveCount(warns ? 1 : 0);
     }
 
-    // PR-only: a draft is a property of a pull request, so choosing another action has nothing to be a
-    // draft of.
-    [Fact]
-    public void The_draft_switch_shows_only_for_a_pull_request()
-    {
-        var cut = Show();
-
-        RadzenDom.HasRow(cut, "Draft").Should().BeFalse();
-
-        RadzenDom.Choose(cut, "Git when done", "commit + push + PR");
-
-        RadzenDom.HasRow(cut, "Draft").Should().BeTrue();
-
-        RadzenDom.Choose(cut, "Git when done", "commit");
-
-        RadzenDom.HasRow(cut, "Draft").Should().BeFalse();
-    }
-
     // Only while the guard is on: an exemption from a rule nobody is enforcing is a switch that reads as
     // if it did something.
     [Fact]
@@ -268,6 +272,15 @@ public class TaskViewChoicesTests : ComponentTest
 
         RadzenDom.Row(cut, "Permission mode").QuerySelector(".hint")!.TextContent
             .Should().NotBeNullOrWhiteSpace().And.NotBe(forDefault);
+    }
+
+    // Both boxes read *agent default* when they are left alone, so both say what that means rather than
+    // leaving the effort one to be read off the model's hint above it.
+    [Fact]
+    public void The_effort_box_says_what_leaving_it_empty_does()
+    {
+        RadzenDom.Row(Show(), "Reasoning effort").QuerySelector(".hint")!.TextContent
+            .Should().Contain("Leave empty to use the agent's own default");
     }
 
     private IRenderedComponent<TaskView> Show(Guid? cardId = null)

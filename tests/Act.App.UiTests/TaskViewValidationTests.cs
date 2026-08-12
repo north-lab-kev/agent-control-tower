@@ -331,16 +331,20 @@ public class TaskViewValidationTests : ComponentTest
         TaskViewTests.Title(cut).Should().Be("Rename the widget");
     }
 
-    // The field has to say which promise is in force: "saving fills it in" is wrong once nothing does.
+    // The placeholder is the only thing left saying what a blank box does, so it has to follow the
+    // setting: "written from the prompt" is a promise nothing keeps once generation is off.
     [Fact]
-    public void The_title_field_says_what_a_blank_box_will_do()
+    public void The_title_placeholder_follows_the_generation_setting()
     {
-        Show().Markup.Should().Contain("saving fills it in from the prompt");
+        Placeholder(Show()).Should().Be("Written from the prompt if you leave it blank");
 
         Settings.SetGenerateTitles(false);
 
-        Show().Markup.Should().Contain("the card shows the start of the prompt");
+        Placeholder(Show()).Should().Be("Optional");
     }
+
+    private static string Placeholder(IRenderedComponent<TaskView> cut)
+        => cut.Find("div.titlerow input").GetAttribute("placeholder") ?? string.Empty;
 
     // An untitled card opens with an empty box rather than a title nobody typed, and the heading falls back
     // to the prompt so the page still says which task it is.

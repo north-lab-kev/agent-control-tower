@@ -24,10 +24,6 @@ public sealed class TaskTemplate
 
     public TaskSchedule Schedule { get; set; } = TaskSchedule.Manual;
 
-    public GitAction? GitAction { get; set; }
-
-    public bool Draft { get; set; }
-
     public bool AllowConcurrentWorkingDir { get; set; }
 
     public TaskTemplate Copy() => new()
@@ -43,8 +39,6 @@ public sealed class TaskTemplate
         Effort = Effort,
         PermissionMode = PermissionMode,
         Schedule = Schedule,
-        GitAction = GitAction,
-        Draft = Draft,
         AllowConcurrentWorkingDir = AllowConcurrentWorkingDir,
     };
 }

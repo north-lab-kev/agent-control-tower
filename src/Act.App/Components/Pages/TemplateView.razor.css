@@ -60,6 +60,10 @@
     color: var(--act-dim);
 }
 
+::deep .rz-alert {
+    margin: 0;
+}
+
 .dirrow {
     display: flex;
     align-items: center;
@@ -69,6 +73,10 @@
 .dirrow ::deep .wide {
     flex: 1 1 auto;
     min-width: 0;
+}
+
+.dirrow ::deep .rz-button {
+    flex: 0 0 auto;
 }
 
 ::deep .wide {

@@ -1,5 +1,6 @@
 using Act.App.Resources;
 using Act.App.Settings;
+using Act.Core.Abstractions;
 using Act.Core.Model;
 
 namespace Act.App.Cards;
@@ -38,19 +39,32 @@ public static class TaskLabels
         _ => string.Empty,
     };
 
+    // A model reads as the name its own CLI's picker shows — "Sonnet 5", not the `sonnet` slug the
+    // command line carries — because the version is real information: Haiku is 4.5 while the rest are
+    // 5, and the slug hides that. An id no capability list claims is shown verbatim: a real id the
+    // user can look up beats a guess.
+    public static string Model(AgentCapabilities? capabilities, string model)
+        => capabilities?.ModelFor(model)?.DisplayName ?? model;
+
+    // Keeps a stored model visible even when the agent no longer offers it — otherwise editing a
+    // card would show an empty dropdown for a value it is still carrying. That one is named by its
+    // slug, because a retired model has no display name left to borrow.
+    public static SettingChoice<string>[] Models(AgentCapabilities capabilities, string? current)
+    {
+        var offered = capabilities.Models.Select(
+            model => new SettingChoice<string>(model.Slug, model.DisplayName));
+
+        return current is not null && capabilities.Model(current) is null
+            ? [.. offered, new SettingChoice<string>(current, current)]
+            : [.. offered];
+    }
+
     public static string Schedule(TaskSchedule schedule) => schedule switch
     {
         TaskSchedule.Now => Strings.ScheduleOption_Now,
         TaskSchedule.NextWindow => Strings.ScheduleOption_NextWindow,
         TaskSchedule.SpecificDateTime => Strings.ScheduleOption_DateTime,
         _ => Strings.ScheduleOption_Manual,
-    };
-
-    public static string Git(GitAction action) => action switch
-    {
-        GitAction.Push => Strings.GitAction_Push,
-        GitAction.PullRequest => Strings.GitAction_PullRequest,
-        _ => Strings.GitAction_Commit,
     };
 
     // Powers of 1024 with the short units, because the number is read beside a file name to answer
@@ -86,13 +100,6 @@ public static class TaskLabels
                 Choice(TaskSchedule.Now),
                 Choice(TaskSchedule.NextWindow),
             ];
-
-    public static SettingChoice<GitAction?>[] GitActions() =>
-    [
-        new(GitAction.Commit, Strings.GitAction_Commit),
-        new(GitAction.Push, Strings.GitAction_Push),
-        new(GitAction.PullRequest, Strings.GitAction_PullRequest),
-    ];
 
     private static SettingChoice<TaskSchedule> Choice(TaskSchedule schedule) => new(schedule, Schedule(schedule));
 }

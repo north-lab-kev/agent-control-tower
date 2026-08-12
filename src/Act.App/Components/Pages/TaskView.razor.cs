@@ -155,15 +155,11 @@ public partial class TaskView(
     private bool GeneratesTitles => settings.GenerateTitles;
 
     // Two settings, two promises: with generation on, a blank box is filled in on save, and with it off
-    // the box stays blank and the board shows the prompt instead. The field says which one it is, because
-    // "leave it blank" means something different under each.
+    // the box stays blank and the board shows the prompt instead. The placeholder says which one it is,
+    // because "leave it blank" means something different under each.
     private string TitlePlaceholder => GeneratesTitles
         ? Strings.NewTask_Title_Placeholder
         : Strings.NewTask_Title_Placeholder_Manual;
-
-    private string TitleHint => GeneratesTitles
-        ? Strings.NewTask_Title_Hint
-        : Strings.NewTask_Title_Hint_Manual;
 
     private bool FolderGuardOn => settings.PreventConcurrentWorkingDir;
 
@@ -210,21 +206,8 @@ public partial class TaskView(
 
     private static SettingChoice<TaskSchedule>[] ScheduleChoices => TaskLabels.Schedules(withDateTime: true);
 
-    private static SettingChoice<GitAction?>[] GitChoices => TaskLabels.GitActions();
-
-    // Keeps a stored model visible even when the agent no longer offers it — otherwise editing
-    // a card would show an empty dropdown for a value it is still carrying.
-    private IReadOnlyList<string> Models
-    {
-        get
-        {
-            var models = agents.For(form.Agent).Models.Select(model => model.Slug).ToList();
-
-            return form.Model is { } current && !models.Contains(current)
-                ? [.. models, current]
-                : models;
-        }
-    }
+    private IReadOnlyList<SettingChoice<string>> Models
+        => TaskLabels.Models(agents.For(form.Agent), form.Model);
 
     // Narrows with the chosen model, because the ladders genuinely differ per model on Codex.
     // A stored effort survives the same way a stored model does.
@@ -784,14 +767,6 @@ public partial class TaskView(
 
         if (!form.WantsDateTime)
             form.ScheduledFor = null;
-    }
-
-    private void OnGitActionChanged(GitAction? action)
-    {
-        form.SelectedGitAction = action;
-
-        if (action is not GitAction.PullRequest)
-            form.Draft = false;
     }
 
     // A title is required; typing it is not. Blank passes only while the prompt can stand in — which

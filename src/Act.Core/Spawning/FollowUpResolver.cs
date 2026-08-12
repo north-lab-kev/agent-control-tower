@@ -34,7 +34,6 @@ public static class FollowUpResolver
 
         var agent = ResolveAgent(parent, request.Agent, rejections);
         var schedule = ResolveSchedule(request.Schedule, rejections);
-        var autoGit = ResolveAutoGit(parent, request.AutoGit, rejections);
         var dependsOn = ResolveDependencies(request.DependsOn, cards, rejections);
         var permission = ResolvePermission(parent, request.Permission, rejections);
         var workingDir = ResolveWorkingDir(parent, request.WorkingDir, directories, rejections);
@@ -68,7 +67,6 @@ public static class FollowUpResolver
             AgentType = agent,
             LaunchConfig = launch.Resolved,
             Schedule = schedule,
-            AutoGit = autoGit,
             DependsOn = dependsOn,
             Column = BoardColumn.Ready,
             Origin = TaskOrigin.Spawned,
@@ -124,25 +122,6 @@ public static class FollowUpResolver
                 rejections,
                 PermissionMode.Default,
                 $"Permission '{requested}' is not one of: same, {TaskWords.PermissionWords}.");
-    }
-
-    // `Draft` rides the action rather than being an argument of its own: it only means anything for
-    // a pull request, and an agent that names an action explicitly is choosing the action, not
-    // re-affirming the parent's draft preference.
-    private static AutoGitOptions? ResolveAutoGit(Card parent, string? requested, List<string> rejections)
-    {
-        if (FollowUpRequest.Inherits(requested))
-            return parent.AutoGit is { } inherited
-                ? new AutoGitOptions { Action = inherited.Action, Draft = inherited.Draft }
-                : null;
-
-        if (!TaskWords.TryParse(requested, out GitAction? action))
-            return Refuse<AutoGitOptions?>(
-                rejections,
-                null,
-                $"Git action '{requested}' is not one of: same, {TaskWords.GitWords}.");
-
-        return action is { } chosen ? new AutoGitOptions { Action = chosen } : null;
     }
 
     // Existence is checked at creation, where the refusal can still teach the agent something. Once

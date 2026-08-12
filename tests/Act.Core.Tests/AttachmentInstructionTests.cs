@@ -4,8 +4,8 @@ using AwesomeAssertions;
 
 namespace Act.Core.Tests;
 
-// The culture is pinned in every case for the same reason `AutoGitInstructionTests` pins it: the
-// header is localised, so a test reading the ambient culture would pass or fail per machine.
+// The culture is pinned in every case because the header is localised: a test reading the ambient
+// culture would pass or fail per machine.
 public class AttachmentInstructionTests
 {
     private static readonly CultureInfo English = CultureInfo.GetCultureInfo("en");

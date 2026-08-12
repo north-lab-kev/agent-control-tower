@@ -39,15 +39,6 @@ public class TaskLabelsTests
         => TaskLabels.Schedule(schedule).Should().NotBeNullOrWhiteSpace()
             .And.NotBe(schedule.ToString());
 
-    [Theory]
-    [MemberData(nameof(GitActions))]
-    public void Every_git_action_has_a_label(GitAction action)
-        => TaskLabels.Git(action).Should().NotBeNullOrWhiteSpace().And.NotBe(action.ToString());
-
-    [Fact]
-    public void No_two_git_actions_read_the_same()
-        => Enum.GetValues<GitAction>().Select(TaskLabels.Git).Should().OnlyHaveUniqueItems();
-
     // A specific datetime describes one task, never a kind of task, so the forms that pre-fill a task
     // rather than being one do not offer it.
     [Fact]
@@ -68,11 +59,6 @@ public class TaskLabelsTests
     public void A_schedule_choice_carries_the_same_text_the_label_gives()
         => TaskLabels.Schedules(withDateTime: true)
             .Should().AllSatisfy(choice => choice.Text.Should().Be(TaskLabels.Schedule(choice.Value)));
-
-    [Fact]
-    public void The_git_choices_offer_every_action_in_escalating_order()
-        => TaskLabels.GitActions().Select(choice => choice.Value)
-            .Should().Equal(GitAction.Commit, GitAction.Push, GitAction.PullRequest);
 
     // Powers of 1024 with the short units, because the number is read beside a file name to answer
     // "is this the big one or the small one" — not to be added up.
@@ -117,6 +103,4 @@ public class TaskLabelsTests
     public static TheoryData<PermissionMode> Modes => [.. Enum.GetValues<PermissionMode>()];
 
     public static TheoryData<TaskSchedule> Schedules => [.. Enum.GetValues<TaskSchedule>()];
-
-    public static TheoryData<GitAction> GitActions => [.. Enum.GetValues<GitAction>()];
 }

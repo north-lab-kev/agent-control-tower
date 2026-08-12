@@ -157,7 +157,7 @@ public abstract class ComponentTest : BunitContext, IAsyncLifetime
     // all. Two adapters with identical capabilities can never show that switching agent drops a model the
     // new one does not offer, which is the rule `OnAgentChanged` exists for.
     internal static AgentCapabilities NarrowerCapabilities { get; } = new(
-        [new AgentModel(MockAgentAdapter.DeepModel, "Mock Deep", ["low", "high", "max"], "high")],
+        [new AgentModel(MockAgentAdapter.DeepModel, MockAgentAdapter.DeepModelName, ["low", "high", "max"], "high")],
         MockAgentAdapter.DeepModel,
         [PermissionMode.Default, PermissionMode.Plan]);
 

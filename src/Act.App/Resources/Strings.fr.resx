@@ -1,5 +1,110 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
   </resheader>
@@ -19,10 +124,10 @@
     <value>exéc. auto</value>
   </data>
   <data name="Shell_AutoExecOn_Tip" xml:space="preserve">
-    <value>Les tâches planifiées démarrent d'elles-mêmes. Cliquez pour suspendre toute exécution automatique.</value>
+    <value>Les tâches planifiées démarrent automatiquement.</value>
   </data>
   <data name="Shell_AutoExecPaused_Tip" xml:space="preserve">
-    <value>Rien ne démarre tout seul. Le lancement manuel reste possible. Cliquez pour reprendre.</value>
+    <value>Les tâches planifiées sont en pause.</value>
   </data>
   <data name="Shell_UnhandledError" xml:space="preserve">
     <value>Une erreur non gérée s’est produite.</value>
@@ -46,7 +151,7 @@
     <value>Automatisation</value>
   </data>
   <data name="NewTask_Locked" xml:space="preserve">
-    <value>Cette tâche est lancée. Sa consigne, son répertoire, son agent et son automatisation sont figés — ils décrivent l'exécution déjà commencée. Le titre et les réglages de l'agent restent modifiables et s'appliqueront au prochain lancement.</value>
+    <value>Cette tâche est lancée. Sa consigne, son répertoire, son agent et son automatisation sont figés.</value>
   </data>
   <data name="NewTask_Archived" xml:space="preserve">
     <value>Cette tâche est archivée. C'est la trace d'un travail terminé : rien ici n'est modifiable et son terminal ne démarre pas. Restaurez-la depuis l'archive pour y retravailler, ou dupliquez-la pour refaire la même tâche.</value>
@@ -58,13 +163,7 @@
     <value>Rédigé à partir de l'instruction si vous le laissez vide</value>
   </data>
   <data name="NewTask_Title_Placeholder_Manual" xml:space="preserve">
-    <value>Facultatif — l'instruction le remplace s'il est vide</value>
-  </data>
-  <data name="NewTask_Title_Hint" xml:space="preserve">
-    <value>À vous de l'écrire. Laissez-le vide et l'enregistrement le rédige à partir de l'instruction.</value>
-  </data>
-  <data name="NewTask_Title_Hint_Manual" xml:space="preserve">
-    <value>À vous de l'écrire. Laissez-le vide et la carte affiche le début de l'instruction — ou cliquez la baguette pour que l'agent en rédige un.</value>
+    <value>Facultatif</value>
   </data>
   <data name="NewTask_Title_Required" xml:space="preserve">
     <value>Saisissez un titre, ou une instruction dont le tirer</value>
@@ -81,14 +180,8 @@
   <data name="NewTask_Prompt" xml:space="preserve">
     <value>Instruction</value>
   </data>
-  <data name="NewTask_Prompt_Hint" xml:space="preserve">
-    <value>L'instruction initiale. Conservée telle quelle pendant toute la vie de la tâche.</value>
-  </data>
   <data name="NewTask_Attachments" xml:space="preserve">
     <value>Pièces jointes</value>
-  </data>
-  <data name="NewTask_Attachments_Hint" xml:space="preserve">
-    <value>Copiées dans le dossier d'ACT et transmises à l'agent par chemin au lancement de la tâche.</value>
   </data>
   <data name="NewTask_Attachments_Drop" xml:space="preserve">
     <value>Déposez des fichiers ici, collez depuis le presse-papiers, ou parcourez</value>
@@ -150,6 +243,9 @@
   <data name="NewTask_Effort" xml:space="preserve">
     <value>Effort de raisonnement</value>
   </data>
+  <data name="NewTask_Effort_Hint" xml:space="preserve">
+    <value>Laisser vide pour utiliser le défaut de l'agent.</value>
+  </data>
   <data name="NewTask_AgentDefault" xml:space="preserve">
     <value>défaut de l'agent</value>
   </data>
@@ -160,7 +256,7 @@
     <value>Planification</value>
   </data>
   <data name="NewTask_Schedule_Hint" xml:space="preserve">
-    <value>Quand la tâche pourra démarrer, une fois déplacée dans « Prêt ».</value>
+    <value>Quand la tâche démarre, une fois qu'elle est dans « Prêt ».</value>
   </data>
   <data name="NewTask_UnattendedPrompting" xml:space="preserve">
     <value>Cette tâche peut démarrer seule, mais son mode d'autorisation demande encore avant d'agir. ACT ne répond jamais à une invite : elle attendra à la première — en occupant une place — jusqu'à ce que vous répondiez. Choisissez auto, ne pas demander ou contourner pour du travail sans surveillance.</value>
@@ -175,19 +271,7 @@
     <value>Démarrer même si le dossier est occupé</value>
   </data>
   <data name="NewTask_AllowConcurrentWorkingDir_Hint" xml:space="preserve">
-    <value>Lance cette tâche en parallèle d'une autre qui travaille déjà dans le même dossier. Les deux agents modifient alors les mêmes fichiers.</value>
-  </data>
-  <data name="NewTask_AutoGit" xml:space="preserve">
-    <value>Git à la fin</value>
-  </data>
-  <data name="NewTask_AutoGit_Hint" xml:space="preserve">
-    <value>Ajouté au prompt, donc exécuté par l'agent dans la session.</value>
-  </data>
-  <data name="NewTask_NoGitAction" xml:space="preserve">
-    <value>aucune</value>
-  </data>
-  <data name="NewTask_Draft" xml:space="preserve">
-    <value>Pull request brouillon</value>
+    <value>Lance cette tâche en parallèle d'une autre qui travaille déjà dans le même dossier.</value>
   </data>
   <data name="NewTask_Required" xml:space="preserve">
     <value>Obligatoire</value>
@@ -205,7 +289,7 @@
     <value>Créer + Prêt</value>
   </data>
   <data name="NewTask_SaveReady_Hint" xml:space="preserve">
-    <value>Va directement dans « Prêt », où la file peut la démarrer.</value>
+    <value>Va directement dans « Prêt », où le planificateur peut la démarrer.</value>
   </data>
   <data name="NewTask_Cancel" xml:space="preserve">
     <value>Annuler</value>
@@ -257,15 +341,6 @@
   </data>
   <data name="ScheduleOption_DateTime" xml:space="preserve">
     <value>date et heure précises</value>
-  </data>
-  <data name="GitAction_Commit" xml:space="preserve">
-    <value>commit</value>
-  </data>
-  <data name="GitAction_Push" xml:space="preserve">
-    <value>commit + push</value>
-  </data>
-  <data name="GitAction_PullRequest" xml:space="preserve">
-    <value>commit + push + PR</value>
   </data>
   <data name="Column_Preparing" xml:space="preserve">
     <value>Préparation</value>
@@ -394,10 +469,10 @@
     <value>Tâches de suivi</value>
   </data>
   <data name="Settings_MaxFollowUps" xml:space="preserve">
-    <value>Tâches de suivi qu&apos;un agent peut créer par tâche</value>
+    <value>Tâches de suivi qu'un agent peut créer par tâche</value>
   </data>
   <data name="Settings_MaxFollowUps_Hint" xml:space="preserve">
-    <value>Une limite de sécurité sur les tâches créées par un agent, comptée sur toute la vie de la tâche. Mettez 0 pour empêcher les agents d&apos;en créer.</value>
+    <value>Une limite de sécurité sur les tâches créées par un agent. Mettez 0 pour empêcher les agents d'en créer.</value>
   </data>
   <data name="Card_SpawnedBy" xml:space="preserve">
     <value>↳ n° {0}</value>
@@ -445,25 +520,25 @@
     <value>réponse illisible</value>
   </data>
   <data name="Usage_Unavailable_Tooltip" xml:space="preserve">
-    <value>La consommation {0} est indisponible pour le moment — {1}. Dernière vérification à {2} ; ACT continue d&apos;essayer, et les chiffres reviendront d&apos;eux-mêmes.</value>
+    <value>La consommation {0} est indisponible pour le moment — {1}. Dernière vérification à {2} ; ACT continue d'essayer, et les chiffres reviendront d'eux-mêmes.</value>
   </data>
   <data name="Usage_Cause_NotSignedIn" xml:space="preserve">
-    <value>ACT n&apos;a trouvé aucun identifiant pour ce CLI ; lancez-le une fois pour vous connecter</value>
+    <value>ACT n'a trouvé aucun identifiant pour ce CLI ; lancez-le une fois pour vous connecter</value>
   </data>
   <data name="Usage_Cause_Expired" xml:space="preserve">
-    <value>le jeton d&apos;accès du CLI a expiré ; ACT a demandé au CLI de le renouveler</value>
+    <value>le jeton d'accès du CLI a expiré ; ACT a demandé au CLI de le renouveler</value>
   </data>
   <data name="Usage_Cause_SignInRequired" xml:space="preserve">
     <value>la connexion de ce CLI a expiré après une trop longue inutilisation ; lancez `claude auth login` une fois pour vous reconnecter</value>
   </data>
   <data name="Usage_Cause_Unauthorized" xml:space="preserve">
-    <value>le point d&apos;accès a refusé le jeton, ce qui signifie généralement qu&apos;il faut renouveler la connexion</value>
+    <value>le point d'accès a refusé le jeton, ce qui signifie généralement qu'il faut renouveler la connexion</value>
   </data>
   <data name="Usage_Cause_Unreachable" xml:space="preserve">
-    <value>le point d&apos;accès est injoignable</value>
+    <value>le point d'accès est injoignable</value>
   </data>
   <data name="Usage_Cause_Failed" xml:space="preserve">
-    <value>le point d&apos;accès a répondu quelque chose qu&apos;ACT n&apos;a pas su lire</value>
+    <value>le point d'accès a répondu quelque chose qu'ACT n'a pas su lire</value>
   </data>
   <data name="Settings_Group_Execution" xml:space="preserve">
     <value>Exécution</value>
@@ -472,25 +547,25 @@
     <value>Une seule tâche à la fois par dossier</value>
   </data>
   <data name="Settings_OneTaskPerFolder_Hint" xml:space="preserve">
-    <value>Empêche une tâche de démarrer pendant qu'une autre travaille encore dans le même dossier. Une tâche occupe son dossier jusqu'à ce qu'elle soit terminée. Une tâche précise peut être autorisée à s'exécuter en parallèle depuis sa propre page.</value>
+    <value>Empêche l'exécution automatique de démarrer une tâche pendant qu'une autre travaille encore dans le même dossier. Une tâche occupe son dossier jusqu'à ce qu'elle soit terminée.</value>
   </data>
   <data name="Settings_PauseAutoExecution" xml:space="preserve">
     <value>Suspendre l'exécution automatique</value>
   </data>
   <data name="Settings_PauseAutoExecution_Hint" xml:space="preserve">
-    <value>Rien ne démarre tout seul tant que ceci est activé, quelle que soit la planification d'une tâche. Le lancement manuel reste possible.</value>
+    <value>Rien ne démarre tout seul tant que ceci est activé, quelle que soit la planification d'une tâche.</value>
   </data>
   <data name="Settings_MaxConcurrent" xml:space="preserve">
     <value>Tâches en cours simultanées</value>
   </data>
   <data name="Settings_MaxConcurrent_Hint" xml:space="preserve">
-    <value>Combien de tâches la file fait travailler en même temps. Chacune occupe un agent et son terminal, c'est donc une vraie limite pour la machine. Une tâche en attente de validation ne compte pas.</value>
+    <value>Combien de tâches s'exécutent en même temps.</value>
   </data>
   <data name="Settings_UsageCeiling" xml:space="preserve">
     <value>Retenir la file à</value>
   </data>
   <data name="Settings_UsageCeiling_Hint" xml:space="preserve">
-    <value>Dès qu'un quota de 5 h ou hebdomadaire atteint ce pourcentage, l'exécution automatique attend la réinitialisation de la fenêtre. En dessous, les tâches démarrent normalement. Sous 100 % volontairement : la mesure a jusqu'à trois minutes de retard et est arrondie au pourcent, et une tâche lancée dans le dernier pourcent d'un quota s'arrête en cours de route au lieu d'échouer proprement. Abaissez-le pour garder plus de quota pour vos propres sessions. Les lancements manuels ne sont jamais retenus.</value>
+    <value>Dès qu'un quota de 5 h ou hebdomadaire atteint ce pourcentage, l'exécution automatique attend la réinitialisation de la fenêtre. En dessous, les tâches démarrent normalement.</value>
   </data>
   <data name="Settings_Group_Retention" xml:space="preserve">
     <value>Conservation</value>
@@ -499,13 +574,13 @@
     <value>Archiver automatiquement les tâches terminées</value>
   </data>
   <data name="Settings_AutoArchive_Hint" xml:space="preserve">
-    <value>Une tâche validée quitte le tableau lorsqu&apos;elle est assez ancienne. Rien n&apos;est détruit — elle passe aux archives, où vous pouvez la restaurer.</value>
+    <value>Une tâche terminée quitte le tableau lorsqu'elle est assez ancienne. Elle passe ensuite aux archives.</value>
   </data>
   <data name="Settings_AutoArchiveDays" xml:space="preserve">
     <value>Archiver après</value>
   </data>
   <data name="Settings_AutoArchiveDays_Hint" xml:space="preserve">
-    <value>Jours depuis la fin de la tâche. Une tâche restaurée à la main reste au tableau.</value>
+    <value>Jours depuis la fin de la tâche.</value>
   </data>
   <data name="Settings_Group_System" xml:space="preserve">
     <value>Système</value>
@@ -520,7 +595,7 @@
     <value>Mises à jour automatiques</value>
   </data>
   <data name="Settings_Updates_Hint" xml:space="preserve">
-    <value>ACT cherche une version plus récente sur GitHub toutes les quelques heures. Les préversions ne sont jamais proposées.</value>
+    <value>ACT cherche une version plus récente.</value>
   </data>
   <data name="Settings_Updates_Download" xml:space="preserve">
     <value>Télécharger discrètement, installer à la sortie</value>
@@ -562,13 +637,13 @@
     <value>Agents</value>
   </data>
   <data name="Settings_AgentEnabled_Hint" xml:space="preserve">
-    <value>Proposer cet agent à la création d&apos;une tâche.</value>
+    <value>Proposer cet agent à la création d'une tâche.</value>
   </data>
   <data name="Settings_AgentBinary_NotFound" xml:space="preserve">
-    <value>Rien à cet endroit. Le lancement échouera tant que ce chemin ne pointe pas sur l&apos;exécutable.</value>
+    <value>Rien à cet endroit. Le lancement échouera tant que ce chemin ne pointe pas sur l'exécutable.</value>
   </data>
   <data name="Settings_AgentBinary_NotInstalled" xml:space="preserve">
-    <value>Introuvable dans le PATH et aux endroits connus d&apos;ACT — cet agent n&apos;est peut-être pas installé.</value>
+    <value>Introuvable dans le PATH et aux endroits connus d'ACT — cet agent n'est peut-être pas installé.</value>
   </data>
   <data name="Settings_AgentBinary_NotOnPath" xml:space="preserve">
     <value>Absent du PATH. Installé à {0}.</value>
@@ -583,22 +658,22 @@
     <value>Trouvé.</value>
   </data>
   <data name="Settings_Agents_Hint" xml:space="preserve">
-    <value>Comment chaque CLI est installé sur cette machine. Ces réglages s&apos;appliquent à toutes les tâches de cet agent, au prochain lancement.</value>
+    <value>Comment chaque CLI est installé sur cette machine. Ces réglages s'appliquent à toutes les tâches de cet agent, au prochain lancement.</value>
   </data>
   <data name="Settings_AgentBinary" xml:space="preserve">
     <value>Exécutable</value>
   </data>
   <data name="Settings_AgentBinary_Hint" xml:space="preserve">
-    <value>Laisser vide pour le chercher dans le PATH. Indiquer un chemin complet si l&apos;installation n&apos;y est pas.</value>
+    <value>Laisser vide pour le chercher dans le PATH. Indiquer un chemin complet si l'installation n'y est pas.</value>
   </data>
   <data name="Settings_ExtraFlags" xml:space="preserve">
     <value>Options CLI supplémentaires</value>
   </data>
   <data name="Settings_ExtraFlags_Hint" xml:space="preserve">
-    <value>Une par ligne. Ajoutées à chaque lancement — une option qu&apos;ACT définit déjà, comme l&apos;identifiant de session ou le fichier de réglages, cassera sa propre liaison.</value>
+    <value>Une par ligne.</value>
   </data>
   <data name="Settings_Env" xml:space="preserve">
-    <value>Variables d&apos;environnement</value>
+    <value>Variables d'environnement</value>
   </data>
   <data name="Settings_Env_Hint" xml:space="preserve">
     <value>Une paire CLÉ=valeur par ligne.</value>
@@ -643,13 +718,13 @@
     <value>Garder l'ordinateur éveillé</value>
   </data>
   <data name="Settings_KeepAwake_Hint" xml:space="preserve">
-    <value>Empêche la mise en veille tant qu'une tâche est en cours ou attend de démarrer. Un tableau inactif est laissé s'endormir.</value>
+    <value>Empêche la mise en veille tant qu'une tâche est en cours ou attend de démarrer.</value>
   </data>
   <data name="Settings_CloseToTray" xml:space="preserve">
     <value>Fermer vers la zone de notification</value>
   </data>
   <data name="Settings_CloseToTray_Hint" xml:space="preserve">
-    <value>Fermer la fenêtre laisse ACT actif derrière son icône; les agents continuent. Quittez depuis cette icône.</value>
+    <value>Fermer la fenêtre laisse ACT actif derrière son icône.</value>
   </data>
   <data name="Tray_Tooltip_One" xml:space="preserve">
     <value>{0} — {1} tâche en attente de votre intervention</value>
@@ -703,7 +778,7 @@
     <value>Rédiger les titres à partir de l'instruction</value>
   </data>
   <data name="Settings_GenerateTitles_Hint" xml:space="preserve">
-    <value>Quand une tâche est enregistrée sans titre, demander à son agent d'en rédiger un. Désactivez et la carte sans titre affiche le début de son instruction ; la baguette du formulaire reste utilisable.</value>
+    <value>Quand une tâche est enregistrée sans titre, le modèle à faible coût de l'agent est utilisé pour en rédiger un.</value>
   </data>
   <data name="Settings_Theme" xml:space="preserve">
     <value>Thème</value>
@@ -730,7 +805,7 @@
     <value>Faire clignoter les cartes de « À vous »</value>
   </data>
   <data name="Settings_BlinkYourTurn_Hint" xml:space="preserve">
-    <value>Fait pulser une carte qui vous attend. Désactivez pour garder la couleur sans le mouvement.</value>
+    <value>Fait pulser une carte qui vous attend.</value>
   </data>
   <data name="Settings_Density_Detailed" xml:space="preserve">
     <value>Détaillé</value>
@@ -749,9 +824,6 @@
   </data>
   <data name="Error_RequestId" xml:space="preserve">
     <value>ID de requête :</value>
-  </data>
-  <data name="Error_DevelopmentHint" xml:space="preserve">
-    <value>Réglez ASPNETCORE_ENVIRONMENT à Development et redémarrez l’application pour voir les détails de l’erreur. L’environnement Development ne doit pas être activé pour une application déployée, car il peut exposer des détails sensibles provenant des exceptions.</value>
   </data>
   <data name="NotFound_Heading" xml:space="preserve">
     <value>Page introuvable</value>
@@ -1012,7 +1084,7 @@
     <value>Terminal rétabli</value>
   </data>
   <data name="Transition_RestoreFailed" xml:space="preserve">
-    <value>Le terminal n&apos;a pas pu être rétabli : {0}</value>
+    <value>Le terminal n'a pas pu être rétabli : {0}</value>
   </data>
   <data name="Transition_PermissionRequested" xml:space="preserve">
     <value>Permission demandée dans le terminal</value>
@@ -1024,10 +1096,10 @@
     <value>Tour terminé, prêt pour révision</value>
   </data>
   <data name="Transition_TurnFailed" xml:space="preserve">
-    <value>L&apos;agent signale un tour en échec : {0}</value>
+    <value>L'agent signale un tour en échec : {0}</value>
   </data>
   <data name="Transition_AgentExited" xml:space="preserve">
-    <value>L&apos;agent s&apos;est arrêté avec le code {0}</value>
+    <value>L'agent s'est arrêté avec le code {0}</value>
   </data>
   <data name="Transition_TerminalRestarted" xml:space="preserve">
     <value>Terminal redémarré — la session a repris dans un nouveau</value>
@@ -1042,7 +1114,7 @@
     <value>Compactage terminé</value>
   </data>
   <data name="Transition_StartupPrompt" xml:space="preserve">
-    <value>En attente de l&apos;invite de démarrage de la CLI</value>
+    <value>En attente de l'invite de démarrage de la CLI</value>
   </data>
   <data name="Transition_SpawnedFollowUp" xml:space="preserve">
     <value>Tâche de suivi créée : {0}</value>
@@ -1051,7 +1123,7 @@
     <value>Historique</value>
   </data>
   <data name="Timeline_Empty" xml:space="preserve">
-    <value>Rien ne s&apos;est encore produit pour cette tâche.</value>
+    <value>Rien ne s'est encore produit pour cette tâche.</value>
   </data>
   <data name="Timeline_EnteredColumn" xml:space="preserve">
     <value>Entrée dans {0}</value>
@@ -1123,19 +1195,19 @@
     <value>Aucune archive ne correspond au filtre.</value>
   </data>
   <data name="Board_Density_Tip" xml:space="preserve">
-    <value>Niveau de détail des bandes de vol. Cliquez pour changer.</value>
+    <value>Basculer entre la vue compacte et détaillée.</value>
   </data>
   <data name="Templates_Title" xml:space="preserve">
     <value>Modèles de tâche</value>
   </data>
-  <data name="Templates_Hint" xml:space="preserve">
-    <value>Ce à partir de quoi une nouvelle tâche peut démarrer. Le modèle par défaut est celui du bouton Nouvelle tâche et ne peut pas être supprimé.</value>
+  <data name="Templates_DefaultMeta" xml:space="preserve">
+    <value>utilisé par le bouton Nouvelle tâche</value>
   </data>
   <data name="Templates_Default" xml:space="preserve">
     <value>Par défaut</value>
   </data>
   <data name="Templates_DefaultLocked" xml:space="preserve">
-    <value>C'est le point de départ du bouton Nouvelle tâche. Il ne peut être ni renommé ni supprimé, et ne porte ni titre ni consigne : ceux-là sont la tâche elle-même, et chaque nouvelle tâche écrit les siens.</value>
+    <value>Utilisé comme modèle par défaut par le bouton Nouvelle tâche.</value>
   </data>
   <data name="Templates_New" xml:space="preserve">
     <value>Nouveau modèle</value>
@@ -1204,7 +1276,7 @@
     <value>Modèles de tâche</value>
   </data>
   <data name="Settings_Templates_Hint" xml:space="preserve">
-    <value>Ce à partir de quoi une nouvelle tâche démarre a maintenant sa propre page, pour en garder plusieurs.</value>
+    <value>Définissez des modèles pour créer rapidement de nouvelles tâches.</value>
   </data>
   <data name="Settings_Templates_Manage" xml:space="preserve">
     <value>Gérer les modèles</value>
@@ -1222,13 +1294,10 @@
     <value>Identifiant d'installation</value>
   </data>
   <data name="Settings_InstallId_Hint" xml:space="preserve">
-    <value>L'identifiant anonyme sous lequel les données d'utilisation sont regroupées. Généré au premier démarrage, lié à rien d'autre, et sans risque à citer dans un signalement.</value>
+    <value>L'identifiant anonyme sous lequel les données d'utilisation sont regroupées.</value>
   </data>
   <data name="Settings_Logs" xml:space="preserve">
     <value>Fichiers journaux</value>
-  </data>
-  <data name="Settings_Logs_Hint" xml:space="preserve">
-    <value>Un fichier par jour, conservé deux semaines. Joignez le plus récent lorsque vous signalez un problème.</value>
   </data>
   <data name="Settings_Logs_Open" xml:space="preserve">
     <value>Ouvrir le dossier des journaux</value>

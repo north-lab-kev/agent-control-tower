@@ -108,12 +108,16 @@ else
                                 <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Model_Hint" class="hint" />
                             </RadzenStack>
                             <RadzenDropDown TValue="string" Value="template.Model" ValueChanged="OnModelChanged"
-                                            Data="Models" AllowClear="true"
+                                            Data="Models" TextProperty="Text" ValueProperty="Value"
+                                            AllowClear="true"
                                             Placeholder="@Strings.NewTask_AgentDefault" class="control" />
                         </div>
 
                         <div class="row">
-                            <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Effort" />
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Effort" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_Effort_Hint" class="hint" />
+                            </RadzenStack>
                             <RadzenDropDown TValue="string" @bind-Value="template.Effort" Data="Efforts"
                                             AllowClear="true" Placeholder="@Strings.NewTask_AgentDefault"
                                             class="control" />
@@ -153,25 +157,6 @@ else
                                                 Text="@Strings.NewTask_AllowConcurrentWorkingDir_Hint" class="hint" />
                                 </RadzenStack>
                                 <RadzenSwitch @bind-Value="template.AllowConcurrentWorkingDir" />
-                            </div>
-                        }
-
-                        <div class="row">
-                            <RadzenStack Gap="0.1rem">
-                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_AutoGit" />
-                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_AutoGit_Hint" class="hint" />
-                            </RadzenStack>
-                            <RadzenDropDown TValue="GitAction?" Value="template.GitAction"
-                                            ValueChanged="OnGitActionChanged" Data="GitChoices"
-                                            TextProperty="Text" ValueProperty="Value" AllowClear="true"
-                                            Placeholder="@Strings.NewTask_NoGitAction" class="control" />
-                        </div>
-
-                        @if (template.GitAction is GitAction.PullRequest)
-                        {
-                            <div class="row">
-                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_Draft" />
-                                <RadzenSwitch @bind-Value="template.Draft" />
                             </div>
                         }
                     </RadzenStack>

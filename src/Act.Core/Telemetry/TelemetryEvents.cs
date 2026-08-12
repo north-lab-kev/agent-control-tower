@@ -89,7 +89,6 @@ public static class TelemetryEvents
         {
             [TelemetryProperties.Agent] = card.AgentType,
             [TelemetryProperties.Origin] = card.Origin,
-            [TelemetryProperties.AutoGit] = card.AutoGit is not null,
             [TelemetryProperties.Scheduled] = card.Schedule is not null,
             [TelemetryProperties.AttachmentCount] = card.Attachments.Count,
             [TelemetryProperties.DependencyCount] = card.DependsOn.Count,

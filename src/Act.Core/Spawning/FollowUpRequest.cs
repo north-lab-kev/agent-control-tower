@@ -12,7 +12,6 @@ public sealed record FollowUpRequest(
     string? Effort = null,
     string? Permission = null,
     string? Schedule = null,
-    string? AutoGit = null,
     string? WorkingDir = null,
     IReadOnlyList<string>? DependsOn = null,
     string? ClientKey = null)

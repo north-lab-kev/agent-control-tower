@@ -7,7 +7,7 @@ namespace Act.Core.Agents;
 // paragraph, a markdown heading, a pair of quotes, or a cheerful "Sure! Here's a title:" — and every
 // one of those is fixable without running anything.
 //
-// Localised like every other string ACT writes to an agent, for the reason `AutoGitInstruction`
+// Localised like every other string ACT writes to an agent, for the reason `AttachmentInstruction`
 // gives: the agent is addressed in the language the user runs ACT in, so a French board does not
 // fill up with English titles.
 public static class TaskTitleQuery

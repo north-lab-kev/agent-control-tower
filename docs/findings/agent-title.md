@@ -146,7 +146,7 @@ preamble is exactly the thing a new version changes.
 
 - **The instruction** is localised like everything else ACT writes to an agent,
   so a French board does not fill up with English titles. It asks for eight to
-  fifteen words, caps at thirty, and forbids tools, quotes, markdown and preamble.
+  twelve words, caps at sixteen, and forbids tools, quotes, markdown and preamble.
   It also asks for *the detail that tells this task apart from a similar one* —
   without that, a longer target buys nothing: the models happily pad four words to
   twelve, and a board of near-identical strips is worse than a board of terse ones.
@@ -157,7 +157,7 @@ preamble is exactly the thing a new version changes.
   a model that explains itself does so *after* the answer far more often than
   before it. A trailing `?` or `!` is kept — a title that asks something is
   saying something; only a full stop is decoration.
-- **Two limits, not one.** Thirty words catches a model ignoring the brief;
+- **Two limits, not one.** `MaxWords` catches a model ignoring the brief;
   200 characters (the form's own `MaxLength`) catches a single enormous token,
   which is a model pasting a path or a url.
 - **It never fails.** `TaskTitleQuery.FromPrompt` — the prompt's own opening

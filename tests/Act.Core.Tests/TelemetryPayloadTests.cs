@@ -83,13 +83,13 @@ public class TelemetryPayloadTests
             [
                 new(TelemetryProperties.AttachmentCount, 4),
                 new(TelemetryProperties.DependencyCount, 91_204L),
-                new(TelemetryProperties.AutoGit, true),
+                new(TelemetryProperties.Scheduled, true),
                 new(TelemetryProperties.Origin, null),
             ]));
 
         sanitized!.Properties[TelemetryProperties.AttachmentCount].Should().Be(4);
         sanitized.Properties[TelemetryProperties.DependencyCount].Should().Be(91_204L);
-        sanitized.Properties[TelemetryProperties.AutoGit].Should().Be(true);
+        sanitized.Properties[TelemetryProperties.Scheduled].Should().Be(true);
         sanitized.Properties.Should().NotContainKey(TelemetryProperties.Origin);
     }
 

@@ -107,7 +107,7 @@ public class TemplateViewTests : ComponentTest
     {
         var cut = Show();
 
-        RadzenDom.Choose(cut, "Model", MockAgentAdapter.FastModel);
+        RadzenDom.Choose(cut, "Model", MockAgentAdapter.FastModelName);
         RadzenDom.Choose(cut, "Agent", "codex");
 
         RadzenDom.Selected(cut, "Model").Should().Be("agent default");
@@ -129,9 +129,9 @@ public class TemplateViewTests : ComponentTest
     {
         var cut = Show();
 
-        RadzenDom.Choose(cut, "Model", MockAgentAdapter.DeepModel);
+        RadzenDom.Choose(cut, "Model", MockAgentAdapter.DeepModelName);
         RadzenDom.Choose(cut, "Reasoning effort", "max");
-        RadzenDom.Choose(cut, "Model", MockAgentAdapter.FastModel);
+        RadzenDom.Choose(cut, "Model", MockAgentAdapter.FastModelName);
 
         RadzenDom.Selected(cut, "Reasoning effort").Should().Be("agent default");
     }
@@ -145,18 +145,6 @@ public class TemplateViewTests : ComponentTest
         Settings.SaveTemplate(template);
 
         RadzenDom.Options(Show(template.Id), "Model").Should().Contain("mock-retired");
-    }
-
-    [Fact]
-    public void The_draft_switch_shows_only_for_a_pull_request()
-    {
-        var cut = Show();
-
-        RadzenDom.HasRow(cut, "Draft").Should().BeFalse();
-
-        RadzenDom.Choose(cut, "Git when done", "commit + push + PR");
-
-        RadzenDom.HasRow(cut, "Draft").Should().BeTrue();
     }
 
     [Fact]

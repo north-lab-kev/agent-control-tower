@@ -8,8 +8,13 @@ namespace Act.Core.Agents;
 // a large one would fail the spawn outright. A path costs a line and the agent reads the file
 // with its own tools, on the machine it is already running on.
 //
-// Appended at launch and never stored, exactly like `AutoGitInstruction`: `Card.InitialPrompt`
-// stays verbatim for the life of the task, which is what the form promises.
+// Appended at launch and never stored: `Card.InitialPrompt` stays verbatim for the life of the
+// task, which is what the form promises.
+//
+// Localised like every other string ACT writes to an agent — the agent is addressed in the language
+// the user runs ACT in. `AppCulture` sets `DefaultThreadCurrentUICulture` process wide, so the
+// lookup follows the UI language from any thread, including a launch that comes from the queue
+// runner rather than a click.
 //
 // Called by the *adapter* rather than by the launcher, because which files a CLI can take
 // natively is a fact about that CLI — Codex lifts images onto the first turn with `-i` and only

@@ -21,9 +21,9 @@ where it came from. Spawn **author** is also recorded, since it affects labeling
 - **ACT-emitted** — deterministic; ACT writes the child's prompt itself.
 - **Agent-emitted** — the agent produces the follow-ups (e.g. plan → tasks).
 
-**Every spawn today is agent-emitted** — git rides the prompt rather than spawning
-a task (see *Git integration*). The field stays because the distinction is about
-labeling and would be needed the day ACT writes a child's prompt itself.
+**Every spawn today is agent-emitted** — nothing in ACT writes a child's prompt for
+itself. The field stays because the distinction is about labeling and would be needed
+the day something does.
 
 ## Spawned tasks land in Ready
 
@@ -43,7 +43,7 @@ emits one today.
 agent→ACT contract, described in *Agent ↔ ACT contract*.
 
 - **Arguments:** the task (`title`, `prompt`), where it runs (`cwd`, defaulting to the
-  parent's), how it runs (`agent`, `model`, `effort`, `permission`, `autoGit` — each
+  parent's), how it runs (`agent`, `model`, `effort`, `permission` — each
   defaulting to `same`, meaning the parent's value), when it runs (`schedule`), and
   `dependsOn`. The full table and the reasoning for every inclusion and omission are in
   *Agent ↔ ACT contract*.

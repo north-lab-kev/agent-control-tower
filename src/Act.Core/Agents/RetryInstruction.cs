@@ -11,7 +11,7 @@ namespace Act.Core.Agents;
 // transcript the resume just reopened is the real context. So this says only that the session was
 // interrupted, and leaves *what to do about it* to the agent reading its own history.
 //
-// Localised like everything ACT writes to an agent — see `AutoGitInstruction`.
+// Localised like everything ACT writes to an agent — see `AttachmentInstruction`.
 public static class RetryInstruction
 {
     public static string Message => CoreStrings.Retry_Continue;
