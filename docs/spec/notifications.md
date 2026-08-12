@@ -124,6 +124,15 @@ what gets **published**, and two of them are counter-intuitive enough to write d
   updater in electron-updater that works against this feed — a `.deb` or `.rpm` would ship with
   auto-update dead on arrival. It reads `latest-linux.yml` from the same generic base, and the
   release job attaches that file under the same stable-only rule as `latest.yml`.
+- **Every release asset names its OS, and the feed is untouched by that.** The release page is one
+  flat list of both platforms' files, so the installers carry the OS in the name electron-builder
+  renders (`ACT-Setup-<version>-win-x64.exe`, `ACT-<version>-linux-x86_64.AppImage`) and the release
+  job attaches every asset under a GitHub *label* that starts with `Windows` or `Linux`. The label
+  is what the page shows and the **filename** is what `releases/latest/download/<name>` resolves, so
+  labelling costs the updater nothing — and it is the only way to distinguish `latest.yml` from
+  `latest-linux.yml`, whose names electron-updater fixes. Renaming an installer is equally safe:
+  electron-builder writes the name it produced into the `.yml`'s `path`. `ReleaseAssetNamingTests`
+  pins the templates against what the release job looks for, since nothing compiles against either.
 - **Unsigned is fine, for now.** `NsisUpdater.verifySignature` returns null and skips when
   `app-update.yml` carries no `publisherName`; HTTPS to GitHub plus the sha512 in `latest.yml`
   covers integrity. Signing is worth doing, separately.
