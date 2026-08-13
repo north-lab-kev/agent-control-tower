@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using AwesomeAssertions;
@@ -89,12 +88,8 @@ public class ReleaseAssetNamingTests
     private static string Render(string template, string arch, string ext)
         => template.Replace("${version}", "$env:VERSION").Replace("${arch}", arch).Replace("${ext}", ext);
 
-    private static string ReleaseWorkflow()
-        => File.ReadAllText(Path.Combine(RepositoryRoot(), ".github", "workflows", "release.yml"));
+    private static string ReleaseWorkflow() => ReleaseWorkflowFile.Text();
 
     private static string ElectronBuilderPath()
-        => Path.Combine(RepositoryRoot(), "src", "Act.App", "Properties", "electron-builder.json");
-
-    private static string RepositoryRoot([CallerFilePath] string here = "")
-        => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(here)!, "..", ".."));
+        => Path.Combine(ReleaseWorkflowFile.RepositoryRoot(), "src", "Act.App", "Properties", "electron-builder.json");
 }
