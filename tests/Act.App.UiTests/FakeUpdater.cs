@@ -11,6 +11,14 @@ internal sealed class FakeUpdater : IUpdater
 
     public bool IsReady { get; private set; }
 
+    // The version behind `IsReady`, so a test can assert *which* installer is on disk after a newer one
+    // supersedes an older one — the difference the version argument exists to make.
+    public string? ReadyVersion { get; private set; }
+
+    // Every version `DownloadAsync` was asked for, in order. A count cannot tell a re-download of 1.3.0
+    // from a second look at 1.2.0, and that distinction is the whole of the supersede behaviour.
+    public List<string> Requested { get; } = [];
+
     public int Configured { get; private set; }
 
     public int Checks { get; private set; }
@@ -52,8 +60,19 @@ internal sealed class FakeUpdater : IUpdater
         return Task.FromResult(Answer);
     }
 
-    public Task<bool> DownloadAsync(IProgress<int> progress, CancellationToken cancellationToken)
+    // Modelled on `ElectronUpdater` down to the destructive part: asked for a version other than the one
+    // held, it stops being ready *before* it tries, because electron-updater has emptied its cache by
+    // then. A test that assumed otherwise would be testing a kinder updater than the real one.
+    public Task<bool> DownloadAsync(string version, IProgress<int> progress, CancellationToken cancellationToken)
     {
+        Requested.Add(version);
+
+        if (IsReady && ReadyVersion == version)
+            return Task.FromResult(true);
+
+        IsReady = false;
+        ReadyVersion = null;
+
         Downloads++;
 
         Reporter = progress;
@@ -62,7 +81,10 @@ internal sealed class FakeUpdater : IUpdater
             progress.Report(percent);
 
         if (DownloadSucceeds)
+        {
             IsReady = true;
+            ReadyVersion = version;
+        }
 
         return Task.FromResult(DownloadSucceeds);
     }

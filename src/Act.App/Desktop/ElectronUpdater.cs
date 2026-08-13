@@ -45,9 +45,24 @@ public sealed class ElectronUpdater(ILogger<ElectronUpdater> log) : IUpdater
 
     private bool configured;
 
+    private bool downloaded;
+
+    // Held beside the flag rather than derived from it, because a version is not something the flag can
+    // answer and the event that sets it may not carry one — `UpdateInfo.Version` is nullable all the way
+    // down the bridge. A null here is then "something is downloaded, name unknown", which costs one
+    // redundant `DownloadUpdateAsync` that electron-updater resolves from its own cache.
+    private string? downloadedVersion;
+
     public bool IsSupported => true;
 
-    public bool IsReady { get; private set; }
+    public bool IsReady
+    {
+        get
+        {
+            lock (gate)
+                return downloaded;
+        }
+    }
 
     public void Configure()
     {
@@ -76,14 +91,17 @@ public sealed class ElectronUpdater(ILogger<ElectronUpdater> log) : IUpdater
 
         Electron.AutoUpdater.OnUpdateDownloaded += info =>
         {
-            IsReady = true;
-
             log.LogInformation("Update {Version} downloaded and ready to install.", info?.Version);
 
             TaskCompletionSource<bool>? waiting;
 
             lock (gate)
+            {
+                downloaded = true;
+                downloadedVersion = info?.Version;
+
                 waiting = downloading;
+            }
 
             waiting?.TrySetResult(true);
         };
@@ -137,10 +155,21 @@ public sealed class ElectronUpdater(ILogger<ElectronUpdater> log) : IUpdater
         }
     }
 
-    public async Task<bool> DownloadAsync(IProgress<int> progress, CancellationToken cancellationToken)
+    public async Task<bool> DownloadAsync(string version, IProgress<int> progress, CancellationToken cancellationToken)
     {
-        if (IsReady)
-            return true;
+        lock (gate)
+        {
+            if (downloaded && downloadedVersion == version)
+                return true;
+
+            // Said before the fetch starts, because that is when it becomes true: electron-updater
+            // compares the feed's checksum against its cached one and **empties the pending directory**
+            // on a mismatch (`DownloadedUpdateHelper.getValidCachedUpdateFile`), so the installer this
+            // was holding is gone from the moment the newer one is asked for. Claiming otherwise would
+            // leave *Restart and install* pointed at a file that is not there.
+            downloaded = false;
+            downloadedVersion = null;
+        }
 
         var finished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 

@@ -18,6 +18,13 @@ namespace Act.App.Updates;
 // **One toast, and only for a version already on disk.** Announcing availability as well was what the
 // retired middle position needed; with the toggle, a version found while it is on is downloaded in the
 // same pass, so "1.2.0 exists" would be a notification whose own successor is seconds behind it.
+//
+// **It keeps checking after a version is ready**, which it did not always. Nothing installs on the way
+// out any more, so a downloaded update can sit unanswered for days — and a pump that stopped looking
+// would hold 1.2.0 out while 1.3.0 shipped, then take two restarts to arrive at it. The offer is
+// swapped for a newer version only once that one is on disk, so the button never points at a file the
+// updater has already discarded. Checking at the click instead was rejected for exactly that: see
+// `docs/design-notes.md`, "A silent install cannot tell you it finished".
 public sealed class UpdatePump(
     IUpdater updater,
     UpdateState state,
@@ -122,10 +129,21 @@ public sealed class UpdatePump(
         downloadRequested = false;
         checkRequested = false;
 
+        // **A downloaded version is never taken away by a pass**, only replaced once something better
+        // is on disk. It was the user's to install whenever they chose the moment it finished
+        // downloading, and every one of the answers below would otherwise withdraw the offer for a
+        // reason that has nothing to do with the file: the toggle going off, a machine that has gone
+        // offline, a release pulled from the feed. Even *Checking* is withheld — a *Restart and install*
+        // button that blinked out every six hours would be worse than one that never noticed 1.3.0.
+        var downloaded = state.Current.Stage is UpdateStage.Ready ? state.Current.Version : null;
+
         // Only the passes ACT started itself stop here. A click came from somebody looking at the
         // page, and refusing that is what made *Check now* a button that did nothing while off.
         if (!settings.AutoUpdate && !asked && !requested)
         {
+            if (downloaded is not null)
+                return;
+
             announced = null;
 
             state.Publish(UpdateStatus.Idle);
@@ -133,31 +151,36 @@ public sealed class UpdatePump(
             return;
         }
 
-        // Already downloaded: there is nothing left to look for until the app restarts into it, and
-        // asking again would only offer the version it is holding.
-        if (state.Current.Stage is UpdateStage.Ready)
-            return;
-
-        state.Publish(state.Current with { Stage = UpdateStage.Checking });
+        if (downloaded is null)
+            state.Publish(state.Current with { Stage = UpdateStage.Checking });
 
         var check = await updater.CheckAsync(cancellationToken);
         var at = clock.Now;
 
         if (!check.Completed)
         {
-            state.Publish(new UpdateStatus(UpdateStage.Unavailable, CheckedAt: at));
+            if (downloaded is null)
+                state.Publish(new UpdateStatus(UpdateStage.Unavailable, CheckedAt: at));
 
             return;
         }
 
         if (check.Version is not { } version)
         {
-            announced = null;
+            if (downloaded is null)
+            {
+                announced = null;
 
-            state.Publish(new UpdateStatus(UpdateStage.UpToDate, CheckedAt: at));
+                state.Publish(new UpdateStatus(UpdateStage.UpToDate, CheckedAt: at));
+            }
 
             return;
         }
+
+        // The version already on disk, named again six hours later. Nothing to do and nothing to say:
+        // the page is already showing it and the toast has already been shown once.
+        if (version == downloaded)
+            return;
 
         log.LogInformation("Update {Version} is available; running {Current}.", version, AppVersion.Current);
 
@@ -180,7 +203,7 @@ public sealed class UpdatePump(
         // state can refuse a late one without a gap between deciding and writing.
         var progress = new Progress<int>(percent => state.PublishProgress(version, percent));
 
-        if (await updater.DownloadAsync(progress, cancellationToken))
+        if (await updater.DownloadAsync(version, progress, cancellationToken))
         {
             state.Publish(new UpdateStatus(UpdateStage.Ready, version, 100, at));
 

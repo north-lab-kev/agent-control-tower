@@ -27,7 +27,7 @@ public class BrowserUpdaterTests
             updater.InstallAndRestart();
 
             (await updater.CheckAsync(CancellationToken.None)).Should().Be(UpdateCheck.Failed);
-            (await updater.DownloadAsync(new Progress<int>(), CancellationToken.None)).Should().BeFalse();
+            (await updater.DownloadAsync("1.2.0", new Progress<int>(), CancellationToken.None)).Should().BeFalse();
         };
 
         await call.Should().NotThrowAsync();

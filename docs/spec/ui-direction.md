@@ -332,6 +332,18 @@
       - **Declining costs nothing.** The installer stays in electron-updater's pending cache, so a
         run that never clicks the button leaves it for the next one, which offers it again without
         downloading it again. A downloaded update may wait as many runs as the user likes.
+      - **And it does not go stale.** ACT keeps checking every six hours while one is downloaded, and
+        moves the offer to a newer release when one appears — otherwise a long-lived instance would
+        offer yesterday's version and cost the user two restarts to reach today's. The swap happens
+        **only once the newer installer is on disk**: the section shows *Downloading* in between and
+        the button is not offered, because electron-updater discards the older installer as soon as it
+        decides to fetch a different one. Re-checking at the click instead was rejected for that same
+        reason — see `docs/design-notes.md`, "A downloaded update may not be stale".
+      - **Nothing withdraws a downloaded version but a better one.** Not a check that fails, not a
+        release pulled from the feed, and not the switch going off — that last one used to reset the
+        section to *Not checking for updates* and take the button with it. With the switch off, a
+        *Check now* that turns up a newer version is the one case where the offer changes without a
+        download: the page moves to *Version 1.3.0 is available* with *Download* beside it.
     - **A check that fails is not an error.** Offline, a 404, a feed that does not exist yet: all of
       them read as *Could not reach the update feed. ACT will try again later*, never as *up to
       date*. Collapsing the two is the lie that leaves someone on an old build believing otherwise,

@@ -16,6 +16,11 @@ public interface IUpdater
 
     // A downloaded update waiting to be applied. Nothing but *Restart and install* applies it, so
     // this only ever gates that: an exit is an exit whatever is on disk.
+    //
+    // **It goes back to false when a newer version supersedes the one on disk.** Not a latch, because
+    // the file it stands for really does leave: electron-updater empties its pending directory as soon
+    // as it decides to fetch a different one, so between that moment and the new file landing there is
+    // nothing to install and this has to say so.
     bool IsReady { get; }
 
     // Applied once at startup: pre-releases off, downgrades off, and downloads driven by the policy
@@ -26,10 +31,14 @@ public interface IUpdater
 
     Task<UpdateCheck> CheckAsync(CancellationToken cancellationToken);
 
-    // True once the installer is on disk. False covers every failure, including the download that
-    // never finishes — see `ElectronUpdater` for why that one is not hypothetical. `progress` is
-    // reported as whole percent, and may not reach 100 even on success.
-    Task<bool> DownloadAsync(IProgress<int> progress, CancellationToken cancellationToken);
+    // True once the installer for `version` is on disk. False covers every failure, including the
+    // download that never finishes — see `ElectronUpdater` for why that one is not hypothetical.
+    // `progress` is reported as whole percent, and may not reach 100 even on success.
+    //
+    // **`version` is what makes this idempotent rather than a latch.** Asked for the version already
+    // held it answers immediately; asked for a newer one it goes and gets that instead, and stops
+    // claiming to be ready in the meantime.
+    Task<bool> DownloadAsync(string version, IProgress<int> progress, CancellationToken cancellationToken);
 
     // The only thing that applies a downloaded update: ACT closes, the installer runs, and ACT comes
     // back on the new version. Reached from *Restart and install* and from nowhere else — leaving the

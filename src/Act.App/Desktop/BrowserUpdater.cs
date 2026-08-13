@@ -16,7 +16,7 @@ public sealed class BrowserUpdater : IUpdater
     public Task<UpdateCheck> CheckAsync(CancellationToken cancellationToken)
         => Task.FromResult(UpdateCheck.Failed);
 
-    public Task<bool> DownloadAsync(IProgress<int> progress, CancellationToken cancellationToken)
+    public Task<bool> DownloadAsync(string version, IProgress<int> progress, CancellationToken cancellationToken)
         => Task.FromResult(false);
 
     public void InstallAndRestart()

@@ -279,8 +279,8 @@ public class UpdatePumpTests
 
     // The report that outlives its download. `Progress<T>` posts rather than runs, so this ordering
     // is the normal one, not the unlucky one — and painted over `Ready` it does not heal, because a
-    // pass that finds a version already downloaded returns without touching the state again. The
-    // page would promise a download that finished and never mention the update waiting to install.
+    // pass that finds the version already on disk leaves the state untouched. The page would promise
+    // a download that finished and never mention the update waiting to install.
     [Fact]
     public async Task A_report_that_lands_after_the_download_does_not_bury_it()
     {
@@ -384,10 +384,11 @@ public class UpdatePumpTests
         state.Current.CheckedAt.Should().Be(Now);
     }
 
-    // Once ready there is nothing left to look for: the answer cannot improve until the app restarts
-    // into the version it is already holding.
+    // It keeps looking — nothing installs on the way out any more, so a downloaded version can wait for
+    // days and a pump that stopped asking would hold 1.2.0 out while 1.3.0 shipped. What it must not do
+    // is *act* on an answer that names the version it already has.
     [Fact]
-    public async Task A_ready_update_stops_the_pump_asking_again()
+    public async Task A_ready_update_does_not_stop_the_pump_asking_again()
     {
         updater.Answer = UpdateCheck.Found("1.2.0");
 
@@ -401,9 +402,147 @@ public class UpdatePumpTests
 
         pump.CheckNow();
 
+        await Until(() => updater.Checks > asked);
         await Task.Delay(100);
 
-        updater.Checks.Should().Be(asked);
+        state.Current.Stage.Should().Be(UpdateStage.Ready);
+        state.Current.Version.Should().Be("1.2.0");
+        state.Current.Percent.Should().Be(100);
+        updater.Downloads.Should().Be(1, "the version on disk is the one the feed named");
+        notifier.Shown.Should().ContainSingle();
+    }
+
+    // The gap this was written for: a release that lands while ACT is open. The offer has to move to
+    // 1.3.0 by itself, or the user restarts into 1.2.0 and needs a second restart to arrive.
+    [Fact]
+    public async Task A_newer_release_replaces_the_one_already_downloaded()
+    {
+        updater.Answer = UpdateCheck.Found("1.2.0");
+
+        await using var pump = Pump();
+
+        pump.Start();
+
+        await Until(() => state.Current.Stage is UpdateStage.Ready);
+
+        updater.Answer = UpdateCheck.Found("1.3.0");
+        pump.CheckNow();
+
+        await Until(() => state.Current.Version == "1.3.0" && state.Current.Stage is UpdateStage.Ready);
+
+        updater.ReadyVersion.Should().Be("1.3.0");
+        updater.Requested.Should().Equal("1.2.0", "1.3.0");
+        notifier.Shown.Select(shown => shown.Body).Should().HaveCount(2, "a newer version is news again");
+    }
+
+    // The window the whole design turns on. While the newer installer is being fetched the older one is
+    // already gone — electron-updater empties its cache the moment the checksums differ — so the state
+    // must not go on saying *Ready*, which is what renders the button.
+    [Fact]
+    public async Task Nothing_is_offered_while_the_newer_version_is_still_downloading()
+    {
+        updater.Answer = UpdateCheck.Found("1.2.0");
+
+        await using var pump = Pump();
+
+        pump.Start();
+
+        await Until(() => state.Current.Stage is UpdateStage.Ready);
+
+        var stages = new List<UpdateStage>();
+
+        state.Changed += () => stages.Add(state.Current.Stage);
+
+        updater.Answer = UpdateCheck.Found("1.3.0");
+        updater.DownloadSucceeds = false;
+        pump.CheckNow();
+
+        // Both waits, in this order: the first is what puts the pass past the `Available` it publishes
+        // *before* fetching, so the second cannot be satisfied by that one and read the updater while it
+        // still holds 1.2.0.
+        await Until(() => updater.Requested.Count == 2);
+        await Until(() => state.Current.Stage is UpdateStage.Available && state.Current.Version == "1.3.0");
+
+        stages.Should().NotContain(UpdateStage.Ready, "the file behind that word has been discarded");
+        updater.IsReady.Should().BeFalse("the updater must not point the button at a deleted installer");
+    }
+
+    // A failed swap leaves the newer version as the thing to retry, and the older one is not recoverable
+    // — it was deleted to make room. So the retry has to happen, and the next pass is what does it.
+    [Fact]
+    public async Task A_failed_swap_retries_the_newer_version_on_the_next_pass()
+    {
+        updater.Answer = UpdateCheck.Found("1.2.0");
+
+        await using var pump = Pump();
+
+        pump.Start();
+
+        await Until(() => state.Current.Stage is UpdateStage.Ready);
+
+        updater.Answer = UpdateCheck.Found("1.3.0");
+        updater.DownloadSucceeds = false;
+        pump.CheckNow();
+
+        await Until(() => state.Current.Stage is UpdateStage.Available);
+
+        updater.DownloadSucceeds = true;
+        pump.CheckNow();
+
+        await Until(() => state.Current.Stage is UpdateStage.Ready);
+
+        state.Current.Version.Should().Be("1.3.0");
+        updater.ReadyVersion.Should().Be("1.3.0");
+    }
+
+    // Every reason a pass can fail to name the version on disk, and none of them is a reason to withdraw
+    // it: the installer is there, it is installable, and the user has not answered yet. Before the pump
+    // kept checking this was unreachable; now an offline six-hour pass reaches it.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task A_downloaded_version_survives_a_check_that_no_longer_names_it(bool completed)
+    {
+        updater.Answer = UpdateCheck.Found("1.2.0");
+
+        await using var pump = Pump();
+
+        pump.Start();
+
+        await Until(() => state.Current.Stage is UpdateStage.Ready);
+
+        updater.Answer = completed ? UpdateCheck.UpToDate : UpdateCheck.Failed;
+        pump.CheckNow();
+
+        await Until(() => updater.Checks >= 2);
+        await Task.Delay(100);
+
+        state.Current.Stage.Should().Be(UpdateStage.Ready);
+        state.Current.Version.Should().Be("1.2.0");
+    }
+
+    // The same rule against the toggle. Switching off says "stop going and looking", not "throw away the
+    // installer I already have" — and it used to say the second, publishing `Idle` over the `Ready`
+    // state and taking the button with it.
+    [Fact]
+    public async Task Turning_the_toggle_off_does_not_withdraw_a_downloaded_version()
+    {
+        var settings = Settings();
+
+        updater.Answer = UpdateCheck.Found("1.2.0");
+
+        await using var pump = Pump(settings);
+
+        pump.Start();
+
+        await Until(() => state.Current.Stage is UpdateStage.Ready);
+
+        settings.SetAutoUpdate(false);
+
+        await Task.Delay(100);
+
+        state.Current.Stage.Should().Be(UpdateStage.Ready);
+        state.Current.Version.Should().Be("1.2.0");
     }
 
     [Fact]
@@ -534,8 +673,8 @@ public class UpdatePumpTests
 
         await Until(() => notifier.Shown.Count == 1);
 
-        // A pass that finds a downloaded version returns without asking again, so the state has to be
-        // walked back for the second announcement to be reachable at all.
+        // A downloaded version outlives an answer that no longer names it, so the state has to be walked
+        // back for the second announcement to be reachable at all.
         updater.Answer = UpdateCheck.UpToDate;
         state.Publish(UpdateStatus.Idle);
         pump.CheckNow();

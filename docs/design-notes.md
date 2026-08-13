@@ -1278,6 +1278,45 @@ deletion, and if the cache were missed the only cost would be a second download 
 had. What would settle it is one release cycle — decline the update, restart, and watch whether the
 settings page reaches *Ready* immediately or crawls back up through the percentages.
 
+### A downloaded update may not be stale, and may not be checked for at the click
+
+Once nothing installs on the way out, a downloaded update can sit unanswered for days — and the pump used
+to stop checking the moment one was ready, on the reasoning that the answer could not improve until the
+app restarted into it. With install-on-exit gone that reasoning fails: 1.3.0 ships, ACT goes on offering
+1.2.0, and the user needs **two restarts** to arrive at the newest version.
+
+The obvious fix — check when *Restart and install* is clicked, and fetch the newer version instead — was
+rejected on the pinned electron-updater's source (6.8.9). `getValidCachedUpdateFile` compares the feed's
+`sha512` against the cached one and, on a mismatch, calls `cleanCacheDirForPendingUpdate()` **before**
+returning null, so the installer ACT was holding is deleted at the *start* of the replacement download,
+not on its success. A click that re-checks therefore trades a certain install for a maybe: if the new
+download fails — dropped connection, the 30-minute limit, a 404 — there is nothing left to install, and
+`downloadedUpdateHelper.file` still names the deleted file, so a second click reaches `install`'s error
+path and does nothing at all. The click would also have to wait out a check plus a full download, up to
+32 minutes, under a button that says only *Restart and install*.
+
+So the checking stays in the background and **the offer only ever moves to a version that is already on
+disk**:
+
+- `UpdatePump.PassAsync` keeps checking while `Ready`, and returns without touching the state when the
+  answer names the version it is already holding — including *Checking*, because a button that blinked
+  out every six hours would be worse than one that never noticed 1.3.0.
+- A newer version publishes `Available` then `Downloading`, which un-offers the button by itself: both
+  call sites render it only on `Stage is Ready`. That window is honest rather than unfortunate — the
+  older installer really is gone by then.
+- `IUpdater.DownloadAsync` takes the wanted version, and `IsReady` stopped being a latch. Asked for the
+  version it holds it answers immediately; asked for a newer one it clears `IsReady` **before** fetching,
+  for the same reason the cache is already empty by then. Without this the old early-out on a bare
+  `IsReady` would have returned `true` and the replacement download would never have happened.
+- No answer withdraws a downloaded version — not a failed check, not `UpToDate` after a release is
+  pulled, not the toggle going off. The last of those was a real bug: switching off published `Idle` over
+  `Ready` and took the button with it.
+
+What is genuinely lost: with the toggle off, a *Check now* that turns up a newer version replaces the
+*Restart and install* for what is on disk with a *Download* for what is not. `UpdateStatus` holds one
+version, and modelling "1.2.0 ready, 1.3.0 available" was not worth a second one — the alternative was a
+manual check that visibly did nothing, which is the dead button this section keeps arguing against.
+
 It hangs off `IDesktopBridge` rather than `IUpdater`: a restart is an exit that comes back, so it has to
 end the live sessions and put the running-work question through the same confirmation as the tray's
 *Exit*, and none of that is the updater's business. `ElectronDesktopBridge` may take `DesktopShell`
