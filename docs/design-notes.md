@@ -1173,3 +1173,141 @@ assumed. More to the point, the rules being pinned cannot be expressed with a re
 populates `files` too, so `files` and `items` can never be made to *disagree*, which is the whole subject
 of the "a screenshot tool put the picture on the clipboard twice" and "yield to the text" cases. The
 hand-made shape is what Windows actually produces.
+
+## Releasing
+
+### A downgraded ACT refuses the store out loud, and the refusal has to ship *first*
+
+`ActSchema` already threw on a store from a newer build. The problem was where the throw landed: the
+store opens on the first service that needs it, which is several lines into `Program`, and under Electron
+that is long before the ready callback — so there was no window, no bridge, and no way to say anything.
+A downgraded ACT died behind its own splash screen, the same failure mode `ElectronUpdater.Configure`
+once had.
+
+So compatibility is now a **pre-flight question**, asked by `ActStoreCompatibility.Inspect` with no
+container and no migration: open, read one integer, close. The file is checked for existence first
+rather than opened blindly, because `new LiteDatabase` *creates* it — a probe that opened
+unconditionally would leave an empty `act.db` on every first run and hand the real open a store to
+migrate from nothing.
+
+An unsupported answer skips every line that would open the store and, under Electron, starts the host
+only as far as the ready callback, where `Electron.Dialog.ShowErrorBox` is drawn. `ShowErrorBox` rather
+than `ShowMessageBoxAsync` because it is the one Electron dialog that needs no parent window — and here
+there is no window and never will be. Browser mode has no dialog surface at all, so a critical log line
+and a non-zero exit are the whole report. The message names both numbers and says the board is intact,
+because the failure is a refusal and not damage.
+
+The dialog's language is the **OS's**, not the user's: the preference lives in the store that cannot be
+read, so `ApplyLanguage` never runs and the resources resolve against `CurrentUICulture`. That is the
+closest thing to right that is still knowable.
+
+**This only ever helps a downgrade to a build that already contains it.** The code has to live in the
+*older* build — the one being installed — so v0.9.1 through v0.9.3-beta will still fail the old silent
+way when they meet a schema-2 store. From this release forward, every downgrade is clean. There is no
+way to fix the already-published builds, which is the argument for landing this in the same release as
+the first migration rather than after the first complaint.
+
+### The three-way update policy became a switch — schema 2
+
+`UpdatePolicy` held `NotifyAndDownload`, `NotifyOnly` and `Off`, and its own comment defended the middle
+one: "check but leave the download to me" is a real position, because a metered connection makes an
+unasked hundred megabytes a real cost. It was collapsed to the `AutoUpdate` boolean anyway, and the
+argument that beat it is that **the position survives without the choice**. Switch off, press *Check
+now* when you want, press *Download* for what it found — that is the same bargain, driven by hand. What
+is genuinely lost is being told about a version automatically without fetching it, and that is narrower
+than a third position deserves. Two of the three only ever differed in what they did with the answer.
+
+Retiring it took a real migration, not a tolerant read. LiteDB persists enums **by name** and its
+deserializer throws on a name the build no longer has, and `UserSettings` loads in a constructor at
+start-up — so a store still holding `"Updates": "NotifyOnly"` would not have cost a preference, it would
+have been an app that does not open. `ActSchema.Migrations` gained its first entry since the list was
+emptied for the first release, rewriting the stored document and removing the old field outright, so
+only one shape exists on disk afterwards.
+
+**Only `NotifyAndDownload` maps to `true`.** It is the one position that fetched a version on its own;
+mapping `NotifyOnly` to `true` would start downloading behind the back of the single user who had
+explicitly refused exactly that. A document with no `Updates` field predates the setting and takes the
+model's default, which is why the migration tests cover the absent case as well as the three names —
+missing must not read as `false`.
+
+The telemetry property was renamed with it (`updates` → `auto_update`) rather than reused: a key whose
+type silently changes from a string to a boolean is worse for whoever reads the dashboard than a new
+key beside the old one.
+
+### A silent install cannot tell you it finished — and the visible one is a wizard
+
+Install-on-exit worked and was still a bad experience: ACT went quiet, nothing said when the installer
+had finished, and launching from the taskbar too early hit a *shortcut not found* dialog — NSIS
+rewrites the shortcuts partway through, so an early click resolves one that momentarily is not there.
+
+The obvious fix is to show the installer, and it was rejected on a measurement. `QuitAndInstall`'s
+`isSilent` is the only lever, and electron-updater turns it into NSIS's `/S` or nothing at all —
+`NsisUpdater.doInstall` builds `["--updated"]` and pushes `/S` only when silent, so there is no middle
+setting. ACT's installer is `"oneClick": false` with `allowToChangeInstallationDirectory`, which makes
+the visible form the **assisted wizard**: Next, install directory, Install, Finish. On the way out that
+waits on clicks from somebody who has already walked away, and closing the wizard cancels the update.
+
+**`oneClick` cannot be silent-and-one-click, visible-and-assisted.** It is an electron-builder build
+option that selects which NSIS script gets compiled into the installer, so there is one binary with one
+mode; `/S` only chooses whether that mode is quiet. Getting both would mean shipping two installers per
+release and pointing `latest.yml` at the one-click one — two artifacts to keep in lockstep, an update
+that installs under different rules than the download the user chose, and twice the signing surface.
+Not worth it.
+
+So the real fix was not to decorate the exit path but to stop making it the only route. *Restart and
+install* is offered wherever a downloaded update is visible, installs silently with
+`isForceRunAfter: true`, and lets **the app reappearing be the completion signal** — the one signal an
+update can give, and better than a progress bar, because there is nothing to watch and nothing to click
+early. Install-on-exit stays as it was for people who simply leave.
+
+It hangs off `IDesktopBridge` rather than `IUpdater`: a restart is an exit that comes back, so it has to
+end the live sessions and put the running-work question through the same confirmation as the tray's
+*Exit*, and none of that is the updater's business. `ElectronDesktopBridge` may take `DesktopShell`
+without closing the container's loop, because the shell takes no bridge — unlike
+`INotifier -> DesktopShell -> UpdatePump -> INotifier`, which is why the pump is registered where it is.
+
+### The release tag cannot be pushed with git — measured
+
+Cutting `v0.9.3-beta` failed on the tag push, not on anything ACT builds:
+
+```
+! [remote rejected] v0.9.3-beta -> v0.9.3-beta (refusing to allow a GitHub App to
+create or update workflow `.github/workflows/release.yml` without `workflows` permission)
+```
+
+`GITHUB_TOKEN` is a GitHub App installation token, and GitHub's pre-receive hook refuses a push from
+an App that it reads as creating or updating anything under `.github/workflows/`. A tag push trips
+it: the run was dispatched from `main` and the tag pointed at `main`'s own tip, so nothing was being
+changed, but a newly created ref has no previous value to diff the workflow files against. The
+permission the message asks for **cannot be granted** — `workflows` is not a key the `permissions:`
+block accepts, and no repository or organisation setting adds it to `GITHUB_TOKEN`. Nothing was
+misconfigured; a settings-level mistake fails differently (a read-only token gives a plain `403`, a
+protected tag says so by name). It is a live GitHub complaint, unanswered in
+[community #151442](https://github.com/orgs/community/discussions/151442) as of January 2026.
+
+So the tag is created through the API, which never reaches that hook — confirmed working by someone
+hitting the same wall in [community #26164](https://github.com/orgs/community/discussions/26164), and
+then by cutting `v0.9.3-beta` for real. **Two calls, not one**, and the second is the point:
+
+- `POST git/tags` makes the annotated tag **object**, holding the message and the tagger date.
+- `POST git/refs` points `refs/tags/<tag>` at that object rather than at the commit.
+
+Letting `gh release create` mint the tag on its own is the more common shape in public workflows and
+was rejected: it creates a **lightweight** tag, which has no object, so GitHub's Tags page falls back
+to the tagged *commit's* date. ACT cut `v0.9.1` and `v0.9.2` off the same commit a day apart — as
+lightweight tags both would have displayed the same timestamp. Dropping the step entirely would also
+cost `--verify-tag`, one of the two independent guards against cutting a version twice (the other is
+the gate's `git tag --list`, which sees API-created tags like any other ref).
+
+`contents: write` alone is enough for both calls — **verified**, against one report that creating a
+tag ref also needs `actions: write`. That extra permission was briefly added defensively and then
+removed unused; the real run settled it. Do not add it back on a hunch.
+
+`shell: pwsh` reports a native command's failure only at the *end* of a step, so the first call's
+result is checked explicitly — without that guard a rejected tag-object call would fall through and
+create the ref against an empty sha.
+
+The shape of the step is pinned by `ReleaseTagCreationTests`, because nothing compiles against the
+workflow and a release is manual, slow and public: a revert to `git push` would surface only as a
+failed release after both platforms had already built, and a slip to a lightweight tag only as wrong
+dates on a page nobody re-reads.

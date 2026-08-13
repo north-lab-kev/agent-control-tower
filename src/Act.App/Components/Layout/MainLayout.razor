@@ -31,6 +31,16 @@
                 <RadzenButton Icon="settings" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
                               Size="ButtonSize.Small" Click="OpenSettings" class="gear"
                               title="@Strings.Settings_Title" aria-label="@Strings.Settings_Title" />
+
+                @* Last, so the three destinations above keep their positions whether or not a version
+                   is waiting. Carries its text, unlike the three: an icon alone cannot say that a
+                   different version is on disk, and this button is here only until it is used. *@
+                @if (UpdateReady)
+                {
+                    <RadzenButton Icon="restart_alt" Text="@RestartLabel" ButtonStyle="ButtonStyle.Primary"
+                                  Variant="Variant.Flat" Size="ButtonSize.Small" Click="RestartForUpdate"
+                                  class="updateready" title="@RestartLabel" />
+                }
             </RadzenStack>
         </RadzenStack>
 

@@ -273,13 +273,32 @@
       back to carry the question — being shown what is about to stop is no bad thing.
       Confirming ends every live session first: the confirmation promised it, and an agent
       must not outlive the app supervising it.
-  - **Automatic updates** (*Updates*, desktop-only) is a three-way rather than a switch, because
-    "check but leave the download to me" is a position people hold — a metered connection makes an
-    unasked hundred megabytes a real cost — and it is not the same position as wanting no updates.
-    **Download quietly, install on exit** is the default; **Tell me, download when I ask** surfaces
-    the version and offers a *Download* button beside it; **Never check** reaches the network not at
-    all. The section also states **the running version**, in both shells and unconditionally — it is
+  - **Check for updates** (*Updates*, desktop-only) is a **switch**, on by default. On, ACT checks every
+    six hours and downloads what it finds. Off, nothing reaches the network unasked — and *Check now*
+    still works, offering a *Download* button for whatever it turns up.
+    - **It was a three-way and is not any more.** The retired middle position, "tell me, download when I
+      ask", existed for the metered connection that cannot afford an unasked hundred megabytes. That
+      user is still served: switch off, check when they choose, download deliberately. The only position
+      genuinely lost is being told about a version automatically *without* it being fetched, which is
+      narrower than a whole third choice deserves. The collapse needed a schema migration — see
+      `docs/design-notes.md`, "Releasing".
+    - **The switch governs ACT's own initiative, never what the user may ask for.** *Check now* is live
+      either way, and a live button that did nothing is the bug that made this rule explicit. The
+      section also states **the running version**, in both shells and unconditionally — it is
     the one thing a bug report has to quote and ACT stated it nowhere until now.
+    - **A downloaded update offers *Restart and install*, on the board as well as in Settings.** It sits
+      last in the title bar's action group — after the three destinations, so a release never moves them
+      under the user — and carries its version as text, because an icon cannot say that a different
+      version is waiting. It is offered under **all three policies**: by the time the installer is on
+      disk the choice the policy governed is already made, and what is left is a restart only the user
+      can time. It ends the live sessions and asks about running work through the same confirmation as
+      the tray's *Exit* — a restart is an exit that comes back, and a title-bar button that stopped
+      three agents without asking would be the worst button in the app.
+      - **Why it exists.** An install started on the way out cannot report anything, because the app
+        that would report it is the app being replaced. So install-on-exit reads as ACT going quiet for
+        an indefinite while, and relaunching by hand too early finds shortcuts the installer has not
+        finished rewriting. A restart the user asked for can answer: **the app coming back is the
+        completion signal**, and there is nothing to click in the meantime.
     - **Applied on the way out, never mid-flight.** ACT supervises long-running agents, so an update
       that restarted the app to install itself would stop work the user did not agree to stop. The
       tray *Exit* installs instead of quitting when one is downloaded, after ending the sessions —

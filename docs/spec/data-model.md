@@ -393,9 +393,17 @@ for — named, so a board that hosts several kinds of work can keep one per kind
   template — and the settings document is already loaded once at startup. A collection would
   have bought a port, a store, a cache and an async load for a list that is a handful of items
   long.
-- **Schema 1 is the release baseline** — the migration list is empty and every install starts on
-  a store this build created. The migration machinery stays for the first breaking change after
-  the release; see `docs/design-notes.md` for the rules the next entry has to obey.
+- **Schema 1 was the release baseline; the store is now at 2.** Schema 2 replaced the retired
+  three-way `UpdatePolicy` with the `AutoUpdate` boolean, rewriting the stored document and removing
+  the old field outright, so only one shape exists on disk afterwards. See `docs/design-notes.md`
+  for the rules an entry has to obey — above all that a migration rewrites the data rather than a
+  read-time shim tolerating both shapes forever.
+- **A store from a newer build is refused before it is opened, and said out loud.** Migrating
+  backwards would lose whatever the newer version added, so a downgraded ACT shows a native message
+  box naming both schema numbers, states that the board is intact, and exits non-zero without ever
+  opening a window. The check is a pre-flight probe rather than the migration's own exception,
+  because that exception lands before Electron exists and cannot be shown to anyone. It only helps
+  a downgrade to a build that already carries it — the published v0.9.x builds cannot be fixed.
 
 ## Attachments
 

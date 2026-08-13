@@ -5,7 +5,7 @@ namespace Act.Infrastructure.Storage;
 
 internal static class ActDatabase
 {
-    private const string FileName = "act.db";
+    internal const string FileName = "act.db";
 
     public static ILiteDatabase Open(string dataDirectory, ILogger log)
     {

@@ -32,7 +32,7 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
 
     public bool GenerateTitles => current.GenerateTitles;
 
-    public UpdatePolicy Updates => current.Updates;
+    public bool AutoUpdate => current.AutoUpdate;
 
     public bool Telemetry => current.Telemetry;
 
@@ -313,12 +313,12 @@ public sealed class UserSettingsService(ISettingsStore store, AppCulture culture
         Update(settings => settings.Notifications = notifications);
     }
 
-    public void SetUpdates(UpdatePolicy updates)
+    public void SetAutoUpdate(bool autoUpdate)
     {
-        if (updates == current.Updates)
+        if (autoUpdate == current.AutoUpdate)
             return;
 
-        Update(settings => settings.Updates = updates);
+        Update(settings => settings.AutoUpdate = autoUpdate);
     }
 
     public void SetCloseToTray(bool closeToTray)

@@ -74,7 +74,7 @@ as `electron.app.Electron`.
 ## Updates — how a new version reaches an installed copy
 
 `electron-updater` (already a runtime dependency of the Electron host) polls the repository's GitHub
-releases; the user-facing half is the *Automatic updates* setting above. The mechanics are all in
+releases; the user-facing half is the *Check for updates* switch above. The mechanics are all in
 what gets **published**, and two of them are counter-intuitive enough to write down.
 
 - **A `publish` block in `electron-builder.json` is what makes any of it possible.** It is what makes

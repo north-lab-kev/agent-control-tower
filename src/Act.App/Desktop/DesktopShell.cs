@@ -373,12 +373,47 @@ public sealed class DesktopShell(
             return;
         }
 
-        var options = new MessageBoxOptions(Strings.Tray_ExitConfirm)
+        if (await ConfirmAsync(
+                Strings.Tray_Exit,
+                Strings.Tray_ExitConfirm,
+                Detail(stakes, updater.IsReady),
+                Strings.Tray_ExitYes))
+            await ExitAsync();
+    }
+
+    // *Restart and install*, from the Settings page or the title bar. A restart is an exit that comes
+    // back, so it goes through the same question about running work — a title-bar button that ended
+    // three live agents without asking would be the worst button in the app.
+    public async Task RestartForUpdateAsync()
+    {
+        if (!updater.IsReady)
+            return;
+
+        var stakes = ExitPolicy.Assess(board.All, settings.AutoExecutionPaused);
+
+        if (stakes.Warning is not ExitWarning.None
+            && !await ConfirmAsync(
+                Strings.Update_Restart,
+                Strings.Update_RestartConfirm,
+                Detail(stakes, updateReady: false),
+                Strings.Update_RestartYes))
+            return;
+
+        await sessions.DisposeAsync();
+
+        updater.InstallAndRestart();
+
+        lifetime.StopApplication();
+    }
+
+    private async Task<bool> ConfirmAsync(string title, string question, string detail, string confirm)
+    {
+        var options = new MessageBoxOptions(question)
         {
             Type = MessageBoxType.warning,
-            Title = Strings.Tray_Exit,
-            Detail = Detail(stakes, updater.IsReady),
-            Buttons = [Strings.Tray_ExitYes, Strings.NewTask_Cancel],
+            Title = title,
+            Detail = detail,
+            Buttons = [confirm, Strings.NewTask_Cancel],
             DefaultId = 1,
             CancelId = 1,
         };
@@ -404,15 +439,13 @@ public sealed class DesktopShell(
                 parent = window;
         }
 
+        // Nothing was asked, so nothing may be assumed answered.
         if (parent is null)
-            return;
+            return false;
 
         var result = await Electron.Dialog.ShowMessageBoxAsync(parent, options);
 
-        if (result.Response != 0)
-            return;
-
-        await ExitAsync();
+        return result.Response == 0;
     }
 
     // The update line is appended rather than folded into the wordings, because it is a second,

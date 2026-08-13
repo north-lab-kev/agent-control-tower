@@ -30,8 +30,9 @@ public class UserSettingsServiceTests
         // On by default: nobody should have to name a task twice.
         settings.GenerateTitles.Should().BeTrue();
 
-        // Quiet download by default: the alternative is a user who is out of date and does not know it.
-        settings.Updates.Should().Be(UpdatePolicy.NotifyAndDownload);
+        // Checking and fetching by default: the alternative is a user who is out of date and does not
+        // know it.
+        settings.AutoUpdate.Should().BeTrue();
 
         // The master switch ships *off*: auto-execution is the point of the queue.
         settings.AutoExecutionPaused.Should().BeFalse();
@@ -68,7 +69,7 @@ public class UserSettingsServiceTests
         settings.SetKeepAwake(settings.KeepAwake);
         settings.SetNotifications(settings.Notifications);
         settings.SetCloseToTray(settings.CloseToTray);
-        settings.SetUpdates(settings.Updates);
+        settings.SetAutoUpdate(settings.AutoUpdate);
         settings.SetTelemetry(settings.Telemetry);
         settings.SetBlinkYourTurn(settings.BlinkYourTurn);
         settings.SetGenerateTitles(settings.GenerateTitles);

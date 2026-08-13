@@ -30,7 +30,9 @@ public static class TelemetryProperties
 
     public const string CloseToTray = "close_to_tray";
 
-    public const string Updates = "updates";
+    // Renamed with the setting: `updates` carried the retired three-way policy's name, and reusing the
+    // key for a boolean would change a property's type under whoever is reading the dashboard.
+    public const string AutoUpdate = "auto_update";
 
     public const string PreventConcurrentWorkingDir = "prevent_concurrent_working_dir";
 
@@ -74,7 +76,7 @@ public static class TelemetryProperties
         KeepAwake,
         Notifications,
         CloseToTray,
-        Updates,
+        AutoUpdate,
         PreventConcurrentWorkingDir,
         MaxConcurrent,
         AutoExecutionPaused,

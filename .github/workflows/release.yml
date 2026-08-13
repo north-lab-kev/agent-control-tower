@@ -300,21 +300,12 @@ jobs:
 
           Write-Host ($notes -join "`n")
 
-      # **The tag is created through the API, never with `git push`.** `GITHUB_TOKEN` is a
-      # GitHub App token, and GitHub's pre-receive hook refuses a push from an App that it
-      # judges to create or update anything under `.github/workflows/` — which a tag push
-      # can trip even when the tagged commit is already the default branch's tip, since a
-      # newly created ref has no previous value to diff the workflow files against. The
-      # permission it asks for cannot be granted: `workflows` is not a key the `permissions:`
-      # block accepts, and no repository setting adds it to `GITHUB_TOKEN`. The API path
-      # never reaches that hook. Do not "simplify" this back to `git tag -a` + `git push` —
-      # it fails the moment a release carries a change to this very file.
-      #
-      # Two calls rather than one because the tag stays **annotated**: the tag object holds
-      # the message and the tagger date, and GitHub's Tags page shows that date. A
-      # lightweight tag (what `gh release create` would mint on its own) has no object, so
-      # every tag falls back to its commit's date — two versions cut a day apart off the same
-      # commit would then display as simultaneous.
+      # **The tag is created through the API, never with `git push`.** A push authenticated as
+      # `GITHUB_TOKEN` is refused as touching `.github/workflows/`, and the permission it asks
+      # for cannot be granted to that token. Two calls, not one, so the tag stays **annotated**:
+      # the object carries the message and the tagger date GitHub's Tags page shows.
+      # `contents: write` is enough for both — verified, do not widen it.
+      # Why, and what was rejected: `docs/design-notes.md`, "Releasing".
       - name: Create tag
         shell: pwsh
         env:

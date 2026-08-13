@@ -22,4 +22,8 @@ public sealed class BrowserUpdater : IUpdater
     public void InstallAndExit()
     {
     }
+
+    public void InstallAndRestart()
+    {
+    }
 }

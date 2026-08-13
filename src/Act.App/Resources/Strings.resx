@@ -592,19 +592,10 @@
     <value>Version</value>
   </data>
   <data name="Settings_Updates" xml:space="preserve">
-    <value>Automatic updates</value>
+    <value>Check for updates</value>
   </data>
   <data name="Settings_Updates_Hint" xml:space="preserve">
     <value>ACT looks for a newer release.</value>
-  </data>
-  <data name="Settings_Updates_Download" xml:space="preserve">
-    <value>Download quietly, install on exit</value>
-  </data>
-  <data name="Settings_Updates_NotifyOnly" xml:space="preserve">
-    <value>Tell me, download when I ask</value>
-  </data>
-  <data name="Settings_Updates_Off" xml:space="preserve">
-    <value>Never check</value>
   </data>
   <data name="Settings_Updates_Check" xml:space="preserve">
     <value>Check now</value>
@@ -614,6 +605,31 @@
   </data>
   <data name="Settings_Updates_Idle" xml:space="preserve">
     <value>Not checking for updates.</value>
+  </data>
+  <data name="Settings_Updates_Manual" xml:space="preserve">
+    <value>Checked only when you ask.</value>
+  </data>
+  <data name="Store_Incompatible_Title" xml:space="preserve">
+    <value>ACT cannot open your data</value>
+  </data>
+  <data name="Store_Incompatible_Body" xml:space="preserve">
+    <value>This copy of ACT is older than the data on this computer. A newer version wrote it, and moving it back would lose what that version added — so nothing has been changed.
+
+Reinstall the newer version of ACT to carry on. Your board is intact and waiting for it.
+
+(Data format {0}; this copy reads up to {1}.)</value>
+  </data>
+  <data name="Update_Restart" xml:space="preserve">
+    <value>Restart and install</value>
+  </data>
+  <data name="Update_RestartReady" xml:space="preserve">
+    <value>Restart and install {0}</value>
+  </data>
+  <data name="Update_RestartConfirm" xml:space="preserve">
+    <value>Restart ACT to install the update?</value>
+  </data>
+  <data name="Update_RestartYes" xml:space="preserve">
+    <value>Restart and install</value>
   </data>
   <data name="Settings_Updates_Checking" xml:space="preserve">
     <value>Checking…</value>
@@ -698,12 +714,6 @@
   </data>
   <data name="Notify_ReadyForReview" xml:space="preserve">
     <value>Ready for review</value>
-  </data>
-  <data name="Notify_UpdateAvailable" xml:space="preserve">
-    <value>An ACT update is available</value>
-  </data>
-  <data name="Notify_UpdateAvailable_Body" xml:space="preserve">
-    <value>Version {0}. Download it from Settings when you are ready.</value>
   </data>
   <data name="Notify_UpdateReady" xml:space="preserve">
     <value>An ACT update is ready</value>

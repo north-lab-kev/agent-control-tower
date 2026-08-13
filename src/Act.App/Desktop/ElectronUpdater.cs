@@ -59,8 +59,8 @@ public sealed class ElectronUpdater(ILogger<ElectronUpdater> log) : IUpdater
         Electron.AutoUpdater.AllowPrerelease = false;
         Electron.AutoUpdater.AllowDowngrade = false;
 
-        // The policy decides when to download, not the updater — `NotifyOnly` would otherwise be a
-        // setting that fetched the thing it promised not to fetch.
+        // The pump decides when to download, not the updater — the toggle's off position would
+        // otherwise fetch the thing it promised not to fetch.
         Electron.AutoUpdater.AutoDownload = false;
 
         // Left on as the catch-all. The explicit exit path calls `QuitAndInstall`, but closing the
@@ -177,7 +177,18 @@ public sealed class ElectronUpdater(ILogger<ElectronUpdater> log) : IUpdater
 
     // Silent, because this runs as the user is already leaving: an NSIS wizard appearing on the way
     // out is a worse answer than a progress-free pause. Not force-run either — they asked to quit.
+    //
+    // Silent is not a free choice here. `nsis.oneClick` is `false`, so the visible installer is the
+    // assisted wizard — Next, install directory, Install, Finish — and electron-updater only ever
+    // passes `/S` or nothing (`NsisUpdater.doInstall`), never a middle setting. A wizard on the way
+    // out waits on clicks from somebody who has already walked away, and closing it cancels the
+    // update. `oneClick` is a build-time choice baked into the installer, so it cannot be one thing
+    // for a manual install and another for a silent one.
     public void InstallAndExit() => Electron.AutoUpdater.QuitAndInstall(isSilent: true, isForceRunAfter: false);
+
+    // Force-run, which is the whole point: this one was asked for, so ACT owes an answer about when
+    // it finished, and coming back is the only answer it can give. Still silent, for the reason above.
+    public void InstallAndRestart() => Electron.AutoUpdater.QuitAndInstall(isSilent: true, isForceRunAfter: true);
 
     private static int Percent(ProgressInfo info) => Math.Clamp((int)Math.Round(info.Percent), 0, 100);
 

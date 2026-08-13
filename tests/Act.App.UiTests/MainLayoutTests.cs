@@ -1,6 +1,7 @@
 using Act.App.Components.Layout;
 using Act.App.Components.Pages;
 using Act.App.Notifications;
+using Act.App.Updates;
 using Act.Core.Model;
 using AwesomeAssertions;
 using Bunit;
@@ -32,6 +33,70 @@ public class MainLayoutTests : ComponentTest
         cut.FindAll("div.actions button")[button].Click();
 
         Route.Should().Be(route);
+    }
+
+    // The board is where the app is used, so a downloaded update has to be reachable from it — on the
+    // Settings page alone it waits to be found. Last in the group on purpose: the three destinations
+    // above must not move under the user because a release happened.
+    [Fact]
+    public void A_downloaded_update_offers_the_restart_from_the_board()
+    {
+        Desktop.IsDesktop = true;
+
+        Updates.Publish(new UpdateStatus(UpdateStage.Ready, "1.2.0"));
+
+        var cut = Show();
+
+        cut.Find("div.actions button.updateready").TextContent.Should().Contain("1.2.0");
+        cut.FindAll("div.actions button").Should().HaveCount(4);
+        cut.FindAll("div.actions button")[0].Click();
+
+        Route.Should().Be("templates");
+    }
+
+    [Fact]
+    public void Restarting_from_the_bar_goes_through_the_shell_rather_than_the_updater()
+    {
+        Desktop.IsDesktop = true;
+
+        Updates.Publish(new UpdateStatus(UpdateStage.Ready, "1.2.0"));
+
+        Show().Find("div.actions button.updateready").Click();
+
+        Desktop.Restarts.Should().Be(1);
+    }
+
+    // Nothing to restart into, so nothing to offer — and a browser tab has no installer to run even
+    // when the state says otherwise.
+    [Theory]
+    [InlineData(true, UpdateStage.Available)]
+    [InlineData(true, UpdateStage.Downloading)]
+    [InlineData(true, UpdateStage.UpToDate)]
+    [InlineData(true, UpdateStage.Idle)]
+    [InlineData(false, UpdateStage.Ready)]
+    public void The_restart_is_absent_until_a_version_is_on_disk_in_a_desktop(bool desktop, UpdateStage stage)
+    {
+        Desktop.IsDesktop = desktop;
+
+        Updates.Publish(new UpdateStatus(stage, "1.2.0"));
+
+        Show().FindAll("div.actions button.updateready").Should().BeEmpty();
+    }
+
+    // The pump runs on its own thread, so a download finishing arrives from outside the renderer and
+    // the bar has to follow it without a navigation.
+    [Fact]
+    public void The_bar_picks_up_a_download_that_finished_while_it_was_open()
+    {
+        Desktop.IsDesktop = true;
+
+        var cut = Show();
+
+        cut.FindAll("div.actions button.updateready").Should().BeEmpty();
+
+        Updates.Publish(new UpdateStatus(UpdateStage.Ready, "1.2.0"));
+
+        cut.WaitForAssertion(() => cut.FindAll("div.actions button.updateready").Should().HaveCount(1));
     }
 
     [Fact]

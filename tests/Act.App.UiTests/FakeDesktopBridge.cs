@@ -18,9 +18,18 @@ internal sealed class FakeDesktopBridge : IDesktopBridge
 
     public Exception? Fails { get; set; }
 
+    public int Restarts { get; private set; }
+
     public Task OpenExternalAsync(string url)
     {
         External.Add(url);
+
+        return Task.CompletedTask;
+    }
+
+    public Task RestartForUpdateAsync()
+    {
+        Restarts++;
 
         return Task.CompletedTask;
     }

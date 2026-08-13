@@ -1,6 +1,8 @@
+using Act.App.Desktop;
 using Act.App.Notifications;
 using Act.App.Resources;
 using Act.App.Settings;
+using Act.App.Updates;
 using Act.Core.Model;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
@@ -14,6 +16,8 @@ public partial class MainLayout(
     NavigationManager navigation,
     UiPresence presence,
     DeepLinkRouter links,
+    UpdateState updateState,
+    IDesktopBridge desktop,
     IJSRuntime js) : IAsyncDisposable
 {
     private readonly Guid watcher = Guid.NewGuid();
@@ -37,11 +41,19 @@ public partial class MainLayout(
     private string MarkPath
         => markPath ??= $"favicon.png{assetVersions.For(typeof(MainLayout).Assembly)}";
 
+    // The board is where the app is used, so it is where a downloaded update has to be reachable —
+    // waiting on the Settings page is waiting to be found. Desktop only: a browser tab has no
+    // installer to run, and `UpdateState` never leaves `Idle` there anyway.
+    private bool UpdateReady => desktop.IsDesktop && updateState.Current.Stage is UpdateStage.Ready;
+
+    private string RestartLabel => Text.Format(Strings.Update_RestartReady, updateState.Current.Version);
+
     protected override void OnInitialized()
     {
         settings.Changed += OnChanged;
         navigation.LocationChanged += OnLocationChanged;
         links.Requested += OnDeepLink;
+        updateState.Changed += OnUpdateStateChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -68,6 +80,7 @@ public partial class MainLayout(
         settings.Changed -= OnChanged;
         navigation.LocationChanged -= OnLocationChanged;
         links.Requested -= OnDeepLink;
+        updateState.Changed -= OnUpdateStateChanged;
 
         presence.Forget(watcher);
 
@@ -111,6 +124,11 @@ public partial class MainLayout(
             ThemeMedia.DarkId,
             ThemeMedia.Dark(appliedTheme));
     });
+
+    // The pump runs on its own thread, so a download finishing arrives from outside the renderer.
+    private void OnUpdateStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private Task RestartForUpdate() => desktop.RestartForUpdateAsync();
 
     private void OpenTemplates() => navigation.NavigateTo("/templates");
 

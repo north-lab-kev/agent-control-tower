@@ -33,6 +33,15 @@ public interface IUpdater
 
     // Replaces `Electron.App.Exit` on the way out when an update is ready. Does not return.
     void InstallAndExit();
+
+    // The same install, for somebody who asked to update rather than to leave: ACT closes, the
+    // installer runs, and ACT comes back on the new version. Does not return.
+    //
+    // **The app reappearing is the only completion signal there is.** An install started on the way
+    // out cannot report anything, because the app reporting it is the app being replaced — which is
+    // why a silent install-on-exit reads as ACT going quiet for an indefinite while, and why
+    // launching it by hand too early finds shortcuts the installer has not finished rewriting.
+    void InstallAndRestart();
 }
 
 // **"No new version" and "could not tell" are different answers**, and collapsing them into a null

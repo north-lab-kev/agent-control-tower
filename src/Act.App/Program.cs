@@ -23,6 +23,11 @@ var dataDirectory = ActDataDirectory.Resolve(
 
 builder.Logging.AddActFileLog(dataDirectory);
 
+// Read here, where nothing has opened the store yet and there is no container to fail inside. Acted on
+// after the host is built, which is the first point there is a logger to say it through — and, under
+// Electron, reported from the ready callback below, the first point a dialog exists at all.
+var store = ActStoreCompatibility.Inspect(dataDirectory);
+
 builder.Services.AddActApp(builder.Configuration, dataDirectory);
 
 var launchedByElectron = args.Any(a => a.StartsWith("/electronPort", StringComparison.OrdinalIgnoreCase));
@@ -43,6 +48,27 @@ var app = builder.Build();
 host = app;
 
 StartupLog.Report(app, dataDirectory, runElectron);
+
+// **Before the first line that opens the store, because opening it is the thing that fails.** A store
+// written by a newer ACT cannot be migrated backwards, so a downgraded build has to refuse it — and the
+// refusal has to be said out loud rather than thrown, which is what `ActSchema` would do on the startup
+// thread with no window and no bridge to say it through.
+//
+// Nothing below this may run: every one of those lines resolves a service that opens `act.db`. Under
+// Electron the host is still started, and only so far as Electron's ready callback, which is the first
+// moment a native dialog exists at all — see `IncompatibleStoreNotice`. In browser mode there is no
+// dialog surface, so the log and the exit code are the whole report.
+if (!store.IsSupported)
+{
+    StartupLog.ReportIncompatibleStore(app, store.Stored, store.Understood);
+
+    if (!runElectron)
+        return 1;
+
+    app.Run();
+
+    return 1;
+}
 
 app.BindActHookEndpoint();
 
@@ -102,6 +128,16 @@ async Task RestoreThenRunAsync()
 // `INotifier -> DesktopShell -> UpdatePump -> INotifier` and the container refuses to build.
 async Task StartDesktopAsync()
 {
+    // The one path that opens no window. Checked here as well as above because this callback is the
+    // only place a native dialog can be drawn, and the branch above deliberately runs the host just
+    // far enough to reach it.
+    if (!store.IsSupported)
+    {
+        await IncompatibleStoreNotice.ShowAndExitAsync(store);
+
+        return;
+    }
+
     await host!.Services.GetRequiredService<DesktopShell>().StartAsync();
 
     host!.Services.GetRequiredService<UpdatePump>().Start();
@@ -135,4 +171,8 @@ app.MapRazorComponents<AppRoot>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+// Reached only on an ordinary shutdown. The refusal above is the one path that exits non-zero, so a
+// supervisor can tell "ACT would not open this store" from "ACT closed".
+return 0;
 
