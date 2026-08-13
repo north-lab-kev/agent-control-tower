@@ -107,9 +107,8 @@
                                 <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.Settings_Updates" />
                                 <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.Settings_Updates_Hint" class="hint" />
                             </RadzenStack>
-                            <RadzenDropDown TValue="UpdatePolicy" Value="Updates" ValueChanged="OnUpdatesChanged"
-                                            Data="UpdateChoices" TextProperty="Text" ValueProperty="Value"
-                                            AllowClear="false" class="control" />
+                            <RadzenSwitch Value="AutoUpdate"
+                                          ValueChanged="@((bool value) => OnAutoUpdateChanged(value))" />
                         </RadzenStack>
 
                         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
@@ -117,6 +116,13 @@
                             <RadzenText TextStyle="TextStyle.Caption" Text="@UpdateSummary" class="hint" />
 
                             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                @if (CanRestartForUpdate)
+                                {
+                                    <RadzenButton Icon="restart_alt" Text="@Strings.Update_Restart"
+                                                  Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Primary"
+                                                  Variant="Variant.Flat" Click="RestartForUpdate" />
+                                }
+
                                 @if (CanDownloadUpdate)
                                 {
                                     <RadzenButton Icon="download" Text="@Strings.Settings_Updates_Fetch"

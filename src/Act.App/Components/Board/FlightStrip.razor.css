@@ -204,6 +204,30 @@
     margin: 0;
 }
 
+/* `margin-left: auto` is for the compact line only, where the button is a loose child among the
+   badges and has to be pushed to the right edge. The detailed header nests it in a group that is
+   already right-aligned by the row's `SpaceBetween`, where an auto margin is a no-op. */
+::deep .del.rz-button {
+    flex: 0 0 auto;
+    min-width: 0;
+    margin-left: auto;
+    padding: 0 0.2rem;
+    opacity: 0.55;
+}
+
+/* The one action on a strip that takes work away, so it stays quiet until it is looked for — and then
+   says so in the colour every destructive surface in ACT uses. */
+::deep .del.rz-button:hover {
+    opacity: 1;
+    color: var(--act-err);
+}
+
+::deep .del .rz-button-icon-left {
+    font-size: var(--act-icon);
+    width: auto;
+    margin: 0;
+}
+
 ::deep .ctxbar {
     height: 3px;
     background: var(--act-track);

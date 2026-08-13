@@ -72,6 +72,20 @@ else
                             </RadzenStack>
                         }
 
+                        @* A template may carry "no folder needed" like any other launch setting, which is how
+                           somebody who asks a lot of questions saves their own starting point for them. *@
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                     JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_NoWorkingDir" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_NoWorkingDir_Hint"
+                                            class="hint" />
+                            </RadzenStack>
+                            <RadzenSwitch @bind-Value="template.NoWorkingDir" />
+                        </RadzenStack>
+
+                        @if (!template.NoWorkingDir)
+                        {
                         <RadzenStack Gap="0.3rem">
                             <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_WorkingDir" />
 
@@ -90,6 +104,7 @@ else
                                             OnCancel="@(() => picking = false)" />
                             }
                         </RadzenStack>
+                        }
                     </RadzenStack>
                 </RadzenFieldset>
 
@@ -147,7 +162,9 @@ else
                                             AllowClear="false" class="control" />
                         </div>
 
-                        @if (FolderGuardOn)
+                        @* Never for a template with no folder, the same as the task form: the rule reads the
+                           flag, so a no-folder task is exempt whatever this says. *@
+                        @if (FolderGuardOn && !template.NoWorkingDir)
                         {
                             <div class="row">
                                 <RadzenStack Gap="0.1rem">

@@ -14,8 +14,13 @@ public interface IUpdater
     // no-op and the pump never starts, rather than each caller remembering to ask.
     bool IsSupported { get; }
 
-    // A downloaded update waiting to be applied. Read by the exit path, which installs instead of
-    // quitting when it is true.
+    // A downloaded update waiting to be applied. Nothing but *Restart and install* applies it, so
+    // this only ever gates that: an exit is an exit whatever is on disk.
+    //
+    // **It goes back to false when a newer version supersedes the one on disk.** Not a latch, because
+    // the file it stands for really does leave: electron-updater empties its pending directory as soon
+    // as it decides to fetch a different one, so between that moment and the new file landing there is
+    // nothing to install and this has to say so.
     bool IsReady { get; }
 
     // Applied once at startup: pre-releases off, downgrades off, and downloads driven by the policy
@@ -26,13 +31,25 @@ public interface IUpdater
 
     Task<UpdateCheck> CheckAsync(CancellationToken cancellationToken);
 
-    // True once the installer is on disk. False covers every failure, including the download that
-    // never finishes — see `ElectronUpdater` for why that one is not hypothetical. `progress` is
-    // reported as whole percent, and may not reach 100 even on success.
-    Task<bool> DownloadAsync(IProgress<int> progress, CancellationToken cancellationToken);
+    // True once the installer for `version` is on disk. False covers every failure, including the
+    // download that never finishes — see `ElectronUpdater` for why that one is not hypothetical.
+    // `progress` is reported as whole percent, and may not reach 100 even on success.
+    //
+    // **`version` is what makes this idempotent rather than a latch.** Asked for the version already
+    // held it answers immediately; asked for a newer one it goes and gets that instead, and stops
+    // claiming to be ready in the meantime.
+    Task<bool> DownloadAsync(string version, IProgress<int> progress, CancellationToken cancellationToken);
 
-    // Replaces `Electron.App.Exit` on the way out when an update is ready. Does not return.
-    void InstallAndExit();
+    // The only thing that applies a downloaded update: ACT closes, the installer runs, and ACT comes
+    // back on the new version. Reached from *Restart and install* and from nowhere else — leaving the
+    // app does not install, and the installer waits in the updater's cache for however many runs it
+    // takes. Does not return.
+    //
+    // **The app reappearing is the only completion signal there is.** An install started on the way
+    // out cannot report anything, because the app reporting it is the app being replaced — which is
+    // why a silent install-on-exit reads as ACT going quiet for an indefinite while, and why
+    // launching it by hand too early finds shortcuts the installer has not finished rewriting.
+    void InstallAndRestart();
 }
 
 // **"No new version" and "could not tell" are different answers**, and collapsing them into a null

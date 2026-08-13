@@ -3,13 +3,21 @@ using Act.App.Desktop;
 namespace Act.App.UiTests;
 
 // A scriptable stand-in for `ElectronUpdater`. Counts as well as answers, because most of what the
-// pump owes is about restraint — `Off` must not check, `NotifyOnly` must not download — and a count
-// is the only way to assert that something did *not* happen.
+// pump owes is about restraint — the toggle off must not check on its own, and a manual check must not
+// download — and a count is the only way to assert that something did *not* happen.
 internal sealed class FakeUpdater : IUpdater
 {
     public bool IsSupported { get; set; } = true;
 
     public bool IsReady { get; private set; }
+
+    // The version behind `IsReady`, so a test can assert *which* installer is on disk after a newer one
+    // supersedes an older one — the difference the version argument exists to make.
+    public string? ReadyVersion { get; private set; }
+
+    // Every version `DownloadAsync` was asked for, in order. A count cannot tell a re-download of 1.3.0
+    // from a second look at 1.2.0, and that distinction is the whole of the supersede behaviour.
+    public List<string> Requested { get; } = [];
 
     public int Configured { get; private set; }
 
@@ -17,7 +25,7 @@ internal sealed class FakeUpdater : IUpdater
 
     public int Downloads { get; private set; }
 
-    public int Installs { get; private set; }
+    public int Restarts { get; private set; }
 
     // What the next check answers. Defaults to the quiet outcome, so a test that never sets it is
     // testing a machine that cannot reach the feed — which is the state ACT ships in today.
@@ -52,8 +60,19 @@ internal sealed class FakeUpdater : IUpdater
         return Task.FromResult(Answer);
     }
 
-    public Task<bool> DownloadAsync(IProgress<int> progress, CancellationToken cancellationToken)
+    // Modelled on `ElectronUpdater` down to the destructive part: asked for a version other than the one
+    // held, it stops being ready *before* it tries, because electron-updater has emptied its cache by
+    // then. A test that assumed otherwise would be testing a kinder updater than the real one.
+    public Task<bool> DownloadAsync(string version, IProgress<int> progress, CancellationToken cancellationToken)
     {
+        Requested.Add(version);
+
+        if (IsReady && ReadyVersion == version)
+            return Task.FromResult(true);
+
+        IsReady = false;
+        ReadyVersion = null;
+
         Downloads++;
 
         Reporter = progress;
@@ -62,10 +81,15 @@ internal sealed class FakeUpdater : IUpdater
             progress.Report(percent);
 
         if (DownloadSucceeds)
+        {
             IsReady = true;
+            ReadyVersion = version;
+        }
 
         return Task.FromResult(DownloadSucceeds);
     }
 
-    public void InstallAndExit() => Installs++;
+    // Counted rather than answered: the only install ACT has is the one the user asked for, so what a
+    // test needs from it is whether it happened at all.
+    public void InstallAndRestart() => Restarts++;
 }

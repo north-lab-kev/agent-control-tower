@@ -34,6 +34,62 @@ public class SessionLaunchTests
         card.Transitions.Last().Reason.Should().Be(TransitionReason.Launched);
     }
 
+    // A card with no folder stores no path, so the launch has to supply one — both CLIs read whatever they
+    // start in, and a directory that is not there fails at spawn. ACT's own scratch directory is the
+    // answer, resolved here rather than stored so it follows the data directory instead of freezing a path.
+    [Fact]
+    public async Task A_task_with_no_folder_starts_in_acts_scratch_directory()
+    {
+        var card = Ready();
+
+        card.NoWorkingDir = true;
+        card.WorkingDir = string.Empty;
+
+        var (launcher, _, adapter, _) = LauncherOf(card);
+
+        await launcher.LaunchAsync(card, TerminalSize.Default);
+
+        adapter.Launches.Should().ContainSingle()
+            .Which.WorkingDir.Should().Be(new StubAgentConfigFiles().ScratchDirectory());
+    }
+
+    // The same folder every time, and that is deliberate: a fresh directory would be one the CLI has not
+    // seen, and a pty in one of those hangs on the trust prompt.
+    [Fact]
+    public async Task Every_task_with_no_folder_starts_in_the_same_one()
+    {
+        var first = Ready();
+        var second = Ready();
+
+        second.Number = 1043;
+        second.Id = Guid.NewGuid();
+
+        foreach (var card in new[] { first, second })
+        {
+            card.NoWorkingDir = true;
+            card.WorkingDir = string.Empty;
+        }
+
+        var (launcher, _, adapter, _) = LauncherOf(first, second);
+
+        await launcher.LaunchAsync(first, TerminalSize.Default);
+        await launcher.LaunchAsync(second, TerminalSize.Default);
+
+        adapter.Launches.Select(launch => launch.WorkingDir).Distinct().Should().ContainSingle();
+    }
+
+    // And a card that does name a folder is untouched by any of it.
+    [Fact]
+    public async Task A_task_with_a_folder_still_starts_in_the_folder_it_names()
+    {
+        var card = Ready();
+        var (launcher, _, adapter, _) = LauncherOf(card);
+
+        await launcher.LaunchAsync(card, TerminalSize.Default);
+
+        adapter.Launches.Should().ContainSingle().Which.WorkingDir.Should().Be("/dev/act");
+    }
+
     // The armed instant belongs to the wait: left behind, a card dragged back to Ready would point
     // at a window boundary that passed while it was running.
     [Fact]
@@ -254,6 +310,7 @@ public class SessionLaunchTests
             TestNotifications.Dispatcher(settings, notifier),
             settings,
             new PassThroughDirectories(),
+            new StubAgentConfigFiles(),
             new FakeAttachmentStore(),
             clock,
             new RecordingTelemetrySink(),

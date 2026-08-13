@@ -300,13 +300,33 @@ jobs:
 
           Write-Host ($notes -join "`n")
 
+      # **The tag is created through the API, never with `git push`.** A push authenticated as
+      # `GITHUB_TOKEN` is refused as touching `.github/workflows/`, and the permission it asks
+      # for cannot be granted to that token. Two calls, not one, so the tag stays **annotated**:
+      # the object carries the message and the tagger date GitHub's Tags page shows.
+      # `contents: write` is enough for both — verified, do not widen it.
+      # Why, and what was rejected: `docs/design-notes.md`, "Releasing".
       - name: Create tag
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config user.name  'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git tag -a $env:TAG -m "ACT $env:TAG"
-          git push origin $env:TAG
+          $object = gh api "repos/$env:GITHUB_REPOSITORY/git/tags" `
+              -f tag="$env:TAG" `
+              -f message="ACT $env:TAG" `
+              -f object="$env:GITHUB_SHA" `
+              -f type=commit `
+              --jq '.sha'
+
+          if (-not $object) {
+              throw "Creating the tag object for $env:TAG returned no SHA."
+          }
+
+          gh api "repos/$env:GITHUB_REPOSITORY/git/refs" `
+              -f ref="refs/tags/$env:TAG" `
+              -f sha="$object"
+
+          Write-Host "Tagged $env:GITHUB_SHA as $env:TAG ($object)."
 
       - name: Create GitHub release
         shell: pwsh

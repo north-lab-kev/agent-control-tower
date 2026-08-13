@@ -231,6 +231,15 @@
   <data name="NewTask_WorkingDir" xml:space="preserve">
     <value>Working directory</value>
   </data>
+  <data name="NewTask_NoWorkingDir" xml:space="preserve">
+    <value>No folder needed</value>
+  </data>
+  <data name="NewTask_NoWorkingDir_Hint" xml:space="preserve">
+    <value>For a question rather than work on a tree. The agent starts in an empty folder of ACT's own, and these tasks never wait for each other.</value>
+  </data>
+  <data name="Card_NoWorkingDir" xml:space="preserve">
+    <value>No folder</value>
+  </data>
   <data name="NewTask_Agent" xml:space="preserve">
     <value>Agent</value>
   </data>
@@ -592,19 +601,10 @@
     <value>Version</value>
   </data>
   <data name="Settings_Updates" xml:space="preserve">
-    <value>Automatic updates</value>
+    <value>Check for updates</value>
   </data>
   <data name="Settings_Updates_Hint" xml:space="preserve">
     <value>ACT looks for a newer release.</value>
-  </data>
-  <data name="Settings_Updates_Download" xml:space="preserve">
-    <value>Download quietly, install on exit</value>
-  </data>
-  <data name="Settings_Updates_NotifyOnly" xml:space="preserve">
-    <value>Tell me, download when I ask</value>
-  </data>
-  <data name="Settings_Updates_Off" xml:space="preserve">
-    <value>Never check</value>
   </data>
   <data name="Settings_Updates_Check" xml:space="preserve">
     <value>Check now</value>
@@ -614,6 +614,31 @@
   </data>
   <data name="Settings_Updates_Idle" xml:space="preserve">
     <value>Not checking for updates.</value>
+  </data>
+  <data name="Settings_Updates_Manual" xml:space="preserve">
+    <value>Checked only when you ask.</value>
+  </data>
+  <data name="Store_Incompatible_Title" xml:space="preserve">
+    <value>ACT cannot open your data</value>
+  </data>
+  <data name="Store_Incompatible_Body" xml:space="preserve">
+    <value>This copy of ACT is older than the data on this computer. A newer version wrote it, and moving it back would lose what that version added — so nothing has been changed.
+
+Reinstall the newer version of ACT to carry on. Your board is intact and waiting for it.
+
+(Data format {0}; this copy reads up to {1}.)</value>
+  </data>
+  <data name="Update_Restart" xml:space="preserve">
+    <value>Restart and install</value>
+  </data>
+  <data name="Update_RestartReady" xml:space="preserve">
+    <value>Restart and install {0}</value>
+  </data>
+  <data name="Update_RestartConfirm" xml:space="preserve">
+    <value>Restart ACT to install the update?</value>
+  </data>
+  <data name="Update_RestartYes" xml:space="preserve">
+    <value>Restart and install</value>
   </data>
   <data name="Settings_Updates_Checking" xml:space="preserve">
     <value>Checking…</value>
@@ -628,7 +653,7 @@
     <value>Downloading version {0} — {1}%.</value>
   </data>
   <data name="Settings_Updates_Ready" xml:space="preserve">
-    <value>Version {0} is downloaded, and installs the next time you exit ACT.</value>
+    <value>Version {0} is downloaded. Choose Restart and install to apply it.</value>
   </data>
   <data name="Settings_Updates_Unavailable" xml:space="preserve">
     <value>Could not reach the update feed. ACT will try again later.</value>
@@ -699,17 +724,11 @@
   <data name="Notify_ReadyForReview" xml:space="preserve">
     <value>Ready for review</value>
   </data>
-  <data name="Notify_UpdateAvailable" xml:space="preserve">
-    <value>An ACT update is available</value>
-  </data>
-  <data name="Notify_UpdateAvailable_Body" xml:space="preserve">
-    <value>Version {0}. Download it from Settings when you are ready.</value>
-  </data>
   <data name="Notify_UpdateReady" xml:space="preserve">
     <value>An ACT update is ready</value>
   </data>
   <data name="Notify_UpdateReady_Body" xml:space="preserve">
-    <value>Version {0} installs the next time you exit ACT.</value>
+    <value>Version {0} is downloaded. Choose Restart and install when it suits you.</value>
   </data>
   <data name="Notify_Body" xml:space="preserve">
     <value>#{0} · {1}</value>
@@ -758,9 +777,6 @@
   </data>
   <data name="Tray_ExitDetailBoth_Many" xml:space="preserve">
     <value>{0} running tasks will be stopped, and scheduled tasks will not run while ACT is closed.</value>
-  </data>
-  <data name="Tray_ExitDetailUpdate" xml:space="preserve">
-    <value>A downloaded ACT update will be installed as you leave.</value>
   </data>
   <data name="Tray_ExitYes" xml:space="preserve">
     <value>Exit</value>
@@ -893,6 +909,15 @@
   </data>
   <data name="Board_Retry" xml:space="preserve">
     <value>Retry</value>
+  </data>
+  <data name="Card_DeleteConfirm" xml:space="preserve">
+    <value>Task #{0} has an agent working on it. Deleting the task ends that session, and the agent stops where it is. The task itself can be restored from the archive; the session cannot.</value>
+  </data>
+  <data name="Card_DeleteConfirm_Ok" xml:space="preserve">
+    <value>Delete and stop the agent</value>
+  </data>
+  <data name="Card_DeleteConfirm_Cancel" xml:space="preserve">
+    <value>Keep the task</value>
   </data>
   <data name="Board_TitlePending" xml:space="preserve">
     <value>Generating a title…</value>

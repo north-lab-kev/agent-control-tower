@@ -26,7 +26,7 @@ namespace Act.App.Components.Pages;
 // the heading and which `BoardState` call the save makes.
 public partial class TaskView(
     BoardState board,
-    SessionRegistry registry,
+    CardDeletion deletion,
     IAgentCapabilityCatalog agents,
     TaskTitles titles,
     TitleBackfill backfill,
@@ -344,9 +344,17 @@ public partial class TaskView(
 
     // Straight to the archive when nothing hangs off the card; otherwise ask what should happen to
     // the follow-ups, which is a genuine choice rather than an "are you sure".
+    //
+    // The "are you sure" comes first and only where an agent is live — the same `CardDeletePrompt` the
+    // board's strip uses, because the same delete must not warn on the board and go quietly here. The
+    // two questions are asked separately on purpose: stopping a running agent and deciding what happens
+    // to its follow-ups are different decisions, and answering no to the first makes the second moot.
     private async Task StartDeleteAsync()
     {
         if (card is not { } existing || ReadOnly)
+            return;
+
+        if (!await CardDeletePrompt.ConfirmedAsync(dialogService, existing))
             return;
 
         var followUps = LiveFollowUps;
@@ -431,10 +439,8 @@ public partial class TaskView(
         }
     }
 
-    // Kills first, on purpose: archiving the card while its process ran would leave an agent
-    // working in a directory with nothing on the board pointing at it — the one state ACT exists
-    // to prevent. Archiving is reversible; the process it was driving is not, so the session ends
-    // either way and a restored card starts from Ready rather than mid-turn.
+    // The kill-then-delete ordering lives in `CardDeletion`, which the board shares — see there for why
+    // it is that way round.
     private async Task DeleteAsync(bool includeChildren)
     {
         if (card is not { } existing || deleting)
@@ -444,10 +450,7 @@ public partial class TaskView(
 
         try
         {
-            foreach (var target in includeChildren ? board.ChildrenOf(existing).Append(existing) : [existing])
-                await registry.EndAsync(target.Id);
-
-            await board.DeleteAsync(existing, includeChildren);
+            await deletion.DeleteAsync(existing, includeChildren);
 
             // Archiving the card settles what happens to the edits: they go with it.
             discarded = true;

@@ -431,29 +431,56 @@ public class SettingsViewTests : ComponentTest
     {
         var cut = Show();
 
-        RadzenDom.HasRow(cut, "Automatic updates", Row).Should().BeFalse();
+        RadzenDom.HasRow(cut, "Check for updates", Row).Should().BeFalse();
         cut.FindAll("button").Select(RadzenDom.ButtonText).Should().NotContain("Check now");
     }
 
+    // A toggle rather than the retired three-way: with *Check now* always live and *Download* offered
+    // for what it finds, "check but leave the download to me" is reachable by hand, and the only
+    // position genuinely lost is being told about a version without it being fetched.
     [Fact]
-    public void The_update_policy_offers_its_three_positions_under_the_desktop_shell()
+    public void Automatic_checking_is_a_toggle_and_writes_through()
     {
         Desktop.IsDesktop = true;
 
-        RadzenDom.Options(Show(), "Automatic updates", Row).Should().Equal(
-            "Download quietly, install on exit",
-            "Tell me, download when I ask",
-            "Never check");
+        var cut = Show();
+
+        RadzenDom.IsOn(cut, "Check for updates", Row).Should().BeTrue("the default keeps ACT current");
+
+        RadzenDom.Toggle(cut, "Check for updates", Row);
+
+        Settings.AutoUpdate.Should().BeFalse();
     }
 
+    // "Not checking for updates" beside a live *Check now* reads as a broken button, which is what it
+    // used to be. With the toggle off, nothing-checked-yet is the resting state, not a moment in passing.
     [Fact]
-    public void The_update_policy_writes_through()
+    public void Manual_checking_says_so_rather_than_claiming_nothing_is_checked()
     {
         Desktop.IsDesktop = true;
 
-        RadzenDom.Choose(Show(), "Automatic updates", "Never check", Row);
+        Settings.SetAutoUpdate(false);
 
-        Settings.Updates.Should().Be(UpdatePolicy.Off);
+        var markup = Show().Markup;
+
+        markup.Should().Contain("only when you ask");
+        markup.Should().NotContain("Not checking for updates");
+    }
+
+    // The button is live whichever way the toggle sits, because the click is what the toggle defers to.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Checking_by_hand_is_offered_either_way(bool autoUpdate)
+    {
+        Desktop.IsDesktop = true;
+
+        Settings.SetAutoUpdate(autoUpdate);
+
+        Show().FindAll("button")
+            .Select(RadzenDom.ButtonText)
+            .Should()
+            .Contain("Check now", $"auto-update {autoUpdate} must still be checkable by hand");
     }
 
     [Fact]
@@ -463,7 +490,24 @@ public class SettingsViewTests : ComponentTest
 
         Updates.Publish(new UpdateStatus(UpdateStage.Ready, "1.2.0"));
 
-        Show().Markup.Should().Contain("1.2.0").And.Contain("exit ACT");
+        Show().Markup.Should().Contain("1.2.0").And.Contain("Restart and install");
+    }
+
+    // The wording is the only thing that tells somebody what closing ACT will do, and it said the
+    // opposite of the truth for as long as leaving installed: nothing but the button installs now, so
+    // the summary may not point at the exit as the way to get the update.
+    [Fact]
+    public void The_summary_names_the_button_rather_than_promising_an_install_on_exit()
+    {
+        Desktop.IsDesktop = true;
+
+        Updates.Publish(new UpdateStatus(UpdateStage.Ready, "1.2.0"));
+
+        var markup = Show().Markup;
+
+        markup.Should().Contain("Restart and install");
+        markup.Should().NotContain("exit ACT");
+        markup.Should().NotContain("next time");
     }
 
     // The state ACT ships in until the release feed is reachable. It must read as "ask again later" and
@@ -481,8 +525,8 @@ public class SettingsViewTests : ComponentTest
         markup.Should().NotContain("newest release");
     }
 
-    // Offered only where it is the answer to what the page is showing: a version was found, under the one
-    // policy that will not fetch it on its own.
+    // Offered only where it is the answer to what the page is showing: a version was found, under a
+    // policy that will not fetch it on its own — which both of the other two are.
     [Fact]
     public void Downloading_is_offered_only_when_the_policy_will_not_do_it_for_you()
     {
@@ -492,9 +536,59 @@ public class SettingsViewTests : ComponentTest
 
         Show().FindAll("button").Select(RadzenDom.ButtonText).Should().NotContain("Download");
 
-        Settings.SetUpdates(UpdatePolicy.NotifyOnly);
+        Settings.SetAutoUpdate(false);
 
         Show().FindAll("button").Select(RadzenDom.ButtonText).Should().Contain("Download");
+
+        // Without this a manual check names a version and leaves no way to have it.
+        Settings.SetAutoUpdate(false);
+
+        Show().FindAll("button").Select(RadzenDom.ButtonText).Should().Contain("Download");
+    }
+
+    // By the time a version is on disk, the choice the toggle governed — whether to go and fetch it —
+    // has already been made, and what is left is a restart only the user can time.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void A_downloaded_update_offers_the_restart_either_way(bool autoUpdate)
+    {
+        Desktop.IsDesktop = true;
+
+        Settings.SetAutoUpdate(autoUpdate);
+        Updates.Publish(new UpdateStatus(UpdateStage.Ready, "1.2.0"));
+
+        Show().FindAll("button").Select(RadzenDom.ButtonText).Should().Contain("Restart and install");
+    }
+
+    // A restart ends every live session, so it goes through the shell that asks about running work
+    // rather than reaching the updater — the same route the tray's Exit takes.
+    [Fact]
+    public void Restarting_asks_the_shell_rather_than_the_updater()
+    {
+        Desktop.IsDesktop = true;
+
+        Updates.Publish(new UpdateStatus(UpdateStage.Ready, "1.2.0"));
+
+        Show().FindAll("button")
+            .Single(button => RadzenDom.ButtonText(button) == "Restart and install")
+            .Click();
+
+        Desktop.Restarts.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(UpdateStage.Available)]
+    [InlineData(UpdateStage.Downloading)]
+    [InlineData(UpdateStage.UpToDate)]
+    [InlineData(UpdateStage.Idle)]
+    public void There_is_nothing_to_restart_into_until_the_download_finishes(UpdateStage stage)
+    {
+        Desktop.IsDesktop = true;
+
+        Updates.Publish(new UpdateStatus(stage, "1.2.0"));
+
+        Show().FindAll("button").Select(RadzenDom.ButtonText).Should().NotContain("Restart and install");
     }
 
     [Fact]
@@ -502,7 +596,7 @@ public class SettingsViewTests : ComponentTest
     {
         Desktop.IsDesktop = true;
 
-        Settings.SetUpdates(UpdatePolicy.NotifyOnly);
+        Settings.SetAutoUpdate(false);
         Updates.Publish(new UpdateStatus(UpdateStage.UpToDate));
 
         Show().FindAll("button").Select(RadzenDom.ButtonText).Should().NotContain("Download");

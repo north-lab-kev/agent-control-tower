@@ -1,4 +1,5 @@
 using Act.App.Components.Pages;
+using Act.App.Components.Shared;
 using Act.Core.Model;
 using Act.Core.Scheduling;
 using AwesomeAssertions;
@@ -377,6 +378,114 @@ public class BoardViewTests : ComponentTest
 
     private static IReadOnlyList<string> Counts(IRenderedComponent<BoardView> cut)
         => [.. cut.FindAll("div.col .colcount").Select(badge => badge.TextContent)];
+
+    // Deleting from the strip, which is the whole point of the button: no trip to the task page. A card
+    // that never launched goes straight away — asking would be ceremony on the gesture used to tidy up.
+    [Theory]
+    [InlineData(BoardColumn.Preparing)]
+    [InlineData(BoardColumn.Ready)]
+    [InlineData(BoardColumn.Completed)]
+    public async Task A_card_with_no_live_agent_is_deleted_without_a_question(BoardColumn column)
+    {
+        await BoardWith(Card(1, column));
+
+        var cut = Show();
+
+        cut.Find("button.del").Click();
+
+        // Soft: the card leaves the board and lands in the archive, which is what makes deleting from a
+        // strip a safe gesture in the first place.
+        cut.WaitForAssertion(() => Board.Archived.Should().ContainSingle());
+
+        Board.In(column).Should().BeEmpty();
+        DialogsOpened.Should().BeEmpty("nothing to ask about a card that never launched");
+    }
+
+    // Executing and Your turn both end a live agent, and the archive cannot put a process back — so the
+    // board stops and names the card before it does.
+    [Theory]
+    [InlineData(BoardColumn.Executing)]
+    [InlineData(BoardColumn.YourTurn)]
+    public async Task A_card_with_a_live_agent_asks_first_and_stays_until_answered(BoardColumn column)
+    {
+        await BoardWith(Card(1, column, "Rename the widget"));
+
+        var cut = Show();
+
+        cut.Find("button.del").Click();
+
+        cut.WaitForAssertion(() => DialogsOpened.Should().ContainSingle());
+        Board.In(column).Should().ContainSingle("nothing goes until the question is answered");
+    }
+
+    [Fact]
+    public async Task Confirming_deletes_the_card()
+    {
+        await BoardWith(Card(1, BoardColumn.Executing));
+
+        var cut = Show();
+
+        cut.Find("button.del").Click();
+        cut.WaitForAssertion(() => DialogsOpened.Should().ContainSingle());
+
+        await AnswerDialog(cut, true);
+
+        cut.WaitForAssertion(() => Board.Archived.Should().ContainSingle());
+
+        Board.In(BoardColumn.Executing).Should().BeEmpty();
+    }
+
+    // Both ways of saying no: the Cancel button answers false, and dismissing with the X or the overlay
+    // answers null. A null read as anything but "keep it" would delete a card the user backed out of.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(null)]
+    public async Task Declining_keeps_the_card_and_its_agent(bool? answer)
+    {
+        await BoardWith(Card(1, BoardColumn.Executing));
+
+        var cut = Show();
+
+        cut.Find("button.del").Click();
+        cut.WaitForAssertion(() => DialogsOpened.Should().ContainSingle());
+
+        await AnswerDialog(cut, answer);
+
+        cut.WaitForAssertion(() => Board.In(BoardColumn.Executing).Should().ContainSingle());
+    }
+
+    // The same dialog the task page opens, and for the same reason: what happens to the follow-ups is a
+    // genuine choice, not an "are you sure". A card whose children silently outlived it is the orphan
+    // the board exists to make hard to create.
+    [Fact]
+    public async Task A_card_with_follow_ups_is_asked_about_them_rather_than_orphaning_them()
+    {
+        var parent = Card(1, BoardColumn.Ready);
+        var child = Card(2, BoardColumn.Ready);
+
+        child.ParentId = parent.Id;
+        parent.Children.Add(child.Id);
+
+        await BoardWith(parent, child);
+
+        var cut = Show();
+
+        // By title rather than by index: both cards sit in the same lane, and `CardOrder` — not the
+        // order they were handed to the board — decides which strip is drawn first.
+        cut.FindAll("div.col div.strip")
+            .Single(strip => strip.GetAttribute("title") == "Card 1")
+            .QuerySelector("button.del")!
+            .Click();
+
+        cut.WaitForAssertion(() => DialogsOpened.Should().ContainSingle()
+            .Which.Dialog.Should().Be<ArchiveFollowUpsDialog>());
+
+        Board.In(BoardColumn.Ready).Should().HaveCount(2, "nothing goes until the choice is made");
+
+        await AnswerDialog(cut, FollowUpChoice.KeepFollowUps);
+
+        cut.WaitForAssertion(() => Board.In(BoardColumn.Ready).Should().ContainSingle().Which.Number.Should().Be(2));
+    }
 
     private IRenderedComponent<BoardView> Show(BoardDensity density = BoardDensity.Detailed)
         => Render<BoardView>(p => p

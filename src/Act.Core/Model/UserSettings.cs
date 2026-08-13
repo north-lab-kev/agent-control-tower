@@ -24,10 +24,13 @@ public sealed class UserSettings
     // screen shows the prompt's opening words in its place — see `CardTitle`.
     public bool GenerateTitles { get; set; } = true;
 
-    // How far ACT may go on its own towards a newer version — see `UpdatePolicy`. Desktop-only in
-    // effect: a browser tab cannot replace its own installer, so the updater there is a no-op and
-    // the setting is hidden.
-    public UpdatePolicy Updates { get; set; } = UpdatePolicy.NotifyAndDownload;
+    // Whether ACT looks for a newer version on its own — and, when it finds one, fetches it. Off
+    // means nothing reaches the network unasked; *Check now* still works, and what it finds is
+    // offered rather than taken. Desktop-only in effect: a browser tab cannot replace its own
+    // installer, so the updater there is a no-op and the setting is hidden.
+    //
+    // Was a three-way `UpdatePolicy`, collapsed to this by schema 2 — see `docs/design-notes.md`.
+    public bool AutoUpdate { get; set; } = true;
 
     // The opt-out for the cloud usage metrics, read on every capture rather than at startup so the
     // switch takes effect the moment it moves — see `ConsentedTelemetrySink`.

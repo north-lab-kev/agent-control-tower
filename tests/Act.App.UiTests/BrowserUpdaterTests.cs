@@ -1,5 +1,6 @@
 using Act.App.Desktop;
 using AwesomeAssertions;
+using Microsoft.JSInterop;
 
 namespace Act.App.UiTests;
 
@@ -23,10 +24,10 @@ public class BrowserUpdaterTests
         var call = async () =>
         {
             updater.Configure();
-            updater.InstallAndExit();
+            updater.InstallAndRestart();
 
             (await updater.CheckAsync(CancellationToken.None)).Should().Be(UpdateCheck.Failed);
-            (await updater.DownloadAsync(new Progress<int>(), CancellationToken.None)).Should().BeFalse();
+            (await updater.DownloadAsync("1.2.0", new Progress<int>(), CancellationToken.None)).Should().BeFalse();
         };
 
         await call.Should().NotThrowAsync();
@@ -46,8 +47,38 @@ public class BrowserUpdaterTests
     [Fact]
     public void Installing_never_makes_it_ready()
     {
-        updater.InstallAndExit();
+        updater.InstallAndRestart();
 
         updater.IsReady.Should().BeFalse();
+    }
+}
+
+// The other half of the browser-mode fallback. The button that calls it is not rendered here — see
+// `MainLayoutTests` — so this exists to keep that a layout decision rather than a crash if it ever
+// stops being one.
+public class BrowserDesktopBridgeTests
+{
+    [Fact]
+    public async Task Restarting_for_an_update_does_nothing_rather_than_throwing()
+    {
+        var bridge = new BrowserDesktopBridge(new NoJs());
+
+        bridge.IsDesktop.Should().BeFalse();
+
+        var restart = async () => await bridge.RestartForUpdateAsync();
+
+        await restart.Should().NotThrowAsync();
+    }
+
+    private sealed class NoJs : IJSRuntime
+    {
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+            => throw new NotSupportedException("no interop in this test");
+
+        public ValueTask<TValue> InvokeAsync<TValue>(
+            string identifier,
+            CancellationToken cancellationToken,
+            object?[]? args)
+            => throw new NotSupportedException("no interop in this test");
     }
 }

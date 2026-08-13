@@ -66,7 +66,7 @@ public partial class TemplatesView(
             template.Model,
             TaskLabels.Permission(template.PermissionMode),
             TaskLabels.Schedule(template.Schedule),
-            template.WorkingDir,
+            template.NoWorkingDir ? Strings.Card_NoWorkingDir : template.WorkingDir,
             string.IsNullOrWhiteSpace(template.Prompt) ? Strings.Templates_NoPrompt : null,
             template.IsDefault ? Strings.Templates_DefaultMeta : null,
         };

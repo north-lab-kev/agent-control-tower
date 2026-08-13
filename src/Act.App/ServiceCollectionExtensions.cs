@@ -103,6 +103,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<AttachmentSweep>();
         services.AddSingleton<CardCompleter>();
         services.AddSingleton<CardReopener>();
+        services.AddSingleton<CardDeletion>();
         services.AddSingleton<FollowUpService>();
         services.AddActMcp();
 

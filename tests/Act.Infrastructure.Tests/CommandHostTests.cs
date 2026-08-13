@@ -40,7 +40,7 @@ public class CommandHostTests
     {
         var result = await RunAsync(PassThrough, input: "a title from stdin");
 
-        result.Succeeded.Should().BeTrue();
+        result.Succeeded.Should().BeTrue(Why(result));
         result.Output.Should().Contain("a title from stdin");
     }
 
@@ -51,7 +51,7 @@ public class CommandHostTests
     {
         var result = await RunAsync(PassThrough);
 
-        result.Succeeded.Should().BeTrue();
+        result.Succeeded.Should().BeTrue(Why(result));
     }
 
     [Fact]
@@ -235,6 +235,13 @@ public class CommandHostTests
                 timeout ?? Patient),
             cancellationToken);
     }
+
+    // These start real processes, so a failure is about the machine rather than about the code, and the
+    // machine is usually a CI runner nobody can attach to. `Succeeded` collapses the exit code and the
+    // timeout into one bool, so asserting it bare reports "expected True, found False" and discards the
+    // only two things that could explain it.
+    private static string Why(CommandResult result)
+        => $"exit {result.ExitCode}, timed out {result.TimedOut}, stderr <{result.Error}>, stdout <{result.Output}>";
 
     private static string Echo(string text) => OperatingSystem.IsWindows() ? $"echo {text}" : $"echo '{text}'";
 

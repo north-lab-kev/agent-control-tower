@@ -11,9 +11,20 @@ namespace Act.App.Updates;
 // behind it knows only how to ask Electron; the policy lives here, where it can be tested without a
 // desktop.
 //
-// The toast is governed by `UpdatePolicy` alone and not by the *Desktop notifications* switch: that
-// switch says "ping when a task needs you", which this is not, and the policy is already the user's
-// control over how loud updates are — `Off` is the answer for someone who wants none of it.
+// The toast is governed by `AutoUpdate` alone and not by the *Desktop notifications* switch: that
+// switch says "ping when a task needs you", which this is not, and the toggle is already the user's
+// control over how loud updates are — off is the answer for someone who wants none of it.
+//
+// **One toast, and only for a version already on disk.** Announcing availability as well was what the
+// retired middle position needed; with the toggle, a version found while it is on is downloaded in the
+// same pass, so "1.2.0 exists" would be a notification whose own successor is seconds behind it.
+//
+// **It keeps checking after a version is ready**, which it did not always. Nothing installs on the way
+// out any more, so a downloaded update can sit unanswered for days — and a pump that stopped looking
+// would hold 1.2.0 out while 1.3.0 shipped, then take two restarts to arrive at it. The offer is
+// swapped for a newer version only once that one is on disk, so the button never points at a file the
+// updater has already discarded. Checking at the click instead was rejected for exactly that: see
+// `docs/design-notes.md`, "A silent install cannot tell you it finished".
 public sealed class UpdatePump(
     IUpdater updater,
     UpdateState state,
@@ -28,13 +39,15 @@ public sealed class UpdatePump(
 
     private readonly BackgroundWork work = new(log);
 
-    private UpdatePolicy known;
+    private bool known;
 
-    private (string Version, UpdateStage Stage)? announced;
+    private string? announced;
 
     private bool started;
 
     private bool downloadRequested;
+
+    private bool checkRequested;
 
     public void Start()
     {
@@ -59,7 +72,7 @@ public sealed class UpdatePump(
         }
 
         started = true;
-        known = settings.Updates;
+        known = settings.AutoUpdate;
 
         settings.Changed += OnSettingsChanged;
 
@@ -68,15 +81,22 @@ public sealed class UpdatePump(
 
     // The Settings page's *Check now*. Through the same single-flight gate as the loop, so an
     // impatient click during a running check joins it rather than starting a second one.
+    //
+    // Marked as asked-for, because with the toggle off the pass would otherwise bail before reaching
+    // the network and the button would sit there doing nothing — which is what it did.
     public void CheckNow()
     {
-        if (started)
-            work.Request("An update check", PassAsync);
+        if (!started)
+            return;
+
+        checkRequested = true;
+
+        work.Request("An update check", PassAsync);
     }
 
-    // What makes `NotifyOnly` a setting rather than a dead end: told a version exists, the user needs
-    // a way to say yes. Re-checks on the way, which is right — the answer may be older than the
-    // click, and downloading what is no longer the latest would be worse than asking twice.
+    // What keeps the toggle's off position from being a dead end: shown a version by a manual check,
+    // the user needs a way to say yes. Re-checks on the way, which is right — the answer may be older
+    // than the click, and downloading what is no longer the latest would be worse than asking twice.
     public void DownloadNow()
     {
         if (!started)
@@ -87,28 +107,43 @@ public sealed class UpdatePump(
         work.Request("An update download", PassAsync);
     }
 
-    // Only when the *update* policy moved. `Changed` fires for every setting there is, and an update
+    // Only when the *update* toggle moved. `Changed` fires for every setting there is, and an update
     // check per keystroke in a text box would be a poor way to treat somebody's network.
     private void OnSettingsChanged()
     {
-        if (settings.Updates == known)
+        if (settings.AutoUpdate == known)
             return;
 
-        known = settings.Updates;
+        known = settings.AutoUpdate;
 
         work.Request("An update check", PassAsync);
     }
 
     private async Task PassAsync(CancellationToken cancellationToken)
     {
-        // Read and cleared here rather than where it is used, so a pass that returns early does not
-        // leave the flag armed for a later one the user never asked for.
+        // Read and cleared here rather than where they are used, so a pass that returns early does
+        // not leave a flag armed for a later one the user never asked for.
         var requested = downloadRequested;
+        var asked = checkRequested;
 
         downloadRequested = false;
+        checkRequested = false;
 
-        if (settings.Updates is UpdatePolicy.Off)
+        // **A downloaded version is never taken away by a pass**, only replaced once something better
+        // is on disk. It was the user's to install whenever they chose the moment it finished
+        // downloading, and every one of the answers below would otherwise withdraw the offer for a
+        // reason that has nothing to do with the file: the toggle going off, a machine that has gone
+        // offline, a release pulled from the feed. Even *Checking* is withheld — a *Restart and install*
+        // button that blinked out every six hours would be worse than one that never noticed 1.3.0.
+        var downloaded = state.Current.Stage is UpdateStage.Ready ? state.Current.Version : null;
+
+        // Only the passes ACT started itself stop here. A click came from somebody looking at the
+        // page, and refusing that is what made *Check now* a button that did nothing while off.
+        if (!settings.AutoUpdate && !asked && !requested)
         {
+            if (downloaded is not null)
+                return;
+
             announced = null;
 
             state.Publish(UpdateStatus.Idle);
@@ -116,46 +151,46 @@ public sealed class UpdatePump(
             return;
         }
 
-        // Already downloaded: there is nothing left to look for until the app restarts into it, and
-        // asking again would only offer the version it is holding.
-        if (state.Current.Stage is UpdateStage.Ready)
-            return;
-
-        state.Publish(state.Current with { Stage = UpdateStage.Checking });
+        if (downloaded is null)
+            state.Publish(state.Current with { Stage = UpdateStage.Checking });
 
         var check = await updater.CheckAsync(cancellationToken);
         var at = clock.Now;
 
         if (!check.Completed)
         {
-            state.Publish(new UpdateStatus(UpdateStage.Unavailable, CheckedAt: at));
+            if (downloaded is null)
+                state.Publish(new UpdateStatus(UpdateStage.Unavailable, CheckedAt: at));
 
             return;
         }
 
         if (check.Version is not { } version)
         {
-            announced = null;
+            if (downloaded is null)
+            {
+                announced = null;
 
-            state.Publish(new UpdateStatus(UpdateStage.UpToDate, CheckedAt: at));
+                state.Publish(new UpdateStatus(UpdateStage.UpToDate, CheckedAt: at));
+            }
 
             return;
         }
+
+        // The version already on disk, named again six hours later. Nothing to do and nothing to say:
+        // the page is already showing it and the toast has already been shown once.
+        if (version == downloaded)
+            return;
 
         log.LogInformation("Update {Version} is available; running {Current}.", version, AppVersion.Current);
 
         state.Publish(new UpdateStatus(UpdateStage.Available, version, CheckedAt: at));
 
-        if (settings.Updates is UpdatePolicy.NotifyOnly && !requested)
-        {
-            await AnnounceAsync(
-                version,
-                UpdateStage.Available,
-                Strings.Notify_UpdateAvailable,
-                Strings.Notify_UpdateAvailable_Body);
-
+        // With the toggle off the click asked what is out there, not for it to be fetched — and no
+        // toast, because the answer is landing on the page the click came from. *Download* is what
+        // says yes, and it arrives here as `requested`.
+        if (!settings.AutoUpdate && !requested)
             return;
-        }
 
         await DownloadAsync(version, at, cancellationToken);
     }
@@ -168,15 +203,11 @@ public sealed class UpdatePump(
         // state can refuse a late one without a gap between deciding and writing.
         var progress = new Progress<int>(percent => state.PublishProgress(version, percent));
 
-        if (await updater.DownloadAsync(progress, cancellationToken))
+        if (await updater.DownloadAsync(version, progress, cancellationToken))
         {
             state.Publish(new UpdateStatus(UpdateStage.Ready, version, 100, at));
 
-            await AnnounceAsync(
-                version,
-                UpdateStage.Ready,
-                Strings.Notify_UpdateReady,
-                Strings.Notify_UpdateReady_Body);
+            await AnnounceAsync(version);
 
             return;
         }
@@ -186,19 +217,23 @@ public sealed class UpdatePump(
         state.Publish(new UpdateStatus(UpdateStage.Available, version, CheckedAt: at));
     }
 
-    // Once per version per stage. A pass runs every six hours and on every policy change, and a
-    // toast repeating "1.2.0 is ready" four times a day is how a useful notification becomes one
-    // people learn to dismiss without reading.
-    private async Task AnnounceAsync(string version, UpdateStage stage, string title, string body)
+    // Once per version. A pass runs every six hours and on every toggle change, and a toast repeating
+    // "1.2.0 is ready" four times a day is how a useful notification becomes one people learn to
+    // dismiss without reading. Cleared when a version stops being on offer, so the next one is news
+    // again.
+    private async Task AnnounceAsync(string version)
     {
-        if (announced == (version, stage))
+        if (announced == version)
             return;
 
-        announced = (version, stage);
+        announced = version;
 
         try
         {
-            await notifier.ShowAsync(new DesktopNotification(null, title, Text.Format(body, version)));
+            await notifier.ShowAsync(new DesktopNotification(
+                null,
+                Strings.Notify_UpdateReady,
+                Text.Format(Strings.Notify_UpdateReady_Body, version)));
         }
         catch (Exception error)
         {

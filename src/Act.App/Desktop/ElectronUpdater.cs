@@ -45,9 +45,24 @@ public sealed class ElectronUpdater(ILogger<ElectronUpdater> log) : IUpdater
 
     private bool configured;
 
+    private bool downloaded;
+
+    // Held beside the flag rather than derived from it, because a version is not something the flag can
+    // answer and the event that sets it may not carry one — `UpdateInfo.Version` is nullable all the way
+    // down the bridge. A null here is then "something is downloaded, name unknown", which costs one
+    // redundant `DownloadUpdateAsync` that electron-updater resolves from its own cache.
+    private string? downloadedVersion;
+
     public bool IsSupported => true;
 
-    public bool IsReady { get; private set; }
+    public bool IsReady
+    {
+        get
+        {
+            lock (gate)
+                return downloaded;
+        }
+    }
 
     public void Configure()
     {
@@ -59,29 +74,34 @@ public sealed class ElectronUpdater(ILogger<ElectronUpdater> log) : IUpdater
         Electron.AutoUpdater.AllowPrerelease = false;
         Electron.AutoUpdater.AllowDowngrade = false;
 
-        // The policy decides when to download, not the updater — `NotifyOnly` would otherwise be a
-        // setting that fetched the thing it promised not to fetch.
+        // The pump decides when to download, not the updater — the toggle's off position would
+        // otherwise fetch the thing it promised not to fetch.
         Electron.AutoUpdater.AutoDownload = false;
 
-        // Left on as the catch-all. The explicit exit path calls `QuitAndInstall`, but closing the
-        // last window with close-to-tray off quits Electron without passing through it, and a
-        // downloaded update that only ever installs on one of two exits is a coin toss.
-        // `BaseUpdater.install` ignores the second caller, so the two cannot both run.
-        Electron.AutoUpdater.AutoInstallOnAppQuit = true;
+        // Off, because *Restart and install* is the only thing allowed to apply an update. Left on,
+        // every route out of the app installed one — the tray's *Exit*, closing the last window with
+        // close-to-tray off, a shutdown — so somebody who never clicked the button still came back to
+        // a version they had not agreed to, and the click was decoration. The installer stays in
+        // electron-updater's pending cache instead, for as many runs as it takes — see
+        // `docs/design-notes.md`, "A silent install cannot tell you it finished".
+        Electron.AutoUpdater.AutoInstallOnAppQuit = false;
 
         Electron.AutoUpdater.OnUpdateAvailable += info => Settle(UpdateCheck.Found(info?.Version));
         Electron.AutoUpdater.OnUpdateNotAvailable += _ => Settle(UpdateCheck.UpToDate);
 
         Electron.AutoUpdater.OnUpdateDownloaded += info =>
         {
-            IsReady = true;
-
             log.LogInformation("Update {Version} downloaded and ready to install.", info?.Version);
 
             TaskCompletionSource<bool>? waiting;
 
             lock (gate)
+            {
+                downloaded = true;
+                downloadedVersion = info?.Version;
+
                 waiting = downloading;
+            }
 
             waiting?.TrySetResult(true);
         };
@@ -135,10 +155,21 @@ public sealed class ElectronUpdater(ILogger<ElectronUpdater> log) : IUpdater
         }
     }
 
-    public async Task<bool> DownloadAsync(IProgress<int> progress, CancellationToken cancellationToken)
+    public async Task<bool> DownloadAsync(string version, IProgress<int> progress, CancellationToken cancellationToken)
     {
-        if (IsReady)
-            return true;
+        lock (gate)
+        {
+            if (downloaded && downloadedVersion == version)
+                return true;
+
+            // Said before the fetch starts, because that is when it becomes true: electron-updater
+            // compares the feed's checksum against its cached one and **empties the pending directory**
+            // on a mismatch (`DownloadedUpdateHelper.getValidCachedUpdateFile`), so the installer this
+            // was holding is gone from the moment the newer one is asked for. Claiming otherwise would
+            // leave *Restart and install* pointed at a file that is not there.
+            downloaded = false;
+            downloadedVersion = null;
+        }
 
         var finished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -175,9 +206,15 @@ public sealed class ElectronUpdater(ILogger<ElectronUpdater> log) : IUpdater
         }
     }
 
-    // Silent, because this runs as the user is already leaving: an NSIS wizard appearing on the way
-    // out is a worse answer than a progress-free pause. Not force-run either — they asked to quit.
-    public void InstallAndExit() => Electron.AutoUpdater.QuitAndInstall(isSilent: true, isForceRunAfter: false);
+    // Force-run, which is the whole point: this one was asked for, so ACT owes an answer about when
+    // it finished, and coming back is the only answer it can give.
+    //
+    // Silent is not a free choice here. `nsis.oneClick` is `false`, so the visible installer is the
+    // assisted wizard — Next, install directory, Install, Finish — and electron-updater only ever
+    // passes `/S` or nothing (`NsisUpdater.doInstall`), never a middle setting. `oneClick` is a
+    // build-time choice baked into the installer, so it cannot be one thing for a manual install and
+    // another for this one.
+    public void InstallAndRestart() => Electron.AutoUpdater.QuitAndInstall(isSilent: true, isForceRunAfter: true);
 
     private static int Percent(ProgressInfo info) => Math.Clamp((int)Math.Round(info.Percent), 0, 100);
 

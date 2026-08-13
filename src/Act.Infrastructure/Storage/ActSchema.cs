@@ -10,7 +10,10 @@ internal static class ActSchema
 
     private const int DocumentId = 1;
 
-    private static readonly Action<ILiteDatabase, BsonMapper>[] Migrations = [];
+    private static readonly Action<ILiteDatabase, BsonMapper>[] Migrations =
+    [
+        (database, _) => ReplaceUpdatePolicyWithAutoUpdate(database),
+    ];
 
     public static int CurrentVersion => BaselineVersion + Migrations.Length;
 
@@ -62,6 +65,37 @@ internal static class ActSchema
             .Upsert(new SchemaDocument { Id = DocumentId, Version = CurrentVersion });
 
         log.LogInformation("The store is now at schema {Version}.", CurrentVersion);
+    }
+
+    // Schema 2. The three-way `UpdatePolicy` became the `AutoUpdate` toggle, so the stored enum name
+    // has to become a boolean before anything loads `UserSettings` — LiteDB persists enums by name and
+    // its deserializer throws on a name the build no longer has, and this one loads in a constructor
+    // at start-up, which takes the whole app down rather than one card.
+    //
+    // Only `NotifyAndDownload` becomes `true`: it is the one position that fetched a version on its
+    // own. `NotifyOnly` said "tell me, download when I ask", so mapping it to `true` would start
+    // downloading behind the back of the one user who explicitly refused that — they keep *Check now*
+    // and the *Download* button, which is the same bargain by hand. A document with no `Updates` at
+    // all predates the field and takes the model's default.
+    //
+    // Untyped `BsonDocument` access on purpose: the CLR shape no longer has the property being read,
+    // so a mapped read here would throw on exactly the documents this exists to fix.
+    private static void ReplaceUpdatePolicyWithAutoUpdate(ILiteDatabase database)
+    {
+        var collection = database.GetCollection(ActCollections.Settings);
+
+        foreach (var document in collection.FindAll().ToList())
+        {
+            if (document["Settings"] is not BsonDocument settings)
+                continue;
+
+            var stored = settings["Updates"];
+
+            settings.Remove("Updates");
+            settings["AutoUpdate"] = !stored.IsString || stored.AsString == "NotifyAndDownload";
+
+            collection.Update(document);
+        }
     }
 
     private static void EnsureIndexes(ILiteDatabase database)

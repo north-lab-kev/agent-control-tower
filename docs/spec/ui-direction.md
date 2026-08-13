@@ -13,6 +13,55 @@
 - **Launch is "Launch now".** Named for the override it is: a card can be waiting
   on a `schedule`, and this button starts it regardless. Plain "Launch" would read
   as a different action from what the button does on a scheduled card.
+- **A task may need no folder at all** — *No folder needed*, a switch above the working
+  directory, because it decides whether there is a folder to talk about. It is for a question
+  rather than work on a tree, and it is the answer to two separate annoyances: picking a
+  folder you do not care about, and then finding the second such task queued behind the first.
+  - **The card stores no path; the launch resolves one.** Both CLIs read whatever they start
+    in, so an ACT-owned empty directory is the only honest answer to "no folder" —
+    `IAgentConfigFiles.ScratchDirectory()`, the same one the title queries already use.
+    Resolved at launch rather than stored, so it follows the data directory instead of
+    freezing an absolute path, and so the folder is created on the way past. The strip and
+    the template list say **No folder** rather than that path: it is noise on every quick
+    question and names an implementation detail rather than anything the user chose.
+  - **The same folder for every one of them, deliberately.** A fresh directory each time
+    would be one neither CLI has seen, and a pty in one of those hangs on the directory-trust
+    prompt — see `docs/findings/agent-usage.md`. One folder is trusted once and never asks
+    again. The cost is that two quick questions genuinely share a directory, which is
+    acceptable for questions and is why this is not offered as the way to run work.
+  - **It carries its own exemption from the folder guard**, keyed on the flag rather than on
+    the path being blank — `WorkingDirConflict` reads `NoWorkingDir` on both sides, because a
+    no-folder card holds the scratch directory and nothing else. So *Run even if the folder is
+    busy* is hidden for these tasks: the choice has already been made, and a switch offering
+    a decision that cannot change anything reads as if it did something.
+  - **A template may carry it** like any other launch setting, so somebody who asks a lot of
+    questions can save their own starting point for them. It is deliberately *not* a built-in
+    template beside the default: a second undeletable one buys a click and costs a name nobody
+    chose, a row on the templates page for everyone whether they want it or not, and the
+    board's New task button becoming a split button on every install.
+- **A strip can be deleted from the board**, by a quiet icon button last on its header
+  line — the same place in both densities, so the gesture does not move when the board's
+  density does. It is the one action on a strip that takes work away, so it is a text
+  button at reduced opacity that takes `--act-err` on hover, never an outlined button
+  competing with *Launch now*. Nested with the badges rather than loose on the header row,
+  because that row is `SpaceBetween` and a third loose child would push the badge into the
+  middle of the strip.
+  - **It asks first only where an agent is live** — **Executing** and **Your turn** — see
+    `CardDeleteConfirm`. Deleting is a soft archive and restorable, so an "are you sure" on
+    every strip would be ceremony on the gesture used to tidy up; but those two columns end a
+    running process, and that is the part the archive cannot put back. The question names the
+    card: on a board of a dozen strips, "are you sure" beside the wrong one is how the wrong
+    agent gets stopped.
+  - **The task page's own delete obeys the same rule**, through the same `CardDeletePrompt` — the
+    board asking and the task page going quietly was a real gap, not a difference of surface. The
+    rule check lives inside the prompt so a caller cannot take the dialog and forget the rule.
+    One consequence worth knowing: a **Your turn** card is the normal review-then-file case, so
+    signing off and archiving now costs one confirmation it did not before.
+  - **Follow-ups get the same dialog the task page opens**, because what happens to them is a
+    genuine choice rather than an "are you sure" — and a card whose children silently outlived
+    it is the orphan the board exists to make hard to create. The kill-then-delete ordering is
+    shared with the task page in `CardDeletion`; a second copy of it is how one of the two
+    eventually loses it.
 - **Board:** **five flat columns — no persistent zones.** The launch-boundary
   rule is shown **dynamically at drag time**: picking up a draggable card lights
   only its valid drop targets and **grays out invalid columns** (Preparing ↔
@@ -273,20 +322,54 @@
       back to carry the question — being shown what is about to stop is no bad thing.
       Confirming ends every live session first: the confirmation promised it, and an agent
       must not outlive the app supervising it.
-  - **Automatic updates** (*Updates*, desktop-only) is a three-way rather than a switch, because
-    "check but leave the download to me" is a position people hold — a metered connection makes an
-    unasked hundred megabytes a real cost — and it is not the same position as wanting no updates.
-    **Download quietly, install on exit** is the default; **Tell me, download when I ask** surfaces
-    the version and offers a *Download* button beside it; **Never check** reaches the network not at
-    all. The section also states **the running version**, in both shells and unconditionally — it is
+  - **Check for updates** (*Updates*, desktop-only) is a **switch**, on by default. On, ACT checks every
+    six hours and downloads what it finds. Off, nothing reaches the network unasked — and *Check now*
+    still works, offering a *Download* button for whatever it turns up.
+    - **It was a three-way and is not any more.** The retired middle position, "tell me, download when I
+      ask", existed for the metered connection that cannot afford an unasked hundred megabytes. That
+      user is still served: switch off, check when they choose, download deliberately. The only position
+      genuinely lost is being told about a version automatically *without* it being fetched, which is
+      narrower than a whole third choice deserves. The collapse needed a schema migration — see
+      `docs/design-notes.md`, "Releasing".
+    - **The switch governs ACT's own initiative, never what the user may ask for.** *Check now* is live
+      either way, and a live button that did nothing is the bug that made this rule explicit. The
+      section also states **the running version**, in both shells and unconditionally — it is
     the one thing a bug report has to quote and ACT stated it nowhere until now.
-    - **Applied on the way out, never mid-flight.** ACT supervises long-running agents, so an update
-      that restarted the app to install itself would stop work the user did not agree to stop. The
-      tray *Exit* installs instead of quitting when one is downloaded, after ending the sessions —
-      the confirmation promised that and the promise still holds — and says so in its detail line.
-      `AutoInstallOnAppQuit` is left on underneath as the catch-all for closing the last window with
-      close-to-tray off, which never passes through that path; `BaseUpdater.install` ignores whichever
-      of the two arrives second.
+    - **A downloaded update offers *Restart and install*, on the board as well as in Settings.** It sits
+      last in the title bar's action group — after the three destinations, so a release never moves them
+      under the user — and carries its version as text, because an icon cannot say that a different
+      version is waiting. It is offered under **all three policies**: by the time the installer is on
+      disk the choice the policy governed is already made, and what is left is a restart only the user
+      can time. It ends the live sessions and asks about running work through the same confirmation as
+      the tray's *Exit* — a restart is an exit that comes back, and a title-bar button that stopped
+      three agents without asking would be the worst button in the app.
+      - **Why it exists.** An install started on the way out cannot report anything, because the app
+        that would report it is the app being replaced. So install-on-exit reads as ACT going quiet for
+        an indefinite while, and relaunching by hand too early finds shortcuts the installer has not
+        finished rewriting. A restart the user asked for can answer: **the app coming back is the
+        completion signal**, and there is nothing to click in the meantime.
+    - **Applied only when the user says so.** ACT supervises long-running agents, so an update that
+      restarted the app to install itself would stop work the user did not agree to stop — and an
+      update that installed as they left would replace their app at the one moment ACT cannot tell
+      them anything. *Restart and install* is the whole of it: **leaving never installs**, whichever
+      way they leave, so the tray *Exit* is an ordinary exit and its confirmation says nothing about
+      the update. `AutoInstallOnAppQuit` is **off**, and there is no install-on-exit call left to
+      reach.
+      - **Declining costs nothing.** The installer stays in electron-updater's pending cache, so a
+        run that never clicks the button leaves it for the next one, which offers it again without
+        downloading it again. A downloaded update may wait as many runs as the user likes.
+      - **And it does not go stale.** ACT keeps checking every six hours while one is downloaded, and
+        moves the offer to a newer release when one appears — otherwise a long-lived instance would
+        offer yesterday's version and cost the user two restarts to reach today's. The swap happens
+        **only once the newer installer is on disk**: the section shows *Downloading* in between and
+        the button is not offered, because electron-updater discards the older installer as soon as it
+        decides to fetch a different one. Re-checking at the click instead was rejected for that same
+        reason — see `docs/design-notes.md`, "A downloaded update may not be stale".
+      - **Nothing withdraws a downloaded version but a better one.** Not a check that fails, not a
+        release pulled from the feed, and not the switch going off — that last one used to reset the
+        section to *Not checking for updates* and take the button with it. With the switch off, a
+        *Check now* that turns up a newer version is the one case where the offer changes without a
+        download: the page moves to *Version 1.3.0 is available* with *Download* beside it.
     - **A check that fails is not an error.** Offline, a 404, a feed that does not exist yet: all of
       them read as *Could not reach the update feed. ACT will try again later*, never as *up to
       date*. Collapsing the two is the lie that leaves someone on an old build believing otherwise,

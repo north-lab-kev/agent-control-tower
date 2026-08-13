@@ -373,12 +373,47 @@ public sealed class DesktopShell(
             return;
         }
 
-        var options = new MessageBoxOptions(Strings.Tray_ExitConfirm)
+        if (await ConfirmAsync(
+                Strings.Tray_Exit,
+                Strings.Tray_ExitConfirm,
+                Detail(stakes),
+                Strings.Tray_ExitYes))
+            await ExitAsync();
+    }
+
+    // *Restart and install*, from the Settings page or the title bar. A restart is an exit that comes
+    // back, so it goes through the same question about running work — a title-bar button that ended
+    // three live agents without asking would be the worst button in the app.
+    public async Task RestartForUpdateAsync()
+    {
+        if (!updater.IsReady)
+            return;
+
+        var stakes = ExitPolicy.Assess(board.All, settings.AutoExecutionPaused);
+
+        if (stakes.Warning is not ExitWarning.None
+            && !await ConfirmAsync(
+                Strings.Update_Restart,
+                Strings.Update_RestartConfirm,
+                Detail(stakes),
+                Strings.Update_RestartYes))
+            return;
+
+        await sessions.DisposeAsync();
+
+        updater.InstallAndRestart();
+
+        lifetime.StopApplication();
+    }
+
+    private async Task<bool> ConfirmAsync(string title, string question, string detail, string confirm)
+    {
+        var options = new MessageBoxOptions(question)
         {
             Type = MessageBoxType.warning,
-            Title = Strings.Tray_Exit,
-            Detail = Detail(stakes, updater.IsReady),
-            Buttons = [Strings.Tray_ExitYes, Strings.NewTask_Cancel],
+            Title = title,
+            Detail = detail,
+            Buttons = [confirm, Strings.NewTask_Cancel],
             DefaultId = 1,
             CancelId = 1,
         };
@@ -404,24 +439,20 @@ public sealed class DesktopShell(
                 parent = window;
         }
 
+        // Nothing was asked, so nothing may be assumed answered.
         if (parent is null)
-            return;
+            return false;
 
         var result = await Electron.Dialog.ShowMessageBoxAsync(parent, options);
 
-        if (result.Response != 0)
-            return;
-
-        await ExitAsync();
+        return result.Response == 0;
     }
 
-    // The update line is appended rather than folded into the wordings, because it is a second,
-    // independent fact about this exit: what is lost by leaving is one thing, and what leaving will
-    // additionally do is another. Said here and not when nothing is at stake, where the exit is
-    // silent and the toast has already promised exactly this.
-    private static string Detail(ExitStakes stakes, bool updateReady)
+    // Only what is lost by leaving. There was an update line here too, when leaving installed one;
+    // now that it does not, an exit has nothing to say about the version on disk.
+    private static string Detail(ExitStakes stakes)
     {
-        var detail = stakes.Warning switch
+        return stakes.Warning switch
         {
             ExitWarning.Running => Text.Format(
                 Text.Plural(stakes.Running, Strings.Tray_ExitDetailRunning_One, Strings.Tray_ExitDetailRunning_Many),
@@ -431,24 +462,18 @@ public sealed class DesktopShell(
                 stakes.Running),
             _ => Strings.Tray_ExitDetailScheduled,
         };
-
-        return updateReady ? $"{detail}\n\n{Strings.Tray_ExitDetailUpdate}" : detail;
     }
 
     // Ended here rather than left to the host's disposal, because the confirmation promised it:
     // an agent must not outlive the app that was supervising it.
+    //
+    // **Leaving never installs**, whatever is downloaded. Applying an update is a decision with a
+    // restart in it, and *Exit* is the user saying the opposite of that.
     private async Task ExitAsync()
     {
         await sessions.DisposeAsync();
 
-        // The one exit that is not `Exit(0)`. `AutoInstallOnAppQuit` would not cover this path —
-        // `app.exit()` skips the quit handling it hangs off — so a downloaded update would sit on
-        // disk forever for anyone who leaves through the tray. `BaseUpdater.install` ignores a
-        // second caller, so the two routes cannot both fire.
-        if (updater.IsReady)
-            updater.InstallAndExit();
-        else
-            Electron.App.Exit(0);
+        Electron.App.Exit(0);
 
         lifetime.StopApplication();
     }

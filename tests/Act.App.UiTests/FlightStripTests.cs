@@ -103,6 +103,51 @@ public class FlightStripTests : ComponentTest
         opened.Should().BeFalse("the launch click is stopped at the button, not left to bubble to the strip");
     }
 
+    // Same reason as the launch button, and it matters more here: a delete click that bubbled would
+    // delete the card *and* navigate to the card it just deleted.
+    [Fact]
+    public void Deleting_a_card_does_not_also_open_it()
+    {
+        var card = Card(BoardColumn.Executing);
+        Card? deleted = null;
+        var opened = false;
+
+        var cut = Strip(card, p =>
+        {
+            p.Add(c => c.OnDelete, c => deleted = c);
+            p.Add(c => c.OnOpen, _ => opened = true);
+        });
+
+        cut.Find("button.del").Click();
+
+        deleted.Should().BeSameAs(card);
+        opened.Should().BeFalse("the delete click is stopped at the button, not left to bubble to the strip");
+    }
+
+    // Every column, because tidying the board is not a thing you can only do to cards that never ran —
+    // what changes by column is whether it stops to ask, and that is the board's decision.
+    [Theory]
+    [InlineData(BoardColumn.Preparing)]
+    [InlineData(BoardColumn.Ready)]
+    [InlineData(BoardColumn.Executing)]
+    [InlineData(BoardColumn.YourTurn)]
+    [InlineData(BoardColumn.Completed)]
+    public void Both_densities_offer_the_delete_on_every_column(BoardColumn column)
+    {
+        Strip(Card(column)).FindAll("button.del").Should().ContainSingle();
+        Strip(Card(column), density: BoardDensity.Compact).FindAll("button.del").Should().ContainSingle();
+    }
+
+    // A delete already under way must not be startable twice: the second click would ask about the
+    // follow-ups of a card that is already gone.
+    [Fact]
+    public void A_delete_in_flight_disables_its_own_button()
+    {
+        var cut = Strip(Card(BoardColumn.Executing), p => p.Add(c => c.IsDeleting, true));
+
+        cut.Find("button.del").HasAttribute("disabled").Should().BeTrue();
+    }
+
     // Density is what the strip itself decides — `StripFace` computes the identity line either way.
     // Compact drops it for the bare number, and keeps the launch button as an icon, because a compact
     // board is the one you start work from.

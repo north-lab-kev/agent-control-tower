@@ -1173,3 +1173,233 @@ assumed. More to the point, the rules being pinned cannot be expressed with a re
 populates `files` too, so `files` and `items` can never be made to *disagree*, which is the whole subject
 of the "a screenshot tool put the picture on the clipboard twice" and "yield to the text" cases. The
 hand-made shape is what Windows actually produces.
+
+### One scratch folder for every "no folder" task, not one each
+
+A task with nowhere in particular to run needed a folder anyway, because both CLIs read whatever they
+start in and a directory that does not exist fails at spawn. The obvious shape — a fresh directory per
+card, which also sidesteps the one-task-per-folder guard for free — was **rejected on a measurement
+already in this repo**: a pty in a directory the CLI has not seen hangs on the directory-trust prompt
+(`hasTrustDialogAccepted` in `~/.claude.json`, see `docs/findings/agent-usage.md`). Per-card folders
+would therefore park every quick question at a prompt nobody is waiting on. One shared folder is
+trusted once and never asks again.
+
+**The scratch directory itself was already there**, used by the title queries, and that precedent
+transfers less far than it looks: those runs are `-p --tools ""` and `codex exec --sandbox read-only`,
+so they have no TUI to draw a dialog in and nothing to write. What they prove is that both CLIs are
+content to start somewhere that is not a git repo — not anything about trust for an interactive session.
+
+The exemption from the folder guard is keyed on `Card.NoWorkingDir` rather than on the path being blank,
+and it is read on **both** sides of the comparison. The asking side is the obvious one; the holding side
+matters because a no-folder card holds the scratch directory and nothing else, so it cannot be standing
+in the way of a card that wants a real folder. In practice `WorkingDir` is blank on one of these and the
+resolve would answer null anyway — the flag is what *states* it, so a card carrying a stale path cannot
+block on the strength of it. The queue runner's `SameFolder` needs the same exemption for the same
+reason, one layer down where nothing on screen would explain the wait.
+
+`NoWorkingDir` needed no migration: an absent boolean reads as `false`, which is exactly right for every
+card that predates it. `TaskTemplate` carries the same flag, so a user can save their own starting point
+for questions.
+
+**A built-in "Quick question" template was written and then removed**, and the reasons it lost are worth
+keeping, because it is the obvious next idea. It bought one click — the caret on the board's New task
+button — and cost: a second undeletable template with a name nobody chose, a row on the templates page
+for every user whether they wanted it or not, a second `IsDefault`-shaped flag on `TaskTemplate` (a third
+built-in would have forced that pair into a persisted `TaskTemplateKind`, and a migration with it), and
+the New task control becoming a split button on every install, since `PickableTemplates` would never be
+empty again. The switch on the form is the whole feature; the template was packaging.
+
+## Releasing
+
+### A downgraded ACT refuses the store out loud, and the refusal has to ship *first*
+
+`ActSchema` already threw on a store from a newer build. The problem was where the throw landed: the
+store opens on the first service that needs it, which is several lines into `Program`, and under Electron
+that is long before the ready callback — so there was no window, no bridge, and no way to say anything.
+A downgraded ACT died behind its own splash screen, the same failure mode `ElectronUpdater.Configure`
+once had.
+
+So compatibility is now a **pre-flight question**, asked by `ActStoreCompatibility.Inspect` with no
+container and no migration: open, read one integer, close. The file is checked for existence first
+rather than opened blindly, because `new LiteDatabase` *creates* it — a probe that opened
+unconditionally would leave an empty `act.db` on every first run and hand the real open a store to
+migrate from nothing.
+
+An unsupported answer skips every line that would open the store and, under Electron, starts the host
+only as far as the ready callback, where `Electron.Dialog.ShowErrorBox` is drawn. `ShowErrorBox` rather
+than `ShowMessageBoxAsync` because it is the one Electron dialog that needs no parent window — and here
+there is no window and never will be. Browser mode has no dialog surface at all, so a critical log line
+and a non-zero exit are the whole report. The message names both numbers and says the board is intact,
+because the failure is a refusal and not damage.
+
+The dialog's language is the **OS's**, not the user's: the preference lives in the store that cannot be
+read, so `ApplyLanguage` never runs and the resources resolve against `CurrentUICulture`. That is the
+closest thing to right that is still knowable.
+
+**This only ever helps a downgrade to a build that already contains it.** The code has to live in the
+*older* build — the one being installed — so v0.9.1 through v0.9.3-beta will still fail the old silent
+way when they meet a schema-2 store. From this release forward, every downgrade is clean. There is no
+way to fix the already-published builds, which is the argument for landing this in the same release as
+the first migration rather than after the first complaint.
+
+### The three-way update policy became a switch — schema 2
+
+`UpdatePolicy` held `NotifyAndDownload`, `NotifyOnly` and `Off`, and its own comment defended the middle
+one: "check but leave the download to me" is a real position, because a metered connection makes an
+unasked hundred megabytes a real cost. It was collapsed to the `AutoUpdate` boolean anyway, and the
+argument that beat it is that **the position survives without the choice**. Switch off, press *Check
+now* when you want, press *Download* for what it found — that is the same bargain, driven by hand. What
+is genuinely lost is being told about a version automatically without fetching it, and that is narrower
+than a third position deserves. Two of the three only ever differed in what they did with the answer.
+
+Retiring it took a real migration, not a tolerant read. LiteDB persists enums **by name** and its
+deserializer throws on a name the build no longer has, and `UserSettings` loads in a constructor at
+start-up — so a store still holding `"Updates": "NotifyOnly"` would not have cost a preference, it would
+have been an app that does not open. `ActSchema.Migrations` gained its first entry since the list was
+emptied for the first release, rewriting the stored document and removing the old field outright, so
+only one shape exists on disk afterwards.
+
+**Only `NotifyAndDownload` maps to `true`.** It is the one position that fetched a version on its own;
+mapping `NotifyOnly` to `true` would start downloading behind the back of the single user who had
+explicitly refused exactly that. A document with no `Updates` field predates the setting and takes the
+model's default, which is why the migration tests cover the absent case as well as the three names —
+missing must not read as `false`.
+
+The telemetry property was renamed with it (`updates` → `auto_update`) rather than reused: a key whose
+type silently changes from a string to a boolean is worse for whoever reads the dashboard than a new
+key beside the old one.
+
+### A silent install cannot tell you it finished — and the visible one is a wizard
+
+Install-on-exit worked and was still a bad experience: ACT went quiet, nothing said when the installer
+had finished, and launching from the taskbar too early hit a *shortcut not found* dialog — NSIS
+rewrites the shortcuts partway through, so an early click resolves one that momentarily is not there.
+
+The obvious fix is to show the installer, and it was rejected on a measurement. `QuitAndInstall`'s
+`isSilent` is the only lever, and electron-updater turns it into NSIS's `/S` or nothing at all —
+`NsisUpdater.doInstall` builds `["--updated"]` and pushes `/S` only when silent, so there is no middle
+setting. ACT's installer is `"oneClick": false` with `allowToChangeInstallationDirectory`, which makes
+the visible form the **assisted wizard**: Next, install directory, Install, Finish. On the way out that
+waits on clicks from somebody who has already walked away, and closing the wizard cancels the update.
+
+**`oneClick` cannot be silent-and-one-click, visible-and-assisted.** It is an electron-builder build
+option that selects which NSIS script gets compiled into the installer, so there is one binary with one
+mode; `/S` only chooses whether that mode is quiet. Getting both would mean shipping two installers per
+release and pointing `latest.yml` at the one-click one — two artifacts to keep in lockstep, an update
+that installs under different rules than the download the user chose, and twice the signing surface.
+Not worth it.
+
+So the real fix was not to decorate the exit path but to stop making it the only route. *Restart and
+install* is offered wherever a downloaded update is visible, installs silently with
+`isForceRunAfter: true`, and lets **the app reappearing be the completion signal** — the one signal an
+update can give, and better than a progress bar, because there is nothing to watch and nothing to click
+early.
+
+Install-on-exit was kept underneath at first, for people who simply leave. **It is gone now, and the
+button is the only route.** Left in, everything above was decoration: the tray's *Exit* installed, the
+last window closing with close-to-tray off installed, and `AutoInstallOnAppQuit` covered whatever else
+got out — so a user who never clicked *Restart and install* was upgraded anyway, at the one moment ACT
+had no way to tell them it was happening. That is exactly the silent, unreportable install this section
+set out to stop offering; keeping it as the default made the visible route the exception. So
+`AutoInstallOnAppQuit` is `false`, `ExitAsync` is `Exit(0)` whatever is on disk, and `InstallAndExit`
+was deleted rather than left unreferenced.
+
+**Nothing is lost by not installing** — read from electron-updater's source, not yet watched happen.
+`executeDownload` asks `DownloadedUpdateHelper.validateDownloadedPath` about its pending cache before
+fetching anything and emits `update-downloaded` either way, so a run that never clicks the button should
+leave the file where the next run finds it, and the following `DownloadAsync` should resolve against the
+cache rather than the network. Nothing was added on the strength of that: the code change here is a
+deletion, and if the cache were missed the only cost would be a second download of a file ACT already
+had. What would settle it is one release cycle — decline the update, restart, and watch whether the
+settings page reaches *Ready* immediately or crawls back up through the percentages.
+
+### A downloaded update may not be stale, and may not be checked for at the click
+
+Once nothing installs on the way out, a downloaded update can sit unanswered for days — and the pump used
+to stop checking the moment one was ready, on the reasoning that the answer could not improve until the
+app restarted into it. With install-on-exit gone that reasoning fails: 1.3.0 ships, ACT goes on offering
+1.2.0, and the user needs **two restarts** to arrive at the newest version.
+
+The obvious fix — check when *Restart and install* is clicked, and fetch the newer version instead — was
+rejected on the pinned electron-updater's source (6.8.9). `getValidCachedUpdateFile` compares the feed's
+`sha512` against the cached one and, on a mismatch, calls `cleanCacheDirForPendingUpdate()` **before**
+returning null, so the installer ACT was holding is deleted at the *start* of the replacement download,
+not on its success. A click that re-checks therefore trades a certain install for a maybe: if the new
+download fails — dropped connection, the 30-minute limit, a 404 — there is nothing left to install, and
+`downloadedUpdateHelper.file` still names the deleted file, so a second click reaches `install`'s error
+path and does nothing at all. The click would also have to wait out a check plus a full download, up to
+32 minutes, under a button that says only *Restart and install*.
+
+So the checking stays in the background and **the offer only ever moves to a version that is already on
+disk**:
+
+- `UpdatePump.PassAsync` keeps checking while `Ready`, and returns without touching the state when the
+  answer names the version it is already holding — including *Checking*, because a button that blinked
+  out every six hours would be worse than one that never noticed 1.3.0.
+- A newer version publishes `Available` then `Downloading`, which un-offers the button by itself: both
+  call sites render it only on `Stage is Ready`. That window is honest rather than unfortunate — the
+  older installer really is gone by then.
+- `IUpdater.DownloadAsync` takes the wanted version, and `IsReady` stopped being a latch. Asked for the
+  version it holds it answers immediately; asked for a newer one it clears `IsReady` **before** fetching,
+  for the same reason the cache is already empty by then. Without this the old early-out on a bare
+  `IsReady` would have returned `true` and the replacement download would never have happened.
+- No answer withdraws a downloaded version — not a failed check, not `UpToDate` after a release is
+  pulled, not the toggle going off. The last of those was a real bug: switching off published `Idle` over
+  `Ready` and took the button with it.
+
+What is genuinely lost: with the toggle off, a *Check now* that turns up a newer version replaces the
+*Restart and install* for what is on disk with a *Download* for what is not. `UpdateStatus` holds one
+version, and modelling "1.2.0 ready, 1.3.0 available" was not worth a second one — the alternative was a
+manual check that visibly did nothing, which is the dead button this section keeps arguing against.
+
+It hangs off `IDesktopBridge` rather than `IUpdater`: a restart is an exit that comes back, so it has to
+end the live sessions and put the running-work question through the same confirmation as the tray's
+*Exit*, and none of that is the updater's business. `ElectronDesktopBridge` may take `DesktopShell`
+without closing the container's loop, because the shell takes no bridge — unlike
+`INotifier -> DesktopShell -> UpdatePump -> INotifier`, which is why the pump is registered where it is.
+
+### The release tag cannot be pushed with git — measured
+
+Cutting `v0.9.3-beta` failed on the tag push, not on anything ACT builds:
+
+```
+! [remote rejected] v0.9.3-beta -> v0.9.3-beta (refusing to allow a GitHub App to
+create or update workflow `.github/workflows/release.yml` without `workflows` permission)
+```
+
+`GITHUB_TOKEN` is a GitHub App installation token, and GitHub's pre-receive hook refuses a push from
+an App that it reads as creating or updating anything under `.github/workflows/`. A tag push trips
+it: the run was dispatched from `main` and the tag pointed at `main`'s own tip, so nothing was being
+changed, but a newly created ref has no previous value to diff the workflow files against. The
+permission the message asks for **cannot be granted** — `workflows` is not a key the `permissions:`
+block accepts, and no repository or organisation setting adds it to `GITHUB_TOKEN`. Nothing was
+misconfigured; a settings-level mistake fails differently (a read-only token gives a plain `403`, a
+protected tag says so by name). It is a live GitHub complaint, unanswered in
+[community #151442](https://github.com/orgs/community/discussions/151442) as of January 2026.
+
+So the tag is created through the API, which never reaches that hook — confirmed working by someone
+hitting the same wall in [community #26164](https://github.com/orgs/community/discussions/26164), and
+then by cutting `v0.9.3-beta` for real. **Two calls, not one**, and the second is the point:
+
+- `POST git/tags` makes the annotated tag **object**, holding the message and the tagger date.
+- `POST git/refs` points `refs/tags/<tag>` at that object rather than at the commit.
+
+Letting `gh release create` mint the tag on its own is the more common shape in public workflows and
+was rejected: it creates a **lightweight** tag, which has no object, so GitHub's Tags page falls back
+to the tagged *commit's* date. ACT cut `v0.9.1` and `v0.9.2` off the same commit a day apart — as
+lightweight tags both would have displayed the same timestamp. Dropping the step entirely would also
+cost `--verify-tag`, one of the two independent guards against cutting a version twice (the other is
+the gate's `git tag --list`, which sees API-created tags like any other ref).
+
+`contents: write` alone is enough for both calls — **verified**, against one report that creating a
+tag ref also needs `actions: write`. That extra permission was briefly added defensively and then
+removed unused; the real run settled it. Do not add it back on a hunch.
+
+`shell: pwsh` reports a native command's failure only at the *end* of a step, so the first call's
+result is checked explicitly — without that guard a rejected tag-object call would fall through and
+create the ref against an empty sha.
+
+The shape of the step is pinned by `ReleaseTagCreationTests`, because nothing compiles against the
+workflow and a release is manual, slow and public: a revert to `git push` would surface only as a
+failed release after both platforms had already built, and a slip to a lightweight tag only as wrong
+dates on a page nobody re-reads.

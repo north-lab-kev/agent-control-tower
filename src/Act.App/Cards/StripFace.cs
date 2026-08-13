@@ -30,6 +30,7 @@ public sealed record StripFace(
     string HoldClass,
     string? Spawned,
     string? SpawnedTip,
+    string Folder,
     IReadOnlyList<string> Metrics)
 {
     public string FullBadgeClass => $"badge {BadgeClass}".TrimEnd();
@@ -56,6 +57,7 @@ public sealed record StripFace(
             HoldClass: HoldClassFor(hold),
             Spawned: SpawnedFor(card, parent),
             SpawnedTip: SpawnedTipFor(card, parent),
+            Folder: FolderFor(card),
             Metrics: MetricsFor(card.Metrics));
     }
 
@@ -135,6 +137,13 @@ public sealed record StripFace(
                 card.ScheduledFor?.ToString(Strings.Schedule_DateFormat, CultureInfo.CurrentCulture)),
             _ => null,
         };
+
+    // A no-folder card has no path to show, and the absolute path of ACT's scratch directory is not the
+    // answer either: it is noise on every quick question, and it names an implementation detail rather
+    // than anything the user chose. The card stores no path for one of these — see `Card.NoWorkingDir` —
+    // so this is the only place the distinction can be turned into words.
+    private static string FolderFor(Card card)
+        => card.NoWorkingDir ? Strings.Card_NoWorkingDir : card.WorkingDir;
 
     // A card an agent created rather than the user. Both densities carry it, because telling those
     // apart at a glance is the whole reason `parentId` is recorded — and it is a glyph plus a number

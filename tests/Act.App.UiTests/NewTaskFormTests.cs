@@ -25,6 +25,34 @@ public class NewTaskFormTests
         card.LaunchConfig.Model.Should().Be("opus");
     }
 
+    // A card that needs no folder is written with **no path**, not with the scratch directory's: a card
+    // holding a path it does not start in is a card that lies about where its agent ran, and the launch
+    // resolves the real folder itself.
+    [Fact]
+    public void A_task_with_no_folder_is_written_without_one()
+    {
+        var card = CardIn(BoardColumn.Ready);
+        var form = Edited();
+
+        form.NoWorkingDir = true;
+
+        form.ApplyTo(card, titleFromPrompt: true);
+
+        card.NoWorkingDir.Should().BeTrue();
+        card.WorkingDir.Should().BeEmpty("the typed path is dropped rather than carried");
+    }
+
+    [Fact]
+    public void Turning_the_folder_back_on_writes_the_path_again()
+    {
+        var card = CardIn(BoardColumn.Ready);
+
+        Edited().ApplyTo(card, titleFromPrompt: true);
+
+        card.NoWorkingDir.Should().BeFalse();
+        card.WorkingDir.Should().Be("C:/other");
+    }
+
     [Theory]
     [InlineData(BoardColumn.Executing)]
     [InlineData(BoardColumn.YourTurn)]

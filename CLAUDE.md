@@ -95,6 +95,24 @@ then `preview_start` with `{"url": "http://localhost:5290"}`. Both flags reach
   A prior request to commit/push does not carry over — each one requires its
   own explicit ask. "Fix it" / "address this" / reporting a problem is **not**
   permission to commit or push.
+- **Never leave a new branch tracking `origin/main`.** `git checkout -b <name>
+  origin/main` sets `main` as the upstream, and from then on a bare `git push`
+  targets **main** — one absent-minded push and unreviewed work is on the default
+  branch. Branch with `--no-track` so there is no upstream at all until the branch
+  has its own:
+
+  ```powershell
+  git switch -c <name> --no-track origin/main
+  ```
+
+  Its first push is what sets the upstream, to itself:
+
+  ```powershell
+  git push -u origin <name>
+  ```
+
+  Check with `git status -sb` before any push: the first line must name the
+  branch's own remote, never `origin/main`.
 
 ## Store compatibility (HARD RULE)
 
@@ -109,6 +127,23 @@ then `preview_start` with `{"url": "http://localhost:5290"}`. Both flags reach
 - Until the first release, starting from a fresh `act.db` is still an acceptable
   answer for a breaking change — but say so out loud, because it costs my board.
   Once ACT has shipped, a migration is the only option.
+
+## Guessing (HARD RULE)
+
+- **Never ship a change you cannot justify, "just in case".** If you do not know
+  whether something is needed — an extra permission, a retry, a guard, a wider
+  timeout, a defensive branch — do not add it and label it unverified. An
+  `# UNVERIFIED` comment is not a licence; it is the admission that the code
+  should not be there yet.
+- **Ask me to run the real thing instead.** Say exactly what you are unsure of,
+  what I should run, and what result would settle it. I would rather run a
+  release, a build or a click-through once than carry speculative code forever —
+  and unlike you, I can see the failure.
+- Once it is settled, the answer goes in the code as a fact, or in
+  `docs/design-notes.md` if it is the kind of thing a future reader would try to
+  undo. "We were not sure" never ships.
+- This is the same failure as the read-time shim above: something added on a
+  maybe, which nothing ever tells you it is safe to remove.
 
 ## Tests (HARD RULE)
 

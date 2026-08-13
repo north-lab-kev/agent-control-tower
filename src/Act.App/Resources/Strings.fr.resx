@@ -231,6 +231,15 @@
   <data name="NewTask_WorkingDir" xml:space="preserve">
     <value>Répertoire de travail</value>
   </data>
+  <data name="NewTask_NoWorkingDir" xml:space="preserve">
+    <value>Aucun dossier nécessaire</value>
+  </data>
+  <data name="NewTask_NoWorkingDir_Hint" xml:space="preserve">
+    <value>Pour une question plutôt qu'un travail sur une arborescence. L'agent démarre dans un dossier vide propre à ACT, et ces tâches ne s'attendent jamais l'une l'autre.</value>
+  </data>
+  <data name="Card_NoWorkingDir" xml:space="preserve">
+    <value>Aucun dossier</value>
+  </data>
   <data name="NewTask_Agent" xml:space="preserve">
     <value>Agent</value>
   </data>
@@ -592,19 +601,10 @@
     <value>Version</value>
   </data>
   <data name="Settings_Updates" xml:space="preserve">
-    <value>Mises à jour automatiques</value>
+    <value>Rechercher les mises à jour</value>
   </data>
   <data name="Settings_Updates_Hint" xml:space="preserve">
     <value>ACT cherche une version plus récente.</value>
-  </data>
-  <data name="Settings_Updates_Download" xml:space="preserve">
-    <value>Télécharger discrètement, installer à la sortie</value>
-  </data>
-  <data name="Settings_Updates_NotifyOnly" xml:space="preserve">
-    <value>M'avertir, télécharger sur demande</value>
-  </data>
-  <data name="Settings_Updates_Off" xml:space="preserve">
-    <value>Ne jamais vérifier</value>
   </data>
   <data name="Settings_Updates_Check" xml:space="preserve">
     <value>Vérifier</value>
@@ -614,6 +614,31 @@
   </data>
   <data name="Settings_Updates_Idle" xml:space="preserve">
     <value>Aucune vérification des mises à jour.</value>
+  </data>
+  <data name="Settings_Updates_Manual" xml:space="preserve">
+    <value>Vérifié uniquement à votre demande.</value>
+  </data>
+  <data name="Store_Incompatible_Title" xml:space="preserve">
+    <value>ACT ne peut pas ouvrir vos données</value>
+  </data>
+  <data name="Store_Incompatible_Body" xml:space="preserve">
+    <value>Cette copie d'ACT est plus ancienne que les données présentes sur cet ordinateur. Une version plus récente les a écrites, et les ramener en arrière ferait perdre ce que cette version a ajouté — rien n'a donc été modifié.
+
+Réinstallez la version plus récente d'ACT pour continuer. Votre tableau est intact et vous attend.
+
+(Format des données {0} ; cette copie lit jusqu'à {1}.)</value>
+  </data>
+  <data name="Update_Restart" xml:space="preserve">
+    <value>Redémarrer et installer</value>
+  </data>
+  <data name="Update_RestartReady" xml:space="preserve">
+    <value>Redémarrer et installer {0}</value>
+  </data>
+  <data name="Update_RestartConfirm" xml:space="preserve">
+    <value>Redémarrer ACT pour installer la mise à jour ?</value>
+  </data>
+  <data name="Update_RestartYes" xml:space="preserve">
+    <value>Redémarrer et installer</value>
   </data>
   <data name="Settings_Updates_Checking" xml:space="preserve">
     <value>Vérification…</value>
@@ -628,7 +653,7 @@
     <value>Téléchargement de la version {0} — {1} %.</value>
   </data>
   <data name="Settings_Updates_Ready" xml:space="preserve">
-    <value>La version {0} est téléchargée et s'installera à votre prochaine sortie d'ACT.</value>
+    <value>La version {0} est téléchargée. Choisissez Redémarrer et installer pour l'appliquer.</value>
   </data>
   <data name="Settings_Updates_Unavailable" xml:space="preserve">
     <value>Impossible de joindre le flux de mises à jour. ACT réessaiera plus tard.</value>
@@ -699,17 +724,11 @@
   <data name="Notify_ReadyForReview" xml:space="preserve">
     <value>Prêt pour révision</value>
   </data>
-  <data name="Notify_UpdateAvailable" xml:space="preserve">
-    <value>Une mise à jour d'ACT est disponible</value>
-  </data>
-  <data name="Notify_UpdateAvailable_Body" xml:space="preserve">
-    <value>Version {0}. Téléchargez-la depuis les paramètres quand vous voulez.</value>
-  </data>
   <data name="Notify_UpdateReady" xml:space="preserve">
     <value>Une mise à jour d'ACT est prête</value>
   </data>
   <data name="Notify_UpdateReady_Body" xml:space="preserve">
-    <value>La version {0} s'installera à votre prochaine sortie d'ACT.</value>
+    <value>La version {0} est téléchargée. Choisissez Redémarrer et installer quand cela vous convient.</value>
   </data>
   <data name="Notify_Body" xml:space="preserve">
     <value>#{0} · {1}</value>
@@ -758,9 +777,6 @@
   </data>
   <data name="Tray_ExitDetailBoth_Many" xml:space="preserve">
     <value>{0} tâches en cours seront arrêtées, et les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
-  </data>
-  <data name="Tray_ExitDetailUpdate" xml:space="preserve">
-    <value>Une mise à jour d'ACT déjà téléchargée s'installera à votre sortie.</value>
   </data>
   <data name="Tray_ExitYes" xml:space="preserve">
     <value>Quitter</value>
@@ -893,6 +909,15 @@
   </data>
   <data name="Board_Retry" xml:space="preserve">
     <value>Relancer</value>
+  </data>
+  <data name="Card_DeleteConfirm" xml:space="preserve">
+    <value>Un agent travaille sur la tâche #{0}. Supprimer la tâche met fin à cette session, et l'agent s'arrête où il en est. La tâche peut être restaurée depuis les archives ; la session, non.</value>
+  </data>
+  <data name="Card_DeleteConfirm_Ok" xml:space="preserve">
+    <value>Supprimer et arrêter l'agent</value>
+  </data>
+  <data name="Card_DeleteConfirm_Cancel" xml:space="preserve">
+    <value>Conserver la tâche</value>
   </data>
   <data name="Board_TitlePending" xml:space="preserve">
     <value>Génération d’un titre…</value>

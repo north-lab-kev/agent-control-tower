@@ -30,13 +30,19 @@ public static class WorkingDirConflict
         IWorkingDirectories directories,
         bool enforced)
     {
-        if (!enforced || card.AllowConcurrentWorkingDir || card.Column is not BoardColumn.Ready)
+        if (!enforced || card.AllowConcurrentWorkingDir || card.NoWorkingDir
+            || card.Column is not BoardColumn.Ready)
             return null;
 
         if (Key(card, directories) is not { } folder)
             return null;
 
+        // `!other.NoWorkingDir` as well as the asking card's, and for a different reason: a no-folder card
+        // holds ACT's scratch directory and nothing else, so it cannot be standing in the way of a real
+        // one. In practice its `WorkingDir` is blank and `Key` would answer null anyway — but the flag is
+        // what states it, and a card that still carries a stale path must not block on the strength of it.
         return cards.FirstOrDefault(other => other.Id != card.Id
+            && !other.NoWorkingDir
             && Holds(other)
             && Key(other, directories) is { } held
             && string.Equals(held, folder, Comparison));
@@ -45,8 +51,15 @@ public static class WorkingDirConflict
     // The same comparison without the column rule, for the one caller that has already decided what
     // holding means: the queue runner, judging a card against the cards it is about to launch this
     // pass — none of which is Executing yet, so `Blocking` would answer no about every one of them.
+    //
+    // **The no-folder exemption has to be repeated here**, not only in `Blocking`. Every no-folder task
+    // shares the one scratch directory, so without it a pass holding two of them would launch one and
+    // hold the other back — the same symptom the flag exists to remove, one layer further down where
+    // nothing on screen would explain it.
     public static bool SameFolder(Card card, Card other, IWorkingDirectories directories)
-        => Key(card, directories) is { } folder
+        => !card.NoWorkingDir
+            && !other.NoWorkingDir
+            && Key(card, directories) is { } folder
             && Key(other, directories) is { } held
             && string.Equals(held, folder, Comparison);
 

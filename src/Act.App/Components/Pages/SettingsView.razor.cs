@@ -39,13 +39,6 @@ public partial class SettingsView(
         new(ThemePreference.Light, Strings.Settings_Theme_Light),
     ];
 
-    private static SettingChoice<UpdatePolicy>[] UpdateChoices =>
-    [
-        new(UpdatePolicy.NotifyAndDownload, Strings.Settings_Updates_Download),
-        new(UpdatePolicy.NotifyOnly, Strings.Settings_Updates_NotifyOnly),
-        new(UpdatePolicy.Off, Strings.Settings_Updates_Off),
-    ];
-
     private static SettingChoice<BoardDensity>[] DensityChoices =>
     [
         new(BoardDensity.Detailed, Strings.Settings_Density_Detailed),
@@ -86,14 +79,19 @@ public partial class SettingsView(
 
     private static string Version => AppVersion.Current;
 
-    private UpdatePolicy Updates => settings.Updates;
+    private bool AutoUpdate => settings.AutoUpdate;
 
     private UpdateStatus UpdateStatus => updateState.Current;
 
-    // Offered only where it is the answer to what the page is showing: a version was found, and the
-    // policy that found it is the one that will not fetch it on its own.
-    private bool CanDownloadUpdate
-        => UpdateStatus.Stage is UpdateStage.Available && Updates is UpdatePolicy.NotifyOnly;
+    // Offered only where it is the answer to what the page is showing: a manual check found a version
+    // and nothing is going to fetch it on its own. Without it, that check names a version and leaves no
+    // way to have it.
+    private bool CanDownloadUpdate => UpdateStatus.Stage is UpdateStage.Available && !AutoUpdate;
+
+    // Offered whichever way the toggle sits, because by this point the choice it governed — whether to
+    // go and fetch it — has already been made, and what is left is a version sitting on disk waiting
+    // for a restart that only the user can time.
+    private bool CanRestartForUpdate => UpdateStatus.Stage is UpdateStage.Ready;
 
     private string UpdateSummary => UpdateStatus.Stage switch
     {
@@ -106,7 +104,10 @@ public partial class SettingsView(
             UpdateStatus.Percent),
         UpdateStage.Ready => Text.Format(Strings.Settings_Updates_Ready, UpdateStatus.Version),
         UpdateStage.Unavailable => Strings.Settings_Updates_Unavailable,
-        _ => Strings.Settings_Updates_Idle,
+
+        // Nothing has been asked yet. With the toggle off that is the resting state rather than a
+        // moment, and "Not checking for updates" beside a live *Check now* reads as a broken button.
+        _ => AutoUpdate ? Strings.Settings_Updates_Idle : Strings.Settings_Updates_Manual,
     };
 
     private bool AutoArchiveCompleted => settings.AutoArchiveCompleted;
@@ -291,11 +292,13 @@ public partial class SettingsView(
 
     private void OnAutoArchiveDaysChanged(int days) => settings.SetAutoArchiveCompletedAfterDays(days);
 
-    private void OnUpdatesChanged(UpdatePolicy policy) => settings.SetUpdates(policy);
+    private void OnAutoUpdateChanged(bool autoUpdate) => settings.SetAutoUpdate(autoUpdate);
 
     private void CheckForUpdate() => updates.CheckNow();
 
     private void DownloadUpdate() => updates.DownloadNow();
+
+    private Task RestartForUpdate() => desktop.RestartForUpdateAsync();
 
     // The pump runs on its own thread, so a download's progress arrives from outside the renderer.
     private void OnUpdateStateChanged() => _ = InvokeAsync(StateHasChanged);
