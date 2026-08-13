@@ -110,6 +110,23 @@ then `preview_start` with `{"url": "http://localhost:5290"}`. Both flags reach
   answer for a breaking change — but say so out loud, because it costs my board.
   Once ACT has shipped, a migration is the only option.
 
+## Guessing (HARD RULE)
+
+- **Never ship a change you cannot justify, "just in case".** If you do not know
+  whether something is needed — an extra permission, a retry, a guard, a wider
+  timeout, a defensive branch — do not add it and label it unverified. An
+  `# UNVERIFIED` comment is not a licence; it is the admission that the code
+  should not be there yet.
+- **Ask me to run the real thing instead.** Say exactly what you are unsure of,
+  what I should run, and what result would settle it. I would rather run a
+  release, a build or a click-through once than carry speculative code forever —
+  and unlike you, I can see the failure.
+- Once it is settled, the answer goes in the code as a fact, or in
+  `docs/design-notes.md` if it is the kind of thing a future reader would try to
+  undo. "We were not sure" never ships.
+- This is the same failure as the read-time shim above: something added on a
+  maybe, which nothing ever tells you it is safe to remove.
+
 ## Tests (HARD RULE)
 
 - **Every change ships with its tests, in the same pass.** New behaviour gets new
