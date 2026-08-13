@@ -95,6 +95,24 @@ then `preview_start` with `{"url": "http://localhost:5290"}`. Both flags reach
   A prior request to commit/push does not carry over — each one requires its
   own explicit ask. "Fix it" / "address this" / reporting a problem is **not**
   permission to commit or push.
+- **Never leave a new branch tracking `origin/main`.** `git checkout -b <name>
+  origin/main` sets `main` as the upstream, and from then on a bare `git push`
+  targets **main** — one absent-minded push and unreviewed work is on the default
+  branch. Branch with `--no-track` so there is no upstream at all until the branch
+  has its own:
+
+  ```powershell
+  git switch -c <name> --no-track origin/main
+  ```
+
+  Its first push is what sets the upstream, to itself:
+
+  ```powershell
+  git push -u origin <name>
+  ```
+
+  Check with `git status -sb` before any push: the first line must name the
+  branch's own remote, never `origin/main`.
 
 ## Store compatibility (HARD RULE)
 
