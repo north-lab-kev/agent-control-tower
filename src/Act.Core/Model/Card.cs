@@ -47,6 +47,18 @@ public sealed class Card
     // there" and never speaks for the card holding the folder.
     public bool AllowConcurrentWorkingDir { get; set; }
 
+    // A task with nowhere in particular to run — a question, rather than work on a tree. `WorkingDir`
+    // stays **empty** for one of these; the folder the CLI is actually started in is ACT's own scratch
+    // directory, resolved at launch rather than stored, so it survives the data directory moving and
+    // cannot go stale. Both CLIs read whatever they start in, so an empty ACT-owned folder is the only
+    // honest answer to "no folder" — see `SessionLauncher`.
+    //
+    // It also carries its own exemption from the folder guard, and that is the point of the flag rather
+    // than of an empty `WorkingDir`: every one of these shares the one scratch directory, so without the
+    // exemption the second question would queue behind the first. Stated here so the rule can say why,
+    // instead of inferring it from a path that happens to be blank.
+    public bool NoWorkingDir { get; set; }
+
     public TaskOrigin Origin { get; set; }
 
     public Guid? ParentId { get; set; }

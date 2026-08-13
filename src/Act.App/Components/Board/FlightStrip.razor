@@ -62,8 +62,8 @@
                     <RadzenText TextStyle="TextStyle.Caption" Text="@spawnedBy" class="lin clin"
                                 title="@face.SpawnedTip" />
                 }
-                <RadzenText TextStyle="TextStyle.Caption" Text="@Card.WorkingDir" class="path cpath"
-                            title="@Card.WorkingDir" />
+                <RadzenText TextStyle="TextStyle.Caption" Text="@face.Folder" class="path cpath"
+                            title="@face.Folder" />
                 @if (CanLaunch)
                 {
                     <RadzenButton Icon="play_arrow" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
@@ -128,7 +128,7 @@
             {
                 <RadzenText TextStyle="TextStyle.Body2" Text="@Title" class="ttl ttl3" />
             }
-            <RadzenText TextStyle="TextStyle.Caption" Text="@Card.WorkingDir" class="path" />
+            <RadzenText TextStyle="TextStyle.Caption" Text="@face.Folder" class="path" />
 
             @if (CanLaunch)
             {

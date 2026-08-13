@@ -231,6 +231,15 @@
   <data name="NewTask_WorkingDir" xml:space="preserve">
     <value>Répertoire de travail</value>
   </data>
+  <data name="NewTask_NoWorkingDir" xml:space="preserve">
+    <value>Aucun dossier nécessaire</value>
+  </data>
+  <data name="NewTask_NoWorkingDir_Hint" xml:space="preserve">
+    <value>Pour une question plutôt qu'un travail sur une arborescence. L'agent démarre dans un dossier vide propre à ACT, et ces tâches ne s'attendent jamais l'une l'autre.</value>
+  </data>
+  <data name="Card_NoWorkingDir" xml:space="preserve">
+    <value>Aucun dossier</value>
+  </data>
   <data name="NewTask_Agent" xml:space="preserve">
     <value>Agent</value>
   </data>

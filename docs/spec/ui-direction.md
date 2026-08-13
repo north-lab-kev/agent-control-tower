@@ -13,6 +13,32 @@
 - **Launch is "Launch now".** Named for the override it is: a card can be waiting
   on a `schedule`, and this button starts it regardless. Plain "Launch" would read
   as a different action from what the button does on a scheduled card.
+- **A task may need no folder at all** — *No folder needed*, a switch above the working
+  directory, because it decides whether there is a folder to talk about. It is for a question
+  rather than work on a tree, and it is the answer to two separate annoyances: picking a
+  folder you do not care about, and then finding the second such task queued behind the first.
+  - **The card stores no path; the launch resolves one.** Both CLIs read whatever they start
+    in, so an ACT-owned empty directory is the only honest answer to "no folder" —
+    `IAgentConfigFiles.ScratchDirectory()`, the same one the title queries already use.
+    Resolved at launch rather than stored, so it follows the data directory instead of
+    freezing an absolute path, and so the folder is created on the way past. The strip and
+    the template list say **No folder** rather than that path: it is noise on every quick
+    question and names an implementation detail rather than anything the user chose.
+  - **The same folder for every one of them, deliberately.** A fresh directory each time
+    would be one neither CLI has seen, and a pty in one of those hangs on the directory-trust
+    prompt — see `docs/findings/agent-usage.md`. One folder is trusted once and never asks
+    again. The cost is that two quick questions genuinely share a directory, which is
+    acceptable for questions and is why this is not offered as the way to run work.
+  - **It carries its own exemption from the folder guard**, keyed on the flag rather than on
+    the path being blank — `WorkingDirConflict` reads `NoWorkingDir` on both sides, because a
+    no-folder card holds the scratch directory and nothing else. So *Run even if the folder is
+    busy* is hidden for these tasks: the choice has already been made, and a switch offering
+    a decision that cannot change anything reads as if it did something.
+  - **A template may carry it** like any other launch setting, so somebody who asks a lot of
+    questions can save their own starting point for them. It is deliberately *not* a built-in
+    template beside the default: a second undeletable one buys a click and costs a name nobody
+    chose, a row on the templates page for everyone whether they want it or not, and the
+    board's New task button becoming a split button on every install.
 - **A strip can be deleted from the board**, by a quiet icon button last on its header
   line — the same place in both densities, so the gesture does not move when the board's
   density does. It is the one action on a strip that takes work away, so it is a text

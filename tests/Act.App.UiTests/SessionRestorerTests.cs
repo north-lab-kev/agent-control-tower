@@ -74,6 +74,7 @@ public class SessionRestorerTests
             TestNotifications.Dispatcher(settings, new RecordingNotifier()),
             settings,
             new StubWorkingDirectories(),
+            new StubAgentConfigFiles(),
             new FakeAttachmentStore(),
             clock,
             new RecordingTelemetrySink(),

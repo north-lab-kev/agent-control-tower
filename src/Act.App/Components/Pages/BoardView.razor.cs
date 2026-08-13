@@ -213,6 +213,8 @@ public partial class BoardView(
     // button's own menu offers the same thing twice. Cached because `settings.Templates` deep-copies
     // and sorts on every call while templates only change on `settings.Changed`, which clears this.
     private IReadOnlyList<TaskTemplate> PickableTemplates
+        // The default is excluded because the button *is* it; Quick question is not, and that is the
+        // point — one click from the board is the whole reason it is a template rather than a switch.
         => pickable ??= [.. settings.Templates.Where(template => !template.IsDefault)];
 
     private void OpenNewTask() => navigation.NavigateTo("/card/new");

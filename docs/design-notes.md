@@ -1174,6 +1174,41 @@ populates `files` too, so `files` and `items` can never be made to *disagree*, w
 of the "a screenshot tool put the picture on the clipboard twice" and "yield to the text" cases. The
 hand-made shape is what Windows actually produces.
 
+### One scratch folder for every "no folder" task, not one each
+
+A task with nowhere in particular to run needed a folder anyway, because both CLIs read whatever they
+start in and a directory that does not exist fails at spawn. The obvious shape — a fresh directory per
+card, which also sidesteps the one-task-per-folder guard for free — was **rejected on a measurement
+already in this repo**: a pty in a directory the CLI has not seen hangs on the directory-trust prompt
+(`hasTrustDialogAccepted` in `~/.claude.json`, see `docs/findings/agent-usage.md`). Per-card folders
+would therefore park every quick question at a prompt nobody is waiting on. One shared folder is
+trusted once and never asks again.
+
+**The scratch directory itself was already there**, used by the title queries, and that precedent
+transfers less far than it looks: those runs are `-p --tools ""` and `codex exec --sandbox read-only`,
+so they have no TUI to draw a dialog in and nothing to write. What they prove is that both CLIs are
+content to start somewhere that is not a git repo — not anything about trust for an interactive session.
+
+The exemption from the folder guard is keyed on `Card.NoWorkingDir` rather than on the path being blank,
+and it is read on **both** sides of the comparison. The asking side is the obvious one; the holding side
+matters because a no-folder card holds the scratch directory and nothing else, so it cannot be standing
+in the way of a card that wants a real folder. In practice `WorkingDir` is blank on one of these and the
+resolve would answer null anyway — the flag is what *states* it, so a card carrying a stale path cannot
+block on the strength of it. The queue runner's `SameFolder` needs the same exemption for the same
+reason, one layer down where nothing on screen would explain the wait.
+
+`NoWorkingDir` needed no migration: an absent boolean reads as `false`, which is exactly right for every
+card that predates it. `TaskTemplate` carries the same flag, so a user can save their own starting point
+for questions.
+
+**A built-in "Quick question" template was written and then removed**, and the reasons it lost are worth
+keeping, because it is the obvious next idea. It bought one click — the caret on the board's New task
+button — and cost: a second undeletable template with a name nobody chose, a row on the templates page
+for every user whether they wanted it or not, a second `IsDefault`-shaped flag on `TaskTemplate` (a third
+built-in would have forced that pair into a persisted `TaskTemplateKind`, and a migration with it), and
+the New task control becoming a split button on every install, since `PickableTemplates` would never be
+empty again. The switch on the form is the whole feature; the template was packaging.
+
 ## Releasing
 
 ### A downgraded ACT refuses the store out loud, and the refusal has to ship *first*

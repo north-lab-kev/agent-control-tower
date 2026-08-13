@@ -27,6 +27,7 @@ public sealed class SessionLauncher(
     NotificationDispatcher notifications,
     UserSettingsService settings,
     IWorkingDirectories directories,
+    IAgentConfigFiles configFiles,
     IAttachmentStore attachments,
     IClock clock,
     ITelemetrySink telemetry,
@@ -292,11 +293,14 @@ public sealed class SessionLauncher(
         if (kind is StartKind.Launch)
             Claim(card, session);
 
+        // The resolved directory rather than the card's, so a no-folder task still says where it ran.
+        // The card is allowed to carry no path; the log is the record, and a blank there would make the
+        // one kind of task whose folder is not obvious the one kind that never says.
         log.LogInformation(
             "{Kind} of {Agent} started in {WorkingDir}, session {StartedSession}.",
             kind,
             card.AgentType,
-            card.WorkingDir,
+            StartIn(card),
             session.SessionId);
 
         if (Adjustments(resolution) is { } adjusted)
@@ -335,11 +339,12 @@ public sealed class SessionLauncher(
         CancellationToken cancellationToken)
     {
         var files = Attachments(card);
+        var directory = StartIn(card);
 
         if (card.SessionId is { } sessionId)
             return adapter.ResumeAsync(
                 new AgentResumeRequest(
-                    card.Id, sessionId, card.WorkingDir, card.InitialPrompt, message, config, size, files),
+                    card.Id, sessionId, directory, card.InitialPrompt, message, config, size, files),
                 cancellationToken);
 
         // Pre-minted so Claude Code can be handed it; Codex ignores it and reports its own in
@@ -348,13 +353,23 @@ public sealed class SessionLauncher(
             new AgentLaunchRequest(
                 card.Id,
                 Guid.NewGuid().ToString(),
-                card.WorkingDir,
+                directory,
                 card.InitialPrompt,
                 config,
                 size,
                 files),
             cancellationToken);
     }
+
+    // Where the CLI is actually started. A no-folder card stores no path — resolved here instead, so it
+    // follows the data directory rather than freezing an absolute path a move would invalidate, and so
+    // the folder is *created* on the way past: both CLIs fail at spawn on a directory that is not there.
+    //
+    // The same folder for every no-folder task, deliberately. A fresh one each time would be a directory
+    // neither CLI has seen, and a pty in one of those hangs on the trust prompt — see
+    // `docs/findings/agent-usage.md`. One folder is trusted once and never asks again.
+    private string StartIn(Card card)
+        => card.NoWorkingDir ? configFiles.ScratchDirectory() : card.WorkingDir;
 
     // The card carries names; the launch needs paths, and the directory exists from here on whether
     // or not anything is in it — a file dropped onto a live terminal later lands in the same folder

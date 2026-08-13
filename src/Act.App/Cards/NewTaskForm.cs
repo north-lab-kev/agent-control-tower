@@ -41,6 +41,8 @@ public sealed record NewTaskForm
 
     public bool AllowConcurrentWorkingDir { get; set; }
 
+    public bool NoWorkingDir { get; set; }
+
     public bool WantsDateTime => Schedule is TaskSchedule.SpecificDateTime;
 
     // A new task starts as a template. The title comes across when the template carries one, and a
@@ -57,6 +59,7 @@ public sealed record NewTaskForm
         Permission = template.PermissionMode,
         Schedule = template.Schedule,
         AllowConcurrentWorkingDir = template.AllowConcurrentWorkingDir,
+        NoWorkingDir = template.NoWorkingDir,
     };
 
     // The fields on screen rather than the saved card, unlike Duplicate: a copy has to be the run
@@ -76,6 +79,7 @@ public sealed record NewTaskForm
         PermissionMode = Permission,
         Schedule = WantsDateTime ? TaskSchedule.Manual : Schedule,
         AllowConcurrentWorkingDir = AllowConcurrentWorkingDir,
+        NoWorkingDir = NoWorkingDir,
     };
 
     public static NewTaskForm From(Card card) => new()
@@ -92,6 +96,7 @@ public sealed record NewTaskForm
         Schedule = card.Schedule ?? TaskSchedule.Manual,
         ScheduledFor = card.ScheduledFor?.LocalDateTime,
         AllowConcurrentWorkingDir = card.AllowConcurrentWorkingDir,
+        NoWorkingDir = card.NoWorkingDir,
     };
 
     public Card ToCard(DateTimeOffset createdAt, bool titleFromPrompt)
@@ -127,7 +132,11 @@ public sealed record NewTaskForm
         {
             card.InitialPrompt = Prompt.Trim();
             card.Attachments = [.. Attachments];
-            card.WorkingDir = WorkingDir.Trim();
+            // Cleared rather than kept when the task needs no folder: a card holding a path it does not
+            // start in is a card that lies about where its agent ran. The exemption from the folder guard
+            // rides on the flag, not on this being blank — see `WorkingDirConflict`.
+            card.NoWorkingDir = NoWorkingDir;
+            card.WorkingDir = NoWorkingDir ? string.Empty : WorkingDir.Trim();
             card.AgentType = Agent;
 
             // Re-armed from scratch whenever the schedule itself changes: an instant resolved

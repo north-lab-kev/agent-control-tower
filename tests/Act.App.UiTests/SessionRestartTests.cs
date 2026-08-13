@@ -128,6 +128,7 @@ public class SessionRestartTests
             TestNotifications.Dispatcher(settings, new RecordingNotifier()),
             settings,
             new PassThroughDirectories(),
+            new StubAgentConfigFiles(),
             new FakeAttachmentStore(),
             clock,
             new RecordingTelemetrySink(),

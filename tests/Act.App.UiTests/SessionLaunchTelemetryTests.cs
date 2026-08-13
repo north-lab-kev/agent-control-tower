@@ -101,6 +101,7 @@ public class SessionLaunchTelemetryTests
             TestNotifications.Dispatcher(settings, new RecordingNotifier()),
             settings,
             new AnyDirectory(),
+            new StubAgentConfigFiles(),
             new FakeAttachmentStore(),
             clock,
             telemetry,

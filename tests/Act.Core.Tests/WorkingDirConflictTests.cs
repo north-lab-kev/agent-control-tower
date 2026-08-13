@@ -123,6 +123,67 @@ public class WorkingDirConflictTests
         Blocking(card, Held(BoardColumn.Executing)).Should().BeNull();
     }
 
+    // A task with no folder shares ACT's one scratch directory with every other one, so the guard has to
+    // stand aside for it — otherwise the second quick question queues behind the first, which is the whole
+    // thing the flag exists to prevent. Keyed on the flag rather than on the path being blank: a card that
+    // still carries a typed folder must be exempt too, or the exemption depends on hygiene.
+    [Fact]
+    public void A_task_with_no_folder_is_blocked_by_nothing()
+    {
+        var asking = Ready();
+
+        asking.NoWorkingDir = true;
+
+        Blocking(asking, Held(BoardColumn.Executing)).Should().BeNull();
+    }
+
+    [Fact]
+    public void A_task_with_no_folder_holds_nothing_against_anyone_else()
+    {
+        var holder = Held(BoardColumn.Executing);
+
+        holder.NoWorkingDir = true;
+
+        Blocking(Ready(), holder).Should().BeNull();
+    }
+
+    // The exemption survives a folder left in the field, which is the case a blank-path rule would miss.
+    [Fact]
+    public void A_no_folder_task_that_still_carries_a_path_is_exempt_anyway()
+    {
+        var asking = Ready();
+
+        asking.NoWorkingDir = true;
+        asking.WorkingDir = "/dev/act";
+
+        Blocking(asking, Held(BoardColumn.Executing)).Should().BeNull();
+    }
+
+    // The queue runner's half. `Blocking` answers no about a card that is not Executing yet, so a pass
+    // holding two quick questions is judged here — and it has to launch both.
+    [Fact]
+    public void Two_no_folder_tasks_in_one_pass_are_not_the_same_folder()
+    {
+        var first = Ready();
+        var second = Held(BoardColumn.Ready);
+
+        first.NoWorkingDir = true;
+        second.NoWorkingDir = true;
+
+        WorkingDirConflict.SameFolder(first, second, Directories).Should().BeFalse();
+    }
+
+    [Fact]
+    public void One_no_folder_task_never_collides_with_a_real_folder()
+    {
+        var asking = Ready();
+
+        asking.NoWorkingDir = true;
+
+        WorkingDirConflict.SameFolder(asking, Held(BoardColumn.Ready), Directories).Should().BeFalse();
+        WorkingDirConflict.SameFolder(Held(BoardColumn.Ready), asking, Directories).Should().BeFalse();
+    }
+
     private static Card? Blocking(Card card, params Card[] others)
         => WorkingDirConflict.Blocking(card, others, Directories, enforced: true);
 

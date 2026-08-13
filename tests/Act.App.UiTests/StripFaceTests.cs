@@ -2,6 +2,7 @@ using System.Globalization;
 using Act.Agents.ClaudeCode;
 using Act.Agents.Codex;
 using Act.App.Cards;
+using Act.App.Resources;
 using Act.Core.Model;
 using Act.Core.Rules;
 using Act.Core.Scheduling;
@@ -393,6 +394,35 @@ public class StripFaceTests
         card.ParentId = Guid.NewGuid();
 
         return card;
+    }
+
+    // A card with a folder says which one; a card without says so in words. The absolute path of ACT's
+    // scratch directory is not the answer — it is noise on every quick question and names an
+    // implementation detail rather than anything the user chose.
+    [Fact]
+    public void A_card_with_a_folder_shows_the_folder()
+        => Face(Card(BoardColumn.Ready)).Folder.Should().Be("/dev/act");
+
+    [Fact]
+    public void A_card_with_no_folder_says_so_rather_than_showing_a_path()
+    {
+        var card = Card(BoardColumn.Ready);
+
+        card.NoWorkingDir = true;
+        card.WorkingDir = string.Empty;
+
+        Face(card).Folder.Should().Be(Strings.Card_NoWorkingDir);
+    }
+
+    // The flag wins over a path left on the card, so a strip cannot show a folder the launch will not use.
+    [Fact]
+    public void The_flag_decides_what_is_shown_not_the_stored_path()
+    {
+        var card = Card(BoardColumn.Ready);
+
+        card.NoWorkingDir = true;
+
+        Face(card).Folder.Should().Be(Strings.Card_NoWorkingDir);
     }
 
     private static Card Parent() => new()

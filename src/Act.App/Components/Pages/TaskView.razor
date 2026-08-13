@@ -172,6 +172,22 @@ else
                             }
                         </RadzenStack>
 
+                        @* Above the folder rather than beside it, because it decides whether there is a
+                           folder to talk about at all. Everything below is hidden when it is on — a path
+                           box that governs nothing is worse than no box, and a required validator on a
+                           hidden field is a form that cannot be submitted for a reason nobody can see. *@
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
+                                     JustifyContent="JustifyContent.SpaceBetween" Gap="1rem">
+                            <RadzenStack Gap="0.1rem">
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_NoWorkingDir" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Strings.NewTask_NoWorkingDir_Hint"
+                                            class="hint" />
+                            </RadzenStack>
+                            <RadzenSwitch @bind-Value="form.NoWorkingDir" Disabled="Locked" />
+                        </RadzenStack>
+
+                        @if (!form.NoWorkingDir)
+                        {
                         <RadzenStack Gap="0.3rem">
                             <RadzenText TextStyle="TextStyle.Body2" Text="@Strings.NewTask_WorkingDir" />
 
@@ -222,6 +238,7 @@ else
                                 </RadzenStack>
                             }
                         </RadzenStack>
+                        }
                     </RadzenStack>
                 </RadzenFieldset>
 
@@ -299,9 +316,11 @@ else
                                          AllowClose="false" Text="@Strings.NewTask_UnattendedPrompting" class="warn" />
                         }
 
-                        @* Only while the guard is on: an exemption from a rule nobody is enforcing
-                           is a switch that reads as if it did something. *@
-                        @if (FolderGuardOn)
+                        @* Only while the guard is on, and never for a task with no folder: an exemption
+                           from a rule nobody is enforcing is a switch that reads as if it did something,
+                           and a no-folder task is exempt whatever this says — the rule reads the flag, so
+                           offering the switch would be offering a choice that has already been made. *@
+                        @if (FolderGuardOn && !form.NoWorkingDir)
                         {
                             <div class="row">
                                 <RadzenStack Gap="0.1rem">
