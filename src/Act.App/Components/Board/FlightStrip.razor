@@ -41,6 +41,14 @@
                 {
                     <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Base" Text="@face.Schedule" class="schip" />
                 }
+
+                @* Last on the line and quiet on purpose: it is the one action here that takes work away,
+                   so it must never be the thing the eye lands on first, and it must never be mistaken
+                   for the outlined button that starts one. *@
+                <RadzenButton Icon="delete_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
+                              Variant="Variant.Text" class="del"
+                              title="@Strings.Task_Delete" aria-label="@Strings.Task_Delete"
+                              Disabled="IsDeleting" Click="@DeleteAsync" @onclick:stopPropagation="true" />
             </RadzenStack>
 
             @* The path and the action are the two things a compact strip still has to carry, so they
@@ -79,16 +87,30 @@
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center"
                          JustifyContent="JustifyContent.SpaceBetween" Gap="0.4rem">
                 <RadzenText TextStyle="TextStyle.Caption" Text="@face.Identity" class="cid" />
-                @if (face.BadgeText is not null)
-                {
-                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.BadgeText" class="@face.FullBadgeClass" />
-                }
-                @if (face.HoldText is not null)
-                {
-                    <span title="@face.HoldTip">
-                        <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.HoldText" class="@face.HoldClass" />
-                    </span>
-                }
+
+                @* One group, not three loose children: this row is `SpaceBetween`, which spreads
+                   whatever it holds — so adding the button beside the badges would have pushed the
+                   badge into the middle of the strip. Nested, the row still has exactly two children
+                   and the badge keeps the position it had. *@
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.4rem">
+                    @if (face.BadgeText is not null)
+                    {
+                        <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.BadgeText" class="@face.FullBadgeClass" />
+                    }
+                    @if (face.HoldText is not null)
+                    {
+                        <span title="@face.HoldTip">
+                            <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@face.HoldText" class="@face.HoldClass" />
+                        </span>
+                    }
+
+                    @* Same place as in compact — last on the header line — so the gesture does not
+                       move when the board's density does. *@
+                    <RadzenButton Icon="delete_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Base"
+                                  Variant="Variant.Text" class="del"
+                                  title="@Strings.Task_Delete" aria-label="@Strings.Task_Delete"
+                                  Disabled="IsDeleting" Click="@DeleteAsync" @onclick:stopPropagation="true" />
+                </RadzenStack>
             </RadzenStack>
 
             @if (TitlePending)

@@ -904,6 +904,15 @@ Réinstallez la version plus récente d'ACT pour continuer. Votre tableau est in
   <data name="Board_Retry" xml:space="preserve">
     <value>Relancer</value>
   </data>
+  <data name="Card_DeleteConfirm" xml:space="preserve">
+    <value>Un agent travaille sur la tâche #{0}. Supprimer la tâche met fin à cette session, et l'agent s'arrête où il en est. La tâche peut être restaurée depuis les archives ; la session, non.</value>
+  </data>
+  <data name="Card_DeleteConfirm_Ok" xml:space="preserve">
+    <value>Supprimer et arrêter l'agent</value>
+  </data>
+  <data name="Card_DeleteConfirm_Cancel" xml:space="preserve">
+    <value>Conserver la tâche</value>
+  </data>
   <data name="Board_TitlePending" xml:space="preserve">
     <value>Génération d’un titre…</value>
   </data>

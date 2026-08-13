@@ -904,6 +904,15 @@ Reinstall the newer version of ACT to carry on. Your board is intact and waiting
   <data name="Board_Retry" xml:space="preserve">
     <value>Retry</value>
   </data>
+  <data name="Card_DeleteConfirm" xml:space="preserve">
+    <value>Task #{0} has an agent working on it. Deleting the task ends that session, and the agent stops where it is. The task itself can be restored from the archive; the session cannot.</value>
+  </data>
+  <data name="Card_DeleteConfirm_Ok" xml:space="preserve">
+    <value>Delete and stop the agent</value>
+  </data>
+  <data name="Card_DeleteConfirm_Cancel" xml:space="preserve">
+    <value>Keep the task</value>
+  </data>
   <data name="Board_TitlePending" xml:space="preserve">
     <value>Generating a title…</value>
   </data>

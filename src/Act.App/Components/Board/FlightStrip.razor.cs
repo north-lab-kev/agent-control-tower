@@ -31,6 +31,14 @@ public partial class FlightStrip(IClock clock, IAgentCapabilityCatalog agents, T
     [Parameter]
     public EventCallback<Card> OnRetry { get; set; }
 
+    // Carried out by the board, like every other action here: deleting ends the card's session and may
+    // ask about its follow-ups, and neither the registry nor a dialog is a strip's business.
+    [Parameter]
+    public EventCallback<Card> OnDelete { get; set; }
+
+    [Parameter]
+    public bool IsDeleting { get; set; }
+
     // Whether this card can be retried, decided by the board — the answer depends on whether a
     // session is live, which is registry state the strip has no business reaching for.
     [Parameter]
@@ -102,6 +110,8 @@ public partial class FlightStrip(IClock clock, IAgentCapabilityCatalog agents, T
     private Task LaunchAsync() => OnLaunch.InvokeAsync(Card);
 
     private Task RetryAsync() => OnRetry.InvokeAsync(Card);
+
+    private Task DeleteAsync() => OnDelete.InvokeAsync(Card);
 
     private Task OnDragStartAsync() => Draggable ? OnDragStart.InvokeAsync(Card) : Task.CompletedTask;
 

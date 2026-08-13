@@ -55,18 +55,54 @@ public sealed class SignOffTests : BrowserTest
         App.Board.Card(CardId)!.Column.Should().Be(BoardColumn.YourTurn);
     }
 
-    // Archiving is reversible, so a childless card needs no confirmation — the archive page is the undo.
+    // Archiving is reversible and the archive page is the undo, so most cards need no confirmation — but
+    // this one is in **Your turn**, where a session is parked waiting to be answered, and ending that is
+    // what the archive cannot restore. `CardDeleteConfirm` owns the rule; this proves the dialog it asks
+    // for actually renders and is answerable in a real browser, which is the half bUnit cannot show.
     [Fact]
-    public async Task Archiving_takes_it_off_the_board()
+    public async Task Archiving_a_card_with_a_live_session_asks_before_it_goes()
     {
         await GoAsync($"/card/{CardId}/edit");
 
         await Page.Locator("div.destructive button").First.ClickAsync();
 
+        await Assertions.Expect(Page.Locator("div.rz-dialog")).ToBeVisibleAsync();
+
+        // The number says which card; the title must stay out of the sentence, because dropped into it it
+        // reads as part of the prose rather than as a name.
+        var asked = Page.Locator("div.rz-dialog");
+
+        await Assertions.Expect(asked).ToContainTextAsync("Task #1 has an agent working on it");
+        await Assertions.Expect(asked).Not.ToContainTextAsync("Rename the widget");
+
+        App.Board.Card(CardId)!.IsOnBoard.Should().BeTrue("nothing goes until the question is answered");
+
+        await ConfirmDeleteAsync();
+
         await Assertions.Expect(Page.Locator("div.board")).ToBeVisibleAsync();
         await Assertions.Expect(Page.Locator("div.col div.strip")).ToHaveCountAsync(0);
 
         App.Board.Card(CardId)!.IsOnBoard.Should().BeFalse();
+    }
+
+    // The other answer, in the browser: dismissing keeps the card *and* stays on its page, so a mis-click
+    // costs nothing.
+    [Fact]
+    public async Task Declining_keeps_the_card_and_the_page()
+    {
+        await GoAsync($"/card/{CardId}/edit");
+
+        await Page.Locator("div.destructive button").First.ClickAsync();
+
+        await Assertions.Expect(Page.Locator("div.rz-dialog")).ToBeVisibleAsync();
+
+        await Page.Locator("div.rz-dialog button")
+            .Filter(new LocatorFilterOptions { HasTextString = "Keep the task" })
+            .ClickAsync();
+
+        await Assertions.Expect(Page.Locator("div.rz-dialog")).Not.ToBeVisibleAsync();
+
+        App.Board.Card(CardId)!.IsOnBoard.Should().BeTrue();
     }
 
     [Fact]
@@ -147,14 +183,23 @@ public sealed class SignOffTests : BrowserTest
         App.Board.Archived.Should().BeEmpty();
     }
 
+    // The fixture card sits in Your turn, so every archive here goes through the delete confirmation. It
+    // is part of the flow rather than a detail of one test, which is why it lives in the helper.
     private async Task ArchiveAsync()
     {
         await GoAsync($"/card/{CardId}/edit");
 
         await Page.Locator("div.destructive button").First.ClickAsync();
 
+        await ConfirmDeleteAsync();
+
         await Assertions.Expect(Page.Locator("div.board")).ToBeVisibleAsync();
     }
+
+    private Task ConfirmDeleteAsync()
+        => Page.Locator("div.rz-dialog button")
+            .Filter(new LocatorFilterOptions { HasTextString = "Delete and stop the agent" })
+            .ClickAsync();
 
     private Task Act(string action)
         => Page.Locator("div.actions button")

@@ -13,6 +13,29 @@
 - **Launch is "Launch now".** Named for the override it is: a card can be waiting
   on a `schedule`, and this button starts it regardless. Plain "Launch" would read
   as a different action from what the button does on a scheduled card.
+- **A strip can be deleted from the board**, by a quiet icon button last on its header
+  line — the same place in both densities, so the gesture does not move when the board's
+  density does. It is the one action on a strip that takes work away, so it is a text
+  button at reduced opacity that takes `--act-err` on hover, never an outlined button
+  competing with *Launch now*. Nested with the badges rather than loose on the header row,
+  because that row is `SpaceBetween` and a third loose child would push the badge into the
+  middle of the strip.
+  - **It asks first only where an agent is live** — **Executing** and **Your turn** — see
+    `CardDeleteConfirm`. Deleting is a soft archive and restorable, so an "are you sure" on
+    every strip would be ceremony on the gesture used to tidy up; but those two columns end a
+    running process, and that is the part the archive cannot put back. The question names the
+    card: on a board of a dozen strips, "are you sure" beside the wrong one is how the wrong
+    agent gets stopped.
+  - **The task page's own delete obeys the same rule**, through the same `CardDeletePrompt` — the
+    board asking and the task page going quietly was a real gap, not a difference of surface. The
+    rule check lives inside the prompt so a caller cannot take the dialog and forget the rule.
+    One consequence worth knowing: a **Your turn** card is the normal review-then-file case, so
+    signing off and archiving now costs one confirmation it did not before.
+  - **Follow-ups get the same dialog the task page opens**, because what happens to them is a
+    genuine choice rather than an "are you sure" — and a card whose children silently outlived
+    it is the orphan the board exists to make hard to create. The kill-then-delete ordering is
+    shared with the task page in `CardDeletion`; a second copy of it is how one of the two
+    eventually loses it.
 - **Board:** **five flat columns — no persistent zones.** The launch-boundary
   rule is shown **dynamically at drag time**: picking up a draggable card lights
   only its valid drop targets and **grays out invalid columns** (Preparing ↔

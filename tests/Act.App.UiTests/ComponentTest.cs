@@ -100,6 +100,7 @@ public abstract class ComponentTest : BunitContext, IAsyncLifetime
         Services.AddSingleton<QueueRunner>();
         Services.AddSingleton<CardCompleter>();
         Services.AddSingleton<CardReopener>();
+        Services.AddSingleton<CardDeletion>();
         Services.AddSingleton<FollowUpService>();
         Services.AddSingleton<TaskTitles>();
         Services.AddSingleton<TitleBackfill>();

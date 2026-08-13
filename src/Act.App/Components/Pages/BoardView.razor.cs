@@ -1,5 +1,6 @@
 using System.Globalization;
 using Act.App.Cards;
+using Act.App.Components.Shared;
 using Act.App.Notifications;
 using Act.App.Resources;
 using Act.App.Sessions;
@@ -22,6 +23,8 @@ public partial class BoardView(
     TerminalGeometry geometry,
     CardCompleter completer,
     CardReopener reopener,
+    CardDeletion deletion,
+    DialogService dialogService,
     NotificationService notifications,
     UserSettingsService settings,
     NavigationManager navigation) : IAsyncDisposable
@@ -36,6 +39,8 @@ public partial class BoardView(
     private readonly HashSet<Guid> launching = [];
 
     private readonly HashSet<Guid> signing = [];
+
+    private readonly HashSet<Guid> deleting = [];
 
     private readonly CancellationTokenSource leaving = new();
 
@@ -254,6 +259,61 @@ public partial class BoardView(
     }
 
     private bool CanRetry(Card card) => launcher.CanRetry(card);
+
+    private bool IsDeleting(Card card) => deleting.Contains(card.Id);
+
+    // Delete from the strip, so tidying the board does not cost a trip to the task page and back. What it
+    // asks first is `CardDeletePrompt`'s, shared with that page so the same delete cannot warn in one
+    // place and go quietly in the other.
+    //
+    // The follow-ups question is the *same* dialog the task page opens, deliberately — it is a genuine
+    // choice rather than an "are you sure", and a card whose children silently outlived it is the kind
+    // of orphan the board is supposed to make impossible to create by accident.
+    private async Task DeleteAsync(Card card)
+    {
+        if (!deleting.Add(card.Id))
+            return;
+
+        try
+        {
+            if (!await CardDeletePrompt.ConfirmedAsync(dialogService, card))
+                return;
+
+            var followUps = LiveFollowUpsOf(card);
+            var includeChildren = false;
+
+            if (followUps.Count > 0)
+            {
+                var choice = await dialogService.OpenAsync<ArchiveFollowUpsDialog>(
+                    Strings.Task_Delete,
+                    new Dictionary<string, object?>
+                    {
+                        [nameof(ArchiveFollowUpsDialog.Card)] = card,
+                        [nameof(ArchiveFollowUpsDialog.FollowUps)] = followUps,
+                    },
+                    new DialogOptions { Width = "460px", CloseDialogOnOverlayClick = true, CssClass = "act-dialog" });
+
+                // Null when dismissed with the X or the overlay, which means the same as Cancel.
+                if (choice is not (FollowUpChoice.WithFollowUps or FollowUpChoice.KeepFollowUps))
+                    return;
+
+                includeChildren = choice is FollowUpChoice.WithFollowUps;
+            }
+
+            await deletion.DeleteAsync(card, includeChildren, leaving.Token);
+        }
+        catch (InvalidOperationException error)
+        {
+            notifications.Toast(NotificationSeverity.Error, Strings.Task_DeleteFailed, error.Message);
+        }
+        finally
+        {
+            deleting.Remove(card.Id);
+        }
+    }
+
+    private IReadOnlyList<Card> LiveFollowUpsOf(Card card)
+        => [.. board.ChildrenOf(card).Where(child => !child.IsDeleted)];
 
     // Off `BoardState` rather than the column being drawn, because a parent is very often in a
     // different one — the whole point of a follow-up is that it outlives the turn that asked for it.
