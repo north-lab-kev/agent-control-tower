@@ -490,7 +490,24 @@ public class SettingsViewTests : ComponentTest
 
         Updates.Publish(new UpdateStatus(UpdateStage.Ready, "1.2.0"));
 
-        Show().Markup.Should().Contain("1.2.0").And.Contain("exit ACT");
+        Show().Markup.Should().Contain("1.2.0").And.Contain("Restart and install");
+    }
+
+    // The wording is the only thing that tells somebody what closing ACT will do, and it said the
+    // opposite of the truth for as long as leaving installed: nothing but the button installs now, so
+    // the summary may not point at the exit as the way to get the update.
+    [Fact]
+    public void The_summary_names_the_button_rather_than_promising_an_install_on_exit()
+    {
+        Desktop.IsDesktop = true;
+
+        Updates.Publish(new UpdateStatus(UpdateStage.Ready, "1.2.0"));
+
+        var markup = Show().Markup;
+
+        markup.Should().Contain("Restart and install");
+        markup.Should().NotContain("exit ACT");
+        markup.Should().NotContain("next time");
     }
 
     // The state ACT ships in until the release feed is reachable. It must read as "ask again later" and

@@ -322,13 +322,16 @@
         an indefinite while, and relaunching by hand too early finds shortcuts the installer has not
         finished rewriting. A restart the user asked for can answer: **the app coming back is the
         completion signal**, and there is nothing to click in the meantime.
-    - **Applied on the way out, never mid-flight.** ACT supervises long-running agents, so an update
-      that restarted the app to install itself would stop work the user did not agree to stop. The
-      tray *Exit* installs instead of quitting when one is downloaded, after ending the sessions —
-      the confirmation promised that and the promise still holds — and says so in its detail line.
-      `AutoInstallOnAppQuit` is left on underneath as the catch-all for closing the last window with
-      close-to-tray off, which never passes through that path; `BaseUpdater.install` ignores whichever
-      of the two arrives second.
+    - **Applied only when the user says so.** ACT supervises long-running agents, so an update that
+      restarted the app to install itself would stop work the user did not agree to stop — and an
+      update that installed as they left would replace their app at the one moment ACT cannot tell
+      them anything. *Restart and install* is the whole of it: **leaving never installs**, whichever
+      way they leave, so the tray *Exit* is an ordinary exit and its confirmation says nothing about
+      the update. `AutoInstallOnAppQuit` is **off**, and there is no install-on-exit call left to
+      reach.
+      - **Declining costs nothing.** The installer stays in electron-updater's pending cache, so a
+        run that never clicks the button leaves it for the next one, which offers it again without
+        downloading it again. A downloaded update may wait as many runs as the user likes.
     - **A check that fails is not an error.** Offline, a 404, a feed that does not exist yet: all of
       them read as *Could not reach the update feed. ACT will try again later*, never as *up to
       date*. Collapsing the two is the lie that leaves someone on an old build believing otherwise,

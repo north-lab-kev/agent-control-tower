@@ -19,10 +19,6 @@ public sealed class BrowserUpdater : IUpdater
     public Task<bool> DownloadAsync(IProgress<int> progress, CancellationToken cancellationToken)
         => Task.FromResult(false);
 
-    public void InstallAndExit()
-    {
-    }
-
     public void InstallAndRestart()
     {
     }

@@ -63,11 +63,13 @@ public sealed class ElectronUpdater(ILogger<ElectronUpdater> log) : IUpdater
         // otherwise fetch the thing it promised not to fetch.
         Electron.AutoUpdater.AutoDownload = false;
 
-        // Left on as the catch-all. The explicit exit path calls `QuitAndInstall`, but closing the
-        // last window with close-to-tray off quits Electron without passing through it, and a
-        // downloaded update that only ever installs on one of two exits is a coin toss.
-        // `BaseUpdater.install` ignores the second caller, so the two cannot both run.
-        Electron.AutoUpdater.AutoInstallOnAppQuit = true;
+        // Off, because *Restart and install* is the only thing allowed to apply an update. Left on,
+        // every route out of the app installed one — the tray's *Exit*, closing the last window with
+        // close-to-tray off, a shutdown — so somebody who never clicked the button still came back to
+        // a version they had not agreed to, and the click was decoration. The installer stays in
+        // electron-updater's pending cache instead, for as many runs as it takes — see
+        // `docs/design-notes.md`, "A silent install cannot tell you it finished".
+        Electron.AutoUpdater.AutoInstallOnAppQuit = false;
 
         Electron.AutoUpdater.OnUpdateAvailable += info => Settle(UpdateCheck.Found(info?.Version));
         Electron.AutoUpdater.OnUpdateNotAvailable += _ => Settle(UpdateCheck.UpToDate);
@@ -175,19 +177,14 @@ public sealed class ElectronUpdater(ILogger<ElectronUpdater> log) : IUpdater
         }
     }
 
-    // Silent, because this runs as the user is already leaving: an NSIS wizard appearing on the way
-    // out is a worse answer than a progress-free pause. Not force-run either — they asked to quit.
+    // Force-run, which is the whole point: this one was asked for, so ACT owes an answer about when
+    // it finished, and coming back is the only answer it can give.
     //
     // Silent is not a free choice here. `nsis.oneClick` is `false`, so the visible installer is the
     // assisted wizard — Next, install directory, Install, Finish — and electron-updater only ever
-    // passes `/S` or nothing (`NsisUpdater.doInstall`), never a middle setting. A wizard on the way
-    // out waits on clicks from somebody who has already walked away, and closing it cancels the
-    // update. `oneClick` is a build-time choice baked into the installer, so it cannot be one thing
-    // for a manual install and another for a silent one.
-    public void InstallAndExit() => Electron.AutoUpdater.QuitAndInstall(isSilent: true, isForceRunAfter: false);
-
-    // Force-run, which is the whole point: this one was asked for, so ACT owes an answer about when
-    // it finished, and coming back is the only answer it can give. Still silent, for the reason above.
+    // passes `/S` or nothing (`NsisUpdater.doInstall`), never a middle setting. `oneClick` is a
+    // build-time choice baked into the installer, so it cannot be one thing for a manual install and
+    // another for this one.
     public void InstallAndRestart() => Electron.AutoUpdater.QuitAndInstall(isSilent: true, isForceRunAfter: true);
 
     private static int Percent(ProgressInfo info) => Math.Clamp((int)Math.Round(info.Percent), 0, 100);

@@ -24,7 +24,6 @@ public class BrowserUpdaterTests
         var call = async () =>
         {
             updater.Configure();
-            updater.InstallAndExit();
             updater.InstallAndRestart();
 
             (await updater.CheckAsync(CancellationToken.None)).Should().Be(UpdateCheck.Failed);
@@ -48,7 +47,6 @@ public class BrowserUpdaterTests
     [Fact]
     public void Installing_never_makes_it_ready()
     {
-        updater.InstallAndExit();
         updater.InstallAndRestart();
 
         updater.IsReady.Should().BeFalse();

@@ -644,7 +644,7 @@ Reinstall the newer version of ACT to carry on. Your board is intact and waiting
     <value>Downloading version {0} — {1}%.</value>
   </data>
   <data name="Settings_Updates_Ready" xml:space="preserve">
-    <value>Version {0} is downloaded, and installs the next time you exit ACT.</value>
+    <value>Version {0} is downloaded. Choose Restart and install to apply it.</value>
   </data>
   <data name="Settings_Updates_Unavailable" xml:space="preserve">
     <value>Could not reach the update feed. ACT will try again later.</value>
@@ -719,7 +719,7 @@ Reinstall the newer version of ACT to carry on. Your board is intact and waiting
     <value>An ACT update is ready</value>
   </data>
   <data name="Notify_UpdateReady_Body" xml:space="preserve">
-    <value>Version {0} installs the next time you exit ACT.</value>
+    <value>Version {0} is downloaded. Choose Restart and install when it suits you.</value>
   </data>
   <data name="Notify_Body" xml:space="preserve">
     <value>#{0} · {1}</value>
@@ -768,9 +768,6 @@ Reinstall the newer version of ACT to carry on. Your board is intact and waiting
   </data>
   <data name="Tray_ExitDetailBoth_Many" xml:space="preserve">
     <value>{0} running tasks will be stopped, and scheduled tasks will not run while ACT is closed.</value>
-  </data>
-  <data name="Tray_ExitDetailUpdate" xml:space="preserve">
-    <value>A downloaded ACT update will be installed as you leave.</value>
   </data>
   <data name="Tray_ExitYes" xml:space="preserve">
     <value>Exit</value>

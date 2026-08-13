@@ -644,7 +644,7 @@ Réinstallez la version plus récente d'ACT pour continuer. Votre tableau est in
     <value>Téléchargement de la version {0} — {1} %.</value>
   </data>
   <data name="Settings_Updates_Ready" xml:space="preserve">
-    <value>La version {0} est téléchargée et s'installera à votre prochaine sortie d'ACT.</value>
+    <value>La version {0} est téléchargée. Choisissez Redémarrer et installer pour l'appliquer.</value>
   </data>
   <data name="Settings_Updates_Unavailable" xml:space="preserve">
     <value>Impossible de joindre le flux de mises à jour. ACT réessaiera plus tard.</value>
@@ -719,7 +719,7 @@ Réinstallez la version plus récente d'ACT pour continuer. Votre tableau est in
     <value>Une mise à jour d'ACT est prête</value>
   </data>
   <data name="Notify_UpdateReady_Body" xml:space="preserve">
-    <value>La version {0} s'installera à votre prochaine sortie d'ACT.</value>
+    <value>La version {0} est téléchargée. Choisissez Redémarrer et installer quand cela vous convient.</value>
   </data>
   <data name="Notify_Body" xml:space="preserve">
     <value>#{0} · {1}</value>
@@ -768,9 +768,6 @@ Réinstallez la version plus récente d'ACT pour continuer. Votre tableau est in
   </data>
   <data name="Tray_ExitDetailBoth_Many" xml:space="preserve">
     <value>{0} tâches en cours seront arrêtées, et les tâches planifiées ne s'exécuteront pas tant qu'ACT est fermé.</value>
-  </data>
-  <data name="Tray_ExitDetailUpdate" xml:space="preserve">
-    <value>Une mise à jour d'ACT déjà téléchargée s'installera à votre sortie.</value>
   </data>
   <data name="Tray_ExitYes" xml:space="preserve">
     <value>Quitter</value>

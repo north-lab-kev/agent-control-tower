@@ -14,8 +14,8 @@ public interface IUpdater
     // no-op and the pump never starts, rather than each caller remembering to ask.
     bool IsSupported { get; }
 
-    // A downloaded update waiting to be applied. Read by the exit path, which installs instead of
-    // quitting when it is true.
+    // A downloaded update waiting to be applied. Nothing but *Restart and install* applies it, so
+    // this only ever gates that: an exit is an exit whatever is on disk.
     bool IsReady { get; }
 
     // Applied once at startup: pre-releases off, downgrades off, and downloads driven by the policy
@@ -31,11 +31,10 @@ public interface IUpdater
     // reported as whole percent, and may not reach 100 even on success.
     Task<bool> DownloadAsync(IProgress<int> progress, CancellationToken cancellationToken);
 
-    // Replaces `Electron.App.Exit` on the way out when an update is ready. Does not return.
-    void InstallAndExit();
-
-    // The same install, for somebody who asked to update rather than to leave: ACT closes, the
-    // installer runs, and ACT comes back on the new version. Does not return.
+    // The only thing that applies a downloaded update: ACT closes, the installer runs, and ACT comes
+    // back on the new version. Reached from *Restart and install* and from nowhere else — leaving the
+    // app does not install, and the installer waits in the updater's cache for however many runs it
+    // takes. Does not return.
     //
     // **The app reappearing is the only completion signal there is.** An install started on the way
     // out cannot report anything, because the app reporting it is the app being replaced — which is

@@ -1258,7 +1258,25 @@ So the real fix was not to decorate the exit path but to stop making it the only
 install* is offered wherever a downloaded update is visible, installs silently with
 `isForceRunAfter: true`, and lets **the app reappearing be the completion signal** — the one signal an
 update can give, and better than a progress bar, because there is nothing to watch and nothing to click
-early. Install-on-exit stays as it was for people who simply leave.
+early.
+
+Install-on-exit was kept underneath at first, for people who simply leave. **It is gone now, and the
+button is the only route.** Left in, everything above was decoration: the tray's *Exit* installed, the
+last window closing with close-to-tray off installed, and `AutoInstallOnAppQuit` covered whatever else
+got out — so a user who never clicked *Restart and install* was upgraded anyway, at the one moment ACT
+had no way to tell them it was happening. That is exactly the silent, unreportable install this section
+set out to stop offering; keeping it as the default made the visible route the exception. So
+`AutoInstallOnAppQuit` is `false`, `ExitAsync` is `Exit(0)` whatever is on disk, and `InstallAndExit`
+was deleted rather than left unreferenced.
+
+**Nothing is lost by not installing** — read from electron-updater's source, not yet watched happen.
+`executeDownload` asks `DownloadedUpdateHelper.validateDownloadedPath` about its pending cache before
+fetching anything and emits `update-downloaded` either way, so a run that never clicks the button should
+leave the file where the next run finds it, and the following `DownloadAsync` should resolve against the
+cache rather than the network. Nothing was added on the strength of that: the code change here is a
+deletion, and if the cache were missed the only cost would be a second download of a file ACT already
+had. What would settle it is one release cycle — decline the update, restart, and watch whether the
+settings page reaches *Ready* immediately or crawls back up through the percentages.
 
 It hangs off `IDesktopBridge` rather than `IUpdater`: a restart is an exit that comes back, so it has to
 end the live sessions and put the running-work question through the same confirmation as the tray's

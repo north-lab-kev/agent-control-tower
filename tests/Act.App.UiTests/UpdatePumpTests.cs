@@ -502,6 +502,26 @@ public class UpdatePumpTests
         notifier.Shown.Single().Body.Should().Contain("1.2.0");
     }
 
+    // The toast is where most people meet a downloaded update, and it used to tell them it would
+    // install as they left — which is now both untrue and the opposite of the point. It has to send
+    // them to the button, because nothing else applies the update.
+    [Fact]
+    public async Task The_toast_sends_the_user_to_the_button_rather_than_to_the_exit()
+    {
+        updater.Answer = UpdateCheck.Found("1.2.0");
+
+        await using var pump = Pump();
+
+        pump.Start();
+
+        await Until(() => notifier.Shown.Count == 1);
+
+        var body = notifier.Shown.Single().Body;
+
+        body.Should().Contain("Restart and install");
+        body.Should().NotContain("exit ACT");
+    }
+
     // Nothing about a version that is no longer on offer should survive it going away.
     [Fact]
     public async Task Falling_back_to_up_to_date_lets_a_later_version_be_announced_again()

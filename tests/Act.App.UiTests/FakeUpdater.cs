@@ -17,8 +17,6 @@ internal sealed class FakeUpdater : IUpdater
 
     public int Downloads { get; private set; }
 
-    public int Installs { get; private set; }
-
     public int Restarts { get; private set; }
 
     // What the next check answers. Defaults to the quiet outcome, so a test that never sets it is
@@ -69,9 +67,7 @@ internal sealed class FakeUpdater : IUpdater
         return Task.FromResult(DownloadSucceeds);
     }
 
-    public void InstallAndExit() => Installs++;
-
-    // Counted apart from `Installs`: the difference between the two is whether ACT comes back, which
-    // is the whole reason the second one exists.
+    // Counted rather than answered: the only install ACT has is the one the user asked for, so what a
+    // test needs from it is whether it happened at all.
     public void InstallAndRestart() => Restarts++;
 }
