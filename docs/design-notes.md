@@ -804,6 +804,42 @@ line still resolve under a **Release** build, which is what
 `A_frame_carries_the_source_file_and_line` pins by regex. Inlining can still merge or drop a frame;
 that is a property of optimized builds, not of this code.
 
+### A disconnected circuit is not a crash — measured
+
+`app_error` arrived in PostHog in bursts of exactly **ten**, always from one user inside one minute,
+always `System.AggregateException` → `Microsoft.JSInterop.JSDisconnectedException`, always
+`fatal: false`, and never with anything visible on screen. Ten is not a coincidence: it is
+`CrashReports.Most`. The burst was spending the whole per-run crash budget, so **every real crash
+after it in that run went unsent** — that is the bug, not the noise.
+
+**Where it comes from, measured rather than guessed.** A faulted task nobody awaited carries no
+caller frames, so neither PostHog's frame list nor the log's stack said who started the call. A
+temporary `AppDomain.CurrentDomain.FirstChanceException` probe logging `Environment.StackTrace` on
+every `JSDisconnectedException` answered it in one run. Reproduction: open a card page, reload it,
+and wait out Blazor's three-minute `DisconnectedCircuitRetentionPeriod`; `CircuitHost.DisposeAsync`
+then disposes the orphaned circuit's components with the browser already gone. What the probe caught:
+
+| Caller at throw time | Awaited? |
+| --- | --- |
+| `MainLayout.DisposeAsync` (and ACT's other module teardowns) | yes — `catch (JSDisconnectedException)` already handles them |
+| `RadzenTooltip` / `RadzenContextMenu` / `RadzenChartTooltip` `.DisposeAsync` | yes |
+| `RadzenDropDown.Dispose` → `Radzen.JSRuntimeExtensions.InvokeVoid` → `Radzen.JSRuntimeExtensions.FireAndForget(ValueTask)` | **no** |
+
+Radzen's `FireAndForget` starts an interop call on a circuit that is already being disposed and drops
+the task. The GC finalizes it, `TaskScheduler.UnobservedTaskException` raises it wrapped in an
+`AggregateException`, `StartupLog` logs it at `Error` with the exception attached, and
+`TelemetryErrorBridge` — which by design reads every logged exception — turns it into `app_error`.
+Nothing here is ACT's to fix at the call site, and by construction there is no user left to show
+anything to: the exception *means* the browser is gone.
+
+So `CrashReports` refuses it, keyed on `TelemetryFault.Failure` — the innermost exception, which is
+the type the report would have been grouped by anyway. The refusal is placed **before** the counter
+so a burst cannot spend the cap, which is the whole point. It is deliberately narrow: a `JSException`
+is a real fault in one of ACT's own modules with a live circuit behind it, and still reports.
+
+The local log still records every one of them. It is the wire that is filtered, not the file — a
+`nobody awaiting it` line naming `JSDisconnectedException` in `act-*.log` is expected and benign.
+
 ### `CaptureException` is not usable here — measured
 
 The SDK has a `CaptureException` that feeds PostHog's Error Tracking product — grouping, issues,
