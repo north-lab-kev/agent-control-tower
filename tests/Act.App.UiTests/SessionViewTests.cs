@@ -140,15 +140,22 @@ public class SessionViewTests : ComponentTest
     }
 
     // Signing off ends the session, which would leave this view showing an empty pane for work that is done.
+    //
+    // The wait before the click is not redundant. A card in Your turn with a session id is resumable, so
+    // opening this view starts a restore of its own in the background — the sign-off would otherwise race
+    // work the test never asked for. The two waits after it are separate on purpose: the first failing says
+    // the sign-off was refused or never ran, the second says the card moved and the view stayed put.
     [Fact]
     public async Task Signing_off_returns_to_the_board()
     {
         var cut = await Open(BoardColumn.YourTurn);
 
+        cut.WaitForAssertion(() => Registry.For(Card.Id).Should().NotBeNull());
+
         Act(cut, "Mark completed");
 
+        cut.WaitForAssertion(() => Board.Card(Card.Id)!.Column.Should().Be(BoardColumn.Completed));
         cut.WaitForAssertion(() => Route.Should().BeEmpty());
-        Board.Card(Card.Id)!.Column.Should().Be(BoardColumn.Completed);
     }
 
     // Unlike the sign-off this stays on the page: the terminal it reopened into is the reason the user took
