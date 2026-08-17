@@ -3,6 +3,7 @@ using Act.App.Resources;
 using Act.Core.Abstractions;
 using Act.Core.Agents;
 using Act.Core.Model;
+using Act.Core.Rules;
 using Act.Core.Spawning;
 using Act.TestSupport;
 using AwesomeAssertions;
@@ -140,6 +141,9 @@ public class SessionViewTests : ComponentTest
     }
 
     // Signing off ends the session, which would leave this view showing an empty pane for work that is done.
+    //
+    // The two waits are separate on purpose: the first failing says the sign-off was refused or never ran,
+    // the second says the card moved and the view stayed put. `Open` has already settled the restore.
     [Fact]
     public async Task Signing_off_returns_to_the_board()
     {
@@ -147,8 +151,8 @@ public class SessionViewTests : ComponentTest
 
         Act(cut, "Mark completed");
 
+        cut.WaitForAssertion(() => Board.Card(Card.Id)!.Column.Should().Be(BoardColumn.Completed));
         cut.WaitForAssertion(() => Route.Should().BeEmpty());
-        Board.Card(Card.Id)!.Column.Should().Be(BoardColumn.Completed);
     }
 
     // Unlike the sign-off this stays on the page: the terminal it reopened into is the reason the user took
@@ -504,8 +508,25 @@ public class SessionViewTests : ComponentTest
 
         Navigation.NavigateTo($"/card/{Card.Id}/terminal");
 
-        return Render<SessionView>(p => p.Add(c => c.CardId, Card.Id));
+        var cut = Render<SessionView>(p => p.Add(c => c.CardId, Card.Id));
+
+        // Opening a resumable card starts a restore of its own, so returning here with that still in
+        // flight hands every test a view that is quietly working behind it — a click queued behind the
+        // restore, or a board write the restore's own stale copy then overwrites.
+        if (SessionRestore.IsResumable(Card))
+            cut.WaitForAssertion(() => RestoreSettled().Should().BeTrue());
+
+        return cut;
     }
+
+    // Both ends of the restore, because resumable does not mean it will succeed: an agent that does not
+    // offer the card's model refuses before it spawns, and that card is then never restored at all.
+    // Keyed on the *transition* rather than on the registry — `SessionLauncher.BeginAsync` adds the
+    // session first and writes the card last, so the registry says the spawn is done while the write
+    // that a test's own board write would race is not.
+    private bool RestoreSettled()
+        => Board.Card(Card.Id)!.Transitions.Any(entry => entry.Reason == TransitionReason.SessionRestored)
+            || Notifications.Messages.Any(message => message.Summary?.ToString() == Strings.Session_RestoreFailed);
 
     // A card the registry really holds a session for, which is the only state the drop can write into.
     private async Task<IRenderedComponent<SessionView>> OpenLive()

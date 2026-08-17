@@ -1,10 +1,11 @@
 using Act.Core.Abstractions;
 using Act.Core.Telemetry;
+using Microsoft.JSInterop;
 
 namespace Act.App.Telemetry;
 
-// One place a crash becomes an event, so the cap and the last-chance flush are counted once however
-// the exception arrived.
+// One place a crash becomes an event, so the cap, the refusals and the last-chance flush are counted
+// once however the exception arrived.
 public sealed class CrashReports(ITelemetrySink telemetry)
 {
     // A crash loop must not become a send loop: an app failing every few seconds would otherwise
@@ -17,6 +18,9 @@ public sealed class CrashReports(ITelemetrySink telemetry)
 
     public void Report(Exception error, bool fatal)
     {
+        if (IsCircuitTeardown(error))
+            return;
+
         if (Interlocked.Increment(ref reported) > Most)
             return;
 
@@ -37,4 +41,7 @@ public sealed class CrashReports(ITelemetrySink telemetry)
             // Already logged by the sink; there is nowhere useful left to report a failure to report.
         }
     }
+
+    private static bool IsCircuitTeardown(Exception error)
+        => TelemetryFault.Failure(error) is JSDisconnectedException;
 }
