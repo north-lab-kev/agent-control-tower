@@ -22,10 +22,12 @@ the same column, so the **badge is the only thing the event decides**.
 | Executing | permission requested *(observed)* | Your turn | `needs permission` |
 | Executing | question asked *(observed)* | Your turn | `needs answer` |
 | Executing | turn ended (`Stop`) | Your turn | `to review` |
+| Executing | turn interrupted *(the user's Ctrl+C or `Esc`, no hook at all)* | Your turn | `to review` |
 | Executing | process exited non-zero / crash | Your turn | `error` |
 | Executing | the agent reports the turn failed *(api error, model refused)* | Your turn | `error` |
 | Executing | startup prompt waiting *(no hook at all since the spawn)* | Your turn | `needs permission` |
 | Your turn | activity observed *(the user answered, or sent it back, in the terminal)* | Executing | `running` |
+| Your turn | turn interrupted | *(ignored)* | *(stays)* |
 | Your turn + `needs answer` | permission requested | *(ignored)* | *(stays)* `needs answer` |
 | Your turn | startup prompt waiting | *(ignored)* | *(stays)* |
 
@@ -50,6 +52,58 @@ self-reported status is needed:
 
 What that buys: nothing for the agent to write, no advisory rule it can silently
 fail — and an injected preamble that shrinks to nothing (see *Agent ↔ ACT contract*).
+
+## The interrupt is the one turn end no source reports
+
+**A turn the user stops from the keyboard fires no hook whatsoever** — measured against
+`claude-code 2.1.235` for both of its interrupt keys, Ctrl+C and `Esc`, and consistent with
+the CLI's own documentation, which says `Stop` does not run when the stoppage was a user
+interrupt. So the card sat in Executing badged
+`running` for the rest of the session, with the CLI parked at its prompt and work waiting
+on the screen: the exact state the board exists to make impossible. See *The interrupt no
+hook reports* for the measurements, the two rejected alternatives and the re-test probe.
+
+The signal is therefore the **keystroke**, and it belongs to the process source for the
+same reason the startup prompt does — it is a fact about ACT's own plumbing rather than
+anything read off the screen:
+
+- **`ACT never parses terminal output` is untouched.** The interrupt is read on the way
+  *in*: every byte reaching a live agent is one the user typed into the xterm ACT is
+  showing them, so ACT already holds the observation. Nothing is inferred from a redraw.
+- **What an interrupt looks like is the adapter's fact.** `ClaudeCodeAdapter` names **Ctrl+C
+  and `Esc`** — the two this CLI stops a turn with, and `Esc` is the one it advertises itself
+  (*"esc to interrupt"* on its status line).
+- **An open picker eats either key, so a keystroke is judged in context.** Measured: with the
+  slash-command list or the `@` mention picker open, both keys are consumed and the turn
+  carries on; with the composer empty *or* holding ordinary text, both stop it. So the
+  adapter also names the characters that open a picker (`/`, `@`), one of them arms a single
+  bit of doubt in `TurnInterruptWatch`, and the next interrupt key **spends** that doubt
+  instead of being reported — the press after it, which is the one that really stops the
+  turn, is reported. `Enter` clears the doubt, because submitting closes whatever was open.
+- **The bias is deliberate: when in doubt, say nothing.** A missed interrupt leaves the card
+  claiming `running` until the user's next keypress — the behaviour that existed before any
+  of this. A false one moves a card that is still working, and that one blinks for attention
+  and offers a sign-off on unfinished work. Only the second is a lie the board tells.
+- **The whole chunk, never a substring.** One keypress is one `onData` call, so a paste, a
+  dropped path, or an arrow key — which is the escape byte *plus more* — is not an
+  interrupt. This is what keeps `Esc` usable at all.
+- **`to review`, because that is what it is:** the turn is over and whatever it produced
+  before the keystroke is on the screen waiting to be read. It counts as a turn in the
+  metrics, like a failed one.
+- **Executing only.** A card in Your turn is blocked on something the agent *named*, and
+  a keystroke may not overwrite that with the generic report. Recovery needs no rule:
+  whatever the user types next arrives as activity.
+- **A false positive is cheap and self-correcting** — the next activity event puts the
+  card back — which is the same trade the startup grace already accepts. This is not the
+  guess the stale badge would have been: it is an observation with a keypress behind it.
+
+**Codex is measured too, and lands on the same profile** — both keys, the same two triggers.
+It stays an adapter fact rather than a shared constant because nothing guarantees the next
+CLI agrees, and because getting it wrong is cheap to do: Codex's `Esc` was first recorded as
+*not* interrupting, off a probe whose session had already armed that CLI's
+edit-previous-message chord, and an interrupted card sat on `running` until the user said
+otherwise. Whether Codex's hooks report an interrupt is still unknown, and it can only cost a
+duplicate — see the findings file.
 
 ## No stale badge — the quiet chip instead
 

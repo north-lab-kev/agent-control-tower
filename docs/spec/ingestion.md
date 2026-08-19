@@ -142,6 +142,29 @@ screen:
 - **Overshooting is cheap.** A slow start costs the card two extra transitions and
   nothing else, because that first hook puts it straight back.
 
+### The one turn end no hook reports (measured against `claude-code 2.1.235`)
+
+The trust prompt is not the only thing the hook channel is silent about. **A turn the
+user stops from the keyboard fires no hook of any kind** — not `Stop`, not a notification,
+for at least three minutes, on either of the CLI's interrupt keys — while a turn that ends
+on its own fires `Stop` in under three seconds on the same harness. So the card claimed
+`running` with the CLI parked at its prompt.
+
+That signal is the **keystroke**, and it belongs to the process source for the same
+reason the trust prompt does: it is a fact about ACT's own plumbing. It is read on the
+way **in** — every byte reaching a live agent is one the user typed into ACT's own
+xterm — so *ACT never parses terminal output* is untouched. Which keys count is the
+adapter's fact (Claude Code: Ctrl+C and `Esc`), the match is on the whole keypress rather
+than a substring — an arrow key is the escape byte plus more, and must not count — and the
+byte is forwarded regardless.
+
+**One press is not always an interrupt, which is the second thing that had to be measured:**
+an open picker (the `/` command list, an `@` mention) consumes either key and the turn
+carries on, so a trigger character arms a doubt that the next interrupt key spends rather
+than reports. Reporting it put a working card up for review. See *The interrupt is the one
+turn end no source reports* in *Rules engine*, and `findings/agent-interrupt.md` for the full
+table, the rejected alternatives and the re-test probe.
+
 ## Session identity / correlation
 
 Every hook payload includes `session_id`, `transcript_path`, `cwd`, and

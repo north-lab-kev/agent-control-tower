@@ -178,6 +178,31 @@ public class RulesEngineTests
         move.Reason.Should().Be(TransitionReason.TurnEnded);
     }
 
+    // The turn the user stopped from the keyboard, which lands where a turn end lands because that is
+    // what it is. Without this the card claims `running` for the rest of the session: measured against
+    // `claude-code 2.1.235`, a Ctrl+C fires no hook of any kind, so nothing else would ever move it.
+    [Fact]
+    public void An_interrupted_turn_lands_on_review()
+    {
+        var move = RulesEngine.Decide(CardIn(BoardColumn.Executing), new TurnInterrupted(SessionId, At));
+
+        move!.Column.Should().Be(BoardColumn.YourTurn);
+        move.Badge.Should().Be(Badge.ReadyForReview);
+        move.Reason.Should().Be(TransitionReason.TurnInterrupted);
+    }
+
+    // A card already in Your turn is blocked on something the agent named, which says more than a
+    // keystroke does — and a user pressing Ctrl+C at a permission prompt must not have it relabelled
+    // as work to review.
+    [Theory]
+    [InlineData(Badge.NeedsPermission)]
+    [InlineData(Badge.NeedsAnswer)]
+    [InlineData(Badge.Error)]
+    [InlineData(Badge.ReadyForReview)]
+    public void An_interrupt_leaves_a_card_already_in_your_turn_alone(Badge badge)
+        => RulesEngine.Decide(CardIn(BoardColumn.YourTurn, badge), new TurnInterrupted(SessionId, At))
+            .Should().BeNull();
+
     // The failure `ProcessExited` cannot see: the CLI reports the turn failed and stays alive, so
     // without this the card would offer an api error up for review as if it were finished work.
     [Fact]
@@ -336,6 +361,7 @@ public class RulesEngineTests
         new QuestionAsked(SessionId, At, "req", "question"),
         new TurnEnded(SessionId, At),
         new TurnFailed(SessionId, At, "the model is not supported on this account"),
+        new TurnInterrupted(SessionId, At),
         new ProcessExited(SessionId, At, 0),
         new ProcessExited(SessionId, At, 3),
         new SessionEnded(SessionId, At),

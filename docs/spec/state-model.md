@@ -107,8 +107,11 @@ Everything the user is on the hook for, in one column; the badge says which kind
 - **error** — crash or non-zero exit.
 - **killed** — **nothing stamps it** (see *Restart terminal*). The badge is kept
   so a card stored with one still reads back and can still be signed off.
-- **to review** — the agent finished its turn cleanly (`Stop`, no question, no
-  error). Work is produced and nothing is blocking.
+- **to review** — the turn is over and nothing is blocking: the agent finished cleanly
+  (`Stop`, no question, no error), or **the user stopped it from the keyboard** (Ctrl+C
+  or `Esc`), which produces no hook at all and so is reported from the keystroke (see
+  *Rules engine* → *The interrupt is the one turn end no source reports*). Either way
+  there is work on the screen to read.
 
 The card is a *report* that the TUI is waiting — **ACT never answers on the
 user's behalf** (see Hooks are observability, not control). In every case the

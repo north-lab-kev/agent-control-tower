@@ -7,10 +7,36 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Act.App.UiTests;
 
 // The startup pass that makes the common case need no configuration. Three outcomes, and the two
-// rules that are easy to break: a path the user typed is never overwritten, and the switch is only
+// rules that are easy to break: a path that still exists is never overwritten, and the switch is only
 // ACT's to turn off once.
 public class AgentInstallDiscoveryTests
 {
+    // Whether a recorded value is *a path* or *a bare name* is decided with the running platform's
+    // separators, deliberately — the launch decides it the same way (see `AgentBinaryCheck`). So a
+    // Windows-spelled path is a bare **name** on the Linux CI, and a test that hardcodes one asserts
+    // the wrong branch there: it either fails outright or passes for the wrong reason. Spell every
+    // path the way the platform running the test does, exactly as `AgentBinaryCheckTests` does.
+    private static readonly string TypedPath =
+        OperatingSystem.IsWindows() ? @"C:\my-build\claude.exe" : "/my-build/claude";
+
+    private static readonly string RecordedPath =
+        OperatingSystem.IsWindows() ? @"C:\tools\claude.exe" : "/tools/claude";
+
+    private static readonly string RecordedCodexPath =
+        OperatingSystem.IsWindows() ? @"C:\tools\codex.exe" : "/tools/codex";
+
+    private static readonly string DeadPath =
+        OperatingSystem.IsWindows() ? @"C:\gone\codex.exe" : "/gone/codex";
+
+    // The Codex build-hash layout, which is the shape that made this rule necessary.
+    private static readonly string OldBuild = OperatingSystem.IsWindows()
+        ? @"C:\Users\me\AppData\Local\OpenAI\Codex\bin\OLDHASH\codex.exe"
+        : "/home/me/.local/share/OpenAI/Codex/bin/OLDHASH/codex";
+
+    private static readonly string NewBuild = OperatingSystem.IsWindows()
+        ? @"C:\Users\me\AppData\Local\OpenAI\Codex\bin\NEWHASH\codex.exe"
+        : "/home/me/.local/share/OpenAI/Codex/bin/NEWHASH/codex";
+
     private readonly FakeSettingsStore store = new();
 
     private readonly FakeExecutableProbe probe = new();
@@ -33,11 +59,11 @@ public class AgentInstallDiscoveryTests
     [Fact]
     public void An_agent_installed_off_PATH_gets_its_path_recorded()
     {
-        var settings = Run(AgentInstall.At(@"C:\tools\claude.exe"));
+        var settings = Run(AgentInstall.At(RecordedPath));
 
         var claude = settings.Defaults(AgentType.ClaudeCode);
 
-        claude.Binary.Should().Be(@"C:\tools\claude.exe");
+        claude.Binary.Should().Be(RecordedPath);
         claude.Enabled.Should().BeTrue();
     }
 
@@ -81,31 +107,101 @@ public class AgentInstallDiscoveryTests
     }
 
     // The one answer that came from a human. Someone who points ACT at a specific build means it,
-    // even when the probe finds a newer one somewhere else.
+    // even when the probe finds a newer one somewhere else — as long as the build is still there.
     [Fact]
     public void A_path_the_user_typed_is_never_overwritten()
     {
         var settings = Settings();
 
+        probe.Files.Add(TypedPath);
+
         var typed = settings.Defaults(AgentType.ClaudeCode);
-        typed.Binary = @"C:\my-build\claude.exe";
+        typed.Binary = TypedPath;
         settings.SetDefaults(typed);
 
-        Discovery(settings, AgentInstall.At(@"C:\tools\claude.exe")).Run();
+        Discovery(settings, AgentInstall.At(RecordedPath)).Run();
 
-        settings.Defaults(AgentType.ClaudeCode).Binary.Should().Be(@"C:\my-build\claude.exe");
+        settings.Defaults(AgentType.ClaudeCode).Binary.Should().Be(TypedPath);
     }
 
     [Fact]
     public void A_recorded_path_is_not_re_recorded_on_a_later_pass()
     {
         var settings = Settings();
-        var discovery = Discovery(settings, AgentInstall.At(@"C:\tools\claude.exe"));
+
+        probe.Files.Add(RecordedPath);
+
+        var discovery = Discovery(settings, AgentInstall.At(RecordedPath));
 
         discovery.Run();
         discovery.Run();
 
-        settings.Defaults(AgentType.ClaudeCode).Binary.Should().Be(@"C:\tools\claude.exe");
+        settings.Defaults(AgentType.ClaudeCode).Binary.Should().Be(RecordedPath);
+    }
+
+    // The Codex upgrade case, found live: the CLI installs under a build-hash directory, so the path
+    // discovery recorded yesterday points at a folder that no longer exists — and because the setting
+    // is no longer *empty*, the pass used to skip it and leave every launch failing at spawn.
+    [Fact]
+    public void A_recorded_path_that_the_install_moved_out_from_under_is_replaced()
+    {
+        var settings = Settings();
+
+        var stale = settings.Defaults(AgentType.Codex);
+        stale.Binary = OldBuild;
+        settings.SetDefaults(stale);
+
+        probe.Files.Add(NewBuild);
+
+        new AgentInstallDiscovery(
+            [new StubAdapter(AgentType.Codex, AgentInstall.At(NewBuild))],
+            probe,
+            settings,
+            NullLogger<AgentInstallDiscovery>.Instance).Run();
+
+        settings.Defaults(AgentType.Codex).Binary.Should().Be(NewBuild);
+    }
+
+    // Only when there is something to replace it with. A probe that found nothing must not blank a
+    // path out — the recorded one is then still the best guess anybody has, and a CLI that is merely
+    // mid-upgrade comes back.
+    [Fact]
+    public void A_dead_path_is_left_alone_when_discovery_finds_nothing()
+    {
+        var settings = Settings();
+
+        var stale = settings.Defaults(AgentType.Codex);
+        stale.Binary = DeadPath;
+        settings.SetDefaults(stale);
+
+        new AgentInstallDiscovery(
+            [new StubAdapter(AgentType.Codex, AgentInstall.Missing)],
+            probe,
+            settings,
+            NullLogger<AgentInstallDiscovery>.Instance).Run();
+
+        settings.Defaults(AgentType.Codex).Binary.Should().Be(DeadPath);
+    }
+
+    // A bare name is not a path, and an empty-looking box is not the same thing as a name that stopped
+    // resolving: "codex" means *resolve this on `PATH`*, and replacing it with an absolute path would
+    // undo a choice the user made and pin them to one build.
+    [Fact]
+    public void A_bare_name_is_never_replaced_by_a_discovered_path()
+    {
+        var settings = Settings();
+
+        var named = settings.Defaults(AgentType.Codex);
+        named.Binary = "codex";
+        settings.SetDefaults(named);
+
+        new AgentInstallDiscovery(
+            [new StubAdapter(AgentType.Codex, AgentInstall.At(RecordedCodexPath))],
+            probe,
+            settings,
+            NullLogger<AgentInstallDiscovery>.Instance).Run();
+
+        settings.Defaults(AgentType.Codex).Binary.Should().Be("codex");
     }
 
     [Fact]
@@ -115,14 +211,14 @@ public class AgentInstallDiscoveryTests
 
         new AgentInstallDiscovery(
             [
-                new StubAdapter(AgentType.ClaudeCode, AgentInstall.At(@"C:\tools\claude.exe")),
+                new StubAdapter(AgentType.ClaudeCode, AgentInstall.At(RecordedPath)),
                 new StubAdapter(AgentType.Codex, AgentInstall.Missing),
             ],
             probe,
             settings,
             NullLogger<AgentInstallDiscovery>.Instance).Run();
 
-        settings.Defaults(AgentType.ClaudeCode).Binary.Should().Be(@"C:\tools\claude.exe");
+        settings.Defaults(AgentType.ClaudeCode).Binary.Should().Be(RecordedPath);
         settings.Defaults(AgentType.ClaudeCode).Enabled.Should().BeTrue();
         settings.Defaults(AgentType.Codex).Enabled.Should().BeFalse();
     }
@@ -137,7 +233,7 @@ public class AgentInstallDiscoveryTests
         var discovery = new AgentInstallDiscovery(
             [
                 new ThrowingAdapter(),
-                new StubAdapter(AgentType.Codex, AgentInstall.At(@"C:\tools\codex.exe")),
+                new StubAdapter(AgentType.Codex, AgentInstall.At(RecordedCodexPath)),
             ],
             probe,
             settings,
@@ -146,7 +242,7 @@ public class AgentInstallDiscoveryTests
         var run = () => discovery.Run();
 
         run.Should().NotThrow();
-        settings.Defaults(AgentType.Codex).Binary.Should().Be(@"C:\tools\codex.exe");
+        settings.Defaults(AgentType.Codex).Binary.Should().Be(RecordedCodexPath);
     }
 
     // A failure is not a "not installed": switching the agent off would be acting on an answer the

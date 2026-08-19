@@ -25,8 +25,10 @@ public static class MetricsProjection
                 return true;
 
             // A failed turn is still a turn: it was attempted, it is over, and hiding it from the count
-            // would make a card that failed four times look untouched.
-            case TurnEnded or TurnFailed:
+            // would make a card that failed four times look untouched. An interrupted one counts for
+            // the same reason — the work it did before the keystroke is on the screen and up for
+            // review.
+            case TurnEnded or TurnFailed or TurnInterrupted:
                 metrics.TurnCount++;
 
                 Touch(metrics, observed.At);

@@ -37,17 +37,20 @@ terminal and coming back replays the screen instead of showing an empty one.
 
 ## ACT never parses terminal output
 
-**Rule, not a preference.** ACT pipes the terminal's bytes and never reads them
-for meaning. The prototype's `PtyStateProbe` existed to measure the alternative,
+**Rule, not a preference, and it is about *output*.** ACT pipes the terminal's bytes and
+never reads them for meaning. The prototype's `PtyStateProbe` existed to measure the alternative,
 and the measurement is the reason: its regexes had to be rewritten once *within a
 single CLI version bump* (the input line moved from `│ >` to `❯`), against a
 screen that redraws constantly. Any state ACT inferred that way would be
 version-brittle and silently wrong. **Hooks are the state channel; the terminal is
 a pipe.**
 
-The pre-session trust prompt is the one state no hook can report, and it does not
-bend this rule: what ACT observes there is its own process staying silent, never a
-string on the screen. See *The one prompt no hook reports*.
+Two states no hook can report do not bend this rule, because neither is read off the
+screen. The pre-session trust prompt is observed as ACT's own process staying silent (see
+*The one prompt no hook reports*). A **turn the user interrupts** is observed as the
+keystroke ACT was asked to forward — the input channel, not the output one — because
+Ctrl+C and `Esc` each end the turn and fire no hook at all (see *The interrupt is the
+one turn end no source reports*, and `findings/agent-interrupt.md`).
 
 ## The input channel is the human at the keyboard
 
@@ -55,7 +58,12 @@ string on the screen. See *The one prompt no hook reports*.
 keystroke the user made in the terminal ACT is showing them; ACT's only writes to
 the pty are the resize, the teardown, and **a dropped file's own path** — inserted
 where the cursor already is, never followed by a submit key, and only in answer to a
-drag or paste the user just performed. See *Attachments*: it is what a terminal
+drag or paste the user just performed.
+
+ACT does *read* this channel in exactly one place, and it changes nothing about what
+travels on it: an interrupt keystroke is the only report a stopped turn has, so the
+session watches for it on its way past (see *The interrupt is the one turn end no source
+reports*). The byte is forwarded either way — noticing it must never mean swallowing it. See *Attachments*: it is what a terminal
 emulator does with a dragged file, not an instruction ACT decided to send.
 
 *(There is deliberately no **send-back message** — no UI-seeded reply typed into a
@@ -94,9 +102,8 @@ could not serve: it bails on a live session, and a live-but-useless one is exact
 the case.
 
 **There is deliberately no kill button.** Every job one would do has a better
-owner: `Esc` in the terminal interrupts a response *or a tool call* mid-turn
-(Claude Code, verified in the CLI docs), so redirecting a misbehaving agent is the
-terminal's job — the turn then ends and `Stop` moves the card by itself; a
+owner: `Esc` or Ctrl+C in the terminal interrupts a response *or a tool call*
+mid-turn, so redirecting a misbehaving agent is the terminal's job; a
 genuinely wedged card is **deleted** — soft, restorable from the archive — which is
 the honest verb for abandoning work; and a broken screen is what Restart terminal
 fixes, without costing the run. Two invariants follow:

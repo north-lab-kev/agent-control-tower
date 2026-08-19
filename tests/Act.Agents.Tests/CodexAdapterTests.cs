@@ -1,6 +1,8 @@
+using System.Threading.Channels;
 using Act.Agents.Codex;
 using Act.Core.Abstractions;
 using Act.Core.Agents;
+using Act.Core.Events;
 using Act.Core.Model;
 using Act.TestSupport;
 using AwesomeAssertions;
@@ -250,6 +252,61 @@ public class CodexAdapterTests
 
     private static AgentAttachments Attached(params AgentAttachment[] files)
         => new(@"C:\act\a", files);
+
+    // `Esc` stops a Codex turn too, and this test is here because the first version of the profile said
+    // it did not. That measurement was taken in a session already driven with dozens of keystrokes,
+    // which had armed the CLI's *edit-previous-message* chord — so the chord ate the `Esc` under test
+    // and the answer kept streaming, which read as "the key does nothing". Confirmed by a real press in
+    // a clean session: the turn stops. Both keys are named, and neither is dropped again without a
+    // measurement taken from a session that has had no other keys in it.
+    [Theory]
+    [InlineData(TurnInterruptKeys.CtrlC)]
+    [InlineData(TurnInterruptKeys.Escape)]
+    public async Task Both_interrupt_keys_are_reported(string key)
+    {
+        await using var session = await LaunchAsync(new StubPtyHost());
+
+        await session.Terminal.WriteAsync(key);
+
+        (await FirstEventAsync(session)).Should().BeOfType<TurnInterrupted>();
+    }
+
+    // Both of Codex's popups eat the key, same as Claude Code's: measured with a live turn, Ctrl+C with
+    // the command popup open left the answer streaming. So the press after a trigger is not reported.
+    [Theory]
+    [InlineData("/", TurnInterruptKeys.CtrlC)]
+    [InlineData("/", TurnInterruptKeys.Escape)]
+    [InlineData("@", TurnInterruptKeys.CtrlC)]
+    [InlineData("@", TurnInterruptKeys.Escape)]
+    public async Task A_key_that_only_closes_a_popup_is_not_an_interrupt(string trigger, string key)
+    {
+        await using var session = await LaunchAsync(new StubPtyHost());
+
+        await session.Terminal.WriteAsync(trigger);
+        await session.Terminal.WriteAsync(key);
+
+        (await FirstEventAsync(session, TimeSpan.FromMilliseconds(500))).Should().BeNull();
+
+        await session.Terminal.WriteAsync(key);
+
+        (await FirstEventAsync(session)).Should().BeOfType<TurnInterrupted>();
+    }
+
+    private static async Task<AgentEvent?> FirstEventAsync(IAgentSession session, TimeSpan? within = null)
+    {
+        using var giveUp = new CancellationTokenSource(within ?? TimeSpan.FromSeconds(5));
+
+        try
+        {
+            await foreach (var observed in session.Events.WithCancellation(giveUp.Token))
+                return observed;
+        }
+        catch (Exception error) when (error is OperationCanceledException or ChannelClosedException)
+        {
+        }
+
+        return null;
+    }
 
     private static Task<IAgentSession> LaunchAsync(
         StubPtyHost pty,

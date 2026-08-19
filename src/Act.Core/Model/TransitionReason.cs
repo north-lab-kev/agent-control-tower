@@ -45,6 +45,11 @@ public enum TransitionReason
     QuestionAsked,
     TurnEnded,
     TurnFailed,
+
+    // The turn the user stopped with a keystroke. Its own reason rather than `TurnEnded`: no hook
+    // reports an interrupt, so this row is the one ACT writes off its own input channel, and a
+    // timeline that says which is a timeline that can be checked against the CLI.
+    TurnInterrupted,
     AgentExited,
 
     // The parent's row when its agent creates a follow-up. It carries no column, because the parent

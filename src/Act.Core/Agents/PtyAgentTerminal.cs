@@ -17,6 +17,11 @@ public sealed class PtyAgentTerminal(IPtyProcess process) : IAgentTerminal
 
     public event Func<string, Task>? Output;
 
+    // Every keystroke on its way *in*, which is a different thing from reading the screen: the
+    // session watches this for the one key no hook reports, and nothing else may. Internal, so the
+    // observation stays inside the pair that owns the pty.
+    internal event Action<string>? Input;
+
     public string Backlog
     {
         get
@@ -27,7 +32,11 @@ public sealed class PtyAgentTerminal(IPtyProcess process) : IAgentTerminal
     }
 
     public Task WriteAsync(string data, CancellationToken cancellationToken = default)
-        => process.WriteAsync(data, cancellationToken);
+    {
+        Input?.Invoke(data);
+
+        return process.WriteAsync(data, cancellationToken);
+    }
 
     public void Resize(int cols, int rows) => process.Resize(cols, rows);
 

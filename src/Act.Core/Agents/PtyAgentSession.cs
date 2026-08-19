@@ -29,6 +29,11 @@ public sealed class PtyAgentSession : IAgentSession
 
     private readonly IClock clock;
 
+    // Reads the user's own keystrokes for the turn end no hook reports. The profile behind it is the
+    // adapter's — an agent whose interrupt has never been measured hands over `None`, which reports
+    // nothing and costs nothing but the interrupt going unreported the way it always did.
+    private readonly TurnInterruptWatch interrupts;
+
     private bool disposed;
 
     public PtyAgentSession(
@@ -36,16 +41,19 @@ public sealed class PtyAgentSession : IAgentSession
         string? sessionId,
         IPtyProcess process,
         IClock clock,
-        TimeSpan? startupGrace = null)
+        TimeSpan? startupGrace = null,
+        TurnInterruptProfile? interrupts = null)
     {
         TaskId = taskId;
         SessionId = sessionId;
         this.process = process;
         this.clock = clock;
+        this.interrupts = new TurnInterruptWatch(interrupts ?? TurnInterruptProfile.None);
         terminal = new PtyAgentTerminal(process);
 
         process.Output += terminal.OnProcessOutputAsync;
         process.Exited += OnProcessExited;
+        terminal.Input += OnTerminalInput;
 
         var grace = startupGrace ?? StartupGrace;
 
@@ -92,6 +100,7 @@ public sealed class PtyAgentSession : IAgentSession
 
         process.Output -= terminal.OnProcessOutputAsync;
         process.Exited -= OnProcessExited;
+        terminal.Input -= OnTerminalInput;
 
         // Cancelled, not disposed: `Publish` and the exit handler both disarm it, and either can
         // still be racing a dispose. A source with no timer and no linked token costs nothing to
@@ -112,6 +121,22 @@ public sealed class PtyAgentSession : IAgentSession
 
         events.Writer.TryWrite(new ProcessExited(SessionId ?? string.Empty, clock.Now, exitCode));
         events.Writer.TryComplete();
+    }
+
+    // The other thing no hook reports, and the reason this class watches its own input: an interrupt
+    // ends the turn without producing a single payload, so the keystroke is the only evidence there
+    // is. Every keystroke goes to the watch, not just the interrupt keys — what came before one is how
+    // it tells a key that stopped the turn from a key an open picker ate.
+    //
+    // Written straight to the channel rather than through `Publish`, which would disarm the startup
+    // watch — a keystroke is not proof a session exists, and terminal *output* is already refused that
+    // job for the same reason.
+    private void OnTerminalInput(string data)
+    {
+        if (!interrupts.ReportsInterrupt(data))
+            return;
+
+        events.Writer.TryWrite(new TurnInterrupted(SessionId ?? string.Empty, clock.Now));
     }
 
     // The pre-session prompt has no hook behind it, so silence is what reports it. One shot: the
