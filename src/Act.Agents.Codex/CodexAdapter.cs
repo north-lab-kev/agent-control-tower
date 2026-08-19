@@ -25,6 +25,20 @@ public sealed class CodexAdapter(
 {
     public const string DefaultBinary = "codex";
 
+    // How an interrupt reads on *this* CLI. Both keys stop a turn, and `/` and `@` both open a popup
+    // that eats one — the `@` picker says so on its own footer (*"esc close"*), and Ctrl+C with the
+    // command popup open was measured to leave the answer streaming. Same shape as Claude Code's.
+    //
+    // **`Esc` was left out of the first version of this on a measurement that was wrong**, and the
+    // reason is worth knowing before trusting any probe of a TUI's keys: the session it was measured in
+    // had been driven with dozens of keystrokes first, which armed this CLI's *edit-previous-message*
+    // chord — the status line said so — and that chord ate the `Esc` under test. A real press in a
+    // clean session interrupts, which is how the user found it. See
+    // `docs/findings/agent-interrupt.md`.
+    private static readonly TurnInterruptProfile TurnInterrupts = new(
+        [TurnInterruptKeys.CtrlC, TurnInterruptKeys.Escape],
+        ['/', '@']);
+
     public AgentType Agent => AgentType.Codex;
 
     public AgentCapabilities Capabilities => CodexCapabilities.Current;
@@ -223,7 +237,11 @@ public sealed class CodexAdapter(
                 size),
             cancellationToken);
 
-        return new PtyAgentSession(taskId, sessionId, process, clock);
+        // One half of the interrupt question is measured and wired above; the other is not, and it only
+        // costs a duplicate. Whether Codex's *hooks* report a turn the user interrupted has never been
+        // seen — measuring it needs a session whose hooks the user has trusted — so if they do, the
+        // keystroke simply reports the same landing a beat earlier and the hook changes nothing.
+        return new PtyAgentSession(taskId, sessionId, process, clock, interrupts: TurnInterrupts);
     }
 
     // `codex exec` is Codex's own non-interactive mode, and it splits its streams exactly the way this

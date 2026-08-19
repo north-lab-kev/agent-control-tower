@@ -20,6 +20,18 @@ public sealed class ClaudeCodeAdapter(
 {
     public const string DefaultBinary = "claude";
 
+    // How an interrupt reads on this CLI, measured against 2.1.235 and recorded in
+    // `docs/findings/agent-interrupt.md`. Both keys end a turn mid-answer and fire no hook whatsoever,
+    // which is why a keystroke has to be the signal at all.
+    //
+    // The triggers are the other half of the same measurement, and they are not decoration: an open
+    // picker — `/` for the command list, `@` for a file mention — **eats either key**, and the turn
+    // carries on. So a `/` on its way to the composer is the warning that the next Esc or Ctrl+C is
+    // probably closing that list rather than stopping the agent.
+    private static readonly TurnInterruptProfile TurnInterrupts = new(
+        [TurnInterruptKeys.CtrlC, TurnInterruptKeys.Escape],
+        ['/', '@']);
+
     public AgentType Agent => AgentType.ClaudeCode;
 
     public AgentCapabilities Capabilities => ClaudeCodeCapabilities.Current;
@@ -156,7 +168,7 @@ public sealed class ClaudeCodeAdapter(
                 size),
             cancellationToken);
 
-        return new PtyAgentSession(taskId, sessionId, process, clock);
+        return new PtyAgentSession(taskId, sessionId, process, clock, interrupts: TurnInterrupts);
     }
 
     // `-p` is the whole of what makes this cheap; the rest is turning off everything a session wants

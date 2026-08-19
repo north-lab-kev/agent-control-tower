@@ -1123,6 +1123,9 @@ Reinstall the newer version of ACT to carry on. Your board is intact and waiting
   <data name="Transition_TurnFailed" xml:space="preserve">
     <value>The agent reported a failed turn: {0}</value>
   </data>
+  <data name="Transition_TurnInterrupted" xml:space="preserve">
+    <value>Turn interrupted in the terminal, ready for review</value>
+  </data>
   <data name="Transition_AgentExited" xml:space="preserve">
     <value>Agent exited with code {0}</value>
   </data>

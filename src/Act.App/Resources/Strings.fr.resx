@@ -1123,6 +1123,9 @@ Réinstallez la version plus récente d'ACT pour continuer. Votre tableau est in
   <data name="Transition_TurnFailed" xml:space="preserve">
     <value>L'agent signale un tour en échec : {0}</value>
   </data>
+  <data name="Transition_TurnInterrupted" xml:space="preserve">
+    <value>Tour interrompu dans le terminal, prêt pour révision</value>
+  </data>
   <data name="Transition_AgentExited" xml:space="preserve">
     <value>L'agent s'est arrêté avec le code {0}</value>
   </data>

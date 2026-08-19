@@ -50,6 +50,7 @@ public class MetricsProjectionTests
         {
             new ActivityObserved(SessionId, later),
             new TurnEnded(SessionId, later),
+            new TurnInterrupted(SessionId, later),
             new CompactingStarted(SessionId, later),
             new CompactingFinished(SessionId, later),
             new PermissionRequested(SessionId, later, "req", "summary"),
@@ -89,9 +90,13 @@ public class MetricsProjectionTests
         // A failed turn was still attempted and is still over, so hiding it from the count would make
         // a card that failed twice look untouched.
         MetricsProjection.Apply(card, new TurnFailed(SessionId, At, "api error"));
+
+        // And an interrupted one: the work it produced before the keystroke is on the screen and up
+        // for review, so the turn happened.
+        MetricsProjection.Apply(card, new TurnInterrupted(SessionId, At));
         MetricsProjection.Apply(card, new CompactingStarted(SessionId, At));
 
-        card.Metrics!.TurnCount.Should().Be(2);
+        card.Metrics!.TurnCount.Should().Be(3);
         card.Metrics.Compactions.Should().Be(1);
     }
 

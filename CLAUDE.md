@@ -29,6 +29,14 @@ Instructions for Claude Code when working in this repository.
   auto-generated title.** The measured flag set for each CLI's non-interactive mode,
   the traps between them (stdin must be closed; Codex splits its streams; `claude
   --bare` silently breaks OAuth auth), and the checklist to re-test on a CLI bump.
+- **`docs/findings/agent-interrupt.md` — read before touching the interrupt or the
+  terminal's input path.** Why the keystroke the user presses is what moves an interrupted
+  card: the interrupt fires no hook at all (measured, with a control run), the transcript
+  route was measured and rejected, and **an open picker eats Ctrl+C and `Esc` alike** — the
+  measured table of composer states, the one bit of doubt that follows from it, and why the
+  heuristic prefers silence over moving a card that is still working. It also records **two
+  wrong measurements this file shipped** — a picker eating the key, and a chord eating it — so
+  read the two probe rules before measuring any CLI keybinding yourself.
 - **`docs/findings/codex-hooks.md` — read before touching Codex hook wiring.**
   Codex hooks do not fire on the pinned CLI, so that code is written blind; the
   file records what was measured, what ACT assumed, and the checklist to re-test

@@ -30,6 +30,8 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │     ├─ agent-usage.md             # the two usage endpoints and their traps
 │     ├─ agent-title.md             # the one-shot query: measured flags per CLI, the stdin and
 │     │                             #   stream-splitting traps, why --bare breaks auth
+│     ├─ agent-interrupt.md         # the turn end no hook reports: Ctrl+C and Esc fire nothing,
+│     │                             #   so the keystroke is the signal — and the picker that eats it
 │     └─ codex-hooks.md             # Codex hook discovery, TOML shape, the quoting bug
 │
 ├─ src/
@@ -39,7 +41,9 @@ agent-control-tower/                 # repo root (slug); brand "ACT" lives in RE
 │  │  ├─ Agents/                    #   PtyAgentSession/Terminal, launch-config resolution,
 │  │  │                            #     agent process environment, TranscriptTail (offset +
 │  │  │                            #     running snapshot), TaskTitleQuery (the title ACT asks an
-│  │  │                            #     agent for, and the shaping of what comes back) — all
+│  │  │                            #     agent for, and the shaping of what comes back),
+│  │  │                            #     TurnInterrupt* (the keys that stop a turn, and the one bit
+│  │  │                            #     of doubt that keeps a picker's Esc from moving a card) — all
 │  │  │                            #     shared by both adapters
 │  │  ├─ Rules/                     #   the rules engine, manual-move validity, sign-off and
 │  │  │                            #     reopen validity,

@@ -95,6 +95,21 @@ public static class RulesEngine
                 Badge.ReadyForReview,
                 TransitionReason.TurnEnded),
 
+            // The interrupt, which lands where a turn end lands because that is what it is: the CLI
+            // stops mid-answer and parks back at its prompt with whatever it had produced. Measured
+            // against `claude-code 2.1.235` — neither interrupt key fires a hook of any kind, so without this rule
+            // the card claims `running` for the rest of the session and only the quiet chip ever
+            // hints otherwise.
+            //
+            // **Executing only.** A card already in Your turn is blocked on something the agent
+            // named — a permission, a question — which says more than this does, and a keystroke must
+            // not overwrite it with the generic report. Recovery needs no rule: whatever the user
+            // types next arrives as activity.
+            TurnInterrupted when card.Column is BoardColumn.Executing => new BoardMove(
+                BoardColumn.YourTurn,
+                Badge.ReadyForReview,
+                TransitionReason.TurnInterrupted),
+
             // The agent's own report that the turn failed, which is not the same as its process
             // failing: the CLI is still there and would exit zero, so this is the only way ACT hears
             // about an api error or a model the account cannot use. `error` rather than `to review`,
