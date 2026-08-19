@@ -204,6 +204,27 @@ nothing. Every terminal emulator does this with a dragged file, and the user sti
 landed and press Enter. `IAgentTerminal`'s doc comment was amended rather than quietly contradicted —
 the invariant is that ACT composes no *instruction*, not that it never writes.
 
+### A recorded executable path that stopped existing is replaced, not protected — measured
+
+`AgentInstallDiscovery` records the path of a CLI it finds off `PATH`, because a pty spawns an
+explicit image and would otherwise fail with "not found" for a binary sitting right there. The
+original rule was that it only ever *fills an empty setting*, on the stated grounds that a path is
+the one answer that came from a human. **Codex breaks that rule by upgrading.** It installs under
+`%LOCALAPPDATA%\OpenAI\Codex\bin\<build-hash>\codex.exe`, the hash changes with every update, and the
+path ACT itself wrote is then dead — while the setting is no longer *empty*, so the guard skipped it
+and every Codex launch failed at spawn until the path was re-pasted by hand.
+
+Measured 2026-08-19: a fresh store discovered `…\bin\f71e347eb70b3d24\codex.exe` correctly, so the
+lookup was never the problem — `DirectoriesNewestFirst` already handles the hash directory, and it
+skips the sibling folders holding `node.exe` and `rg.exe`. Only the *recorded* value went stale.
+
+So the rule is now about the path's **state**, not its authorship, which ACT cannot know anyway:
+empty is filled, a bare name is never touched (no separator means "resolve on `PATH`", the same rule
+the launch follows), a path that still exists is left alone, and a path that has stopped existing is
+replaced — at `Warning`, because overwriting something a human may have typed is not a thing to do
+quietly. Nothing is blanked out when discovery finds nothing: a dead recorded path is still the best
+guess anyone has, and a CLI mid-upgrade comes back.
+
 ### A session ACT was launched from must not be passed on to the agents it spawns — measured
 
 `AgentEnvironment` copies ACT's own process environment into every CLI it starts, and that is right

@@ -14,8 +14,16 @@ namespace Act.App.Settings;
 //     off in the task form. A machine with one agent is a normal machine, and offering the other
 //     one can only produce cards that die at spawn.
 //
-// A path the user typed themselves is never touched, whatever the probe finds: it is the one
-// answer that came from a human, and someone who points ACT at a specific build means it.
+// A path that **still exists** is never touched, whatever the probe finds: it is the answer that came
+// from a human, and someone who points ACT at a specific build means it.
+//
+// A path that has **stopped existing** is replaced, and that is not the same rule bending. Codex
+// installs under a build-hash directory that changes on every upgrade, so the path recorded here — by
+// ACT itself, in the empty case above — dies the next time the CLI updates itself, and nothing tells
+// anyone: an empty-looking setting was never empty, so the guard above skipped it, and every launch
+// failed at spawn with "not found" until the path was re-pasted by hand. A dead path is not a
+// configuration worth protecting. Replacing it is logged, because overwriting something a human may
+// have typed is not a thing to do quietly.
 public sealed class AgentInstallDiscovery(
     IEnumerable<IAgentAdapter> adapters,
     IExecutableProbe probe,
@@ -31,7 +39,7 @@ public sealed class AgentInstallDiscovery(
             var current = settings.Defaults(adapter.Agent);
             var install = Locate(adapter);
 
-            if (install.ExplicitPath is { } path && string.IsNullOrWhiteSpace(current.Binary))
+            if (install.ExplicitPath is { } path && Records(current.Binary, path))
                 current.Binary = path;
 
             // Only ever on the first pass: after that the switch belongs to the user, so
@@ -49,6 +57,38 @@ public sealed class AgentInstallDiscovery(
 
         if (first)
             settings.MarkAgentInstallsProbed();
+    }
+
+    // Whether what discovery found should be written over what the setting holds. Three cases, and
+    // the middle one is the whole point of the method existing:
+    //
+    //   * **empty** — record it, so the common off-`PATH` install needs no configuration.
+    //   * **a bare name** — never. No separator means "resolve this on `PATH`", which is a rule the
+    //     launch follows too (see `AgentBinaryCheck`), and a name that stops resolving is a broken
+    //     install rather than a moved one.
+    //   * **a path** — only when it no longer exists. A live path is somebody's decision; a dead one
+    //     is a launch that fails at spawn for a CLI sitting right there under a new build hash.
+    private bool Records(string? binary, string discovered)
+    {
+        if (string.IsNullOrWhiteSpace(binary))
+            return true;
+
+        var current = binary.Trim();
+
+        if (!current.Contains(Path.DirectorySeparatorChar) && !current.Contains(Path.AltDirectorySeparatorChar))
+            return false;
+
+        if (probe.FirstExisting([current]) is not null)
+            return false;
+
+        log.LogWarning(
+            "The recorded executable {Missing} no longer exists; replacing it with {Discovered}, which "
+                + "discovery just found. A CLI that installs under a versioned directory does this on "
+                + "every upgrade.",
+            current,
+            discovered);
+
+        return true;
     }
 
     // A discovery that throws must not stop the app: it runs before the board is usable, and the

@@ -81,11 +81,13 @@ public class AgentInstallDiscoveryTests
     }
 
     // The one answer that came from a human. Someone who points ACT at a specific build means it,
-    // even when the probe finds a newer one somewhere else.
+    // even when the probe finds a newer one somewhere else — as long as the build is still there.
     [Fact]
     public void A_path_the_user_typed_is_never_overwritten()
     {
         var settings = Settings();
+
+        probe.Files.Add(@"C:\my-build\claude.exe");
 
         var typed = settings.Defaults(AgentType.ClaudeCode);
         typed.Binary = @"C:\my-build\claude.exe";
@@ -100,12 +102,81 @@ public class AgentInstallDiscoveryTests
     public void A_recorded_path_is_not_re_recorded_on_a_later_pass()
     {
         var settings = Settings();
+
+        probe.Files.Add(@"C:\tools\claude.exe");
+
         var discovery = Discovery(settings, AgentInstall.At(@"C:\tools\claude.exe"));
 
         discovery.Run();
         discovery.Run();
 
         settings.Defaults(AgentType.ClaudeCode).Binary.Should().Be(@"C:\tools\claude.exe");
+    }
+
+    // The Codex upgrade case, found live: the CLI installs under a build-hash directory, so the path
+    // discovery recorded yesterday points at a folder that no longer exists — and because the setting
+    // is no longer *empty*, the pass used to skip it and leave every launch failing at spawn.
+    [Fact]
+    public void A_recorded_path_that_the_install_moved_out_from_under_is_replaced()
+    {
+        var settings = Settings();
+
+        var stale = settings.Defaults(AgentType.Codex);
+        stale.Binary = @"C:\Users\me\AppData\Local\OpenAI\Codex\bin\OLDHASH\codex.exe";
+        settings.SetDefaults(stale);
+
+        var fresh = @"C:\Users\me\AppData\Local\OpenAI\Codex\bin\NEWHASH\codex.exe";
+        probe.Files.Add(fresh);
+
+        new AgentInstallDiscovery(
+            [new StubAdapter(AgentType.Codex, AgentInstall.At(fresh))],
+            probe,
+            settings,
+            NullLogger<AgentInstallDiscovery>.Instance).Run();
+
+        settings.Defaults(AgentType.Codex).Binary.Should().Be(fresh);
+    }
+
+    // Only when there is something to replace it with. A probe that found nothing must not blank a
+    // path out — the recorded one is then still the best guess anybody has, and a CLI that is merely
+    // mid-upgrade comes back.
+    [Fact]
+    public void A_dead_path_is_left_alone_when_discovery_finds_nothing()
+    {
+        var settings = Settings();
+
+        var stale = settings.Defaults(AgentType.Codex);
+        stale.Binary = @"C:\gone\codex.exe";
+        settings.SetDefaults(stale);
+
+        new AgentInstallDiscovery(
+            [new StubAdapter(AgentType.Codex, AgentInstall.Missing)],
+            probe,
+            settings,
+            NullLogger<AgentInstallDiscovery>.Instance).Run();
+
+        settings.Defaults(AgentType.Codex).Binary.Should().Be(@"C:\gone\codex.exe");
+    }
+
+    // A bare name is not a path, and an empty-looking box is not the same thing as a name that stopped
+    // resolving: "codex" means *resolve this on `PATH`*, and replacing it with an absolute path would
+    // undo a choice the user made and pin them to one build.
+    [Fact]
+    public void A_bare_name_is_never_replaced_by_a_discovered_path()
+    {
+        var settings = Settings();
+
+        var named = settings.Defaults(AgentType.Codex);
+        named.Binary = "codex";
+        settings.SetDefaults(named);
+
+        new AgentInstallDiscovery(
+            [new StubAdapter(AgentType.Codex, AgentInstall.At(@"C:\tools\codex.exe"))],
+            probe,
+            settings,
+            NullLogger<AgentInstallDiscovery>.Instance).Run();
+
+        settings.Defaults(AgentType.Codex).Binary.Should().Be("codex");
     }
 
     [Fact]
